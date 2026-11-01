@@ -168,3 +168,40 @@ Demo: `demo/chuyen-canh.html`.
 - Mockup và demo trong buổi brainstorm: `.superpowers/brainstorm/1622-1793505363/content/` (bảng màu chốt, chia lớp, đội mascot, chuyển cảnh).
 - Prototype hiện tại: `prototype/`.
 - Đặc tả chức năng và lộ trình: các artifact "Đặc tả chức năng – Web học tiếng Nhật" và "Lộ trình học tiếng Nhật N5 → N2" trên claude.ai.
+
+## 9. Đã dựng
+
+Nhánh `feat/8bit-bong-da`. Prototype giữ nguyên cấu trúc và dữ liệu, chỉ đổi giao diện sang 8-bit bóng đá, thêm mascot và chuyển cảnh.
+
+**File đã tạo** (trong `prototype/`):
+- `tokens.css`: bảng màu và biến dùng chung.
+- `sprites.js`: 5 mascot 16×16 (Bóng, Mèo đen–trắng, Shiba, Cánh cụt, Hải cẩu).
+- `transitions.js`: bốn hiệu ứng chuyển cảnh `shoji`, `noren`, `sensu`, `sakura` và nhánh giảm chuyển động.
+- `tests/contrast.test.js`, `tests/sprites.test.js`, `tests/transitions.test.js`.
+
+**File đã sửa:** `index.html`, `nihon.css`, `app.css`, `app.js`, `data.js`, `.gitignore`.
+
+**Chạy test** (Node trên Windows không nhận tên thư mục): `node --test prototype/tests/*.test.js`. Kết quả lần cuối: 17 test, 17 đạt.
+
+**Mở prototype:** `python -m http.server 8765 --bind 127.0.0.1 --directory prototype`, rồi vào http://127.0.0.1:8765. Mở `index.html` bằng `file://` thì một số khung xem trước không nạp được script.
+
+**Kiểm tra giao diện:** `inspect.mjs --app` cho 5 màn (trang chủ, ôn tập, shadowing, kanji, JLPT) ở 1440, 768 và 390: 0 FAIL. Còn vài WARN về bố cục (`panel-void`, `ragged-row`) ở 1440, đến từ cấu trúc thẻ có sẵn của prototype, chưa xử lý.
+
+**Số đo chuyển cảnh** (Chrome headless, ép chạy đủ chuyển động; máy đo đang bật giảm chuyển động nên phải ép). Mốc cần ≤ 1.150 ms:
+
+| Hiệu ứng | Khoảnh khắc | 1440×900 | 390×720 |
+|---|---|---|---|
+| `shoji` | đổi khu | 1.011–1.067 ms | |
+| `noren` | `lesson` | 1.107 ms | |
+| `sensu` | `mock-result` | 1.048 ms | |
+| `sakura` | `day-done` | 1.082–1.112 ms | 1.058–1.070 ms |
+| nhánh giảm chuyển động | | 167 ms (mốc ≤ 200 ms) | |
+
+Ghi chú: để `sakura` vào mốc, độ trễ mục tiêu được hạ xuống 480 ms. Ô hoa cũng lớn dần theo viewport: `cell = max(48, ceil(sqrt(w*h/135)))`, nên số ô không phình ra ở màn lớn. Chi tiết đo nằm trong báo cáo Task 7 của buổi dựng.
+
+**Chưa làm:**
+- Sprite 24×24 do người vẽ pixel art; hiện dùng sprite 16×16 viết bằng mã.
+- Dark mode.
+- Mascot dự bị.
+- WARN bố cục `panel-void` / `ragged-row` của công cụ kiểm tra.
+- Màn hình điện thoại: chữ "lặp 3 lần" trong khung video shadowing đè lên mã thời gian; cột nghĩa của "Từ có chữ" ở Kanji bị hẹp khi có nút "Thêm vào ôn".
