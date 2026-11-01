@@ -5,14 +5,15 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Nihon Nihon</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&family=Shippori+Mincho:wght@500;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&family=Shippori+Mincho:wght@500;700&family=VT323&family=DotGothic16&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="tokens.css">
 <link rel="stylesheet" href="app.css">
 <link rel="stylesheet" href="nihon.css">
 </head>
 <body>
 <svg width="0" height="0" style="position:absolute" aria-hidden="true">
   <!-- dấu hiệu: hai mặt trời chồng nhau, "Nihon Nihon" -->
-  <symbol id="mark" viewBox="0 0 28 28"><circle cx="10.5" cy="14" r="7.5" fill="#1b6e66"/><circle cx="17.5" cy="14" r="7.5" fill="none" stroke="#1b6e66" stroke-width="2"/></symbol>
+  <symbol id="mark" viewBox="0 0 28 28"><circle cx="10.5" cy="14" r="7.5" fill="#2F684E"/><circle cx="17.5" cy="14" r="7.5" fill="none" stroke="#2F684E" stroke-width="2"/></symbol>
 </svg>
 
 <div class="app">
@@ -37,7 +38,7 @@
     <main class="canvas">
 
       <!-- =============== TRANG CHỦ =============== -->
-      <section data-view="trang-chu" class="col" aria-labelledby="h-home">
+      <section data-view="trang-chu" class="area-home col" aria-labelledby="h-home">
         <div class="title-row">
           <div>
             <h1 id="h-home"></h1>
@@ -76,7 +77,7 @@
       </section>
 
       <!-- =============== ÔN TẬP =============== -->
-      <section data-view="on-tap" class="col view-tight" aria-labelledby="h-review" hidden>
+      <section data-view="on-tap" class="area-review col view-tight" aria-labelledby="h-review" hidden>
         <div class="title-row">
           <div><h1 id="h-review">Ôn tập</h1><p class="sub" id="review-sub"></p></div>
           <div class="actions"><a class="btn" href="#trang-chu">Kết thúc phiên</a></div>
@@ -100,7 +101,7 @@
       </section>
 
       <!-- =============== SHADOWING =============== -->
-      <section data-view="shadowing" class="col view-tight" aria-labelledby="h-shadow" hidden>
+      <section data-view="shadowing" class="area-shadow col view-tight" aria-labelledby="h-shadow" hidden>
         <div class="title-row">
           <div><h1 id="h-shadow"></h1><p class="sub" id="shadow-sub"></p></div>
           <div class="actions"><span class="pill warn" id="shadow-status"></span></div>
@@ -137,7 +138,7 @@
       </section>
 
       <!-- =============== KANJI =============== -->
-      <section data-view="kanji" class="col view-tight" aria-labelledby="h-kanji" hidden>
+      <section data-view="kanji" class="area-kanji col view-tight" aria-labelledby="h-kanji" hidden>
         <div class="title-row">
           <div><h1 id="h-kanji"></h1><p class="sub" id="kanji-sub"></p></div>
           <ol class="lesson" aria-label="Kanji mới hôm nay" id="lesson"></ol>
@@ -184,7 +185,7 @@
       </section>
 
       <!-- =============== JLPT =============== -->
-      <section data-view="jlpt" class="col view-tight" aria-labelledby="h-jlpt" hidden>
+      <section data-view="jlpt" class="area-jlpt col view-tight" aria-labelledby="h-jlpt" hidden>
         <div class="title-row">
           <div><h1 id="h-jlpt">JLPT N3</h1><p class="sub" id="jlpt-sub"></p></div>
           <div class="actions"><button class="btn primary" type="button">Làm đề thi thử mới</button></div>
@@ -226,8 +227,10 @@
   <a href="#jlpt" data-nav="jlpt"><span class="g" aria-hidden="true">試</span>JLPT</a>
 </nav>
 
+<script src="sprites.js"></script><script src="transitions.js"></script>
 <script src="charts.js"></script>
 <script src="data.js"></script>
 <script src="app.js"></script>
+<div id="fx" aria-hidden="true"></div>
 </body>
 </html>

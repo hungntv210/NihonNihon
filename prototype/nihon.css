@@ -2,21 +2,21 @@
    Lưới: cột giữa 1100px = 12 × 77 + 11 × 16 (924 + 176). Ở 1440: 1440 − 228 (sidebar) − 8 (lề phải sheet)
    − 2 × 24 (padding) = 1156 ≥ 1100, nên cột 1100 nằm giữa sheet. Hàng: 3/3/3/3, rồi 9/3, rồi 6/6. */
 :root {
-  --chrome: #f6f6f4;
-  --ground: #ffffff; --surface: #f6f6f4; --raised: #ffffff; --active: #e9e9e6;
+  --chrome: var(--bg);
+  --ground: var(--bg); --surface: var(--paper); --raised: #ffffff; --active: #e9e9e6;
   --border: #e6e6e3; --rule: #ededea; --control: #d4d4d0;
-  --text: #1f201d; --muted: #5d5d5a; --faint: #666663;
-  --accent: #1b6e66; --primary: #1f201d; --primary-ink: #ffffff;
-  --positive: #2e7d32; --negative: #b42318; --warning: #92400e;
+  --text: var(--ink); --muted: #5d5d5a; --faint: #666663;
+  --accent: var(--forest); --primary: var(--ink); --primary-ink: #ffffff;
+  --positive: #2e7d32; --negative: var(--terra); --warning: #92400e;
   --pill-negative-bg: #fdecea; --pill-negative-ink: #7a1d14;
   --pill-neutral-bg: #ededea; --pill-neutral-ink: #3d3d3a;
   --pill-accent-bg: #e3f0ee; --pill-accent-ink: #12504a;
-  --chart-1: var(--accent); --chart-2: #8c8c88; --chart-muted: #d4d4d0; --grid: #e6e6e3; --axis-ink: #5d5d5a;
-  --radius-card: 22px; --radius-control: 999px; --radius-row: 14px;
+  --chart-1: var(--forest); --chart-2: #8c8c88; --chart-muted: #d4d4d0; --grid: #e6e6e3; --axis-ink: #5d5d5a;
+  --radius-card: 0; --radius-control: 0; --radius-row: 0;
   --gap: 16px; --card-pad: 20px; --pad: 24px; --control-height: 38px;
   --sidebar-width: 228px; --col: 1100px;
-  --font: "Be Vietnam Pro", system-ui, sans-serif;
-  --jp: "Shippori Mincho", "Hiragino Mincho ProN", "Yu Mincho", serif;
+  --font: var(--font-ui);
+  --jp: var(--font-jp);
   --fs-title: 32px; --fs-section: 14px; --fs-kpi: 32px; --fs-body: 14px; --fs-small: 12px;
 }
 body { background: var(--chrome); }
@@ -284,3 +284,39 @@ th.n, td.n { text-align: right; }
 }
 button.line { width: 100%; text-align: left; background: none; font: inherit; color: inherit; }
 .lines li { list-style: none; }
+
+/* ---------- khung 8-bit (Task 4): dùng giá trị của tokens.css ---------- */
+body { background: var(--bg); }
+.sheet { border: 0; border-radius: 0; background: var(--bg); }
+.scope, .tile, .rowcard, .parts a, .stroke-box, .flash .ex, .lesson a { border-radius: 0; }
+.scope { border: 0; box-shadow: 0 calc(-1*var(--px)) var(--ink), 0 var(--px) var(--ink), calc(-1*var(--px)) 0 var(--ink), var(--px) 0 var(--ink); }
+.panel { background: var(--paper); border: 0; border-radius: 0; overflow: visible;
+  box-shadow: 0 calc(-1*var(--px)) var(--ink), 0 var(--px) var(--ink), calc(-1*var(--px)) 0 var(--ink), var(--px) 0 var(--ink); }
+.panel > header { margin: calc(-1*var(--card-pad)) calc(-1*var(--card-pad)) 14px; padding: 0; gap: 0; background: var(--area, var(--forest)); color: #fff; min-height: 0; align-items: stretch; }
+.panel > header h2 { flex: 1; min-width: 0; padding: 4px 12px; font-family: var(--font-px); font-size: 20px; font-weight: 400; text-transform: uppercase; letter-spacing: 0.05em; line-height: 1.2; color: #fff; }
+.panel > header .meta { align-self: center; padding-right: 12px; color: #fff; }
+.panel > header .card-link { align-self: center; padding-right: 12px; color: #fff; }
+.rowcard { border: 2px solid var(--ink); }
+.btn { border: 0; border-radius: 0; font-family: var(--font-px); font-size: 20px; font-weight: 400; background: var(--paper); color: var(--ink);
+  box-shadow: 0 calc(-1*var(--px)) var(--ink), calc(-1*var(--px)) 0 var(--ink), var(--px) 0 var(--ink), 0 var(--px) var(--ink), 0 calc(var(--px) + 4px) var(--ink);
+  transition: transform 120ms steps(2), box-shadow 120ms steps(2); }
+.btn:hover { background: var(--mint); }
+.btn:active { transform: translateY(3px); box-shadow: 0 calc(-1*var(--px)) var(--ink), calc(-1*var(--px)) 0 var(--ink), var(--px) 0 var(--ink), 0 var(--px) var(--ink); }
+.btn.primary, .btn.primary:hover { background: var(--forest); color: #fff; }
+.btn[aria-pressed="true"] { background: var(--ink); color: #fff; }
+.btn.sm { font-size: 18px; }
+.btn.rec { color: #fff; background: var(--terra); }
+.segmented, .segmented button { border-radius: 0; }
+.title-row h1 { font-family: var(--font-px); font-size: 32px; font-weight: 400; letter-spacing: 0; line-height: 1.1; }
+.nav-item { border-radius: 0; }
+.nav-item[aria-current="page"] { background: var(--mint); color: var(--ink); box-shadow: inset 4px 0 0 var(--ink); font-weight: 600; }
+.grades button, .reveal { border-radius: 0; }
+@media (max-width: 1100px) {
+  .title-row h1 { font-size: 26px; }
+  .tabbar { border-top: 3px solid var(--ink); }
+}
+@media (prefers-reduced-motion: reduce) { .btn { transition: none; } }
+#fx { position: fixed; inset: 0; z-index: 50; pointer-events: none; }
+.panel > header * { color: #fff; }
+.panel > header .chip { color: var(--muted); text-transform: none; letter-spacing: 0; font-family: var(--font-ui); }
+.player { border-radius: 0; }
