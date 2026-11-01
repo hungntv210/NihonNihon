@@ -16,10 +16,10 @@
     var cell = Math.max(48, Math.ceil(Math.sqrt(size.w * size.h / 135)));
     return { cell: cell, cols: Math.ceil(size.w / cell), rows: Math.ceil(size.h / cell) };
   }
-  // độ trễ lớn nhất của ô hoa không vượt khung 390×720 (maxD = 556)
+  // độ trễ lớn nhất của ô hoa không vượt khung 390×720 (maxD = 480)
   function sakuraDelayScale(size) {
     var g = sakuraGrid(size);
-    return Math.min(1, 556 / (((g.cols - 1) + (g.rows - 1)) * 22 + 6 * 12));
+    return Math.min(1, 480 / (((g.cols - 1) + (g.rows - 1)) * 22 + 6 * 12));
   }
 
   var EFFECTS = {
