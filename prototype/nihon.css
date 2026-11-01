@@ -315,3 +315,37 @@ body { background: var(--bg); }
 .panel > header * { color: #fff; }
 .panel > header .chip { color: var(--muted); text-transform: none; letter-spacing: 0; font-family: var(--font-ui); }
 .player { border-radius: 0; }
+
+/* ---------- trang chủ: lớp động lực bóng đá (Task 5) ---------- */
+.pitch { position: relative; margin-bottom: var(--gap); background-color: var(--grass); background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='44' height='10'%3E%3Crect width='22' height='10' fill='%234F8862'/%3E%3C/svg%3E"); }
+.pitch::before { content: ""; position: absolute; inset: 5px; box-shadow: inset 0 0 0 2px #fff; pointer-events: none; }
+.crowd { display: grid; grid-template-columns: repeat(24, 1fr); gap: 2px; padding: 4px; background: var(--blue); }
+.crowd i { display: block; height: 8px; }
+.board { position: relative; margin: 20px auto; width: min(560px, calc(100% - 48px)); padding: 10px 16px 12px; background: var(--ink); color: #fff; text-align: center; }
+.board .top { font-family: var(--font-px); font-size: 20px; letter-spacing: 0.05em; }
+.board .score { display: flex; align-items: center; justify-content: center; gap: 16px; font-family: var(--font-px); font-size: 20px; }
+.board .score b { font-weight: 400; font-size: 46px; line-height: 1.1; color: var(--gold); }
+.board .bot { font-size: 13px; }
+.mascot-say { display: flex; align-items: center; gap: 10px; margin-top: 14px; font-size: 13px; }
+.mascot-say svg { flex: none; }
+.badge-xp { margin-left: 4px; padding: 0 8px; background: var(--kaki); border: 2px solid var(--ink); color: var(--ink); font-family: var(--font-px); font-size: 18px; text-transform: none; letter-spacing: 0; }
+.panel > header .badge-xp { color: var(--ink); }
+.tile.streak { background: var(--gold-pale); }
+.day.today { background: var(--kaki); outline: 2px solid var(--ink); outline-offset: -2px; padding: 0 4px; }
+.day.today .what, .day.today .n, .day.today .d { color: var(--ink); }
+.day .what { font-family: var(--font-px); font-size: 17px; }
+.rule-note { border-left: 4px solid var(--terra); padding-left: 10px; color: var(--ink); }
+.rule-note b { color: var(--ink); }
+.card-y { display: inline-block; width: 9px; height: 13px; margin-right: 6px; vertical-align: -2px; background: var(--gold); }
+@media (max-width: 700px) {
+  .days { grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 2px; }
+  .day, .day + .day { grid-template-columns: 1fr; justify-items: center; gap: 2px; padding: 6px 0; text-align: center; border-top: 0; min-height: 0; }
+  .day.today { padding: 6px 0; }
+  .day .what { font-size: 14px; white-space: normal; line-height: 1; }
+  .board .score { gap: 8px; font-size: 16px; }
+  .board .score b { font-size: 40px; }
+}
+.day .what.win::before { content: "¹3  "; }
+.grid:has(#today-list) { align-items: start; }
+.pitch { display: flow-root; }
+.day .what.win::before { content: "\2713\00a0"; font-family: system-ui, sans-serif; font-size: 13px; }

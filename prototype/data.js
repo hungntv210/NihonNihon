@@ -44,6 +44,7 @@ const D = (() => {
   const required = 2;
 
   const streak = { days: 46, freezes: 1, shadowWeeks: 22 };
+  const xp = 1240;
   const retention = 0.884; // tỉ lệ nhớ 30 ngày (FSRS)
 
   // Độ phủ N3: đã học / mục tiêu ở ngày thi, và mức lộ trình yêu cầu tới hôm nay
@@ -138,5 +139,5 @@ const D = (() => {
   console.assert(coverage.every((c) => c.mature <= c.learned && c.learned <= c.goal), 'độ phủ hợp lệ');
   console.assert(byType.every((t) => t.right <= t.of), 'đúng ≤ tổng câu');
 
-  return { learner, retention, due, dueTotal, forecast, newKanji, today, week, requiredDone, required, streak, coverage, exam, mocks, parts, byType, deck, clip, lines, recorded, atTarget, pitchOrig, pitchMine, kanji };
+  return { learner, retention, due, dueTotal, forecast, newKanji, today, week, requiredDone, required, streak, coverage, exam, mocks, parts, byType, deck, clip, lines, recorded, atTarget, pitchOrig, pitchMine, kanji, xp };
 })();

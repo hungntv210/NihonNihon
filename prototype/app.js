@@ -14,6 +14,22 @@
     return !ok ? ['Chưa đỗ', 'neg'] : m.total < D.exam.pass + 10 ? ['Sát nút', 'warn'] : ['Đỗ', 'pos'];
   };
 
+  // Mascot cạnh một câu nói: vẽ Sprites.MASCOT[viewId] ở scale 4 (Task 6 dùng lại)
+  function mascotLine(host, viewId, text) {
+    host.innerHTML = '<svg class="mascot-sprite"></svg><span class="say"></span>';
+    Sprites.draw(host.querySelector('svg'), Sprites.MASCOT[viewId], 4);
+    host.querySelector('.say').textContent = text;
+  }
+  // mulberry32: khán đài luôn cùng một bộ màu
+  function mulberry32(a) {
+    return () => {
+      a = (a + 0x6D2B79F5) | 0;
+      let t = Math.imul(a ^ (a >>> 15), 1 | a);
+      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+
   /* ---------------- Trang chủ ---------------- */
   function home() {
     const left = D.today.filter((t) => !t.done);
@@ -24,29 +40,34 @@
 
     const tiles = [
       ['Thẻ đến hạn', D.dueTotal, 'thẻ', 'Khoảng 25 phút, luôn làm trước'],
-      ['Chuỗi ngày học', D.streak.days, 'ngày', `Còn ${D.streak.freezes} lần đóng băng`],
+      ['Chuỗi ngày học', D.streak.days, '', `trận bất bại · còn ${D.streak.freezes} lần thay người`, 'streak'],
       [`Đến kỳ thi ${D.learner.target}`, daysLeft, 'ngày', `Chủ nhật ${ddmm(D.learner.examDate)}`],
       ['Tỉ lệ nhớ 30 ngày', nf(1).format(D.retention * 100), '%', 'Cần từ 85% để qua cấp'],
     ];
-    $('#tiles').innerHTML = tiles.map(([l, v, u, c]) => `<div class="panel tile span-3"><span class="label">${esc(l)}</span><span class="value">${esc(typeof v === 'number' ? n0(v) : v)}<small>${esc(u)}</small></span><span class="cap">${esc(c)}</span></div>`).join('');
+    $('#tiles').innerHTML = tiles.map(([l, v, u, c, k]) => `<div class="panel tile span-3${k ? ' ' + k : ''}"><span class="label">${esc(l)}</span><span class="value">${esc(typeof v === 'number' ? n0(v) : v)}<small>${esc(u)}</small></span><span class="cap">${esc(c)}</span></div>`).join('');
 
-    $('#today-count').textContent = `${left.length} việc còn lại`;
+    $('#today-count').textContent = `${left.length} chưa ra sân`;
+    $('#xp-badge').textContent = `${n0(D.xp)} XP`;
     $('#today-mins').textContent = `khoảng ${left.reduce((s, t) => s + t.mins, 0)} phút`;
     $('#today-list').innerHTML = D.today.map((t, i) => `<li class="rowcard${t.done ? ' done' : ''}">
       <span class="tick${t.done ? ' on' : ''}" aria-label="${t.done ? 'Đã xong' : 'Chưa làm'}" role="img"></span>
       <div class="body"><div class="t${t.jp ? ' jpmix' : ''}">${t.jp ? esc(t.title).replace(/([㐀-鿿 ]{3,})$/, '<span lang="ja">$1</span>') : esc(t.title)}${t.required ? ' <span class="pill warn">Bắt buộc hôm nay</span>' : ''}</div><div class="s">${esc(t.sub)}</div></div>
       <span class="mins">${t.mins} phút</span>
-      <span class="act">${t.done ? '<span class="meta">Đã xong</span>' : `<a class="btn sm" href="${t.href}">${t.required ? 'Luyện ngay' : i === 0 ? 'Bắt đầu ôn' : 'Học'}</a>`}</span>
+      <span class="act">${t.done ? '<span class="meta">Đã xong</span>' : `<a class="btn sm" href="${t.href}">${t.required ? 'Ra sân ngay' : 'Ra sân'}</a>`}</span>
     </li>`).join('');
 
     $('#quota').innerHTML = `${D.requiredDone}<small>/${D.required}</small>`;
     $('#days').innerHTML = D.week.map((w) => {
       const dot = w.kind === 'required' ? `req${w.done ? ' done' : w.today ? ' due' : ''}` : w.kind === 'bonus' ? 'bonus' : '';
-      const what = w.done ? '<b>Đã làm</b>' : w.kind === 'required' ? (w.today ? '<b>Hôm nay</b>' : 'Bắt buộc') : w.kind === 'bonus' ? 'Khuyến khích' : w.kind === 'makeup' ? 'Ngày bù nếu lỡ' : 'Bài mới';
-      return `<li class="day${w.today ? ' today' : ''}"><span class="d">${w.d}</span><span class="dot ${dot}" aria-hidden="true"></span><span class="what" title="${w.clip ? esc(w.clip) : ''}">${what}</span><span class="n">${w.mins ? `${w.mins} phút` : `${w.date}/10`}</span></li>`;
+      const what = w.done ? 'THẮNG' : w.today ? 'HÔM NAY' : w.kind === 'bonus' ? 'GIAO HỮU' : w.kind === 'makeup' ? 'ĐÁ BÙ' : '–';
+      return `<li class="day${w.today ? ' today' : ''}"><span class="d">${w.d}</span><span class="dot ${dot}" aria-hidden="true"></span><span class="what${w.done ? ' win' : ''}" title="${w.clip ? esc(w.clip) : ''}">${what}</span><span class="n">${w.mins ? `${w.mins} phút` : `${w.date}/10`}</span></li>`;
     }).join('');
     const sunday = D.week[D.week.length - 1];
-    $('#rule-note').innerHTML = `Thiếu buổi đến hết Chủ nhật ${sunday.date}/10 thì <b>bài mới tuần sau bị khoá</b>. Ôn tập không bao giờ bị khoá.`;
+    $('#rule-note').innerHTML = `<i class="card-y" aria-hidden="true"></i><b>Thẻ vàng:</b> lỡ trận hôm nay mà không đá bù Chủ nhật ${sunday.date}/10 thì treo giò bài mới tuần sau. Ôn tập không bao giờ bị cấm.`;
+    mascotLine($('#home-mascot'), 'trang-chu', `"${D.streak.days} trận bất bại! Tối nay ra sân nốt nha!"`);
+
+    const rnd = mulberry32(20261101), cols = ['#FFFFFF', '#D6B45C', '#DCE6F0', '#FFFFFF', '#78A878', '#D6B45C', '#F2DDD6'];
+    $('#crowd').innerHTML = Array.from({ length: 72 }, () => `<i style="background:${cols[Math.floor(rnd() * cols.length)]}"></i>`).join('');
 
     $('#cov').innerHTML = D.coverage.map((c) => {
       const gap = c.learned - c.planToday;
@@ -57,6 +78,9 @@
 
     const last = D.mocks[D.mocks.length - 1];
     const weakest = last.parts.indexOf(Math.min(...last.parts));
+    $('#board').innerHTML = `<div class="top">THI THỬ ${esc(last.label)} · CHUNG KẾT ${ddmm(D.learner.examDate).slice(0, 5)}</div>
+      <div class="score"><span>HƯNG</span><b>${last.total}–${D.exam.pass}</b><span>ĐIỂM ĐỖ</span></div>
+      <div class="bot">Đang dẫn ${last.total - D.exam.pass} điểm · ${esc(D.parts[weakest])} là hàng thủ yếu nhất</div>`;
     $('#mock-finding').innerHTML = `Đề ${last.label}: <b>${last.total}/180</b>, hơn điểm đỗ ${last.total - D.exam.pass} điểm. ${esc(D.parts[weakest])} ${last.parts[weakest]}/60 là phần thấp nhất.`;
   }
   const charts = {
