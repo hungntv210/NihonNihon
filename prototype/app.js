@@ -116,18 +116,28 @@
     const foot = rv.open
       ? `<div class="grades" role="group" aria-label="Bạn nhớ thẻ này thế nào?">${['Quên', 'Khó', 'Được', 'Dễ'].map((g, j) => `<button type="button" data-grade="${j}" class="${j === 2 ? 'good' : ''}"><b>${g}</b><span>${esc(c.next[j])}</span><kbd>phím ${j + 1}</kbd></button>`).join('')}</div>`
       : '<button class="reveal" type="button" id="reveal">Hiện đáp án <span class="kbd" style="color:#d4d4d0">· phím cách</span></button>';
+    mascotLine($('#review-mascot'), 'on-tap', `"${D.dueTotal} thẻ đang chờ khởi động đó!"`);
     $('#flash').innerHTML = `<div class="tags"><span class="pill accent">${esc(c.kind)}</span><span class="pill">${esc(c.level)}</span></div>
       <p class="front" lang="ja">${esc(c.front)}</p>${back}<div class="foot">${foot}</div>`;
   }
-  function grade() {
+  // "VÀO LƯỚI!" phủ lên thẻ 900ms khi chấm Dễ
+  let goalTimer;
+  function showGoal() {
+    const g = $('#goal'), c = D.deck[rv.i];
+    g.innerHTML = `<b>VÀO LƯỚI!</b><span>+5 XP · ${esc(c.next[3])} nữa gặp lại</span>`;
+    g.classList.add('on'); clearTimeout(goalTimer);
+    goalTimer = setTimeout(() => g.classList.remove('on'), 900);
+  }
+  function grade(j) {
     const c = D.deck[rv.i];
+    if (j === 3) showGoal();
     rv.done = Math.min(D.dueTotal, rv.done + 1); rv.byKind[c.kind] = Math.min(D.due.find((k) => k.kind === c.kind).count, rv.byKind[c.kind] + 1);
     rv.i = (rv.i + 1) % D.deck.length; rv.open = false; review();
     $('#reveal')?.focus();
   }
   $('#flash').addEventListener('click', (e) => {
     if (e.target.closest('#reveal')) { rv.open = true; review(); $('.grades .good')?.focus(); }
-    else if (e.target.closest('[data-grade]')) grade();
+    else if (e.target.closest('[data-grade]')) grade(+e.target.closest('[data-grade]').dataset.grade);
   });
 
   /* ---------------- Shadowing ---------------- */
@@ -141,6 +151,7 @@
     const c = D.clip, l = D.lines[sh.cur];
     $('#h-shadow').textContent = c.title;
     $('#shadow-sub').textContent = `${c.cat} · ${c.level} · ${D.lines.length} câu · ${mmss(c.length)} · giọng ${c.voice.toLowerCase()} · tốc độ ${c.speed.toLowerCase()}`;
+    mascotLine($('#shadow-mascot'), 'shadowing', '"Gâu! Câu 3 lên giọng sớm, chạy lại nhé!"');
     const longEnough = D.recorded.filter((r) => r.recLen / (r.end - r.start) >= 0.7).length;
     const checks = [
       ['Thời gian luyện thực tế', c.practisedMinutes, c.minMinutes, 'phút', c.practisedMinutes >= c.minMinutes],
@@ -196,6 +207,7 @@
     $('#h-kanji').textContent = `Chữ ${k.hv}: ${k.mean.split(',')[0]}`;
     $('#kanji-sub').textContent = `Kanji mới ${D.newKanji.indexOf(k.char) + 1}/${D.newKanji.length} hôm nay · JLPT ${k.level} · khối Kính ngữ công sở`;
     $('#lesson').innerHTML = D.newKanji.map((c) => `<li><a href="#kanji" lang="ja" aria-label="Chữ ${c}"${c === k.char ? ' aria-current="step"' : ''}>${c}</a></li>`).join('');
+    mascotLine($('#kanji-mascot'), 'kanji', '"Tuýt! Nhớ thứ tự nét nhé."');
     $('#k-big').textContent = k.char; $('#k-hv').textContent = k.hv; $('#k-mean').textContent = k.mean;
     $('#facts').innerHTML = `<div><dt>Âm On</dt><dd class="jp" lang="ja">${k.on}</dd></div>
       <div><dt>Âm Kun</dt><dd class="jp" lang="ja">${k.kun[0]}<span style="color:var(--muted)">${k.kun[1]}</span></dd></div>
@@ -225,6 +237,7 @@
     const last = D.mocks[D.mocks.length - 1]; const [v, cls] = verdict(last);
     $('#jlpt-sub').textContent = `Thi Chủ nhật ${ddmm(D.learner.examDate)} · còn ${daysLeft} ngày · đề gần nhất ${last.total}/180`;
     $('#h-last').textContent = `Đề ngày ${last.label}`;
+    mascotLine($('#jlpt-mascot'), 'jlpt', `"Đang dẫn ${last.total}–${D.exam.pass}. Giữ chắc khung thành!"`);
     $('#last-total').innerHTML = `${last.total}<small>/180</small>`;
     $('#last-verdict').textContent = v; $('#last-verdict').className = `pill ${cls}`;
     const low = Math.min(...last.parts);
@@ -265,7 +278,7 @@
     const id = location.hash.slice(1);
     if (id === 'on-tap') {
       if (e.key === ' ' && !rv.open) { e.preventDefault(); rv.open = true; review(); }
-      else if (rv.open && /^[1-4]$/.test(e.key)) grade();
+      else if (rv.open && /^[1-4]$/.test(e.key)) grade(+e.key - 1);
     } else if (id === 'shadowing') {
       if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') { sh.cur = Math.max(0, Math.min(D.lines.length - 1, sh.cur + (e.key === 'ArrowRight' ? 1 : -1))); shadowing(); }
       else if (e.key.toLowerCase() === 'r') { sh.rec = !sh.rec; shadowing(); }

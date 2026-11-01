@@ -88,7 +88,11 @@
         <div class="grid">
           <section class="span-8" aria-label="Thẻ đang ôn">
             <div class="progress"><span class="bar"><i id="review-bar"></i></span><span id="review-count"></span></div>
-            <article class="panel white flash" id="flash" aria-live="polite"></article>
+            <div class="flash-wrap">
+              <article class="panel white flash" id="flash" aria-live="polite"></article>
+              <div class="goal" id="goal" role="status"></div>
+            </div>
+            <p class="mascot-say" id="review-mascot"></p>
           </section>
           <div class="span-4" style="display:grid;gap:var(--gap);align-content:start">
             <section class="panel" aria-labelledby="h-kinds">
@@ -135,6 +139,7 @@
             <section class="panel" aria-labelledby="h-valid">
               <header><h2 id="h-valid">Buổi này đã hợp lệ chưa</h2></header>
               <ul class="checks" id="checks"></ul>
+              <p class="mascot-say" id="shadow-mascot"></p>
             </section>
           </div>
         </div>
@@ -164,6 +169,7 @@
               <button class="btn sm" type="button" id="stroke-step">Nét tiếp</button>
             </div>
             <p class="meta" style="margin-top:10px;text-align:center">Dữ liệu nét: <a href="http://kanjivg.tagaini.net" style="text-decoration:underline">KanjiVG</a>, Ulrich Apel, CC BY-SA 3.0</p>
+            <p class="mascot-say" id="kanji-mascot"></p>
           </section>
         </div>
         <div class="grid">
@@ -203,6 +209,7 @@
             <div class="verdict"><span class="value" id="last-total"></span><span class="pill warn" id="last-verdict"></span></div>
             <ul class="parts-score" id="parts-score"></ul>
             <p class="key" style="margin-top:16px"><span><i class="m"></i>Điểm liệt 19</span></p>
+            <p class="mascot-say" id="jlpt-mascot"></p>
           </section>
         </div>
         <div class="grid top">
