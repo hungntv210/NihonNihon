@@ -28,7 +28,7 @@
   --ease-exit: cubic-bezier(0.55, 0.055, 0.675, 0.19);
 }
 
-.px {
+.px, .panel, .scope {
   box-shadow: 0 calc(-1*var(--px)) var(--ink), 0 var(--px) var(--ink),
     calc(-1*var(--px)) 0 var(--ink), var(--px) 0 var(--ink);
 }
@@ -36,7 +36,7 @@
   box-shadow: 0 -2px var(--ink), 0 2px var(--ink), -2px 0 var(--ink), 2px 0 var(--ink);
 }
 
-.btn8 {
+.btn8, .btn {
   font-family: var(--font-px);
   font-size: 22px;
   color: var(--ink);
@@ -48,13 +48,13 @@
     var(--px) 0 var(--ink), 0 var(--px) var(--ink), 0 calc(var(--px) + 4px) var(--ink);
   transition: transform 120ms steps(2), box-shadow 120ms steps(2);
 }
-.btn8:active {
+.btn8:active, .btn:active {
   transform: translateY(3px);
   box-shadow: 0 calc(-1*var(--px)) var(--ink), calc(-1*var(--px)) 0 var(--ink),
     var(--px) 0 var(--ink), 0 var(--px) var(--ink);
 }
 @media (prefers-reduced-motion: reduce) {
-  .btn8 { transition: none; }
+  .btn8, .btn { transition: none; }
 }
 
 .bar8 {

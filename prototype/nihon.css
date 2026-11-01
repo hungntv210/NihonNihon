@@ -289,19 +289,15 @@ button.line { width: 100%; text-align: left; background: none; font: inherit; co
 body { background: var(--bg); }
 .sheet { border: 0; border-radius: 0; background: var(--bg); }
 .scope, .tile, .rowcard, .parts a, .stroke-box, .flash .ex, .lesson a { border-radius: 0; }
-.scope { border: 0; box-shadow: 0 calc(-1*var(--px)) var(--ink), 0 var(--px) var(--ink), calc(-1*var(--px)) 0 var(--ink), var(--px) 0 var(--ink); }
-.panel { background: var(--paper); border: 0; border-radius: 0; overflow: visible;
-  box-shadow: 0 calc(-1*var(--px)) var(--ink), 0 var(--px) var(--ink), calc(-1*var(--px)) 0 var(--ink), var(--px) 0 var(--ink); }
+.scope { border: 0; }
+.panel, .panel.white { background: var(--paper); border: 0; border-radius: 0; overflow: visible; }
 .panel > header { margin: calc(-1*var(--card-pad)) calc(-1*var(--card-pad)) 14px; padding: 0; gap: 0; background: var(--area, var(--forest)); color: #fff; min-height: 0; align-items: stretch; }
 .panel > header h2 { flex: 1; min-width: 0; padding: 4px 12px; font-family: var(--font-px); font-size: 20px; font-weight: 400; text-transform: uppercase; letter-spacing: 0.05em; line-height: 1.2; color: #fff; }
 .panel > header .meta { align-self: center; padding-right: 12px; color: #fff; }
 .panel > header .card-link { align-self: center; padding-right: 12px; color: #fff; }
 .rowcard { border: 2px solid var(--ink); }
-.btn { border: 0; border-radius: 0; font-family: var(--font-px); font-size: 20px; font-weight: 400; background: var(--paper); color: var(--ink);
-  box-shadow: 0 calc(-1*var(--px)) var(--ink), calc(-1*var(--px)) 0 var(--ink), var(--px) 0 var(--ink), 0 var(--px) var(--ink), 0 calc(var(--px) + 4px) var(--ink);
-  transition: transform 120ms steps(2), box-shadow 120ms steps(2); }
+.btn { border: 0; border-radius: 0; font-family: var(--font-px); font-size: 22px; font-weight: 400; background: var(--paper); color: var(--ink); padding: 0 16px; }
 .btn:hover { background: var(--mint); }
-.btn:active { transform: translateY(3px); box-shadow: 0 calc(-1*var(--px)) var(--ink), calc(-1*var(--px)) 0 var(--ink), var(--px) 0 var(--ink), 0 var(--px) var(--ink); }
 .btn.primary, .btn.primary:hover { background: var(--forest); color: #fff; }
 .btn[aria-pressed="true"] { background: var(--ink); color: #fff; }
 .btn.sm { font-size: 18px; }
@@ -315,7 +311,6 @@ body { background: var(--bg); }
   .title-row h1 { font-size: 26px; }
   .tabbar { border-top: 3px solid var(--ink); }
 }
-@media (prefers-reduced-motion: reduce) { .btn { transition: none; } }
 #fx { position: fixed; inset: 0; z-index: 50; pointer-events: none; }
 .panel > header * { color: #fff; }
 .panel > header .chip { color: var(--muted); text-transform: none; letter-spacing: 0; font-family: var(--font-ui); }

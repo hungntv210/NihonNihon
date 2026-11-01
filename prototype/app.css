@@ -158,9 +158,8 @@ td .sub { display: block; font-size: var(--fs-small); color: var(--muted); }
 .pill.warn { background: var(--pill-warning-bg); color: var(--pill-warning-ink); }
 
 /* ---------- controls ---------- */
-.btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: var(--control-height); padding: 0 12px; border-radius: var(--radius-control); border: 1px solid var(--control); background: var(--surface); font-weight: 500; cursor: pointer; transition: background-color var(--t-hover) ease, transform var(--t-press) var(--ease-out); }
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: var(--control-height); padding: 0 12px; border-radius: var(--radius-control); border: 1px solid var(--control); background: var(--surface); font-weight: 500; cursor: pointer; }
 .btn:hover { background: var(--raised); }
-.btn:active { transform: translateY(1px); }
 .btn.primary { background: var(--primary); color: var(--primary-ink); border-color: transparent; }
 .btn.ghost { border-color: transparent; background: transparent; }
 .field { display: grid; gap: 8px; }
