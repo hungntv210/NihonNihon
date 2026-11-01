@@ -1,0 +1,71 @@
+:root {
+  --bg: #F4F5F2;
+  --paper: #FFFFFF;
+  --ink: #24332D;
+  --forest: #2F684E;
+  --grass: #477D59;
+  --grass-2: #4F8862;
+  --soft: #78A878;
+  --mint: #E5EDE3;
+  --sky: #D8E5EA;
+  --blue: #2F5D86;
+  --blue-pale: #DCE6F0;
+  --kaki: #E8956A;
+  --gold: #D6B45C;
+  --gold-pale: #F3E7C2;
+  --terra: #A64B38;
+  --blush: #F4ABA3;
+
+  --font-ui: 'Be Vietnam Pro', system-ui, sans-serif;
+  --font-px: 'VT323', monospace;
+  --font-jp: 'Shippori Mincho', serif;
+  --font-kana: 'DotGothic16', sans-serif;
+
+  --px: 3px;
+
+  --ease-in-out: cubic-bezier(0.76, 0, 0.24, 1);
+  --ease-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-exit: cubic-bezier(0.55, 0.055, 0.675, 0.19);
+}
+
+.px {
+  box-shadow: 0 calc(-1*var(--px)) var(--ink), 0 var(--px) var(--ink),
+    calc(-1*var(--px)) 0 var(--ink), var(--px) 0 var(--ink);
+}
+.px-2 {
+  box-shadow: 0 -2px var(--ink), 0 2px var(--ink), -2px 0 var(--ink), 2px 0 var(--ink);
+}
+
+.btn8 {
+  font-family: var(--font-px);
+  font-size: 22px;
+  color: var(--ink);
+  background: var(--paper);
+  border: 0;
+  padding: 6px 16px;
+  cursor: pointer;
+  box-shadow: 0 calc(-1*var(--px)) var(--ink), calc(-1*var(--px)) 0 var(--ink),
+    var(--px) 0 var(--ink), 0 var(--px) var(--ink), 0 calc(var(--px) + 4px) var(--ink);
+  transition: transform 120ms steps(2), box-shadow 120ms steps(2);
+}
+.btn8:active {
+  transform: translateY(3px);
+  box-shadow: 0 calc(-1*var(--px)) var(--ink), calc(-1*var(--px)) 0 var(--ink),
+    var(--px) 0 var(--ink), 0 var(--px) var(--ink);
+}
+@media (prefers-reduced-motion: reduce) {
+  .btn8 { transition: none; }
+}
+
+.bar8 {
+  font-family: var(--font-px);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #FFFFFF;
+  background: var(--area, var(--forest));
+  padding: 4px 12px;
+}
+
+.area-review, .area-home { --area: var(--forest); }
+.area-kanji, .area-shadow { --area: var(--blue); }
+.area-jlpt { --area: var(--ink); }
