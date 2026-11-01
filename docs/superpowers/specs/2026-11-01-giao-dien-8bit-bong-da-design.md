@@ -154,6 +154,7 @@ Demo: `demo/chuyen-canh.html`.
 | `mono` | VT323 là font pixel chủ đạo của phong cách 8-bit, không phải monospace của code; chỉ dùng cho tiêu đề, số, nút |
 | `scale-zero` | Hoa anh đào cố ý nở từ 0; đây là lớp phủ, không phải một thành phần giao diện xuất hiện |
 | Chữ dọc trên rèm noren | Dùng Shippori Mincho đậm cho chữ Hán trang trí, không phải nội dung học |
+| Gold làm chữ lớn trên nền mực (số tỉ số, VÀO LƯỚI!) | Tương phản ~5,9:1. Quy tắc "Gold không làm chữ" áp cho nền sáng |
 | Chuyển cảnh trên màn hình app | Quy tắc app là "chuyển động chỉ để phản hồi". Người dùng yêu cầu rõ chuyển cảnh, nên mình giới hạn chúng ở chuyển khu, khoảng 1 giây, có nhánh giảm chuyển động |
 
 ## 7. Phần để người dựng tự quyết
@@ -179,9 +180,9 @@ Nhánh `feat/8bit-bong-da`. Prototype giữ nguyên cấu trúc và dữ liệu,
 - `transitions.js`: bốn hiệu ứng chuyển cảnh `shoji`, `noren`, `sensu`, `sakura` và nhánh giảm chuyển động.
 - `tests/contrast.test.js`, `tests/sprites.test.js`, `tests/transitions.test.js`.
 
-**File đã sửa:** `index.html`, `nihon.css`, `app.css`, `app.js`, `data.js`, `.gitignore`.
+**File đã sửa:** `index.html`, `nihon.css`, `app.css`, `app.js`, `data.js`.
 
-**Chạy test** (Node trên Windows không nhận tên thư mục): `node --test prototype/tests/*.test.js`. Kết quả lần cuối: 17 test, 17 đạt.
+**Chạy test** (Node 24 không nhận tên thư mục khi chạy `node --test`): `node --test prototype/tests/*.test.js`. Kết quả lần cuối: 17 test, 17 đạt.
 
 **Mở prototype:** `python -m http.server 8765 --bind 127.0.0.1 --directory prototype`, rồi vào http://127.0.0.1:8765. Mở `index.html` bằng `file://` thì một số khung xem trước không nạp được script.
 
@@ -197,11 +198,12 @@ Nhánh `feat/8bit-bong-da`. Prototype giữ nguyên cấu trúc và dữ liệu,
 | `sakura` | `day-done` | 1.082–1.112 ms | 1.058–1.070 ms |
 | nhánh giảm chuyển động | | 167 ms (mốc ≤ 200 ms) | |
 
-Ghi chú: để `sakura` vào mốc, độ trễ mục tiêu được hạ xuống 480 ms. Ô hoa cũng lớn dần theo viewport: `cell = max(48, ceil(sqrt(w*h/135)))`, nên số ô không phình ra ở màn lớn. Chi tiết đo nằm trong báo cáo Task 7 của buổi dựng.
+Ghi chú: để `sakura` vào mốc, độ trễ mục tiêu được hạ xuống 480 ms. Ô hoa cũng lớn dần theo viewport: `cell = max(48, ceil(sqrt(w*h/135)))`, nên số ô không phình ra ở màn lớn. Chi tiết đo nằm trong thư mục cục bộ `.superpowers/` của buổi dựng, không có trong git.
 
 **Chưa làm:**
 - Sprite 24×24 do người vẽ pixel art; hiện dùng sprite 16×16 viết bằng mã.
 - Dark mode.
+- Mascot nhún 2 khung hình khi đứng yên (mục 5.4): chưa dựng; khi dựng cần nhánh `prefers-reduced-motion`.
 - Mascot dự bị.
 - WARN bố cục `panel-void` / `ragged-row` của công cụ kiểm tra.
 - Màn hình điện thoại: chữ "lặp 3 lần" trong khung video shadowing đè lên mã thời gian; cột nghĩa của "Từ có chữ" ở Kanji bị hẹp khi có nút "Thêm vào ôn".

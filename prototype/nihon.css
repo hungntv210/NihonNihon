@@ -298,6 +298,11 @@ body { background: var(--bg); }
 .panel > header .card-link { align-self: center; padding-right: 12px; color: #fff; }
 .rowcard { border: 2px solid var(--ink); }
 .btn { border: 0; border-radius: 0; font-family: var(--font-px); font-size: 22px; font-weight: 400; background: var(--paper); color: var(--ink); padding: 0 16px; }
+/* khung và nút 8-bit của prototype: cùng giá trị biến với .px / .btn8 trong tokens.css */
+.panel, .scope { box-shadow: 0 calc(-1*var(--px)) var(--ink), 0 var(--px) var(--ink), calc(-1*var(--px)) 0 var(--ink), var(--px) 0 var(--ink); }
+.btn { cursor: pointer; box-shadow: 0 calc(-1*var(--px)) var(--ink), calc(-1*var(--px)) 0 var(--ink), var(--px) 0 var(--ink), 0 var(--px) var(--ink), 0 calc(var(--px) + 4px) var(--ink); transition: transform 120ms steps(2), box-shadow 120ms steps(2); }
+.btn:active { transform: translateY(3px); box-shadow: 0 calc(-1*var(--px)) var(--ink), calc(-1*var(--px)) 0 var(--ink), var(--px) 0 var(--ink), 0 var(--px) var(--ink); }
+@media (prefers-reduced-motion: reduce) { .btn { transition: none; } }
 .btn:hover { background: var(--mint); }
 .btn.primary, .btn.primary:hover { background: var(--forest); color: #fff; }
 .btn[aria-pressed="true"] { background: var(--ink); color: #fff; }
@@ -386,11 +391,12 @@ body { background: var(--bg); }
   .days { grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 2px; }
   .day, .day + .day { grid-template-columns: 1fr; justify-items: center; gap: 2px; padding: 6px 0; text-align: center; border-top: 0; min-height: 0; }
   .day.today { padding: 6px 0; }
-  .day .what { font-size: 14px; white-space: normal; line-height: 1; }
+  .day .what { font-size: 16px; white-space: normal; line-height: 1; }
   .board .score { gap: 8px; font-size: 16px; }
   .board .score b { font-size: 40px; }
 }
-.day .what.win::before { content: "¹3  "; }
 .grid:has(#today-list) { align-items: start; }
 .pitch { display: flow-root; }
 .day .what.win::before { content: "\2713\00a0"; font-family: system-ui, sans-serif; font-size: 13px; }
+.day .what.miss { color: var(--terra); }
+.day .what.miss::before { content: "\2717\00a0"; font-family: system-ui, sans-serif; font-size: 13px; }

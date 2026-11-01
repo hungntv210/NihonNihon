@@ -16,7 +16,7 @@
     var cell = Math.max(48, Math.ceil(Math.sqrt(size.w * size.h / 135)));
     return { cell: cell, cols: Math.ceil(size.w / cell), rows: Math.ceil(size.h / cell) };
   }
-  // độ trễ lớn nhất của ô hoa không vượt khung 390×720 (maxD = 480)
+  // độ trễ lớn nhất của ô hoa được chuẩn hoá về 480 ms
   function sakuraDelayScale(size) {
     var g = sakuraGrid(size);
     return Math.min(1, 480 / (((g.cols - 1) + (g.rows - 1)) * 22 + 6 * 12));
@@ -152,6 +152,7 @@
     }
     async function run(name, swap) {
       if (busy) return { mode: 'skipped', ms: 0 };
+      // ponytail: khoá chờ animation.finished; tab ẩn làm dừng timeline nên khoá giữ đến khi tab hiện lại. Thêm timeout nếu thấy kẹt thật.
       busy = true;
       var t0 = performance.now(), mode = 'full', swapped = false;
       var doSwap = function () { if (!swapped) { swapped = true; swap(); } };
@@ -168,6 +169,7 @@
             await wait(40);
             await e.reveal(layer, opts);
           } catch (err) {
+            console.error(err);
             mode = 'error'; doSwap();
           }
         }

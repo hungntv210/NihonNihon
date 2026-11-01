@@ -59,8 +59,9 @@
     $('#quota').innerHTML = `${D.requiredDone}<small>/${D.required}</small>`;
     $('#days').innerHTML = D.week.map((w) => {
       const dot = w.kind === 'required' ? `req${w.done ? ' done' : w.today ? ' due' : ''}` : w.kind === 'bonus' ? 'bonus' : '';
-      const what = w.today ? 'HÔM NAY' : w.done ? 'THẮNG' : w.kind === 'bonus' ? 'GIAO HỮU' : w.kind === 'makeup' ? 'ĐÁ BÙ' : '–';
-      return `<li class="day${w.today ? ' today' : ''}"><span class="d">${w.d}</span><span class="dot ${dot}" aria-hidden="true"></span><span class="what${w.done ? ' win' : ''}" title="${w.clip ? esc(w.clip) : ''}">${what}</span><span class="n">${w.mins ? `${w.mins} phút` : `${w.date}/10`}</span></li>`;
+      const missed = w.kind === 'required' && !w.done && !w.today && w.date < +D.learner.today.slice(8);
+      const what = w.today ? 'HÔM NAY' : w.done ? 'THẮNG' : missed ? 'LỠ' : w.kind === 'required' ? 'BẮT BUỘC' : w.kind === 'bonus' ? 'GIAO HỮU' : w.kind === 'makeup' ? 'ĐÁ BÙ' : '–';
+      return `<li class="day${w.today ? ' today' : ''}"><span class="d">${w.d}</span><span class="dot ${dot}" aria-hidden="true"></span><span class="what${w.done ? ' win' : missed ? ' miss' : ''}" title="${w.clip ? esc(w.clip) : ''}">${what}</span><span class="n">${w.mins ? `${w.mins} phút` : `${w.date}/10`}</span></li>`;
     }).join('');
     const sunday = D.week[D.week.length - 1];
     $('#rule-note').innerHTML = `<i class="card-y" aria-hidden="true"></i><b>Thẻ vàng:</b> lỡ trận hôm nay mà không đá bù Chủ nhật ${sunday.date}/10 thì treo giò bài mới tuần sau. Ôn tập không bao giờ bị cấm.`;
@@ -116,7 +117,7 @@
     const foot = rv.open
       ? `<div class="grades" role="group" aria-label="Bạn nhớ thẻ này thế nào?">${['Quên', 'Khó', 'Được', 'Dễ'].map((g, j) => `<button type="button" data-grade="${j}" class="${j === 2 ? 'good' : ''}"><b>${g}</b><span>${esc(c.next[j])}</span><kbd>phím ${j + 1}</kbd></button>`).join('')}</div>`
       : '<button class="reveal" type="button" id="reveal">Hiện đáp án <span class="kbd" style="color:#d4d4d0">· phím cách</span></button>';
-    mascotLine($('#review-mascot'), 'on-tap', `"${D.dueTotal} thẻ đang chờ khởi động đó!"`);
+    mascotLine($('#review-mascot'), 'on-tap', `"${D.dueTotal - rv.done} thẻ đang chờ khởi động đó!"`);
     $('#flash').innerHTML = `<div class="tags"><span class="pill accent">${esc(c.kind)}</span><span class="pill">${esc(c.level)}</span></div>
       <p class="front" lang="ja">${esc(c.front)}</p>${back}<div class="foot">${foot}</div>`;
   }
@@ -132,9 +133,10 @@
   function grade(j) {
     const c = D.deck[rv.i];
     if (j === 3) showGoal();
+    const before = rv.done;
     rv.done = Math.min(D.dueTotal, rv.done + 1); rv.byKind[c.kind] = Math.min(D.due.find((k) => k.kind === c.kind).count, rv.byKind[c.kind] + 1);
     rv.i = (rv.i + 1) % D.deck.length; rv.open = false; review();
-    if (rv.done === D.dueTotal) { moment = 'day-done'; location.hash = '#trang-chu'; return; }
+    if (before < D.dueTotal && rv.done === D.dueTotal) { moment = 'day-done'; location.hash = '#trang-chu'; return; }
     $('#reveal')?.focus();
   }
   $('#flash').addEventListener('click', (e) => {
@@ -206,7 +208,7 @@
     }
   }
   function kanji() {
-    $('#h-kanji').textContent = `Chữ ${k.hv}: ${k.mean.split(',')[0]}`;
+    $('#h-kanji').innerHTML = `KANJI <span lang="ja">${k.char}</span>`;
     $('#kanji-sub').textContent = `Kanji mới ${D.newKanji.indexOf(k.char) + 1}/${D.newKanji.length} hôm nay · JLPT ${k.level} · khối Kính ngữ công sở`;
     $('#lesson').innerHTML = D.newKanji.map((c) => `<li><a href="#kanji" lang="ja" aria-label="Chữ ${c}"${c === k.char ? ' aria-current="step"' : ''}>${c}</a></li>`).join('');
     mascotLine($('#kanji-mascot'), 'kanji', '"Tuýt! Nhớ thứ tự nét nhé."');
@@ -260,8 +262,8 @@
   const VIEWS = { 'trang-chu': 'Trang chủ', 'on-tap': 'Ôn tập', shadowing: 'Shadowing', kanji: 'Kanji', jlpt: 'JLPT' };
   home(); review(); shadowing(); kanji(); jlpt();
   const MAIN = $('main.canvas'), SECTIONS = Object.fromEntries([...document.querySelectorAll('[data-view]')].map((s) => { s.hidden = false; return [s.dataset.view, s]; }));
-  function route() {
-    const id = VIEWS[location.hash.slice(1)] ? location.hash.slice(1) : 'trang-chu';
+  function route({ focus = false } = {}) {
+    const id = target();
     // chỉ màn hình đang mở nằm trong DOM: một h1 cho mỗi màn hình; các nút giữ nguyên listener khi tách ra
     MAIN.replaceChildren(SECTIONS[id]);
     document.querySelectorAll('[data-nav]').forEach((a) => (a.dataset.nav === id ? a.setAttribute('aria-current', 'page') : a.removeAttribute('aria-current')));
@@ -269,7 +271,7 @@
     document.title = `${VIEWS[id]} · Nihon Nihon`;
     charts[id]?.();
     window.scrollTo(0, 0);
-    SECTIONS[id].querySelector('h1')?.focus({ preventScroll: true });
+    if (focus) SECTIONS[id].querySelector('h1')?.focus({ preventScroll: true });
     current = id;
   }
   let current = null, forceFull = false;
@@ -277,8 +279,9 @@
   const target = () => (VIEWS[location.hash.slice(1)] ? location.hash.slice(1) : 'trang-chu');
   addEventListener('click', (e) => { const m = e.target.closest?.('[data-moment]'); if (m) moment = m.dataset.moment; }, true);
   async function go() {
+    if (target() === current) { moment = null; return; } // cùng màn: không chuyển cảnh
     const m = moment; moment = null;
-    const r = await runner.run(Transitions.forMoment(m), () => route());
+    const r = await runner.run(Transitions.forMoment(m), () => route({ focus: true }));
     // lần bấm bị bỏ qua: lượt đang chạy đọc location.hash lúc đổi màn, và tự kiểm tra lại sau khi xong
     if (r.mode === 'skipped') return;
     // hash đổi sau lúc đổi màn: đưa màn hình về khớp URL
@@ -292,8 +295,8 @@
       finally { forceFull = false; }
     },
   };
-  let rt; addEventListener('resize', () => { clearTimeout(rt); rt = setTimeout(() => charts[location.hash.slice(1) || 'trang-chu']?.(), 150); });
-  document.fonts?.ready.then(route); route();
+  let rt; addEventListener('resize', () => { clearTimeout(rt); rt = setTimeout(() => charts[current]?.(), 150); });
+  document.fonts?.ready.then(() => charts[current]?.()); route();
 
   // phím tắt: ôn tập (cách, 1–4) và shadowing (←, →, R, L)
   addEventListener('keydown', (e) => {
