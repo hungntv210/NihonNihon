@@ -59,7 +59,7 @@
     $('#quota').innerHTML = `${D.requiredDone}<small>/${D.required}</small>`;
     $('#days').innerHTML = D.week.map((w) => {
       const dot = w.kind === 'required' ? `req${w.done ? ' done' : w.today ? ' due' : ''}` : w.kind === 'bonus' ? 'bonus' : '';
-      const what = w.done ? 'THẮNG' : w.today ? 'HÔM NAY' : w.kind === 'bonus' ? 'GIAO HỮU' : w.kind === 'makeup' ? 'ĐÁ BÙ' : '–';
+      const what = w.today ? 'HÔM NAY' : w.done ? 'THẮNG' : w.kind === 'bonus' ? 'GIAO HỮU' : w.kind === 'makeup' ? 'ĐÁ BÙ' : '–';
       return `<li class="day${w.today ? ' today' : ''}"><span class="d">${w.d}</span><span class="dot ${dot}" aria-hidden="true"></span><span class="what${w.done ? ' win' : ''}" title="${w.clip ? esc(w.clip) : ''}">${what}</span><span class="n">${w.mins ? `${w.mins} phút` : `${w.date}/10`}</span></li>`;
     }).join('');
     const sunday = D.week[D.week.length - 1];
