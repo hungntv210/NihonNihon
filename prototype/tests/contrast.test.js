@@ -5,7 +5,7 @@ const path = require('node:path');
 
 const css = fs.readFileSync(path.join(__dirname, '..', 'tokens.css'), 'utf8');
 const v = (name) => {
-  const m = css.match(new RegExp(name + '\s*:\s*(#[0-9A-Fa-f]{6})'));
+  const m = css.match(new RegExp(name + ': *(#[0-9A-Fa-f]{6})'));
   assert.ok(m, `thiếu biến ${name}`);
   return m[1];
 };
