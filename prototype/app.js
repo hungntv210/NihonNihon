@@ -53,7 +53,7 @@
       <span class="tick${t.done ? ' on' : ''}" aria-label="${t.done ? 'Đã xong' : 'Chưa làm'}" role="img"></span>
       <div class="body"><div class="t${t.jp ? ' jpmix' : ''}">${t.jp ? esc(t.title).replace(/([㐀-鿿 ]{3,})$/, '<span lang="ja">$1</span>') : esc(t.title)}${t.required ? ' <span class="pill warn">Bắt buộc hôm nay</span>' : ''}</div><div class="s">${esc(t.sub)}</div></div>
       <span class="mins">${t.mins} phút</span>
-      <span class="act">${t.done ? '<span class="meta">Đã xong</span>' : `<a class="btn sm" href="${t.href}">${t.required ? 'Ra sân ngay' : 'Ra sân'}</a>`}</span>
+      <span class="act">${t.done ? '<span class="meta">Đã xong</span>' : `<a class="btn sm" href="${t.href}"${t.id === 'kanji' ? ' data-moment="lesson"' : ''}>${t.required ? 'Ra sân ngay' : 'Ra sân'}</a>`}</span>
     </li>`).join('');
 
     $('#quota').innerHTML = `${D.requiredDone}<small>/${D.required}</small>`;
@@ -128,11 +128,13 @@
     g.classList.add('on'); clearTimeout(goalTimer);
     goalTimer = setTimeout(() => g.classList.remove('on'), 900);
   }
+  let moment = null; // khoảnh khắc chuyển cảnh, ghi từ lần bấm [data-moment] gần nhất
   function grade(j) {
     const c = D.deck[rv.i];
     if (j === 3) showGoal();
     rv.done = Math.min(D.dueTotal, rv.done + 1); rv.byKind[c.kind] = Math.min(D.due.find((k) => k.kind === c.kind).count, rv.byKind[c.kind] + 1);
     rv.i = (rv.i + 1) % D.deck.length; rv.open = false; review();
+    if (rv.done === D.dueTotal) { moment = 'day-done'; location.hash = '#trang-chu'; return; }
     $('#reveal')?.focus();
   }
   $('#flash').addEventListener('click', (e) => {
@@ -267,8 +269,27 @@
     document.title = `${VIEWS[id]} · Nihon Nihon`;
     charts[id]?.();
     window.scrollTo(0, 0);
+    SECTIONS[id].querySelector('h1')?.focus({ preventScroll: true });
+    current = id;
   }
-  addEventListener('hashchange', route);
+  let current = null, forceFull = false;
+  const runner = Transitions.create({ layer: $('#fx'), content: MAIN, reducedMotion: () => !forceFull && matchMedia('(prefers-reduced-motion: reduce)').matches, stepped: () => true });
+  const target = () => (VIEWS[location.hash.slice(1)] ? location.hash.slice(1) : 'trang-chu');
+  addEventListener('click', (e) => { const m = e.target.closest?.('[data-moment]'); if (m) moment = m.dataset.moment; }, true);
+  async function go() {
+    const m = moment; moment = null;
+    await runner.run(Transitions.forMoment(m), () => route());
+    // bấm lúc đang chuyển cảnh bị bỏ qua: đưa màn hình về khớp URL
+    if (target() !== current) route();
+  }
+  addEventListener('hashchange', go);
+  window.NihonDebug = {
+    async go(view, m, o = {}) {
+      forceFull = !!o.force;
+      try { return await runner.run(Transitions.forMoment(m), () => { history.replaceState(null, '', '#' + view); route(); }); }
+      finally { forceFull = false; }
+    },
+  };
   let rt; addEventListener('resize', () => { clearTimeout(rt); rt = setTimeout(() => charts[location.hash.slice(1) || 'trang-chu']?.(), 150); });
   document.fonts?.ready.then(route); route();
 

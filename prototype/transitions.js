@@ -11,6 +11,12 @@
   var anim = function (el, kf, o) { return el.animate(kf, Object.assign({ fill: 'forwards' }, o)).finished; };
   var wait = function (ms) { return new Promise(function (r) { setTimeout(r, ms); }); };
 
+  // độ trễ lớn nhất của ô hoa không vượt khung 390×720 (maxD = 556) để hiệu ứng ≤ 1.150 ms ở màn lớn
+  function sakuraDelayScale(size) {
+    var cols = Math.ceil(size.w / 48), rows = Math.ceil(size.h / 48);
+    return Math.min(1, 556 / (((cols - 1) + (rows - 1)) * 22 + 6 * 12));
+  }
+
   var EFFECTS = {
     // cửa shoji: hai cánh trượt vào giữa (360ms), quả bóng hiện (140ms), cánh trượt ra (440ms)
     shoji: {
@@ -41,12 +47,12 @@
         var cell = 48, cols = Math.ceil(size.w / cell), rows = Math.ceil(size.h / cell);
         fx.innerHTML = '<div class="petals" style="grid-template-columns:repeat(' + cols + ',1fr);grid-template-rows:repeat(' + rows + ',1fr)">' + '<i><svg></svg></i>'.repeat(cols * rows) + '</div>'
           + '<div class="drift">' + '<i><svg></svg></i>'.repeat(16) + '</div><svg class="branch"></svg>';
-        var seed = 20261101;
+        var seed = 20261101, scale = sakuraDelayScale(size);
         var rnd = function () { seed = (seed + 0x6D2B79F5) | 0; var t = Math.imul(seed ^ (seed >>> 15), 1 | seed); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) % 101; };
         fx.querySelectorAll('.petals i').forEach(function (el, i) {
           var r = rnd() % 20, kind = r < 7 ? 'flower' : r < 15 ? null : r < 17 ? 'petal' : r < 19 ? 'bud' : 'leaf';
           if (kind) sprite(el.querySelector('svg'), kind);
-          el.dataset.d = ((i % cols) + Math.floor(i / cols)) * 22 + (rnd() % 7) * 12;
+          el.dataset.d = (((i % cols) + Math.floor(i / cols)) * 22 + (rnd() % 7) * 12) * scale;
           el.dataset.side = rnd() % 2 ? 1 : -1;
         });
         fx.querySelectorAll('.drift i').forEach(function (el, i) {
@@ -169,7 +175,7 @@
     return { run: run, get busy() { return busy; } };
   }
 
-  var api = { MOMENTS: MOMENTS, forMoment: forMoment, shouldAnimate: shouldAnimate, EFFECTS: EFFECTS, create: create };
+  var api = { MOMENTS: MOMENTS, forMoment: forMoment, sakuraDelayScale: sakuraDelayScale, shouldAnimate: shouldAnimate, EFFECTS: EFFECTS, create: create };
   root.Transitions = api;
   if (typeof module === 'object' && module.exports) module.exports = api;
 })(globalThis);

@@ -41,7 +41,7 @@
       <section data-view="trang-chu" class="area-home col" aria-labelledby="h-home">
         <div class="title-row">
           <div>
-            <h1 id="h-home"></h1>
+            <h1 id="h-home" tabindex="-1"></h1>
             <p class="sub" id="home-sub"></p>
           </div>
           <div class="actions"><a class="btn primary" href="#on-tap" id="home-cta"></a></div>
@@ -72,7 +72,7 @@
             <p class="key" style="margin-top:16px"><span><i></i>Đã thuộc</span><span><i class="l"></i>Đã học, chưa thuộc</span><span><i class="m"></i>Mức lộ trình hôm nay</span></p>
           </section>
           <section class="panel span-6 white" aria-labelledby="h-mock">
-            <header><h2 id="h-mock">Thi thử N3</h2><a class="card-link" href="#jlpt">Phân tích</a></header>
+            <header><h2 id="h-mock">Thi thử N3</h2><a class="card-link" href="#jlpt" data-moment="mock-result">Phân tích</a></header>
             <p class="finding" id="mock-finding"></p>
             <div class="chart" id="mock-chart"></div>
           </section>
@@ -82,7 +82,7 @@
       <!-- =============== ÔN TẬP =============== -->
       <section data-view="on-tap" class="area-review col view-tight" aria-labelledby="h-review" hidden>
         <div class="title-row">
-          <div><h1 id="h-review">Ôn tập</h1><p class="sub" id="review-sub"></p></div>
+          <div><h1 id="h-review" tabindex="-1">Ôn tập</h1><p class="sub" id="review-sub"></p></div>
           <div class="actions"><a class="btn" href="#trang-chu">Kết thúc phiên</a></div>
         </div>
         <div class="grid">
@@ -110,7 +110,7 @@
       <!-- =============== SHADOWING =============== -->
       <section data-view="shadowing" class="area-shadow col view-tight" aria-labelledby="h-shadow" hidden>
         <div class="title-row">
-          <div><h1 id="h-shadow"></h1><p class="sub" id="shadow-sub"></p></div>
+          <div><h1 id="h-shadow" tabindex="-1"></h1><p class="sub" id="shadow-sub"></p></div>
           <div class="actions"><span class="pill warn" id="shadow-status"></span></div>
         </div>
         <div class="grid">
@@ -148,7 +148,7 @@
       <!-- =============== KANJI =============== -->
       <section data-view="kanji" class="area-kanji col view-tight" aria-labelledby="h-kanji" hidden>
         <div class="title-row">
-          <div><h1 id="h-kanji"></h1><p class="sub" id="kanji-sub"></p></div>
+          <div><h1 id="h-kanji" tabindex="-1"></h1><p class="sub" id="kanji-sub"></p></div>
           <ol class="lesson" aria-label="Kanji mới hôm nay" id="lesson"></ol>
         </div>
         <div class="grid">
@@ -196,7 +196,7 @@
       <!-- =============== JLPT =============== -->
       <section data-view="jlpt" class="area-jlpt col view-tight" aria-labelledby="h-jlpt" hidden>
         <div class="title-row">
-          <div><h1 id="h-jlpt">JLPT N3</h1><p class="sub" id="jlpt-sub"></p></div>
+          <div><h1 id="h-jlpt" tabindex="-1">JLPT N3</h1><p class="sub" id="jlpt-sub"></p></div>
           <div class="actions"><button class="btn primary" type="button">Làm đề thi thử mới</button></div>
         </div>
         <div class="grid">
@@ -237,10 +237,10 @@
   <a href="#jlpt" data-nav="jlpt"><span class="g" aria-hidden="true">試</span>JLPT</a>
 </nav>
 
+<div id="fx" aria-hidden="true"></div>
 <script src="sprites.js"></script><script src="transitions.js"></script>
 <script src="charts.js"></script>
 <script src="data.js"></script>
 <script src="app.js"></script>
-<div id="fx" aria-hidden="true"></div>
 </body>
 </html>
