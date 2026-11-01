@@ -45,10 +45,11 @@ test('giảm chuyển động chỉ mờ chuyển', async () => {
   const { content, runner } = setup(true); const swap = counter();
   const r = await runner.run('shoji', swap); assert.equal(r.mode, 'reduced'); assert.equal(swap.calls, 1); assert.equal(content.animateCalls, 2);
 });
-test('sakura: độ trễ ô chuẩn hoá theo khung 390×720', () => {
+test('sakura: lưới và độ trễ ô chuẩn hoá theo khung 390×720', () => {
+  assert.equal(T.sakuraGrid({ w: 390, h: 720 }).cell, 48);
   assert.equal(T.sakuraDelayScale({ w: 390, h: 720 }), 1);
-  const s = T.sakuraDelayScale({ w: 1440, h: 900 });
-  assert.ok(s < 1);
-  const maxD = ((30 - 1) + (19 - 1)) * 22 + 6 * 12; // cols 30, rows 19
+  const size = { w: 1440, h: 900 }, g = T.sakuraGrid(size), s = T.sakuraDelayScale(size);
+  assert.ok(g.cell > 48 && g.cols * g.rows <= 200);
+  const maxD = ((g.cols - 1) + (g.rows - 1)) * 22 + 6 * 12;
   assert.ok(Math.round(maxD * s) <= 556);
 });

@@ -11,10 +11,15 @@
   var anim = function (el, kf, o) { return el.animate(kf, Object.assign({ fill: 'forwards' }, o)).finished; };
   var wait = function (ms) { return new Promise(function (r) { setTimeout(r, ms); }); };
 
-  // độ trễ lớn nhất của ô hoa không vượt khung 390×720 (maxD = 556) để hiệu ứng ≤ 1.150 ms ở màn lớn
+  // lưới ô hoa: ô lớn dần theo màn hình (~135 ô) để chi phí vẽ không vượt ngân sách 1.150 ms
+  function sakuraGrid(size) {
+    var cell = Math.max(48, Math.ceil(Math.sqrt(size.w * size.h / 135)));
+    return { cell: cell, cols: Math.ceil(size.w / cell), rows: Math.ceil(size.h / cell) };
+  }
+  // độ trễ lớn nhất của ô hoa không vượt khung 390×720 (maxD = 556)
   function sakuraDelayScale(size) {
-    var cols = Math.ceil(size.w / 48), rows = Math.ceil(size.h / 48);
-    return Math.min(1, 556 / (((cols - 1) + (rows - 1)) * 22 + 6 * 12));
+    var g = sakuraGrid(size);
+    return Math.min(1, 556 / (((g.cols - 1) + (g.rows - 1)) * 22 + 6 * 12));
   }
 
   var EFFECTS = {
@@ -44,7 +49,7 @@
     // hoa anh đào: cành hoa vươn vào từ góc trên trái, cánh hoa bay chéo, ô hoa nở theo đường chéo đến khi phủ kín; khi mở các ô rơi rụng
     sakura: {
       build: function (fx, size) {
-        var cell = 48, cols = Math.ceil(size.w / cell), rows = Math.ceil(size.h / cell);
+        var g = sakuraGrid(size), cols = g.cols, rows = g.rows;
         fx.innerHTML = '<div class="petals" style="grid-template-columns:repeat(' + cols + ',1fr);grid-template-rows:repeat(' + rows + ',1fr)">' + '<i><svg></svg></i>'.repeat(cols * rows) + '</div>'
           + '<div class="drift">' + '<i><svg></svg></i>'.repeat(16) + '</div><svg class="branch"></svg>';
         var seed = 20261101, scale = sakuraDelayScale(size);
@@ -175,7 +180,7 @@
     return { run: run, get busy() { return busy; } };
   }
 
-  var api = { MOMENTS: MOMENTS, forMoment: forMoment, sakuraDelayScale: sakuraDelayScale, shouldAnimate: shouldAnimate, EFFECTS: EFFECTS, create: create };
+  var api = { MOMENTS: MOMENTS, forMoment: forMoment, sakuraGrid: sakuraGrid, sakuraDelayScale: sakuraDelayScale, shouldAnimate: shouldAnimate, EFFECTS: EFFECTS, create: create };
   root.Transitions = api;
   if (typeof module === 'object' && module.exports) module.exports = api;
 })(globalThis);

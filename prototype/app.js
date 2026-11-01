@@ -278,8 +278,10 @@
   addEventListener('click', (e) => { const m = e.target.closest?.('[data-moment]'); if (m) moment = m.dataset.moment; }, true);
   async function go() {
     const m = moment; moment = null;
-    await runner.run(Transitions.forMoment(m), () => route());
-    // bấm lúc đang chuyển cảnh bị bỏ qua: đưa màn hình về khớp URL
+    const r = await runner.run(Transitions.forMoment(m), () => route());
+    // lần bấm bị bỏ qua: lượt đang chạy đọc location.hash lúc đổi màn, và tự kiểm tra lại sau khi xong
+    if (r.mode === 'skipped') return;
+    // hash đổi sau lúc đổi màn: đưa màn hình về khớp URL
     if (target() !== current) route();
   }
   addEventListener('hashchange', go);
