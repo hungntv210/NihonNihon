@@ -1,0 +1,233 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Nihon Nihon</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&family=Shippori+Mincho:wght@500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="app.css">
+<link rel="stylesheet" href="nihon.css">
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <!-- dấu hiệu: hai mặt trời chồng nhau, "Nihon Nihon" -->
+  <symbol id="mark" viewBox="0 0 28 28"><circle cx="10.5" cy="14" r="7.5" fill="#1b6e66"/><circle cx="17.5" cy="14" r="7.5" fill="none" stroke="#1b6e66" stroke-width="2"/></symbol>
+</svg>
+
+<div class="app">
+  <nav class="sidebar" aria-label="Điều hướng chính">
+    <a class="brand" href="#trang-chu"><svg aria-hidden="true"><use href="#mark"/></svg>Nihon Nihon</a>
+    <div class="scope"><b>Lộ trình N5 → N2</b><span>Tuần 51 / 87 · mục tiêu N3</span></div>
+    <a class="nav-item" href="#trang-chu" data-nav="trang-chu"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 11l8-6 8 6v8a1 1 0 0 1-1 1h-4v-5H9v5H5a1 1 0 0 1-1-1z"/></svg>Trang chủ</a>
+    <a class="nav-item" href="#on-tap" data-nav="on-tap"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="6" width="12" height="14" rx="2"/><path d="M8 3h10a2 2 0 0 1 2 2v12"/></svg>Ôn tập<span class="count" id="nav-due"></span></a>
+    <a class="nav-item" href="#shadowing" data-nav="shadowing"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" aria-hidden="true"><path d="M4 10v4M8 7v10M12 4v16M16 8v8M20 11v2"/></svg>Shadowing</a>
+    <a class="nav-item" href="#kanji" data-nav="kanji"><span class="glyph" aria-hidden="true">漢</span>Kanji</a>
+    <a class="nav-item" href="#jlpt" data-nav="jlpt"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 4h6v3H9zM6 6h12v14H6z"/><path d="M9 13l2 2 4-4"/></svg>JLPT</a>
+    <p class="group-label">Chưa có trong bản mockup</p>
+    <span class="nav-item" aria-disabled="true"><span class="glyph" aria-hidden="true">あ</span>Từ vựng</span>
+    <span class="nav-item" aria-disabled="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" aria-hidden="true"><path d="M5 6h14M5 12h9M5 18h12"/></svg>Ngữ pháp</span>
+    <span class="nav-item" aria-disabled="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linejoin="round" aria-hidden="true"><path d="M3 5h7a2 2 0 0 1 2 2v13a2 2 0 0 0-2-2H3zM21 5h-7a2 2 0 0 0-2 2v13a2 2 0 0 1 2-2h7z"/></svg>Đọc</span>
+    <span class="nav-item" aria-disabled="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h16v10H9l-5 4z"/></svg>Giao tiếp</span>
+    <div class="bottom"><a class="user" href="#trang-chu"><span class="avatar" aria-hidden="true">H</span>Hưng · Hồ sơ</a></div>
+  </nav>
+
+  <div class="sheet">
+    <header class="topbar"><svg aria-hidden="true"><use href="#mark"/></svg><span id="topbar-title">Nihon Nihon</span></header>
+    <main class="canvas">
+
+      <!-- =============== TRANG CHỦ =============== -->
+      <section data-view="trang-chu" class="col" aria-labelledby="h-home">
+        <div class="title-row">
+          <div>
+            <h1 id="h-home"></h1>
+            <p class="sub" id="home-sub"></p>
+          </div>
+          <div class="actions"><a class="btn primary" href="#on-tap" id="home-cta"></a></div>
+        </div>
+
+        <div class="grid tiles" id="tiles"></div>
+
+        <div class="grid">
+          <section class="panel span-9" aria-labelledby="h-today">
+            <header><h2 id="h-today">Việc hôm nay <span class="chip" id="today-count"></span></h2><span class="meta" id="today-mins"></span></header>
+            <ol class="cards" id="today-list"></ol>
+          </section>
+          <section class="panel span-3" aria-labelledby="h-week">
+            <header><h2 id="h-week">Shadowing tuần này</h2></header>
+            <div class="quota"><span class="value" id="quota"></span><span class="meta">buổi bắt buộc</span></div>
+            <ul class="days" id="days"></ul>
+            <p class="rule-note" id="rule-note"></p>
+          </section>
+        </div>
+
+        <div class="grid">
+          <section class="panel span-6" aria-labelledby="h-cov">
+            <header><h2 id="h-cov">Độ phủ N3 so với lộ trình</h2><a class="card-link" href="#jlpt">Chi tiết</a></header>
+            <ul class="cov" id="cov"></ul>
+            <p class="key" style="margin-top:16px"><span><i></i>Đã thuộc</span><span><i class="l"></i>Đã học, chưa thuộc</span><span><i class="m"></i>Mức lộ trình hôm nay</span></p>
+          </section>
+          <section class="panel span-6 white" aria-labelledby="h-mock">
+            <header><h2 id="h-mock">Thi thử N3</h2><a class="card-link" href="#jlpt">Phân tích</a></header>
+            <p class="finding" id="mock-finding"></p>
+            <div class="chart" id="mock-chart"></div>
+          </section>
+        </div>
+      </section>
+
+      <!-- =============== ÔN TẬP =============== -->
+      <section data-view="on-tap" class="col view-tight" aria-labelledby="h-review" hidden>
+        <div class="title-row">
+          <div><h1 id="h-review">Ôn tập</h1><p class="sub" id="review-sub"></p></div>
+          <div class="actions"><a class="btn" href="#trang-chu">Kết thúc phiên</a></div>
+        </div>
+        <div class="grid">
+          <section class="span-8" aria-label="Thẻ đang ôn">
+            <div class="progress"><span class="bar"><i id="review-bar"></i></span><span id="review-count"></span></div>
+            <article class="panel white flash" id="flash" aria-live="polite"></article>
+          </section>
+          <div class="span-4" style="display:grid;gap:var(--gap);align-content:start">
+            <section class="panel" aria-labelledby="h-kinds">
+              <header><h2 id="h-kinds">Trong phiên này</h2></header>
+              <ul class="kinds" id="kinds"></ul>
+            </section>
+            <section class="panel" aria-labelledby="h-fc">
+              <header><h2 id="h-fc">Thẻ đến hạn 7 ngày tới</h2></header>
+              <div class="chart" id="fc-chart"></div>
+            </section>
+          </div>
+        </div>
+      </section>
+
+      <!-- =============== SHADOWING =============== -->
+      <section data-view="shadowing" class="col view-tight" aria-labelledby="h-shadow" hidden>
+        <div class="title-row">
+          <div><h1 id="h-shadow"></h1><p class="sub" id="shadow-sub"></p></div>
+          <div class="actions"><span class="pill warn" id="shadow-status"></span></div>
+        </div>
+        <div class="grid">
+          <div class="span-8" style="display:grid;gap:var(--gap);align-content:start">
+            <section aria-label="Trình phát">
+              <div class="player" id="player"></div>
+              <div class="controls">
+                <div class="segmented" role="group" aria-label="Phụ đề" id="seg-sub"></div>
+                <div class="segmented" role="group" aria-label="Tốc độ" id="seg-speed"></div>
+                <span class="spacer"></span>
+                <button class="btn sm" type="button" id="loop">Lặp câu: 3 lần</button>
+                <button class="btn sm rec" type="button" id="rec" aria-pressed="false">Ghi âm câu này</button>
+              </div>
+            </section>
+            <section class="panel white" aria-labelledby="h-pitch">
+              <header><h2 id="h-pitch"></h2><span id="pitch-legend" class="key"></span></header>
+              <p class="finding" id="pitch-finding"></p>
+              <div class="chart" id="pitch-chart"></div>
+            </section>
+          </div>
+          <div class="span-4" style="display:grid;gap:var(--gap);align-content:start">
+            <section class="panel" aria-labelledby="h-lines">
+              <header><h2 id="h-lines">Câu trong clip <span class="chip" id="lines-count"></span></h2></header>
+              <ol class="lines" id="lines"></ol>
+            </section>
+            <section class="panel" aria-labelledby="h-valid">
+              <header><h2 id="h-valid">Buổi này đã hợp lệ chưa</h2></header>
+              <ul class="checks" id="checks"></ul>
+            </section>
+          </div>
+        </div>
+      </section>
+
+      <!-- =============== KANJI =============== -->
+      <section data-view="kanji" class="col view-tight" aria-labelledby="h-kanji" hidden>
+        <div class="title-row">
+          <div><h1 id="h-kanji"></h1><p class="sub" id="kanji-sub"></p></div>
+          <ol class="lesson" aria-label="Kanji mới hôm nay" id="lesson"></ol>
+        </div>
+        <div class="grid">
+          <section class="panel span-4 glyph-panel" aria-label="Chữ">
+            <span class="big" lang="ja" id="k-big"></span>
+            <span class="hv" id="k-hv"></span>
+            <span id="k-mean"></span>
+          </section>
+          <section class="panel span-4" aria-labelledby="h-facts">
+            <header><h2 id="h-facts">Cách đọc và cấu tạo</h2></header>
+            <dl class="facts" id="facts"></dl>
+          </section>
+          <section class="panel span-4 white" aria-labelledby="h-stroke">
+            <header><h2 id="h-stroke">Thứ tự nét</h2><span class="meta" id="stroke-n"></span></header>
+            <div class="stroke-box" id="stroke-box"></div>
+            <div class="controls" style="justify-content:center">
+              <button class="btn sm" type="button" id="stroke-play">Phát lại</button>
+              <button class="btn sm" type="button" id="stroke-step">Nét tiếp</button>
+            </div>
+            <p class="meta" style="margin-top:10px;text-align:center">Dữ liệu nét: <a href="http://kanjivg.tagaini.net" style="text-decoration:underline">KanjiVG</a>, Ulrich Apel, CC BY-SA 3.0</p>
+          </section>
+        </div>
+        <div class="grid">
+          <section class="panel span-8" aria-labelledby="h-words">
+            <header><h2 id="h-words"></h2></header>
+            <ul class="words" id="words"></ul>
+          </section>
+          <div class="span-4" style="display:grid;gap:var(--gap);align-content:start">
+            <section class="panel" aria-labelledby="h-mnemo">
+              <header><h2 id="h-mnemo">Mẹo nhớ</h2></header>
+              <p class="mnemo" id="mnemo"></p>
+              <button class="btn sm" type="button" style="margin-top:14px">Viết mẹo của riêng bạn</button>
+            </section>
+            <section class="panel example" aria-labelledby="h-ex">
+              <header><h2 id="h-ex">Câu ví dụ</h2></header>
+              <p lang="ja" id="k-ex"></p>
+              <p class="muted" id="k-ex-vi" style="color:var(--muted)"></p>
+            </section>
+          </div>
+        </div>
+        <div class="next-row"><a class="btn" href="#trang-chu">Để sau</a><a class="btn primary" href="#kanji" id="k-next"></a></div>
+      </section>
+
+      <!-- =============== JLPT =============== -->
+      <section data-view="jlpt" class="col view-tight" aria-labelledby="h-jlpt" hidden>
+        <div class="title-row">
+          <div><h1 id="h-jlpt">JLPT N3</h1><p class="sub" id="jlpt-sub"></p></div>
+          <div class="actions"><button class="btn primary" type="button">Làm đề thi thử mới</button></div>
+        </div>
+        <div class="grid">
+          <section class="panel span-8 white" aria-labelledby="h-trend">
+            <header><h2 id="h-trend">Điểm các lần thi thử</h2><span class="meta">thang 180</span></header>
+            <div class="chart" id="trend-chart"></div>
+          </section>
+          <section class="panel span-4" aria-labelledby="h-last">
+            <header><h2 id="h-last"></h2></header>
+            <div class="verdict"><span class="value" id="last-total"></span><span class="pill warn" id="last-verdict"></span></div>
+            <ul class="parts-score" id="parts-score"></ul>
+            <p class="key" style="margin-top:16px"><span><i class="m"></i>Điểm liệt 19</span></p>
+          </section>
+        </div>
+        <div class="grid top">
+          <section class="panel span-6" aria-labelledby="h-acc">
+            <header><h2 id="h-acc">Tỉ lệ đúng theo dạng bài</h2><span class="meta" id="acc-meta"></span></header>
+            <ul class="acc" id="acc"></ul>
+            <div class="controls"><button class="btn sm" type="button" id="drill"></button></div>
+          </section>
+          <section class="panel span-6" aria-labelledby="h-hist">
+            <header><h2 id="h-hist">Các lần thi thử <span class="chip" id="hist-count"></span></h2></header>
+            <div class="table-wrap"><table id="hist"></table></div>
+          </section>
+        </div>
+      </section>
+
+    </main>
+  </div>
+</div>
+
+<nav class="tabbar" aria-label="Điều hướng">
+  <a href="#trang-chu" data-nav="trang-chu"><span class="g" aria-hidden="true">家</span>Trang chủ</a>
+  <a href="#on-tap" data-nav="on-tap"><span class="g" aria-hidden="true">復</span>Ôn tập</a>
+  <a href="#shadowing" data-nav="shadowing"><span class="g" aria-hidden="true">声</span>Shadowing</a>
+  <a href="#kanji" data-nav="kanji"><span class="g" aria-hidden="true">漢</span>Kanji</a>
+  <a href="#jlpt" data-nav="jlpt"><span class="g" aria-hidden="true">試</span>JLPT</a>
+</nav>
+
+<script src="charts.js"></script>
+<script src="data.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
