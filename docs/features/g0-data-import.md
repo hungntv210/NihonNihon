@@ -25,40 +25,38 @@ Viết script nhập dữ liệu từ các nguồn vào SQLite, chạy thử tr�
 
 ## Dữ liệu
 
-**Bổ sung bắt buộc — âm Hán Việt:**
+**Bổ sung bắt buộc — âm Hán Việt (HV-1.1):**
 
-- [ ] Gộp biến thể chính tả/phương ngữ theo bảng alias có version (nhựt→nhật,
-  nhơn→nhân, sanh→sinh, tí→tý); giữ âm gốc và nguồn trong provenance.
-- [ ] Chọn đúng một âm chính cho mỗi kanji theo [HV-1](../data/han-viet-policy.md):
-  đa âm thật dùng căn cứ từ ghép/rank phổ biến và đối chiếu Unihan; trường hợp thiếu
-  hoặc bất đồng phải được rà soát có lý do và nguồn độc lập.
-- [ ] Giữ các âm canonical khác; giao diện xem batch in đậm âm chính, đặt âm khác
-  cỡ nhỏ bên cạnh, đủ tương phản và không ẩn sau nút “xem thêm”.
-- [ ] Trong 50 kanji phải có các biến thể ở bảng alias, đa âm thật 大/行/長,
-  Unicode tổ hợp và trường hợp thiếu/bất đồng Unihan, ngoài các tình huống bên dưới.
-
-Không chọn âm đầu/placeholder hoặc bỏ chữ thiếu âm khỏi cohort để đủ tỉ lệ.
-“Từ ghép phổ biến nhất” cần nguồn rank/tần suất được pin; thứ tự JSON,
-`kanji.words` hay cấp JLPT không phải tần suất thật. Thiếu căn cứ → batch chưa đạt,
-cần rà soát có nguồn độc lập trước khi hoàn thành.
+- [ ] Gộp alias có version (nhựt→nhật, nhơn→nhân, sanh→sinh, tí→tý), giữ dạng gốc.
+- [ ] Chọn âm tuần tự theo [HV-1.1](../data/han-viet-policy.md): một âm sau gộp →
+  CVDICT có căn cứ từ ghép → Unihan khi tải được → AI có căn cứ, không cần người duyệt.
+- [ ] Ghi selection_method: single_after_normalization, cvdict_compound,
+  unihan_match, ai_fallback; mỗi chữ chỉ ghi một method đã chọn, giữ trace bước đã thử.
+- [ ] Bước CVDICT chọn nếu chỉ một âm có căn cứ, hoặc âm dẫn đầu duy nhất có >=2
+  từ ghép khác nhau. Đồng hạng/chưa đủ điều kiện đi tiếp. “Khoảng 187 chữ” là ước
+  lượng do chủ dự án cung cấp, phải đo lại, không phải số liệu đã xác nhận.
+- [ ] Không suy độ thông dụng từ thứ tự âm Unihan khi chưa đo. Unihan không tải
+  được/thiếu/không phân giải được thì đi tiếp AI, không buộc người duyệt.
+- [ ] AI chọn trong danh sách đóng, kèm căn cứ từ ghép Nhật/nghĩa; nguồn mt:<provider>,
+  release model/prompt/config, nhãn “tự chọn”, giữ âm phụ và nút Báo sai.
+- [ ] UI batch: âm chính đậm, âm phụ nhỏ bên cạnh; không giấu thông tin đa âm.
 
 ### Báo cáo Hán Việt bắt buộc
 
-Theo [HV-1](../data/han-viet-policy.md), dùng
-[mẫu báo cáo](../data/han-viet-batch-report.template.md) và giữ cohort cố định từ manifest.
-Ghi `kanji_total`, `multi_before_alias`, `multi_after_alias`, `variants_collapsed_kanji`,
-`primary_selected`, `primary_coverage`; kèm unresolved, missing_readings,
-multiple_selected, missing_evidence và kết quả đối chiếu Unihan.
+Theo [HV-1.1](../data/han-viet-policy.md), dùng
+[mẫu báo cáo](../data/han-viet-batch-report.template.md); cohort cố định từ manifest.
+Ghi số đa âm trước/sau alias, coverage và **số lượng theo từng selection_method**.
+Tổng bốn method phải bằng số chữ có selected; mỗi chữ chỉ tính ở bước chọn thành công.
 
-`primary_coverage = primary_selected / kanji_total × 100`; mẫu số gồm cả chữ nhập
-thất bại/thiếu âm, phải > 0. Chỉ PASS khi **primary_selected == kanji_total (100%
-chính xác)** và các lỗi trên bằng 0; không làm tròn. Selected phải là một âm canonical,
-provenance/căn cứ đầy đủ, hash nền khớp và không stale. Số trước/sau alias phải đo thật.
-Báo cáo restricted giữ riêng; chỉ đưa thống kê tổng hợp/quy tắc được phép chia sẻ lên Git.
+Chỉ PASS khi **100% kanji có đúng một âm chính**, method hợp lệ, đủ provenance/căn
+cứ theo method, không stale, **không chữ nào chọn ngoài danh sách âm canonical của
+chính chữ đó**. Không làm tròn/loại chữ lỗi khỏi mẫu số. Không cần người duyệt AI;
+output sai schema/membership/căn cứ phải retry hữu hạn, hết retry batch chưa đạt.
+Unihan không sẵn không chặn nghiệm thu nếu bước khác chọn được hợp lệ.
 
-Test tối thiểu: bốn cặp alias (input có cả hai dạng), Unicode tổ hợp, 大/行/長,
-Unihan thiếu/bất đồng, rank đồng hạng, thiếu căn cứ và idempotence. Đổi version quy
-tắc phải báo diff âm chính, giữ lịch sử và không đổi ID/SRS.
+Test: alias/NFC; CVDICT một âm có căn cứ/unique max >=2/đồng hạng/trùng từ;
+Unihan một/nhiều/không giao, lỗi tải, thứ tự; AI trong/ngoài danh sách, căn cứ, cache,
+retry; method totals/100%; UI “tự chọn” và Báo sai; 大/行/長; idempotence giữ SRS.
 
 **Batch thử (chọn có chủ đích, không ngẫu nhiên):**
 
@@ -90,10 +88,11 @@ tắc phải báo diff âm chính, giữ lịch sử và không đổi ID/SRS.
 
 Điều kiện nghiệm thu Hán Việt bổ sung:
 
-- [ ] **100% kanji trong cohort có đúng một âm chính hợp lệ, có căn cứ**; các âm khác
-  vẫn được giữ, báo cáo đủ số đa âm trước/sau gộp alias và tỉ lệ chọn âm chính.
-- [ ] Giao diện thô xem batch hiển thị âm chính đậm, âm khác nhỏ bên cạnh; đọc được
-  trên điện thoại và xem được nguồn/lý do chọn. Đây là yêu cầu cần kiểm tra, chưa đánh dấu đạt.
+- [ ] 100% kanji trong cohort có đúng một âm chính, selection_method hợp lệ,
+  tổng số lượng theo bốn method khớp; số chọn ngoài candidate của chữ bằng 0.
+- [ ] Giữ các âm khác; báo cáo đa âm trước/sau alias và provenance/căn cứ của lựa chọn.
+- [ ] UI xem batch: âm chính đậm, âm phụ nhỏ, AI có nhãn “tự chọn” và Báo sai trỏ
+  đúng translation_id; không cần người duyệt trước khi hiển thị.
 
 ## Câu hỏi còn mở
 
