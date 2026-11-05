@@ -10,3 +10,9 @@
 /data/*.db*
 /storage/private/
 /backups/
+/node_modules/
+/data/reports/
+/data/requests/
+/data/backups/
+/.env
+/.env.*

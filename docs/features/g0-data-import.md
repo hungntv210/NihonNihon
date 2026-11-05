@@ -7,6 +7,19 @@
 
 Tài liệu này đọc riêng được: mọi quyết định cần cho nhánh đều nằm ở đây.
 
+## Mốc code 0.1 — chờ chạy 11 bước nghiệm thu
+
+Đã merge `g0/data-spec` (Draft 0.2 + HV-1.1) và có importer Node 24/SQLite trong
+`tools/data/`. [Hướng dẫn chạy, manifest và adapter](../data/importer.md).
+Đã có 31 kiểm thử tự động bằng fixture tự tạo: schema, adapter, HV-1.1, AI result/cache,
+transaction, bảo toàn SRS/bản dịch và màn xem batch loopback. Smoke test OpenJLPT thật
+không có các nguồn bổ trợ vẫn được ghi INCOMPLETE, không thay báo cáo nghiệm thu.
+
+AI hiện nhận file kết quả theo request_id, chưa tự gọi API provider. Lookup preview
+chỉ tra nội dung đã nhập, chưa có tokenizer/full dictionary. Clip riêng và dữ liệu
+bổ trợ cần được cung cấp qua manifest. Các tiêu chí dưới đây giữ chưa đánh dấu đến
+khi bạn chạy đủ 11 bước và điền số liệu thực tế, không tự chuyển schema sang Frozen.
+
 ## Mục tiêu
 
 Viết script nhập dữ liệu từ các nguồn vào SQLite, chạy thử trên một batch nhỏ có chủ đích, đo chất lượng rồi mới nhập toàn bộ N5–N1.

@@ -1,0 +1,20 @@
+{
+  "name": "nihonnihon-data-tools",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "engines": {
+    "node": ">=24.0.0"
+  },
+  "scripts": {
+    "test": "node --test tests/data/*.test.cjs tests/import/*.test.mjs",
+    "data:prepare": "node tools/data/prepare.mjs",
+    "data:import": "node tools/data/import.mjs",
+    "data:preview": "node tools/data/preview.mjs"
+  },
+  "dependencies": {
+    "ajv": "8.20.0",
+    "csv-parse": "7.0.3",
+    "fast-xml-parser": "5.12.0"
+  }
+}
