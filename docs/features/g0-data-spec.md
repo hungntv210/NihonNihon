@@ -11,17 +11,22 @@ Tài liệu này đọc riêng được: mọi quyết định cần cho nhánh 
 
 Theo yêu cầu hiện tại: **hoàn thành khi có đủ 5 phần tài liệu và có bản nháp schema**.
 Mốc này đã đạt tại [đặc tả 5 phần](../data/data-source-spec.md) và
-[SQLite schema Draft 0.1](../data/schema.draft.sql). Khảo sát 15 file OpenJLPT thật
+[SQLite schema Draft 0.2](../data/schema.draft.sql). Khảo sát 15 file OpenJLPT thật
 được lưu bằng metadata/counts/checksum ở [source-audit.json](../data/source-audit.json).
 Không đưa dữ liệu raw hay dữ liệu riêng tư vào Git.
 
 Kiểm tra: Node 24 có `node:sqlite`, chạy `node --test tests/data/schema.test.cjs`
-(9 bài); không cài thêm thư viện. Kiểm thử dùng fixture tự tạo trong database bộ nhớ,
+(12 bài); không cài thêm thư viện. Kiểm thử dùng fixture tự tạo trong database bộ nhớ,
 không phải batch nhập thật của nhánh `g0/data-import`.
 
 Các tiêu chí ban đầu về batch thử/chốt schema bên dưới vẫn là mốc sau; không đánh
 dấu Frozen khi chưa có báo cáo batch. Nguồn chưa tải được ghi Planned/Unverified,
-đặc biệt không giả định CVDICT có artifact hợp lệ hay KanjiDictVN được phép phát hành lại.
+đặc biệt CVDICT đã xác minh repo/license và ở Planned nhưng chưa pin/import;
+KanjiDictVN vẫn không được giả định có quyền phát hành lại.
+
+Draft 0.2 bổ sung source `user-media` cho clip/phụ đề cá nhân, loại thẻ `shadow`,
+registry `mt:<provider>` và manifest release cho model/prompt; sửa tuple KanjiDictVN
+và giữ nhiều âm Hán Việt làm candidate thay vì tự chọn âm đầu.
 
 ## Mục tiêu
 
@@ -67,7 +72,7 @@ Thứ tự làm: tải dữ liệu thật → nháp phần 1–3 → batch thử
 
 ## Tiêu chí hoàn thành
 
-- [x] Đủ 5 phần, mỗi bảng có khoá và quan hệ rõ ràng (Draft 0.1)
+- [x] Đủ 5 phần, mỗi bảng có khoá và quan hệ rõ ràng (Draft 0.2)
 - [ ] Mỗi nguồn ghi đủ giấy phép, phiên bản, cách ghi công
 - [ ] Schema đã được sửa theo kết quả batch thử và được chốt
 

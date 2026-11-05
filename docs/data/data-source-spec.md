@@ -1,6 +1,6 @@
 # Đặc tả nguồn dữ liệu Nihon Nihon
 
-Trạng thái: **Draft 0.1**, ngày 05/11/2026, nhánh `g0/data-spec`.
+Trạng thái: **Draft 0.2**, ngày 05/11/2026, nhánh `g0/data-spec`.
 Mốc hiện tại hoàn thành khi đủ 5 phần và có schema nháp. Chưa phải migration production;
 chỉ chốt schema sau báo cáo batch của `g0/data-import`. Không viết importer trong nhánh này.
 
@@ -44,13 +44,15 @@ trang web thành ngày import hay coi `latest` là phiên bản bất biến.
 | `jmdict-furigana` | [Doublevil/JmdictFurigana](https://github.com/Doublevil/JmdictFurigana), JSON gzip; đoạn ruby theo cặp chữ/cách đọc, không phải tokenizer câu | [Repo LICENSE là MIT](https://github.com/Doublevil/JmdictFurigana/blob/master/LICENSE); giữ copyright Doublevil và MIT cho công cụ, đồng thời ghi EDRDG cho dữ liệu từ điển dẫn xuất. Không mặc định toàn bộ dữ liệu chỉ có MIT | Planned: chọn release phù hợp snapshot từ điển, lưu tag + SHA-256 artifact; chưa tải |
 | `kradfile` | [KRADFILE](https://www.edrdg.org/krad/kradinf.html), văn bản EUC-JP; thành phần chữ, không thay thế radical Kangxi | CC BY-SA 4.0 / EDRDG; giữ credit tác giả trong header (KRADFILE2 có thêm Jim Rose) | Planned: pin URL, ngày/snapshot và checksum tệp; chưa tải |
 | `kanjivg` | [KanjiVG](https://kanjivg.tagaini.net/), SVG/XML gzip; nét theo thứ tự và biến thể | CC BY-SA 3.0; ghi Ulrich Apel, KanjiVG, link giấy phép và ghi thay đổi nếu trích path | Planned: release tag/commit + checksum; chưa tải bộ đầy đủ. SVG prototype không được coi là dữ liệu toàn bộ |
-| `kanjidictvn` | [KanjiDictVN](https://github.com/trungnt2910/KanjiDictVN), Yomitan `out_vn/kanji_bank_*.json`; âm Hán Việt | Code MIT, **âm đọc/nghĩa © hvdic.thivien.net** theo README. Không có bằng chứng dữ liệu được cấp MIT. Theo ràng buộc dự án chỉ dùng riêng, không phát hành lại | Planned/private_only: pin commit + hash sau khi lấy riêng; **chưa tải nội dung** |
+| `kanjidictvn` | [KanjiDictVN](https://github.com/trungnt2910/KanjiDictVN), Yomitan `out_vn/kanji_bank_*.json`; tuple 6 phần tử, nhiều âm Hán Việt ở vị trí 1 | Code MIT, **âm đọc/nghĩa © hvdic.thivien.net** theo README. Không có bằng chứng dữ liệu được cấp MIT. Theo ràng buộc dự án chỉ dùng riêng, không phát hành lại | Planned/private_only: pin commit + hash sau khi lấy riêng; cấu trúc tuple được chủ dự án cung cấp, chưa tải/kiểm tra toàn bộ bank |
 | `bunchaway-javi` | [tu-dien-nhat-viet](https://github.com/bunchaway/tu-dien-nhat-viet), `final.csv`; nghĩa từ, hai cột, thiếu cách đọc | README ghi CC BY-SA 4.0; credit Bunchaway, link repo/license, nêu chuẩn hoá và ghép nguồn | Planned: commit + hash CSV; chưa tải/đo lại số dòng. Con số 360.083 trong brief chưa được xác nhận ở snapshot này |
 | `tatoeba` | [Downloads](https://tatoeba.org/en/downloads), TSV sentences/details/links; câu Nhật, Anh và bản dịch Việt có liên kết | [Text mặc định CC BY 2.0 FR](https://tatoeba.org/en/terms_of_use), có giấy phép theo câu; lưu ID, tác giả và license từng câu. Audio có thể khác license | Planned: ngày export + checksum mỗi tệp. ID câu Nhật trong OpenJLPT không phải ID bản dịch Anh/Việt |
 | `unihan` | [Unihan / UAX #38](https://www.unicode.org/reports/tr38/), ZIP/TSV, `kVietnamese` để đối chiếu âm | [Unicode License v3](https://www.unicode.org/license.txt); giữ copyright Unicode và thông báo giấy phép | Planned: chọn version UCD cụ thể + checksum ZIP; chưa tải, không coi tài liệu UAX là artifact dữ liệu |
-| `cvdict` | Nguồn dự phòng nêu trong brief; chưa có URL phân phối chính thức được xác định | Brief ghi CC BY-SA 4.0 nhưng **chưa xác minh được artifact/license**; `unverified`, chưa được bật import | Chưa có version/hash/URL; không dùng làm fallback tự động |
+| `cvdict` | [ph0ngp/CVDICT](https://github.com/ph0ngp/CVDICT), `CVDICT.u8`; từ điển Trung–Việt dẫn xuất CC-CEDICT, giữ phồn thể/giản thể/pinyin | README xác nhận **CC BY-SA 4.0**, tác giả **Phong Phan**; ghi tác giả, link repo/license và nguồn CC-CEDICT. Pinyin không phải âm Hán Việt; nghĩa tiếng Trung không thay nghĩa tiếng Nhật | **Planned**: URL và license đã xác minh ngày 05/11/2026; pin commit/hash tệp trước import, chưa tải/đo coverage |
 | `kanji-alive` | [kanji-data-media](https://github.com/kanjialive/kanji-data-media), CSV + audio từ ghép | CC BY 4.0 cho dữ liệu/media được nêu ở README; credit Kanji alive. Không áp license này cho các font ngoại lệ | Planned: commit + hash CSV/media được dùng; không giả định có audio cho mọi từ |
 | `tts:<provider>` | TTS chưa chọn; audio sinh theo nội dung/cách đọc, cấu hình giọng | Theo điều khoản provider/model được chọn, **không tự gán CC BY**. Lưu provider/model/voice/config trong manifest | Chưa chọn; không gọi dịch vụ trong nhánh này |
+| `mt:<provider>` | Dịch máy theo provider được chọn; đầu vào theo ngữ cảnh, đầu ra JSON/text tiếng Việt | Theo điều khoản provider/model; không tự gán giấy phép mở cho đầu ra. Attribution ghi provider/model, phiên bản prompt và nguồn văn bản đầu vào | Planned: đăng ký source_id thật khi chọn provider, mỗi cấu hình model + prompt_version là một release; không gọi dịch vụ ở nhánh này |
+| `user-media` | Nguồn nội bộ được seed trong SQL; file cá nhân hoặc metadata YouTube do người học cung cấp, manifest JSON riêng | `private_only`; giữ quyền của chủ media, ghi nguồn/tác giả/URL gốc ở mỗi asset. Việc tạo clip không cấp lại quyền phân phối video | Local: mỗi clip mới hoặc lần sửa nội dung/mốc câu tạo release riêng có UUID/revision và hash manifest; không có upstream dataset để tải |
 
 Jonathan Waller/Tanos được ghi như upstream của OpenJLPT qua NOTICE; không tải và
 trộn lại lần nữa. Không gom mọi nguồn thành một giấy phép chung. Giao diện Nguồn dữ liệu
@@ -99,15 +101,19 @@ bản dịch/thẻ cũ vẫn truy được. Không dùng vị trí ví dụ làm
 | JmdictFurigana `text`, `reading`, `furigana[].ruby/rt?` | `word_furigana.word/reading/segments` | Khớp cặp, giữ segment liền cụm như 大人; nối ruby phải bằng word. Muốn furigana câu phải tokenize trước; không chia kana theo từng kanji bằng suy đoán |
 | KRADFILE ký tự và danh sách thành phần | `kanji_components` | EUC-JP → UTF-8, bỏ dòng comment, bộ phận ≠ bộ thủ Kangxi |
 | KanjiVG tên mã ký tự/variant, `path` theo stroke group | `kanji_strokes.kanji_id/variant/stroke_no/path_d` | stroke_no 1-based; chọn bản chuẩn trước, giữ variant riêng; không coi text số thứ tự là nét. Tắt external entities khi parse XML, không phục vụ script/SVG chưa làm sạch |
-| KanjiDictVN/Yomitan tuple `character`, on, kun, tags, meanings, stats | `vi_translations` field `han_viet`, method `han_viet` | Adapter phải khảo sát cấu trúc bank/stats thật trước khi tách âm, không mặc định meanings là âm Hán Việt. Chỉ lấy âm được xác minh theo codepoint; không dùng nghĩa Hán Nôm thay nghĩa Nhật của 働 |
+| KanjiDictVN tuple `[character, han_viet_space_separated, "", "", meanings[], stats]` | `vi_translations` field `han_viet`, method `han_viet` | Vị trí **1** là chuỗi âm Hán Việt, **không phải onyomi**; vị trí 2/3 rỗng, vị trí 4 là nghĩa có nhãn âm `[âm]`, vị trí 5 là thống kê. Không map theo tên trường của bank tiếng Anh. Tách nhiều âm thành candidate như mục 5.2; không dùng nghĩa Hán Nôm thay nghĩa Nhật của 働 |
 | Bunchaway CSV cột từ / nghĩa (vị trí 0/1) | `vi_translations.text_vi`, field `meaning`, method `dictionary` | Xác nhận header/quoting/dấu xuống dòng trên CSV thật; không split bằng dấu phẩy. Lưu key dòng hoặc hash dòng làm source_record_key; không tự tạo cột reading không tồn tại |
 | Tatoeba sentence ID/lang/text/author/license và links | `sentences`, `vi_translations` field `text`, method `tatoeba` | Ghép link Nhật → Việt trực tiếp; nếu đi qua Anh chỉ là candidate cần kiểm tra. Lưu ID Việt, tác giả, link Nhật và license trong context_json |
 | Unihan `U+…`, `kVietnamese`, value | `vi_translations` field `han_viet` | Giữ nhiều âm trong candidate, NFC; không coi trường thiếu là âm rỗng đã được xác nhận |
 | Kanji alive CSV/example identity + file audio | `media_assets` | Khớp từ và cách đọc qua metadata, không dựa riêng filename hoặc mặt chữ |
 | TTS text, reading, provider, model, voice | `media_assets` + source release manifest | Cache key gồm hash nội dung, giọng và model; không ghi token/API key; âm sinh không phải bản thu người bản xứ |
+| MT provider, model revision, prompt_version, prompt hash, cấu hình | `data_sources` với `mt:<provider>`, `source_releases.manifest_json`, `vi_translations` | Release chụp cấu hình tái hiện; context_json của từng bản dịch giữ input hash, request context và nguồn nền. Không dùng OpenJLPT làm source_id của bản dịch máy |
+| Clip cá nhân: UUID, loại file/YouTube, mốc cắt, phụ đề | `content_items(kind='clip',source_id='user-media')`, `source_releases`, `media_assets`, `clip_segments` | item_id `user-media:clip:<uuid>` giữ nguyên qua các revision; source_key=UUID. Câu phụ đề tự tạo dùng kind=sentence cùng nguồn và key độc lập; asset và segment cùng tham chiếu release hợp lệ |
+| CVDICT: chữ phồn thể/giản thể, pinyin, nghĩa Việt | Candidate đối chiếu trong staging, chỉ sang `vi_translations` khi đã xác minh đúng trường/ngữ cảnh | Khảo sát cú pháp `CVDICT.u8` ở batch; giữ hai dạng chữ và nguồn dòng. Không suy âm Hán Việt từ pinyin và không tự selected nghĩa Trung cho từ/kanji Nhật |
 
-CVDICT chưa đủ thông tin để viết adapter/map đáng tin cậy, nên bị tắt. Không phải
-điểm chặn bản nháp; là điều kiện bắt buộc trước khi sử dụng nguồn đó trong importer.
+CVDICT đã xác minh repo và license, ở trạng thái Planned cùng các nguồn chưa pin.
+Khảo sát parser và giá trị đối chiếu trong batch trước khi bật enrichment tự động;
+trạng thái Planned không có nghĩa là đã đo độ phủ hoặc đã import dữ liệu.
 
 ## 3. Schema, khoá và quan hệ
 
@@ -136,7 +142,7 @@ erDiagram
 | Bảng / PK | Quan hệ và nội dung |
 | --- | --- |
 | `data_sources(source_id)` | Registry: name, URL, license, version/imported_at/checksum lần thành công gần nhất, attribution, usage_scope. Chưa import → version/checksum/imported_at NULL, không bịa giá trị |
-| `source_releases(release_id)` | FK source_id; snapshot bất biến có version, SHA-256, artifact URL, retrieved_at, license, attribution. UNIQUE(source_id,version,checksum); release có thể ứng với một tệp trong bộ nguồn |
+| `source_releases(release_id)` | FK source_id; snapshot bất biến có version, SHA-256, artifact URL, retrieved_at, license, attribution, manifest_json (object). UNIQUE(source_id,version,checksum); release có thể ứng với một tệp nguồn, revision clip hoặc cấu hình model/prompt |
 | `import_runs(run_id)` | FK ghép (source_id,release_id); thời gian/trạng thái/report; một nguồn có nhiều lần chạy cùng artifact |
 | `content_items(item_id)` | FK snapshot; UNIQUE(source_id,kind,source_key), hash nội dung, active, field_sources JSON. Identity dùng chung cho dịch/SRS, không trỏ vào text hiển thị |
 | `vocab(item_id)` | FK ghép item_id/kind đảm bảo đúng subtype; từ, cách đọc, cấp, nghĩa Anh, POS, JMdict ID |
@@ -153,7 +159,7 @@ erDiagram
 | `translation_reports(report_id)` | FK translation; Báo sai với reason, thời gian, trạng thái; không cho người học biên tập nội dung nguồn |
 | `media_assets(asset_id)` | FK content/snapshot; storage_ref, loại audio/video/tts, attribution/license riêng, private_only. Chỉ lưu metadata, không blob video/ghi âm trong Git |
 | `clip_segments(clip_id,position)` | FK subtype clip, sentence và snapshot; thời gian ms với end > start; kiểm tra vượt độ dài/đè nhau thuộc importer |
-| `srs_cards(card_id)` | FK content ON DELETE RESTRICT; UNIQUE(item_id,card_type), scheduler_version, state_json, due_at, updated_at |
+| `srs_cards(card_id)` | FK content ON DELETE RESTRICT; UNIQUE(item_id,card_type), scheduler_version, state_json, due_at, updated_at. Loại `shadow` gắn item câu: nghe câu rồi nói lại/ghi âm; khác `listening` chỉ luyện nghe |
 | `srs_reviews(review_id)` | FK card ON DELETE RESTRICT; rating 1–4, thời gian, phiên bản scheduler, elapsed_ms nullable |
 
 Các bảng import có source_id và release_id FK ghép để không gắn nhầm release của nguồn
@@ -162,13 +168,38 @@ khác. `field_sources` có dạng `{"pos":{"source_id":"jmdict","version":"2026-
 version, không giả mạo đã tải artifact upstream. Importer kiểm tra các source_id có trong registry,
 release_id nếu có phải tồn tại; SQL không thể tạo FK tới từng khoá JSON.
 
-Dữ liệu phát sinh của người học (`srs_cards`, `srs_reviews`, `translation_reports`) không
-phải dữ liệu nhập nên không nhận source_id giả. Schema một người dùng; authentication,
+Sự kiện/tiến độ người học (`srs_cards`, `srs_reviews`, `translation_reports`) không
+phải nội dung nguồn nên không nhận source_id giả. **Nội dung do người học đưa vào**
+(clip, câu phụ đề) có provenance thật là `user-media`, vẫn bắt buộc FK source/release.
+Không nới release_id thành NULL cho clip. Schema một người dùng; authentication,
 lộ trình, phiên học, bài thi và tokenizer đầy đủ thuộc g1, không dựng trước trong G0.
 
 Các quyết định Draft: SQLite, ID có namespace, bảng dịch riêng, soft-delete nguồn,
 chỉ giữ tập JMdict liên quan trước. Chưa chọn ORM, provider dịch máy/TTS, chưa chốt
 bảng SRS state thành các cột FSRS; cần g1/srs quyết định version và migration sau batch.
+
+### 3.1 Release của clip cá nhân và dịch máy
+
+SQL seed duy nhất registry `user-media`, không seed release/clip giả. Khi tạo clip,
+g1/shadowing tạo release và nội dung trong một transaction. Manifest chứa clip_uuid,
+revision, origin_kind (`file` hoặc `youtube`), source file SHA-256 hoặc YouTube video ID,
+URL gốc không có token, mốc cắt ms, subtitle hash, nguồn/tác giả/quyền media. Checksum
+release là SHA-256 manifest chuẩn hoá, không giả làm hash bytes YouTube. artifact_url
+trỏ manifest riêng `local://clips/<uuid>/<revision>/manifest.json`; retrieved_at là lúc
+tiếp nhận nội dung. Sửa clip tạo release mới; giữ clip/item câu đã có UUID để không mất SRS.
+Thêm/xoá câu giữ identity câu cũ; không dùng position hoặc timestamp làm ID câu.
+Video cá nhân nằm storage riêng; YouTube chỉ lưu/embed theo nguồn, không mặc định tải video.
+
+`shadow` là thẻ theo **câu** (`sentences.item_id`) liên kết qua clip_segments đến clip;
+state/log scheduler theo srs_cards/srs_reviews. Tệp ghi âm và phiên luyện cụ thể thuộc
+g1/shadowing; loại thẻ này không tự ghi rating từ điểm pitch chưa có.
+
+Khi chọn MT, đăng ký `mt:<provider>` với URL/điều khoản thật. Mỗi bộ model revision,
+prompt_version, SHA-256 prompt template và generation config có release bất biến;
+đổi model hoặc prompt tạo release mới. manifest_json lưu các giá trị đó, checksum là
+hash manifest (không phải hash mỗi câu dịch). artifact_url trỏ cấu hình nội bộ không
+chứa secrets; context_json của bản dịch lưu input/base_content_hash và nguồn nội dung.
+Provider chưa chọn vẫn là Planned, không tạo bản ghi literal `mt:<provider>`.
 
 ## 4. Quy trình import và cập nhật
 
@@ -250,13 +281,27 @@ thành quyền biên tập dữ liệu của người học.
 3. Trường hợp 22 mặt chữ nhiều reading đã đo, thiếu nghĩa, hoặc mapping không chắc:
    giữ candidate/needs_review và dịch máy theo **reading + nghĩa Anh + POS + ví dụ**,
    không đưa nghĩa dictionary mơ hồ lên thành selected tự động.
-4. Kanji: nghĩa Việt dịch theo nghĩa Nhật/Anh OpenJLPT; âm Hán Việt lấy riêng từ
+4. KanjiDictVN: kiểm tra tuple có đúng 6 phần tử và kiểu tương ứng; lấy character
+   ở [0], chuỗi âm ở [1], nghĩa có nhãn âm ở [4], thống kê ở [5]. NFC chuỗi âm rồi
+   tách theo whitespace Unicode, bỏ rỗng, loại trùng sau NFC/lowercase nhưng **giữ dấu**
+   (âm không dấu và có dấu không gộp). Không suy âm từ [2]/[3] hoặc nghĩa [4]. Mỗi âm
+   là một candidate field=han_viet; source_record_key gồm bank/row/âm chuẩn hoá để các
+   candidate cùng dòng không đụng UNIQUE. context_json giữ chuỗi âm gốc, âm ứng viên,
+   nhãn `[âm]` tương ứng và nguồn dòng. Nhiều âm → tất cả candidate, không tự chọn âm
+   đầu/âm xuất hiện nhiều nhất trong nghĩa. Chỉ chọn sau đối chiếu ngữ cảnh và nguồn
+   độc lập có căn cứ; không đủ bằng chứng thì giữ chưa selected. Một âm cũng phải
+   qua kiểm tra codepoint/nguồn; importer không mặc định một âm luôn đúng.
+5. Kanji: nghĩa Việt dịch theo nghĩa Nhật/Anh OpenJLPT; âm Hán Việt lấy riêng từ
    KanjiDictVN riêng tư khi quyền dùng đã rõ, rồi đối chiếu Unihan. Không lấy nghĩa
    chữ Hán cổ làm nghĩa Nhật. Thiếu nguồn có quyền dùng → đánh dấu thiếu, không bịa âm.
-5. Từ đọc âm On: chỉ ghép Hán Việt khi từng thành phần/reading đã xác nhận phù hợp.
+6. Từ đọc âm On: chỉ ghép Hán Việt khi từng thành phần/reading đã xác nhận phù hợp.
    Âm On/Kun không được quyết định chỉ bằng regex hay loại chữ; từ đọc Kun, ateji,
    jukujikun hoặc không chắc để han_viet chưa có selected. Giữ provenance của từng âm
    trong context_json. Không làm mất nghĩa từ khi không ghép được Hán Việt.
+
+CVDICT là nguồn đối chiếu nghĩa Trung–Việt đã xác minh license; pinyin không cung cấp
+âm Hán Việt. Chỉ dùng bằng chứng phù hợp sau khảo sát batch; không dùng nó để tự chọn
+một trong các âm KanjiDictVN hoặc thay nghĩa Nhật bằng nghĩa tiếng Trung.
 
 ### 5.3 Câu dịch, ưu tiên và dịch máy
 
@@ -265,8 +310,9 @@ không suy ra quan hệ dịch chỉ vì hai câu gần giống. Nghĩa từ kh�
 xác nhận ưu tiên hơn candidate word-only. Hán Việt không phải nghĩa tiếng Việt.
 Không ghi đè selected đã được xác nhận bằng kết quả dịch máy mới chỉ vì model mới hơn.
 
-Chỉ dịch phần thiếu một lần cho cache key `(item_id,field,base_content_hash,model,
-prompt_version)`; chạy lại giữ kết quả đã lưu. Provider chưa chọn, chưa phát sinh
+Chỉ dịch phần thiếu một lần cho cache key `(item_id,field,base_content_hash,mt_release_id)`;
+release đã khoá provider/model/prompt/config, tránh đụng cache giữa hai provider.
+Chạy lại giữ kết quả đã lưu. Provider chưa chọn, chưa phát sinh
 chi phí trong nhánh này. Không gửi credentials, bản ghi âm hay nội dung cá nhân vào
 dịch vụ chỉ để dịch bộ từ công khai. Dịch máy lưu method=machine và context đủ để
 tái hiện, status candidate cho đến khi qua kiểm tra chất lượng, luôn hiển thị nguồn Anh.

@@ -1,4 +1,4 @@
--- Draft 0.1: design artifact, not a production migration. SQLite >= 3.38.
+-- Draft 0.2: design artifact, not a production migration. SQLite >= 3.38.
 PRAGMA foreign_keys = ON;
 
 CREATE TABLE data_sources (
@@ -12,6 +12,12 @@ CREATE TABLE data_sources (
   attribution TEXT NOT NULL,
   usage_scope TEXT NOT NULL CHECK(usage_scope IN ('redistributable','private_only','unverified'))
 ) STRICT;
+-- A real provenance category for privately supplied media, not an upstream dataset.
+INSERT INTO data_sources (source_id,name,url,license,attribution,usage_scope)
+VALUES ('user-media','User-supplied media','local://user-media',
+        'Private use only; underlying media rights retained by its owners',
+        'Clip supplied by the learner; record original title, author and URL per asset',
+        'private_only');
 CREATE TABLE source_releases (
   release_id TEXT PRIMARY KEY,
   source_id TEXT NOT NULL REFERENCES data_sources(source_id) ON DELETE RESTRICT,
@@ -21,6 +27,7 @@ CREATE TABLE source_releases (
   retrieved_at TEXT NOT NULL,
   license TEXT NOT NULL,
   attribution TEXT NOT NULL,
+  manifest_json TEXT NOT NULL DEFAULT '{}' CHECK(json_valid(manifest_json) AND json_type(manifest_json)='object'),
   UNIQUE(source_id,version,checksum),
   UNIQUE(source_id,release_id)
 ) STRICT;
@@ -211,7 +218,7 @@ CREATE TABLE clip_segments (
 CREATE TABLE srs_cards (
   card_id TEXT PRIMARY KEY,
   item_id TEXT NOT NULL REFERENCES content_items(item_id) ON DELETE RESTRICT,
-  card_type TEXT NOT NULL CHECK(card_type IN ('recognition','recall','reading','cloze','listening')),
+  card_type TEXT NOT NULL CHECK(card_type IN ('recognition','recall','reading','cloze','listening','shadow')),
   state_json TEXT NOT NULL CHECK(json_valid(state_json) AND json_type(state_json)='object'),
   scheduler_version TEXT NOT NULL,
   due_at TEXT NOT NULL,

@@ -10,7 +10,7 @@ function setup(t) {
   const db = new DatabaseSync(':memory:'); t.after(() => db.close()); db.exec(schema);
   db.prepare('INSERT INTO data_sources VALUES (?,?,?,?,?,?,?,?,?)').run('test', 'Synthetic fixture', 'https://example.invalid', 'test-only', null, null, null, 'Original synthetic fixture', 'private_only');
   for (const [id, version, hash] of [['r1','1',A],['r2','2',B]])
-    db.prepare('INSERT INTO source_releases VALUES (?,?,?,?,?,?,?,?)').run(id, 'test', version, hash, 'https://example.invalid/test.json', '2026-11-05T00:00:00Z', 'test-only', 'Synthetic');
+    db.prepare('INSERT INTO source_releases(release_id,source_id,version,checksum,artifact_url,retrieved_at,license,attribution) VALUES (?,?,?,?,?,?,?,?)').run(id, 'test', version, hash, 'https://example.invalid/test.json', '2026-11-05T00:00:00Z', 'test-only', 'Synthetic');
   db.prepare('INSERT INTO content_items(item_id,kind,source_id,source_key,release_id,source_hash) VALUES (?,?,?,?,?,?)').run('test:vocab:1', 'vocab', 'test', '1', 'r1', A);
   db.prepare('INSERT INTO vocab(item_id,word,reading,romaji,level,meanings_en) VALUES (?,?,?,?,?,?)').run('test:vocab:1', '方', 'かた', 'kata', 'N4', '["synthetic meaning"]');
   return db;
@@ -99,4 +99,50 @@ test('spec has all five parts and audit agrees with recorded source counts', () 
   assert.ok(audit.files.every(f => /^[0-9a-f]{64}$/.test(f.sha256) && f.duplicate_keys_across_levels === 0));
   assert.equal(audit.n5_n2.vocab,4741); assert.equal(audit.n5_n2.ambiguous_headwords.length,22);
   assert.equal(audit.n5_n2.without_examples,166);
+});
+
+test('user media supports a private clip, sentence segment, and shadow card with real provenance', t => {
+  const db = setup(t);
+  assert.equal(db.prepare("SELECT usage_scope FROM data_sources WHERE source_id='user-media'").get().usage_scope, 'private_only');
+  db.prepare('INSERT INTO source_releases(release_id,source_id,version,checksum,artifact_url,retrieved_at,license,attribution,manifest_json) VALUES (?,?,?,?,?,?,?,?,?)')
+    .run('clip-release-1','user-media','clip-test:1',A,'local://clips/clip-test/1/manifest.json','2026-11-05T00:00:00Z','private-only','Synthetic fixture',JSON.stringify({clip_uuid:'clip-test',revision:1,origin_kind:'youtube',video_id:'synthetic-id',start_ms:1000,end_ms:3000}));
+  for (const [id,kind,key] of [['user-media:clip:clip-test','clip','clip-test'],['user-media:sentence:sentence-test','sentence','sentence-test']])
+    db.prepare('INSERT INTO content_items(item_id,kind,source_id,source_key,release_id,source_hash) VALUES (?,?,?,?,?,?)').run(id,kind,'user-media',key,'clip-release-1',A);
+  db.prepare('INSERT INTO sentences(item_id,text_ja,author_attribution) VALUES (?,?,?)').run('user-media:sentence:sentence-test','練習です。','Synthetic fixture');
+  db.prepare('INSERT INTO clip_segments(clip_id,position,sentence_id,start_ms,end_ms,source_id,release_id) VALUES (?,?,?,?,?,?,?)')
+    .run('user-media:clip:clip-test',0,'user-media:sentence:sentence-test',0,2000,'user-media','clip-release-1');
+  db.prepare('INSERT INTO media_assets VALUES (?,?,?,?,?,?,?,?,?)')
+    .run('asset-test','user-media:clip:clip-test','video','youtube:synthetic-id','user-media','clip-release-1','Synthetic fixture','private-only',1);
+  db.prepare('INSERT INTO srs_cards VALUES (?,?,?,?,?,?,?)')
+    .run('shadow-test','user-media:sentence:sentence-test','shadow','{}','draft-test','2026-11-06T00:00:00Z','2026-11-05T00:00:00Z');
+  assert.equal(db.prepare("SELECT card_type FROM srs_cards WHERE card_id='shadow-test'").get().card_type,'shadow');
+  assert.equal(db.prepare("SELECT json_extract(manifest_json,'$.origin_kind') origin FROM source_releases WHERE release_id='clip-release-1'").get().origin,'youtube');
+  assert.throws(() => db.exec("UPDATE content_items SET release_id=NULL WHERE kind='clip'"), /NOT NULL/);
+  assert.deepEqual(db.prepare('PRAGMA foreign_key_check').all(),[]);
+});
+
+test('machine translations link to provider/model/prompt releases and retain earlier candidates', t => {
+  const db = setup(t);
+  db.prepare('INSERT INTO data_sources VALUES (?,?,?,?,?,?,?,?,?)').run('mt:test-provider','Synthetic MT','https://example.invalid/mt','test-only',null,null,null,'Synthetic model','private_only');
+  for (const [release,prompt,hash] of [['mt-r1','p1',A],['mt-r2','p2',B]]) {
+    db.prepare('INSERT INTO source_releases(release_id,source_id,version,checksum,artifact_url,retrieved_at,license,attribution,manifest_json) VALUES (?,?,?,?,?,?,?,?,?)')
+      .run(release,'mt:test-provider',`model1:${prompt}`,hash,`local://mt/${release}/manifest.json`,'2026-11-05T00:00:00Z','test-only','Synthetic',JSON.stringify({model:'model1',prompt_version:prompt,prompt_sha256:hash,config:{temperature:0}}));
+    db.prepare(`INSERT INTO vi_translations(translation_id,item_id,field,text_vi,method,source_id,release_id,source_record_key,base_content_hash,status,match_method,created_at)
+      VALUES (?,?,?,?,?,?,?,?,?,?,?,?)`).run(release,'test:vocab:1','meaning','bản dịch thử','machine','mt:test-provider',release,'request1',A,'candidate','machine_context','2026-11-05T00:00:00Z');
+  }
+  assert.equal(db.prepare("SELECT count(*) n FROM vi_translations WHERE source_id='mt:test-provider'").get().n,2);
+  assert.equal(db.prepare("SELECT json_extract(manifest_json,'$.prompt_version') prompt FROM source_releases WHERE release_id='mt-r2'").get().prompt,'p2');
+  assert.throws(() => db.exec("UPDATE vi_translations SET release_id='r1' WHERE translation_id='mt-r1'"),/FOREIGN KEY/);
+  assert.throws(() => db.exec("UPDATE source_releases SET manifest_json='[]' WHERE release_id='mt-r1'"),/CHECK/);
+});
+
+test('multiple Han Viet readings can remain separate candidates for one kanji', t => {
+  const db = setup(t);
+  db.prepare('INSERT INTO content_items(item_id,kind,source_id,source_key,release_id,source_hash) VALUES (?,?,?,?,?,?)').run('test:kanji:1','kanji','test','kanji1','r1',A);
+  db.prepare('INSERT INTO kanji(item_id,character,level,onyomi,kunyomi,meanings_en) VALUES (?,?,?,?,?,?)').run('test:kanji:1','仮','N3','[]','[]','[]');
+  for (const reading of ['âm thử một','âm thử hai'])
+    db.prepare(`INSERT INTO vi_translations(translation_id,item_id,field,text_vi,method,source_id,release_id,source_record_key,base_content_hash,status,match_method,context_json,created_at)
+      VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)`).run(reading,'test:kanji:1','han_viet',reading,'han_viet','test','r1',`bank:row:${reading}`,A,'candidate','codepoint',JSON.stringify({candidate_reading:reading}),'2026-11-05T00:00:00Z');
+  assert.equal(db.prepare("SELECT count(*) n FROM vi_translations WHERE field='han_viet' AND status='candidate'").get().n,2);
+  assert.equal(db.prepare("SELECT count(*) n FROM vi_translations WHERE status='selected'").get().n,0);
 });
