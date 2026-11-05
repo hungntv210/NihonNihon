@@ -291,9 +291,10 @@ thành quyền biên tập dữ liệu của người học.
    Không suy âm từ [2]/[3] hoặc nghĩa [4]. Tạo một candidate cho mỗi nhóm canonical;
    source_record_key gồm codepoint/âm canonical trong source release, context_json
    giữ chuỗi âm, bank/row/nhãn âm gốc và alias version. Chọn đúng một selected
-   có căn cứ theo HV-1: từ ghép phổ biến có rank nguồn được pin, đối chiếu Unihan;
-   trường hợp chưa phân giải cần rà soát có căn cứ. Giữ các âm khác để hiển thị,
-   không chọn âm đầu hoặc giấu đa âm. Thiếu căn cứ → unresolved, batch chưa đạt.
+   theo HV-1.1: một âm sau gộp → CVDICT compound evidence → Unihan khi có → AI.
+   Mỗi lựa chọn ghi selection_method; AI là nguồn mt:<provider> có căn cứ, nhãn
+   “tự chọn” và Báo sai, không cần người duyệt. Âm luôn nằm trong candidate của chữ;
+   giữ các âm còn lại. Output AI lỗi/ngoài danh sách → retry hữu hạn, chưa đạt thì fail.
 5. Kanji: nghĩa Việt dịch theo nghĩa Nhật/Anh OpenJLPT; âm Hán Việt lấy riêng từ
    KanjiDictVN riêng tư khi quyền dùng đã rõ, rồi đối chiếu Unihan. Không lấy nghĩa
    chữ Hán cổ làm nghĩa Nhật. Thiếu nguồn có quyền dùng → đánh dấu thiếu, không bịa âm.
@@ -302,9 +303,9 @@ thành quyền biên tập dữ liệu của người học.
    jukujikun hoặc không chắc để han_viet chưa có selected. Giữ provenance của từng âm
    trong context_json. Không làm mất nghĩa từ khi không ghép được Hán Việt.
 
-CVDICT là nguồn đối chiếu nghĩa Trung–Việt đã xác minh license; pinyin không cung cấp
-âm Hán Việt. Chỉ dùng bằng chứng phù hợp sau khảo sát batch; không dùng nó để tự chọn
-một trong các âm KanjiDictVN hoặc thay nghĩa Nhật bằng nghĩa tiếng Trung.
+CVDICT có thể cung cấp căn cứ từ ghép theo HV-1.1 nếu phân giải được âm Hán Việt
+của chữ trong từ ghép tiếng Nhật phù hợp. Pinyin không phải Hán Việt; chỉ match mặt
+chữ hoặc nghĩa tiếng Trung không đủ. Không dùng nghĩa Trung thay nghĩa Nhật.
 
 ### 5.3 Câu dịch, ưu tiên và dịch máy
 
@@ -318,7 +319,10 @@ release đã khoá provider/model/prompt/config, tránh đụng cache giữa hai
 Chạy lại giữ kết quả đã lưu. Provider chưa chọn, chưa phát sinh
 chi phí trong nhánh này. Không gửi credentials, bản ghi âm hay nội dung cá nhân vào
 dịch vụ chỉ để dịch bộ từ công khai. Dịch máy lưu method=machine và context đủ để
-tái hiện, status candidate cho đến khi qua kiểm tra chất lượng, luôn hiển thị nguồn Anh.
+tái hiện; nghĩa/câu dịch giữ candidate cho đến khi qua kiểm tra chất lượng, luôn
+hiển thị nguồn Anh. Riêng chọn âm Hán Việt theo HV-1.1 cho phép AI selected sau
+kiểm tra tự động membership/cấu trúc/căn cứ, có nhãn “tự chọn” và Báo sai; không cần
+người duyệt. Lựa chọn AI là một hàng nguồn MT riêng, giữ candidates dictionary gốc.
 
 ### 5.4 Giới hạn phát hành và tiêu chí mốc
 

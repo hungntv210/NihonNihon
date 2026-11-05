@@ -28,9 +28,10 @@ Draft 0.2 bổ sung source `user-media` cho clip/phụ đề cá nhân, loại t
 registry `mt:<provider>` và manifest release cho model/prompt; sửa tuple KanjiDictVN
 và giữ nhiều âm Hán Việt làm candidate thay vì tự chọn âm đầu.
 
-Bổ sung [chính sách HV-1](../data/han-viet-policy.md): gộp biến thể chính tả trước,
-chọn đúng một âm chính có căn cứ và giữ âm khác để hiển thị. Batch import phải báo
-số đa âm trước/sau gộp, đạt **100% kanji có âm chính hợp lệ**; chưa có số đo thực tế.
+Bổ sung [chính sách HV-1.1](../data/han-viet-policy.md): gộp alias, lần lượt chọn
+theo một âm → CVDICT → Unihan khi có → AI có căn cứ. Ghi selection_method, nhãn
+“tự chọn” cho AI và Báo sai, không cần người duyệt. Batch đạt 100% một âm chính
+trong candidates và báo số lượng theo từng method; chưa có số đo batch thực tế.
 
 ## Mục tiêu
 
