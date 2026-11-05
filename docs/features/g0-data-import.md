@@ -25,6 +25,41 @@ Viết script nhập dữ liệu từ các nguồn vào SQLite, chạy thử tr�
 
 ## Dữ liệu
 
+**Bổ sung bắt buộc — âm Hán Việt:**
+
+- [ ] Gộp biến thể chính tả/phương ngữ theo bảng alias có version (nhựt→nhật,
+  nhơn→nhân, sanh→sinh, tí→tý); giữ âm gốc và nguồn trong provenance.
+- [ ] Chọn đúng một âm chính cho mỗi kanji theo [HV-1](../data/han-viet-policy.md):
+  đa âm thật dùng căn cứ từ ghép/rank phổ biến và đối chiếu Unihan; trường hợp thiếu
+  hoặc bất đồng phải được rà soát có lý do và nguồn độc lập.
+- [ ] Giữ các âm canonical khác; giao diện xem batch in đậm âm chính, đặt âm khác
+  cỡ nhỏ bên cạnh, đủ tương phản và không ẩn sau nút “xem thêm”.
+- [ ] Trong 50 kanji phải có các biến thể ở bảng alias, đa âm thật 大/行/長,
+  Unicode tổ hợp và trường hợp thiếu/bất đồng Unihan, ngoài các tình huống bên dưới.
+
+Không chọn âm đầu/placeholder hoặc bỏ chữ thiếu âm khỏi cohort để đủ tỉ lệ.
+“Từ ghép phổ biến nhất” cần nguồn rank/tần suất được pin; thứ tự JSON,
+`kanji.words` hay cấp JLPT không phải tần suất thật. Thiếu căn cứ → batch chưa đạt,
+cần rà soát có nguồn độc lập trước khi hoàn thành.
+
+### Báo cáo Hán Việt bắt buộc
+
+Theo [HV-1](../data/han-viet-policy.md), dùng
+[mẫu báo cáo](../data/han-viet-batch-report.template.md) và giữ cohort cố định từ manifest.
+Ghi `kanji_total`, `multi_before_alias`, `multi_after_alias`, `variants_collapsed_kanji`,
+`primary_selected`, `primary_coverage`; kèm unresolved, missing_readings,
+multiple_selected, missing_evidence và kết quả đối chiếu Unihan.
+
+`primary_coverage = primary_selected / kanji_total × 100`; mẫu số gồm cả chữ nhập
+thất bại/thiếu âm, phải > 0. Chỉ PASS khi **primary_selected == kanji_total (100%
+chính xác)** và các lỗi trên bằng 0; không làm tròn. Selected phải là một âm canonical,
+provenance/căn cứ đầy đủ, hash nền khớp và không stale. Số trước/sau alias phải đo thật.
+Báo cáo restricted giữ riêng; chỉ đưa thống kê tổng hợp/quy tắc được phép chia sẻ lên Git.
+
+Test tối thiểu: bốn cặp alias (input có cả hai dạng), Unicode tổ hợp, 大/行/長,
+Unihan thiếu/bất đồng, rank đồng hạng, thiếu căn cứ và idempotence. Đổi version quy
+tắc phải báo diff âm chính, giữ lịch sử và không đổi ID/SRS.
+
 **Batch thử (chọn có chủ đích, không ngẫu nhiên):**
 
 | Loại | Số lượng | Trường hợp phải có |
@@ -52,6 +87,13 @@ Viết script nhập dữ liệu từ các nguồn vào SQLite, chạy thử tr�
 - [ ] 3 clip shadowing chạy được với phụ đề chia câu
 - [ ] 100% kanji có âm Hán Việt; mọi từ và mẫu ngữ pháp có nghĩa tiếng Việt
 - [ ] 100% chữ tiếng Việt ở dạng NFC và hiển thị đúng dấu trên Chrome Android, Safari iOS
+
+Điều kiện nghiệm thu Hán Việt bổ sung:
+
+- [ ] **100% kanji trong cohort có đúng một âm chính hợp lệ, có căn cứ**; các âm khác
+  vẫn được giữ, báo cáo đủ số đa âm trước/sau gộp alias và tỉ lệ chọn âm chính.
+- [ ] Giao diện thô xem batch hiển thị âm chính đậm, âm khác nhỏ bên cạnh; đọc được
+  trên điện thoại và xem được nguồn/lý do chọn. Đây là yêu cầu cần kiểm tra, chưa đánh dấu đạt.
 
 ## Câu hỏi còn mở
 
