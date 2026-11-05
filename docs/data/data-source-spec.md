@@ -247,6 +247,9 @@ kana-only, katakana, する, nhiều cách đọc/cách viết, 働, KanjiVG var
 **kế hoạch**, chưa chạy batch này trong nhánh data-spec. Báo cáo phải ghi actual counts,
 coverage nghĩa Việt/Hán Việt/nét/câu dịch, precision ghép nghĩa, NFC, unresolved items,
 before/after SRS và translation hashes, thử thất bại/rollback và chạy lần hai.
+Riêng Hán Việt phải có số kanji đa âm trước/sau gộp alias, số có âm chính hợp lệ
+và tỉ lệ trên toàn cohort manifest. Điều kiện bắt buộc là **100% kanji có đúng một
+âm chính có căn cứ**, không làm tròn, không bỏ chữ thiếu khỏi mẫu số; xem HV-1.
 
 Chỉ chuyển Draft → Frozen khi batch có bằng chứng đạt tiêu chí của nhánh import,
 các điểm thiếu đã xử lý và SQL/mapping được sửa theo báo cáo. Nguồn chưa dùng có
@@ -281,16 +284,16 @@ thành quyền biên tập dữ liệu của người học.
 3. Trường hợp 22 mặt chữ nhiều reading đã đo, thiếu nghĩa, hoặc mapping không chắc:
    giữ candidate/needs_review và dịch máy theo **reading + nghĩa Anh + POS + ví dụ**,
    không đưa nghĩa dictionary mơ hồ lên thành selected tự động.
-4. KanjiDictVN: kiểm tra tuple có đúng 6 phần tử và kiểu tương ứng; lấy character
-   ở [0], chuỗi âm ở [1], nghĩa có nhãn âm ở [4], thống kê ở [5]. NFC chuỗi âm rồi
-   tách theo whitespace Unicode, bỏ rỗng, loại trùng sau NFC/lowercase nhưng **giữ dấu**
-   (âm không dấu và có dấu không gộp). Không suy âm từ [2]/[3] hoặc nghĩa [4]. Mỗi âm
-   là một candidate field=han_viet; source_record_key gồm bank/row/âm chuẩn hoá để các
-   candidate cùng dòng không đụng UNIQUE. context_json giữ chuỗi âm gốc, âm ứng viên,
-   nhãn `[âm]` tương ứng và nguồn dòng. Nhiều âm → tất cả candidate, không tự chọn âm
-   đầu/âm xuất hiện nhiều nhất trong nghĩa. Chỉ chọn sau đối chiếu ngữ cảnh và nguồn
-   độc lập có căn cứ; không đủ bằng chứng thì giữ chưa selected. Một âm cũng phải
-   qua kiểm tra codepoint/nguồn; importer không mặc định một âm luôn đúng.
+4. KanjiDictVN: kiểm tra tuple 6 phần tử; lấy character ở [0], âm ở [1],
+   nghĩa có nhãn âm ở [4], thống kê ở [5]. NFC, lowercase, tách whitespace và dedup,
+   rồi gộp alias chính tả/phương ngữ theo [HV-1](han-viet-policy.md): nhựt→nhật,
+   nhơn→nhân, sanh→sinh, tí→tý. Chỉ gộp cặp được khai báo, không bỏ dấu toàn bộ.
+   Không suy âm từ [2]/[3] hoặc nghĩa [4]. Tạo một candidate cho mỗi nhóm canonical;
+   source_record_key gồm codepoint/âm canonical trong source release, context_json
+   giữ chuỗi âm, bank/row/nhãn âm gốc và alias version. Chọn đúng một selected
+   có căn cứ theo HV-1: từ ghép phổ biến có rank nguồn được pin, đối chiếu Unihan;
+   trường hợp chưa phân giải cần rà soát có căn cứ. Giữ các âm khác để hiển thị,
+   không chọn âm đầu hoặc giấu đa âm. Thiếu căn cứ → unresolved, batch chưa đạt.
 5. Kanji: nghĩa Việt dịch theo nghĩa Nhật/Anh OpenJLPT; âm Hán Việt lấy riêng từ
    KanjiDictVN riêng tư khi quyền dùng đã rõ, rồi đối chiếu Unihan. Không lấy nghĩa
    chữ Hán cổ làm nghĩa Nhật. Thiếu nguồn có quyền dùng → đánh dấu thiếu, không bịa âm.
