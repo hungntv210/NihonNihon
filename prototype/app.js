@@ -20,55 +20,42 @@
     Sprites.draw(host.querySelector('svg'), Sprites.MASCOT[viewId], 4);
     host.querySelector('.say').textContent = text;
   }
-  // mulberry32: khán đài luôn cùng một bộ màu
-  function mulberry32(a) {
-    return () => {
-      a = (a + 0x6D2B79F5) | 0;
-      let t = Math.imul(a ^ (a >>> 15), 1 | a);
-      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
-      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-    };
-  }
 
   /* ---------------- Trang chủ ---------------- */
   function home() {
     const left = D.today.filter((t) => !t.done);
-    $('#h-home').textContent = `Chào buổi tối, ${D.learner.name}. Hôm nay còn buổi shadowing bắt buộc.`;
+    $('#h-home').textContent = `Chào buổi tối, ${D.learner.name}.`;
     $('#home-sub').textContent = `Thứ Năm, ${ddmm(D.learner.today)} · tuần ${D.learner.weekOfPlan}/${D.learner.planWeeks} của lộ trình · còn ${daysLeft} ngày đến kỳ thi ${D.learner.target}`;
     $('#home-cta').textContent = `Ôn ${D.dueTotal} thẻ`;
     $('#nav-due').textContent = D.dueTotal;
 
     const tiles = [
       ['Thẻ đến hạn', D.dueTotal, 'thẻ', 'Khoảng 25 phút, luôn làm trước'],
-      ['Chuỗi ngày học', D.streak.days, '', `trận bất bại · còn ${D.streak.freezes} lần thay người`, 'streak'],
+      ['Chuỗi ngày học', D.streak.days, '', `ngày liên tiếp · ${D.streak.freezes} lượt bảo toàn`, 'streak'],
       [`Đến kỳ thi ${D.learner.target}`, daysLeft, 'ngày', `Chủ nhật ${ddmm(D.learner.examDate)}`],
       ['Tỉ lệ nhớ 30 ngày', nf(1).format(D.retention * 100), '%', 'Cần từ 85% để qua cấp'],
     ];
     $('#tiles').innerHTML = tiles.map(([l, v, u, c, k]) => `<div class="panel tile span-3${k ? ' ' + k : ''}"><span class="label">${esc(l)}</span><span class="value">${esc(typeof v === 'number' ? n0(v) : v)}<small>${esc(u)}</small></span><span class="cap">${esc(c)}</span></div>`).join('');
 
-    $('#today-count').textContent = `${left.length} chưa ra sân`;
+    $('#today-count').textContent = `${left.length} việc còn lại`;
     $('#xp-badge').textContent = `${n0(D.xp)} XP`;
     $('#today-mins').textContent = `khoảng ${left.reduce((s, t) => s + t.mins, 0)} phút`;
     $('#today-list').innerHTML = D.today.map((t, i) => `<li class="rowcard${t.done ? ' done' : ''}">
       <span class="tick${t.done ? ' on' : ''}" aria-label="${t.done ? 'Đã xong' : 'Chưa làm'}" role="img"></span>
       <div class="body"><div class="t${t.jp ? ' jpmix' : ''}">${t.jp ? esc(t.title).replace(/([㐀-鿿 ]{3,})$/, '<span lang="ja">$1</span>') : esc(t.title)}${t.required ? ' <span class="pill warn">Bắt buộc hôm nay</span>' : ''}</div><div class="s">${esc(t.sub)}</div></div>
       <span class="mins">${t.mins} phút</span>
-      <span class="act">${t.done ? '<span class="meta">Đã xong</span>' : `<a class="btn sm" href="${t.href}"${t.id === 'kanji' ? ' data-moment="lesson"' : ''}>${t.required ? 'Ra sân ngay' : 'Ra sân'}</a>`}</span>
+      <span class="act">${t.done ? '<span class="meta">Đã xong</span>' : `<a class="btn sm" href="${t.href}"${t.id === 'kanji' ? ' data-moment="lesson"' : ''}>${t.required ? 'Luyện ngay' : 'Bắt đầu'}</a>`}</span>
     </li>`).join('');
 
     $('#quota').innerHTML = `${D.requiredDone}<small>/${D.required}</small>`;
     $('#days').innerHTML = D.week.map((w) => {
       const dot = w.kind === 'required' ? `req${w.done ? ' done' : w.today ? ' due' : ''}` : w.kind === 'bonus' ? 'bonus' : '';
       const missed = w.kind === 'required' && !w.done && !w.today && w.date < +D.learner.today.slice(8);
-      const what = w.today ? 'HÔM NAY' : w.done ? 'THẮNG' : missed ? 'LỠ' : w.kind === 'required' ? 'BẮT BUỘC' : w.kind === 'bonus' ? 'GIAO HỮU' : w.kind === 'makeup' ? 'ĐÁ BÙ' : '–';
+      const what = w.today ? 'HÔM NAY' : w.done ? 'ĐÃ HỌC' : missed ? 'LỠ' : w.kind === 'required' ? 'BẮT BUỘC' : w.kind === 'bonus' ? 'TỰ CHỌN' : w.kind === 'makeup' ? 'HỌC BÙ' : '–';
       return `<li class="day${w.today ? ' today' : ''}"><span class="d">${w.d}</span><span class="dot ${dot}" aria-hidden="true"></span><span class="what${w.done ? ' win' : missed ? ' miss' : ''}" title="${w.clip ? esc(w.clip) : ''}">${what}</span><span class="n">${w.mins ? `${w.mins} phút` : `${w.date}/10`}</span></li>`;
     }).join('');
-    const sunday = D.week[D.week.length - 1];
-    $('#rule-note').innerHTML = `<i class="card-y" aria-hidden="true"></i><b>Thẻ vàng:</b> lỡ trận hôm nay mà không đá bù Chủ nhật ${sunday.date}/10 thì treo giò bài mới tuần sau. Ôn tập không bao giờ bị cấm.`;
-    mascotLine($('#home-mascot'), 'trang-chu', `"${D.streak.days} trận bất bại! Tối nay ra sân nốt nha!"`);
-
-    const rnd = mulberry32(20261101), cols = ['#FFFFFF', '#D6B45C', '#DCE6F0', '#FFFFFF', '#78A878', '#D6B45C', '#F2DDD6'];
-    $('#crowd').innerHTML = Array.from({ length: 72 }, () => `<i style="background:${cols[Math.floor(rnd() * cols.length)]}"></i>`).join('');
+    $('#rule-note').textContent = 'Luyện đủ 2 buổi mỗi tuần để duy trì nhịp học. Nếu lỡ hôm nay, bạn có thể học bù vào Chủ nhật.';
+    mascotLine($('#home-mascot'), 'trang-chu', 'Mỗi ngày một chút. Bạn đang làm rất tốt!');
 
     $('#cov').innerHTML = D.coverage.map((c) => {
       const gap = c.learned - c.planToday;
@@ -79,9 +66,7 @@
 
     const last = D.mocks[D.mocks.length - 1];
     const weakest = last.parts.indexOf(Math.min(...last.parts));
-    $('#board').innerHTML = `<div class="top">THI THỬ ${esc(last.label)} · CHUNG KẾT ${ddmm(D.learner.examDate).slice(0, 5)}</div>
-      <div class="score"><span>HƯNG</span><b>${last.total}–${D.exam.pass}</b><span>ĐIỂM ĐỖ</span></div>
-      <div class="bot">Đang dẫn ${last.total - D.exam.pass} điểm · ${esc(D.parts[weakest])} là hàng thủ yếu nhất</div>`;
+    $('#board').textContent = `Tuần ${D.learner.weekOfPlan} / ${D.learner.planWeeks} · Kính ngữ công sở · JLPT ${D.learner.target}`;
     $('#mock-finding').innerHTML = `Đề ${last.label}: <b>${last.total}/180</b>, hơn điểm đỗ ${last.total - D.exam.pass} điểm. ${esc(D.parts[weakest])} ${last.parts[weakest]}/60 là phần thấp nhất.`;
   }
   const charts = {
@@ -121,22 +106,21 @@
     $('#flash').innerHTML = `<div class="tags"><span class="pill accent">${esc(c.kind)}</span><span class="pill">${esc(c.level)}</span></div>
       <p class="front" lang="ja">${esc(c.front)}</p>${back}<div class="foot">${foot}</div>`;
   }
-  // "VÀO LƯỚI!" phủ lên thẻ 900ms khi chấm Dễ
+  // Brief feedback stays out of the way of the next card.
   let goalTimer;
   function showGoal() {
     const g = $('#goal'), c = D.deck[rv.i];
-    g.innerHTML = `<b>VÀO LƯỚI!</b><span>+5 XP · ${esc(c.next[3])} nữa gặp lại</span>`;
+    g.innerHTML = `<b>Nhớ rất tốt!</b><span>+5 XP · ${esc(c.next[3])} nữa gặp lại</span>`;
     g.classList.add('on'); clearTimeout(goalTimer);
     goalTimer = setTimeout(() => g.classList.remove('on'), 900);
   }
-  let moment = null; // khoảnh khắc chuyển cảnh, ghi từ lần bấm [data-moment] gần nhất
   function grade(j) {
     const c = D.deck[rv.i];
     if (j === 3) showGoal();
     const before = rv.done;
     rv.done = Math.min(D.dueTotal, rv.done + 1); rv.byKind[c.kind] = Math.min(D.due.find((k) => k.kind === c.kind).count, rv.byKind[c.kind] + 1);
     rv.i = (rv.i + 1) % D.deck.length; rv.open = false; review();
-    if (before < D.dueTotal && rv.done === D.dueTotal) { moment = 'day-done'; location.hash = '#trang-chu'; return; }
+    if (before < D.dueTotal && rv.done === D.dueTotal) { location.hash = '#trang-chu'; return; }
     $('#reveal')?.focus();
   }
   $('#flash').addEventListener('click', (e) => {
@@ -208,7 +192,7 @@
     }
   }
   function kanji() {
-    $('#h-kanji').innerHTML = `KANJI <span lang="ja">${k.char}</span>`;
+    $('#h-kanji').innerHTML = `Kanji <span lang="ja">${k.char}</span>`;
     $('#kanji-sub').textContent = `Kanji mới ${D.newKanji.indexOf(k.char) + 1}/${D.newKanji.length} hôm nay · JLPT ${k.level} · khối Kính ngữ công sở`;
     $('#lesson').innerHTML = D.newKanji.map((c) => `<li><a href="#kanji" lang="ja" aria-label="Chữ ${c}"${c === k.char ? ' aria-current="step"' : ''}>${c}</a></li>`).join('');
     mascotLine($('#kanji-mascot'), 'kanji', '"Tuýt! Nhớ thứ tự nét nhé."');
@@ -259,7 +243,8 @@
   }
 
   /* ---------------- router ---------------- */
-  const VIEWS = { 'trang-chu': 'Trang chủ', 'on-tap': 'Ôn tập', shadowing: 'Shadowing', kanji: 'Kanji', jlpt: 'JLPT' };
+  const VIEWS = { 'trang-chu': 'Trang chủ', 'on-tap': 'Ôn tập', shadowing: 'Shadowing', kanji: 'Kanji', jlpt: 'JLPT', 'tu-vung': 'Từ vựng', 'ngu-phap': 'Ngữ pháp', doc: 'Đọc', 'giao-tiep': 'Giao tiếp' };
+  $('.skip-link').addEventListener('click', (e) => { e.preventDefault(); $('#main').focus(); });
   home(); review(); shadowing(); kanji(); jlpt();
   const MAIN = $('main.canvas'), SECTIONS = Object.fromEntries([...document.querySelectorAll('[data-view]')].map((s) => { s.hidden = false; return [s.dataset.view, s]; }));
   function route({ focus = false } = {}) {
@@ -267,6 +252,9 @@
     // chỉ màn hình đang mở nằm trong DOM: một h1 cho mỗi màn hình; các nút giữ nguyên listener khi tách ra
     MAIN.replaceChildren(SECTIONS[id]);
     document.querySelectorAll('[data-nav]').forEach((a) => (a.dataset.nav === id ? a.setAttribute('aria-current', 'page') : a.removeAttribute('aria-current')));
+    const more = document.querySelector('.explore-nav');
+    more.open = false;
+    more.classList.toggle('has-current', ['tu-vung', 'ngu-phap', 'doc', 'giao-tiep'].includes(id));
     $('#topbar-title').textContent = VIEWS[id];
     document.title = `${VIEWS[id]} · Nihon Nihon`;
     charts[id]?.();
@@ -274,27 +262,19 @@
     if (focus) SECTIONS[id].querySelector('h1')?.focus({ preventScroll: true });
     current = id;
   }
-  let current = null, forceFull = false;
-  const runner = Transitions.create({ layer: $('#fx'), content: MAIN, reducedMotion: () => !forceFull && matchMedia('(prefers-reduced-motion: reduce)').matches, stepped: () => true });
+  let current = null;
   const target = () => (VIEWS[location.hash.slice(1)] ? location.hash.slice(1) : 'trang-chu');
-  addEventListener('click', (e) => { const m = e.target.closest?.('[data-moment]'); if (m) moment = m.dataset.moment; }, true);
-  async function go() {
-    if (target() === current) { moment = null; return; } // cùng màn: không chuyển cảnh
-    const m = moment; moment = null;
-    const r = await runner.run(Transitions.forMoment(m), () => route({ focus: true }));
-    // lần bấm bị bỏ qua: lượt đang chạy đọc location.hash lúc đổi màn, và tự kiểm tra lại sau khi xong
-    if (r.mode === 'skipped') return;
-    // hash đổi sau lúc đổi màn: đưa màn hình về khớp URL
-    if (target() !== current) route();
-  }
-  addEventListener('hashchange', go);
-  window.NihonDebug = {
-    async go(view, m, o = {}) {
-      forceFull = !!o.force;
-      try { return await runner.run(Transitions.forMoment(m), () => { history.replaceState(null, '', '#' + view); route(); }); }
-      finally { forceFull = false; }
-    },
-  };
+  document.addEventListener('click', (e) => {
+    if (e.target.closest('[data-nav]')) document.querySelector('.explore-nav').open = false;
+  });
+  document.querySelector('.explore-nav').addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+      e.currentTarget.open = false;
+      e.currentTarget.querySelector('summary').focus();
+    }
+  });
+  // Navigation and repeated keyboard practice stay immediate.
+  addEventListener('hashchange', () => route({ focus: true }));
   let rt; addEventListener('resize', () => { clearTimeout(rt); rt = setTimeout(() => charts[current]?.(), 150); });
   document.fonts?.ready.then(() => charts[current]?.()); route();
 

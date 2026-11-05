@@ -25,6 +25,14 @@ test('chữ trên nền đạt 4,5:1', () => {
   for (const bg of ['--forest','--blue','--terra']) assert.ok(ratio('#FFFFFF', v(bg)) >= 4.5, `trắng trên ${bg}`);
 });
 test('thanh tiến độ forest trên mint đạt 3:1', () => assert.ok(ratio(v('--forest'), v('--mint')) >= 3));
+
+test('bảng màu mới: chữ và chú thích đạt 4,5:1', () => {
+  const design = fs.readFileSync(path.join(__dirname, '..', 'nihon.css'), 'utf8');
+  const token = (name) => [...design.matchAll(new RegExp(name + ': *(#[0-9A-Fa-f]{6})', 'g'))].at(-1)[1];
+  for (const [fg, bg] of [['--text', '--ground'], ['--muted', '--ground'], ['--muted', '--surface'], ['--faint', '--surface'], ['--primary-ink', '--primary']])
+    assert.ok(ratio(token(fg), token(bg)) >= 4.5, `${fg} trên ${bg}`);
+  assert.ok(ratio('#DFE7D9', '#284F40') >= 4.5, 'chú thích trên khung học');
+});
 test('giá trị khớp spec', () => {
   assert.equal(v('--ink'), '#24332D'); assert.equal(v('--kaki'), '#E8956A'); assert.equal(v('--blue'), '#2F5D86');
   assert.equal(v('--gold'), '#D6B45C'); assert.equal(v('--terra'), '#A64B38'); assert.equal(v('--bg'), '#F4F5F2');

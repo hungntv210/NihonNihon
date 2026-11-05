@@ -5,12 +5,13 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Nihon Nihon</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&family=Shippori+Mincho:wght@500;700&family=VT323&family=DotGothic16&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&family=Shippori+Mincho:wght@500;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="tokens.css">
 <link rel="stylesheet" href="app.css">
 <link rel="stylesheet" href="nihon.css">
 </head>
 <body>
+<a class="skip-link" href="#main">Đến nội dung</a>
 <svg width="0" height="0" style="position:absolute" aria-hidden="true">
   <!-- dấu hiệu: hai mặt trời chồng nhau, "Nihon Nihon" -->
   <symbol id="mark" viewBox="0 0 28 28"><circle cx="10.5" cy="14" r="7.5" fill="#2F684E"/><circle cx="17.5" cy="14" r="7.5" fill="none" stroke="#2F684E" stroke-width="2"/></symbol>
@@ -19,23 +20,23 @@
 <div class="app">
   <nav class="sidebar" aria-label="Điều hướng chính">
     <a class="brand" href="#trang-chu"><svg aria-hidden="true"><use href="#mark"/></svg>Nihon Nihon</a>
-    <div class="scope"><b>Lộ trình N5 → N2</b><span>Tuần 51 / 87 · mục tiêu N3</span></div>
+    <div class="scope"><span>LỘ TRÌNH CỦA BẠN</span><b>N5 <span aria-hidden="true">→</span> N2</b><span>Tuần 51 / 87 · đang học N3</span><i class="plan-track" aria-hidden="true"><i></i></i></div>
     <a class="nav-item" href="#trang-chu" data-nav="trang-chu"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 11l8-6 8 6v8a1 1 0 0 1-1 1h-4v-5H9v5H5a1 1 0 0 1-1-1z"/></svg>Trang chủ</a>
     <a class="nav-item" href="#on-tap" data-nav="on-tap"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="6" width="12" height="14" rx="2"/><path d="M8 3h10a2 2 0 0 1 2 2v12"/></svg>Ôn tập<span class="count" id="nav-due"></span></a>
     <a class="nav-item" href="#shadowing" data-nav="shadowing"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" aria-hidden="true"><path d="M4 10v4M8 7v10M12 4v16M16 8v8M20 11v2"/></svg>Shadowing</a>
     <a class="nav-item" href="#kanji" data-nav="kanji"><span class="glyph" aria-hidden="true">漢</span>Kanji</a>
     <a class="nav-item" href="#jlpt" data-nav="jlpt"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 4h6v3H9zM6 6h12v14H6z"/><path d="M9 13l2 2 4-4"/></svg>JLPT</a>
-    <p class="group-label">Chưa có trong bản mockup</p>
-    <span class="nav-item" aria-disabled="true"><span class="glyph" aria-hidden="true">あ</span>Từ vựng</span>
-    <span class="nav-item" aria-disabled="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" aria-hidden="true"><path d="M5 6h14M5 12h9M5 18h12"/></svg>Ngữ pháp</span>
-    <span class="nav-item" aria-disabled="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linejoin="round" aria-hidden="true"><path d="M3 5h7a2 2 0 0 1 2 2v13a2 2 0 0 0-2-2H3zM21 5h-7a2 2 0 0 0-2 2v13a2 2 0 0 1 2-2h7z"/></svg>Đọc</span>
-    <span class="nav-item" aria-disabled="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h16v10H9l-5 4z"/></svg>Giao tiếp</span>
-    <div class="bottom"><a class="user" href="#trang-chu"><span class="avatar" aria-hidden="true">H</span>Hưng · Hồ sơ</a></div>
+    <p class="group-label">Khám phá & luyện tập</p>
+    <a class="nav-item" href="#tu-vung" data-nav="tu-vung"><span class="glyph" aria-hidden="true">あ</span>Từ vựng</a>
+    <a class="nav-item" href="#ngu-phap" data-nav="ngu-phap"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" aria-hidden="true"><path d="M5 6h14M5 12h9M5 18h12"/></svg>Ngữ pháp</a>
+    <a class="nav-item" href="#doc" data-nav="doc"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linejoin="round" aria-hidden="true"><path d="M3 5h7a2 2 0 0 1 2 2v13a2 2 0 0 0-2-2H3zM21 5h-7a2 2 0 0 0-2 2v13a2 2 0 0 1 2-2h7z"/></svg>Đọc</a>
+    <a class="nav-item" href="#giao-tiep" data-nav="giao-tiep"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h16v10H9l-5 4z"/></svg>Giao tiếp</a>
+    <div class="bottom"><p class="sidebar-note"><span lang="ja">一日一歩</span>Mỗi ngày, một bước tiến.</p><a class="user" href="#trang-chu"><span class="avatar" aria-hidden="true">H</span><span><b>Hưng</b><small>Người học · mục tiêu N3</small></span></a></div>
   </nav>
 
   <div class="sheet">
     <header class="topbar"><svg aria-hidden="true"><use href="#mark"/></svg><span id="topbar-title">Nihon Nihon</span></header>
-    <main class="canvas">
+    <main class="canvas" id="main" tabindex="-1">
 
       <!-- =============== TRANG CHỦ =============== -->
       <section data-view="trang-chu" class="area-home col" aria-labelledby="h-home">
@@ -47,13 +48,16 @@
           <div class="actions"><a class="btn primary" href="#on-tap" id="home-cta"></a></div>
         </div>
 
-        <div class="pitch px" id="pitch"><div class="crowd" id="crowd" aria-hidden="true"></div><div class="board" id="board"></div></div>
+        <section class="study-hero" aria-labelledby="hero-title">
+  <div class="hero-copy"><span class="eyebrow">MỘT CHÚT MỖI NGÀY, MỘT CHẶNG ĐƯỜNG XA</span><h2 id="hero-title">Tiếng Nhật gần hơn<br>qua từng ngày.</h2><p>Hôm nay, cùng luyện kính ngữ công sở.<br>Bắt đầu từ những thẻ ôn quen thuộc nhé.</p><a class="btn hero-cta" href="#on-tap">Tiếp tục học <span aria-hidden="true">↗</span></a><div id="board" class="hero-foot"></div></div>
+  <svg class="hero-art" viewBox="0 0 440 300" fill="none" aria-hidden="true"><circle cx="300" cy="95" r="59" fill="#D8B97D"/><path d="M42 260 219 65 401 260" fill="#9FAF98"/><path d="m219 65-61 68 32-6 29 16 29-15 32 5z" fill="#F5F0DE"/><path d="M0 227c90-61 143 9 233-19 73-23 136-6 207 31v61H0z" fill="#6F8B76"/><path d="M0 271c113-65 220-49 440-8v37H0z" fill="#466E5B"/><path d="M272 300c-12-25-70-35-64-51 5-14 55-18 46-31" stroke="#C6CEAE" stroke-width="12"/><g stroke="#284F40" stroke-width="9"><path d="M343 300V163m47 137V163M333 179h67M327 159q40 12 79 0"/></g><g fill="#C2CDAF"><circle cx="70" cy="176" r="24"/><circle cx="47" cy="193" r="19"/><circle cx="82" cy="202" r="27"/></g><path d="M64 258v-61m0 26-16-14m16 4 15-18" stroke="#284F40" stroke-width="5"/><circle cx="378" cy="55" r="3" fill="#C2CDAF"/><path d="m106 75 8-4 8 4m9 13 6-3 6 3" stroke="#C2CDAF" stroke-width="2"/></svg>
+</section>
 
         <div class="grid tiles" id="tiles"></div>
 
         <div class="grid">
           <section class="panel span-9" aria-labelledby="h-today">
-            <header><h2 id="h-today">Đội hình hôm nay <span class="chip" id="today-count"></span> <span class="badge-xp" id="xp-badge"></span></h2><span class="meta" id="today-mins"></span></header>
+            <header><h2 id="h-today">Kế hoạch hôm nay <span class="chip" id="today-count"></span> <span class="badge-xp" id="xp-badge"></span></h2><span class="meta" id="today-mins"></span></header>
             <ol class="cards" id="today-list"></ol>
           </section>
           <section class="panel span-3" aria-labelledby="h-week">
@@ -67,7 +71,7 @@
 
         <div class="grid">
           <section class="panel span-6" aria-labelledby="h-cov">
-            <header><h2 id="h-cov">Độ phủ N3 so với lộ trình</h2><a class="card-link" href="#jlpt">Chi tiết</a></header>
+            <header><h2 id="h-cov">Bạn đã đi được bao xa?</h2><a class="card-link" href="#jlpt">Chi tiết</a></header>
             <ul class="cov" id="cov"></ul>
             <p class="key" style="margin-top:16px"><span><i></i>Đã thuộc</span><span><i class="l"></i>Đã học, chưa thuộc</span><span><i class="m"></i>Mức lộ trình hôm nay</span></p>
           </section>
@@ -235,12 +239,14 @@
   <a href="#shadowing" data-nav="shadowing"><span class="g" aria-hidden="true">声</span>Shadowing</a>
   <a href="#kanji" data-nav="kanji"><span class="g" aria-hidden="true">漢</span>Kanji</a>
   <a href="#jlpt" data-nav="jlpt"><span class="g" aria-hidden="true">試</span>JLPT</a>
+  <details class="explore-nav"><summary><span class="g" aria-hidden="true">＋</span>Thêm</summary><div class="explore-menu"><a href="#tu-vung" data-nav="tu-vung">Từ vựng</a><a href="#ngu-phap" data-nav="ngu-phap">Ngữ pháp</a><a href="#doc" data-nav="doc">Đọc</a><a href="#giao-tiep" data-nav="giao-tiep">Giao tiếp</a></div></details>
 </nav>
 
 <div id="fx" aria-hidden="true"></div>
-<script src="sprites.js"></script><script src="transitions.js"></script>
+<script src="sprites.js"></script>
 <script src="charts.js"></script>
 <script src="data.js"></script>
+<script src="lessons.js"></script>
 <script src="app.js"></script>
 </body>
 </html>
