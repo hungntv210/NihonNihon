@@ -7,6 +7,22 @@
 
 Tài liệu này đọc riêng được: mọi quyết định cần cho nhánh đều nằm ở đây.
 
+## Mốc triển khai hiện tại — bản nháp 05/11/2026
+
+Theo yêu cầu hiện tại: **hoàn thành khi có đủ 5 phần tài liệu và có bản nháp schema**.
+Mốc này đã đạt tại [đặc tả 5 phần](../data/data-source-spec.md) và
+[SQLite schema Draft 0.1](../data/schema.draft.sql). Khảo sát 15 file OpenJLPT thật
+được lưu bằng metadata/counts/checksum ở [source-audit.json](../data/source-audit.json).
+Không đưa dữ liệu raw hay dữ liệu riêng tư vào Git.
+
+Kiểm tra: Node 24 có `node:sqlite`, chạy `node --test tests/data/schema.test.cjs`
+(9 bài); không cài thêm thư viện. Kiểm thử dùng fixture tự tạo trong database bộ nhớ,
+không phải batch nhập thật của nhánh `g0/data-import`.
+
+Các tiêu chí ban đầu về batch thử/chốt schema bên dưới vẫn là mốc sau; không đánh
+dấu Frozen khi chưa có báo cáo batch. Nguồn chưa tải được ghi Planned/Unverified,
+đặc biệt không giả định CVDICT có artifact hợp lệ hay KanjiDictVN được phép phát hành lại.
+
 ## Mục tiêu
 
 Chốt cấu trúc database dựa trên **dữ liệu thật** của các nguồn trước khi viết code giao diện, để không phải sửa database về sau.
@@ -15,11 +31,11 @@ Chốt cấu trúc database dựa trên **dữ liệu thật** của các nguồ
 
 Tài liệu `docs/data/data-source-spec.md` gồm 5 phần:
 
-- [ ] **Danh mục nguồn:** tên, URL, định dạng, giấy phép, phiên bản, phạm vi của từng nguồn
-- [ ] **Map trường:** từng trường nguồn → cột database, quy tắc chuyển đổi
-- [ ] **Schema:** bảng, khoá chính, khoá ngoại, quan hệ; bảng `data_sources`
-- [ ] **Quy trình import:** tải, làm sạch, chuẩn hoá NFC, loại trùng, kiểm tra, cập nhật hằng tháng
-- [ ] **Lớp nội dung tiếng Việt:** bảng dịch riêng, ghi nguồn từng bản dịch (từ điển / Hán Việt / Tatoeba / dịch máy), giữ bản dịch khi nguồn cập nhật
+- [x] **Danh mục nguồn:** tên, URL, định dạng, giấy phép, phiên bản, phạm vi của từng nguồn (ghi rõ nguồn chưa pin/tải)
+- [x] **Map trường:** từng trường nguồn → cột database, quy tắc chuyển đổi (adapter nguồn chưa tải có điều kiện khảo sát trước import)
+- [x] **Schema:** bảng, khoá chính, khoá ngoại, quan hệ; bảng `data_sources` — bản nháp
+- [x] **Quy trình import:** tải, làm sạch, chuẩn hoá NFC, loại trùng, kiểm tra, cập nhật hằng tháng
+- [x] **Lớp nội dung tiếng Việt:** bảng dịch riêng, ghi nguồn từng bản dịch (từ điển / Hán Việt / Tatoeba / dịch máy), giữ bản dịch khi nguồn cập nhật
 
 Thứ tự làm: tải dữ liệu thật → nháp phần 1–3 → batch thử (nhánh `g0/data-import`) → sửa schema → chốt phần 3–5.
 
@@ -51,14 +67,14 @@ Thứ tự làm: tải dữ liệu thật → nháp phần 1–3 → batch thử
 
 ## Tiêu chí hoàn thành
 
-- [ ] Đủ 5 phần, mỗi bảng có khoá và quan hệ rõ ràng
+- [x] Đủ 5 phần, mỗi bảng có khoá và quan hệ rõ ràng (Draft 0.1)
 - [ ] Mỗi nguồn ghi đủ giấy phép, phiên bản, cách ghi công
 - [ ] Schema đã được sửa theo kết quả batch thử và được chốt
 
 ## Câu hỏi còn mở
 
 - Chọn công cụ ORM: Drizzle hay Prisma.
-- Có lưu toàn bộ JMdict (~200.000 mục) hay chỉ phần cần cho tra cứu.
+- Draft chọn giữ tập JMdict liên quan trước; chưa dựng full dictionary. Đánh giá lại theo bộ đo batch và nhu cầu tra cứu.
 
 ## Bối cảnh chung (tóm tắt)
 

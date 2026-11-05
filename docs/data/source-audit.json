@@ -1,0 +1,523 @@
+{
+  "checked_on": "2026-11-05",
+  "status": "upstream-inspection-only-not-import-batch",
+  "commit": "0d1d3410bec90bd4098a7c72de820543cb4f707c",
+  "version": "0.3.0",
+  "meta_sha256": "63334eac2e90a55c812ad4a4d874998313a0a75399cc28a7d08c2095e4b8fd0a",
+  "upstream": {
+    "name": "OpenJLPT",
+    "version": "0.3.0",
+    "license": "CC-BY-SA-4.0",
+    "homepage": "https://github.com/evanclan/OpenJLPT",
+    "counts": {
+      "vocab": {
+        "N5": 674,
+        "N4": 630,
+        "N3": 1659,
+        "N2": 1778,
+        "N1": 3070,
+        "total": 7811
+      },
+      "kanji": {
+        "N5": 84,
+        "N4": 169,
+        "N3": 387,
+        "N2": 398,
+        "N1": 1345,
+        "total": 2383
+      },
+      "grammar": {
+        "N5": 81,
+        "N4": 98,
+        "N3": 101,
+        "N2": 123,
+        "N1": 123,
+        "total": 526
+      }
+    },
+    "vocab_with_examples": 7245,
+    "sources": {
+      "waller": {
+        "url": "https://www.tanos.co.uk/jlpt/",
+        "license": "CC BY",
+        "snapshot": "sources/waller/"
+      },
+      "jmdict": {
+        "created": "2026-09-29"
+      },
+      "kanjidic2": {
+        "database_version": "2026-272",
+        "created": "2026-09-29"
+      },
+      "tatoeba": {
+        "url": "https://tatoeba.org",
+        "license": "CC BY 2.0 FR"
+      }
+    }
+  },
+  "files": [
+    {
+      "path": "data/json/vocab/n5.json",
+      "sha256": "c289a46e326d495b0bc0a981c2a6733cf9d4986f4c8a505a5f24753135b2bd13",
+      "rows": 674,
+      "duplicate_keys_across_levels": 0,
+      "fields": [
+        "examples",
+        "id",
+        "jmdict_id",
+        "level",
+        "meanings",
+        "other_forms",
+        "other_readings",
+        "pos",
+        "reading",
+        "romaji",
+        "word"
+      ],
+      "without_examples": 10
+    },
+    {
+      "path": "data/json/vocab/n4.json",
+      "sha256": "e7e8f1d42e2245aba3b56440bf8cc8e3f0ac231fa20fb7e557901dcc6b6e2dd2",
+      "rows": 630,
+      "duplicate_keys_across_levels": 0,
+      "fields": [
+        "examples",
+        "id",
+        "jmdict_id",
+        "level",
+        "meanings",
+        "other_forms",
+        "other_readings",
+        "pos",
+        "reading",
+        "romaji",
+        "word"
+      ],
+      "without_examples": 6
+    },
+    {
+      "path": "data/json/vocab/n3.json",
+      "sha256": "99b8c8fac46e7add7e11ffde6763df7261bb68b8c83f978a13fd274108eeedd0",
+      "rows": 1659,
+      "duplicate_keys_across_levels": 0,
+      "fields": [
+        "examples",
+        "id",
+        "jmdict_id",
+        "level",
+        "meanings",
+        "other_forms",
+        "pos",
+        "reading",
+        "romaji",
+        "word"
+      ],
+      "without_examples": 35
+    },
+    {
+      "path": "data/json/vocab/n2.json",
+      "sha256": "613a00583534b8e0a403c366085d278174afe234aea06ea5da2868f3934edd64",
+      "rows": 1778,
+      "duplicate_keys_across_levels": 0,
+      "fields": [
+        "examples",
+        "id",
+        "jmdict_id",
+        "level",
+        "meanings",
+        "other_forms",
+        "pos",
+        "reading",
+        "romaji",
+        "word"
+      ],
+      "without_examples": 115
+    },
+    {
+      "path": "data/json/vocab/n1.json",
+      "sha256": "6d3e7b65a56813f6135b295f4ebc3ad6fe88e0cdbd351c5d9ffde88ba4dffe8b",
+      "rows": 3070,
+      "duplicate_keys_across_levels": 0,
+      "fields": [
+        "examples",
+        "id",
+        "jmdict_id",
+        "level",
+        "meanings",
+        "other_forms",
+        "other_readings",
+        "pos",
+        "reading",
+        "romaji",
+        "word"
+      ],
+      "without_examples": 400
+    },
+    {
+      "path": "data/json/kanji/n5.json",
+      "sha256": "9c3d1921ad859a2466f6a386f802f4b79e70cda66acdc19d005747f82473ffb9",
+      "rows": 84,
+      "duplicate_keys_across_levels": 0,
+      "fields": [
+        "character",
+        "freq",
+        "grade",
+        "kunyomi",
+        "level",
+        "meanings",
+        "nanori",
+        "onyomi",
+        "radical",
+        "radical_number",
+        "strokes",
+        "supplementary",
+        "words"
+      ],
+      "without_examples": null
+    },
+    {
+      "path": "data/json/kanji/n4.json",
+      "sha256": "ef2fbd886dea6d7ce012762cb90a4a354a62b41b3b0f0d680f6c8f44f06abfcb",
+      "rows": 169,
+      "duplicate_keys_across_levels": 0,
+      "fields": [
+        "character",
+        "freq",
+        "grade",
+        "kunyomi",
+        "level",
+        "meanings",
+        "nanori",
+        "onyomi",
+        "radical",
+        "radical_number",
+        "strokes",
+        "supplementary",
+        "words"
+      ],
+      "without_examples": null
+    },
+    {
+      "path": "data/json/kanji/n3.json",
+      "sha256": "474ca451b57862e711acfbb5a81606eab89a79848d94189bd4d9546ef416cffe",
+      "rows": 387,
+      "duplicate_keys_across_levels": 0,
+      "fields": [
+        "character",
+        "freq",
+        "grade",
+        "kunyomi",
+        "level",
+        "meanings",
+        "nanori",
+        "onyomi",
+        "radical",
+        "radical_number",
+        "strokes",
+        "supplementary",
+        "words"
+      ],
+      "without_examples": null
+    },
+    {
+      "path": "data/json/kanji/n2.json",
+      "sha256": "92eb1a972ae4e20dee8cd728a08f5126488ae0caf833da5a23fe25dad06048d1",
+      "rows": 398,
+      "duplicate_keys_across_levels": 0,
+      "fields": [
+        "character",
+        "freq",
+        "grade",
+        "kunyomi",
+        "level",
+        "meanings",
+        "nanori",
+        "onyomi",
+        "radical",
+        "radical_number",
+        "strokes",
+        "supplementary",
+        "words"
+      ],
+      "without_examples": null
+    },
+    {
+      "path": "data/json/kanji/n1.json",
+      "sha256": "a5025c9024165ebec37ef206bbd5342524d0dde39119c84964ea75fa966b296d",
+      "rows": 1345,
+      "duplicate_keys_across_levels": 0,
+      "fields": [
+        "character",
+        "freq",
+        "grade",
+        "kunyomi",
+        "level",
+        "meanings",
+        "nanori",
+        "onyomi",
+        "radical",
+        "radical_number",
+        "strokes",
+        "supplementary",
+        "words"
+      ],
+      "without_examples": null
+    },
+    {
+      "path": "data/json/grammar/n5.json",
+      "sha256": "471149eb043a9bb5d801bc369d2afb88897db61b4c4864c8b17e8263b5937d1d",
+      "rows": 81,
+      "duplicate_keys_across_levels": 0,
+      "fields": [
+        "examples",
+        "formation",
+        "id",
+        "level",
+        "meaning",
+        "notes",
+        "pattern",
+        "reading",
+        "romaji",
+        "tags"
+      ],
+      "without_examples": 0
+    },
+    {
+      "path": "data/json/grammar/n4.json",
+      "sha256": "daf0c988f003a41f5c97407142e6f84cf022411c283586a89283ed9e156232f0",
+      "rows": 98,
+      "duplicate_keys_across_levels": 0,
+      "fields": [
+        "examples",
+        "formation",
+        "id",
+        "level",
+        "meaning",
+        "notes",
+        "pattern",
+        "reading",
+        "romaji",
+        "tags"
+      ],
+      "without_examples": 0
+    },
+    {
+      "path": "data/json/grammar/n3.json",
+      "sha256": "25e40aac80604b611f9c28780dc3cc409b3ed832010e8b3d2527e0e1a63a5821",
+      "rows": 101,
+      "duplicate_keys_across_levels": 0,
+      "fields": [
+        "examples",
+        "formation",
+        "id",
+        "level",
+        "meaning",
+        "notes",
+        "pattern",
+        "reading",
+        "romaji",
+        "tags"
+      ],
+      "without_examples": 0
+    },
+    {
+      "path": "data/json/grammar/n2.json",
+      "sha256": "2ce823a21f403b767ec5c25c1751c6f22cbfb95f0cdad93e0b00b24d8c4e09a1",
+      "rows": 123,
+      "duplicate_keys_across_levels": 0,
+      "fields": [
+        "examples",
+        "formation",
+        "id",
+        "level",
+        "meaning",
+        "notes",
+        "pattern",
+        "reading",
+        "romaji",
+        "tags"
+      ],
+      "without_examples": 0
+    },
+    {
+      "path": "data/json/grammar/n1.json",
+      "sha256": "f1eec3e71f98dfa2a9cb4aa9e6953966c4c169d10a5a073482c8766ebd05b1f5",
+      "rows": 123,
+      "duplicate_keys_across_levels": 0,
+      "fields": [
+        "examples",
+        "formation",
+        "id",
+        "level",
+        "meaning",
+        "notes",
+        "pattern",
+        "reading",
+        "romaji",
+        "tags"
+      ],
+      "without_examples": 0
+    }
+  ],
+  "n5_n2": {
+    "vocab": 4741,
+    "ambiguous_headwords": [
+      {
+        "word": "開く",
+        "readings": [
+          "あく",
+          "ひらく"
+        ]
+      },
+      {
+        "word": "明日",
+        "readings": [
+          "あした",
+          "あす"
+        ]
+      },
+      {
+        "word": "後",
+        "readings": [
+          "あと",
+          "のち"
+        ]
+      },
+      {
+        "word": "言う",
+        "readings": [
+          "いう",
+          "ゆう"
+        ]
+      },
+      {
+        "word": "上",
+        "readings": [
+          "うえ",
+          "うわ"
+        ]
+      },
+      {
+        "word": "一昨年",
+        "readings": [
+          "おととし",
+          "いっさくねん"
+        ]
+      },
+      {
+        "word": "方",
+        "readings": [
+          "かた",
+          "ほう"
+        ]
+      },
+      {
+        "word": "角",
+        "readings": [
+          "かど",
+          "つの"
+        ]
+      },
+      {
+        "word": "辛い",
+        "readings": [
+          "からい",
+          "つらい"
+        ]
+      },
+      {
+        "word": "今日",
+        "readings": [
+          "きょう",
+          "こんにち"
+        ]
+      },
+      {
+        "word": "背",
+        "readings": [
+          "せ",
+          "せい"
+        ]
+      },
+      {
+        "word": "空",
+        "readings": [
+          "そら",
+          "から"
+        ]
+      },
+      {
+        "word": "中",
+        "readings": [
+          "なか",
+          "ちゅう"
+        ]
+      },
+      {
+        "word": "何",
+        "readings": [
+          "なん",
+          "なに"
+        ]
+      },
+      {
+        "word": "間",
+        "readings": [
+          "あいだ",
+          "ま"
+        ]
+      },
+      {
+        "word": "打つ",
+        "readings": [
+          "うつ",
+          "ぶつ"
+        ]
+      },
+      {
+        "word": "音",
+        "readings": [
+          "おと",
+          "おん"
+        ]
+      },
+      {
+        "word": "表",
+        "readings": [
+          "おもて",
+          "ひょう"
+        ]
+      },
+      {
+        "word": "工場",
+        "readings": [
+          "こうじょう",
+          "こうば"
+        ]
+      },
+      {
+        "word": "大分",
+        "readings": [
+          "だいぶ",
+          "だいぶん"
+        ]
+      },
+      {
+        "word": "都",
+        "readings": [
+          "と",
+          "みやこ"
+        ]
+      },
+      {
+        "word": "日",
+        "readings": [
+          "ひ",
+          "にち"
+        ]
+      }
+    ],
+    "without_examples": 166
+  }
+}
