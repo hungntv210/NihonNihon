@@ -1,2 +1,12 @@
 .superpowers/
 .taste-skill/
+
+# Local upstream downloads, staging, private media and database backups.
+/data/raw/
+/data/downloads/
+/data/staging/
+/data/private/
+/data/*.sqlite*
+/data/*.db*
+/storage/private/
+/backups/
