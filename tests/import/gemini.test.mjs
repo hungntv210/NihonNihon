@@ -108,3 +108,43 @@ test('global call cap stops before another request and audits every response',as
  const {options}=await setup(t);let calls=0;const attempts=[];const result=await runGemini({...options,limit:25,maxCalls:1,ai:fake(async p=>{calls++;return {text:JSON.stringify(output(p))};}),onAttempt:r=>attempts.push(r)});
  assert.equal(calls,1);assert.equal(result.calls,1);assert.equal(result.status,'request_limit');assert.equal(result.sent,20);assert.equal(attempts.length,1);assert.equal(attempts[0].http_status,200);
 });
+
+test('Pacific quota reset follows midnight including DST rather than Vietnam midnight',async()=>{
+ const {nextPacificReset,quotaDay}=await import('../../tools/data/mt-gemini.mjs');
+ assert.equal(new Date(nextPacificReset(Date.parse('2026-11-06T06:45:00Z'))).toISOString(),'2026-11-06T08:00:00.000Z');
+ assert.equal(new Date(nextPacificReset(Date.parse('2026-07-01T06:00:00Z'))).toISOString(),'2026-07-01T07:00:00.000Z');
+ const reset=nextPacificReset(Date.parse('2026-11-06T06:45:00Z'));assert.notEqual(quotaDay(reset-1),quotaDay(reset));
+});
+
+test('numeric glossary distinguishes inclusive bounds without changing discourse',async()=>{
+ const {validateTerminology,numericGlossaryRequirements}=await import('../../tools/data/mt-gemini.mjs');
+ for(const [term,vi]of [['以下','20 người trở xuống'],['以上','20 người trở lên'],['未満','dưới 20 người']]){
+ const req={request_id:term,task:'translate',input:{ja:'２０人'+term+'です。'}};
+ validateTerminology([{request_id:term,output:{text_vi:vi}}],[req]);
+ assert.throws(()=>validateTerminology([{request_id:term,output:{text_vi:'hơn 20 người'}}],[req]),/Numeric/);
+ }
+ assert.equal(numericGlossaryRequirements({ja:'学生である以上、勉強すべきです。'}).length,0);
+});
+
+test('60 translation items fit one Flash request and caches still verify changed source artifacts',async t=>{
+ const {f,options}=await setup(t);const original={...f.vocab[0],examples:[]};f.vocab.splice(0,f.vocab.length,...Array.from({length:70},(_,i)=>({...original,id:String(i+1).padStart(10,'0'),word:'公開'+i})));f.write('vocab.json',f.vocab);f.save();
+ const p={config,manifestPath:f.dir+'/sixty-manifest.json',requestsPath:f.dir+'/sixty-queue.json',resultsPath:f.dir+'/sixty-results.json',statePath:f.dir+'/sixty-state.json'};
+ await prepare({config,manifestPath:f.manifestPath,outputManifest:p.manifestPath,requestsPath:p.requestsPath,resultsPath:p.resultsPath});let calls=0;
+ const result=await runGemini({...p,limit:60,batchSize:60,ai:fake(async params=>{calls++;assert.equal(JSON.parse(params.contents).length,60);return {text:JSON.stringify(output(params))};})});assert.equal(result.sent,60);assert.equal(calls,1);
+ const {publicPlan}=await import('../../tools/data/mt-gemini.mjs');await publicPlan(p.manifestPath,{cache:true});fs.writeFileSync(f.dir+'/vocab.json','[]');await assert.rejects(()=>publicPlan(p.manifestPath,{cache:true}),/checksum/i);
+});
+
+test('quality gate rejects output before checkpointing and audits the reason within the call cap',async t=>{
+ const {options}=await setup(t);let clock=Date.now(),calls=0;const attempts=[],pauses=[];
+ const result=await runGemini({...options,config:{...config,pause_after_response_ms:5000},maxCalls:2,ai:fake(async p=>{calls++;return {text:JSON.stringify(output(p))};}),validateOutput:()=>{throw Error('Rejected by QA');},onAttempt:a=>attempts.push(a),now:()=>clock,sleep:async ms=>{clock+=ms;pauses.push(ms);}});
+ assert.equal(result.calls,2);assert.equal(result.sent,0);assert.equal(result.status,'request_limit');assert.equal(result.invalid_outputs,2);assert.ok(attempts.every(a=>a.validation_error==='quality_gate'));assert.equal(pauses.filter(ms=>ms===5000).length,2);assert.deepEqual(JSON.parse(fs.readFileSync(options.resultsPath)),[]);
+});
+
+test('campaign imports preserve model provenance and reruns do not duplicate output',async t=>{
+ const {f,options}=await setup(t);await runGemini({...options,ai:fake(async p=>({text:JSON.stringify(output(p))}))});
+ const backup={...config,model:'gemini-second',route:'learning'},p={config:backup,manifestPath:f.dir+'/second-manifest.json',requestsPath:f.dir+'/second-queue.json',resultsPath:f.dir+'/second-results.json',statePath:f.dir+'/second-quota.json'};
+ await prepare({manifestPath:f.manifestPath,config:backup,outputManifest:p.manifestPath,requestsPath:p.requestsPath,resultsPath:p.resultsPath});await runGemini({...p,ai:fake(async params=>({text:JSON.stringify(output(params).map(r=>({...r,output:{text_vi:'Bản khác'}})))}))});
+ const {importCampaign}=await import('../../tools/data/translation-campaign.mjs');const args={baseManifest:options.manifestPath,profiles:[p],directory:f.dir+'/campaign',dbPath:f.dbPath};
+ await importCampaign(args);const db=f.open();const query="SELECT json_extract(r.manifest_json,'$.model') model,count(*) n FROM vi_translations t JOIN source_releases r USING(release_id) WHERE t.method='machine' GROUP BY model ORDER BY model";
+ const first=db.prepare(query).all().map(r=>({...r}));assert.ok(first.some(r=>r.model===config.model&&r.n===20));assert.ok(first.some(r=>r.model===backup.model&&r.n===20));await importCampaign(args);assert.deepEqual(db.prepare(query).all().map(r=>({...r})),first);
+});

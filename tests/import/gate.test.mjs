@@ -6,3 +6,7 @@ test('quality gate identifies malformed/missing, empty, copied Japanese, length 
  const n=inspectBatch(JSON.stringify([{request_id:'0',output:{text_vi:'Việt'.normalize('NFD')}}]),req.slice(0,1));assert.equal(n.non_nfc,1);
  const summary=summarizeGate([{http_status:200,qa:r},{http_status:503}],3);assert.equal(summary.api_requests,2);assert.equal(summary.http_errors,1);assert.equal(summary.rates_percent.empty,25);assert.equal(summary.status,'REVIEW_REQUIRED');
 });
+test('schema-valid responses rejected by terminology still count as failed validation',()=>{
+ const req=[{request_id:'1',task:'translate',input:{ja:'私は学生です。'}}],qa=inspectBatch(JSON.stringify([{request_id:'1',output:{text_vi:'Tôi là học sinh.'}}]),req);
+ const summary=summarizeGate([{http_status:200,qa,validation_error:'terminology'}],1);assert.equal(summary.validation_failures,1);assert.equal(summary.request_rates_percent.validation_failure,100);assert.equal(summary.status,'REVIEW_REQUIRED');
+});

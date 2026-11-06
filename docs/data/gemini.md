@@ -51,7 +51,7 @@ Khoá hiện ở checkout `C:/Users/Admin/NihonNihon/.env`, còn code trong work
 `g0-data-import`; có thể thay `--env-file=.env` bằng đường dẫn tuyệt đối tới tệp
 đó. Không cần sao chép khoá. Không chạy khi chưa biết model/hạn mức.
 
-20–40 mục/call, nhóm riêng dịch và HV để dùng schema chính xác; nhóm cuối có thể
+20–60 mục/call, nhóm riêng dịch và HV để dùng schema chính xác; nhóm cuối có thể
 ít hơn 20. Từng call tuần tự, nghỉ theo RPM; SDK retry tự động bị tắt để mỗi lần
 thử đều được đếm. 429 nghỉ tăng dần tối đa 5 lần thử, có RetryInfo thì tôn trọng.
 Quota ngày dừng đến ngày Pacific kế tiếp; hết budget cục bộ cũng dừng. Lỗi khác
@@ -82,7 +82,7 @@ Config nhận thêm:
 - api: interactions hoặc generateContent (mặc định cũ là generateContent).
 - thinking_level: minimal / low / medium / high, pin trong MT release.
 - route: learning (nghĩa, ngữ pháp, Hán Việt) hoặc sentences (field=text).
-- batch_size: 20–40; min_interval_ms: khoảng nghỉ tối thiểu ngoài kiểm tra RPM.
+- batch_size: 20–60; min_interval_ms: khoảng nghỉ tối thiểu ngoài kiểm tra RPM.
 
 Interactions dùng response_format `{type:"text", mime_type:"application/json",
 schema:...}`, generation_config.thinking_level và output_text; store=false,
@@ -220,3 +220,61 @@ lưu ID của mẫu để đối chiếu, không chọn lại theo bản dịch 
 nhiều cấp được gán cấp đầu tiên trong thứ tự N5→N2, giữ toàn bộ owner/English variant
 trong provenance. Mẫu gửi duyệt có Nhật, Anh, Việt, model, request_id và cờ QA, kèm
 ít nhất 10 giải thích ngữ pháp dài đã có bản dịch.
+
+## Chiến dịch được duyệt: prompt v4 và lịch Pacific
+
+`gemini-vi-hv-4` thêm 以下 = trở xuống, 以上 = trở lên (bao gồm mốc),
+未満 = dưới (không gồm mốc). Validator áp dụng cho ngưỡng số và mục từ độc lập;
+không ép nghĩa số vào 以上です/〜以上は. V4 khai báo thay thế v1–v3. Cache đã
+đạt giữ release cũ; chỉ gửi lại câu không đạt thuật ngữ mới, không đổi nhãn cache.
+
+Adapter tính ngày quota bằng `America/Los_Angeles`, ghi cả ngày quota và thời điểm
+reset UTC/Việt Nam trong ledger. Midnight Pacific là 15h Việt Nam vào mùa đông,
+14h khi Pacific áp dụng DST; kiểm thử bao phủ cả hai. Mọi lần thử, kể cả HTTP lỗi,
+đều được tính bảo thủ vào budget. Không xoá ledger khi khởi động lại.
+
+Sau khi chủ dự án cho phép chạy toàn bộ, dùng worker:
+
+```sh
+node --env-file=.env tools/data/translation-campaign.mjs --config data/private/campaign-v4-config.json
+```
+
+Config riêng tư khai báo `directory`, `sentence_base`, `learning_base`,
+`sentence_cache` (câu đã duyệt), `learning_cache` (requests/results đã duyệt),
+`sentence_order`, `sentence_provenance`, `learning_not_before` (UTC), và bốn
+profile đầy đủ: `sentence_primary`, `sentence_backup`, `learning`, `probe`.
+Mỗi profile có ledger `state_path` riêng theo model. Không đổi profile sau khi
+đã chuẩn bị manifest; tạo thư mục chiến dịch mới nếu đổi model/prompt/config.
+
+Lịch đã duyệt ngày 06/11/2026:
+
+- Mỗi lô 30 câu: thử 3.5 Flash Lite một lần, chưa đạt thì sang 3.1 Flash Lite,
+  tối đa ba lần; nghỉ ít nhất 5 giây, tôn trọng cả RPM/TPM/RPD đã cấu hình.
+- 3.6 Flash chờ `learning_not_before`, 60 mục/call, trần 17 lần gọi/ngày Pacific
+  gồm retry; trộn tối đa 20 yêu cầu Hán Việt với nghĩa/ngữ pháp trong mỗi lô.
+- Sau mốc chờ, thử 3.8 Flash đúng một call; ghi `probe.started` trước API để restart
+  không thử lại. Probe có budget riêng bằng 1; không dùng 3.8 chạy phần còn lại.
+
+Khác CLI adapter chạy một lượt, worker được duyệt tự chờ reset rồi tiếp tục từ
+checkpoint. Lỗi nội dung hết retry được hoãn riêng tới ngày sau, các lô khác
+tiếp tục. Nếu cả hai model câu lỗi dịch vụ, hoặc 3.6 hết quota/lỗi dịch vụ,
+luồng tương ứng chờ reset. `status.json` ghi tiến độ và trạng thái chờ, `audit.json`
+ghi số call, HTTP status, loại lỗi validation và request IDs. Response bị từ chối
+được giữ riêng trong thư mục private để chẩn đoán, không nhập vào database.
+
+Cổng câu kiểm tra output trước khi lưu; không nhận dòng còn chữ Nhật, sao chép
+câu gốc hoặc lệch độ dài. Báo cáo giữ lỗi của các lần thử riêng với QA kết quả
+đã lưu. NFC được chuẩn hoá trước khi ghi. Learning luôn kiểm tra schema, đủ ID,
+thuật ngữ và membership/căn cứ Hán Việt; câu Nhật được trích trong giải thích
+ngữ pháp/Hán Việt không bị coi là lỗi còn sót chữ Nhật.
+
+Khi cả hai luồng đủ 100%, worker kiểm tra lại mọi câu đã lưu và xuất
+`review-30-sentences.json`, `review-10-han-viet.json`, `review.md` trong directory.
+30 câu mới chia N5/N4/N3/N2 = 8/8/7/7, có Nhật/Anh/Việt/model/cờ QA; mười mục
+Hán Việt giữ candidate, từ ghép, nghĩa và căn cứ. Nếu config có `import` với
+`baseManifest` và `dbPath`, worker gộp các profile đã pin, nhập SQLite có backup
+và ghi `import-report.json`; không gán model dự phòng cho release model chính.
+
+Giữ máy và worker chạy để tự tiếp tục qua reset. Nếu bị ngắt, xác minh PID trong
+`campaign.lock` đã kết thúc rồi mới xoá đúng lock cũ, chạy lại cùng config.
+Không chạy song song worker thứ hai; raw/cache/kết quả/ledger vẫn gitignored.
