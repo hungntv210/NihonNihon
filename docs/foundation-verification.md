@@ -61,3 +61,38 @@ Kiểm thử phạm vi đã xác nhận nhánh chức năng được thêm nhậ
 đồng thời bị chặn khi sửa bản ghi cũ hoặc di chuyển file dùng chung vào tuyến.
 Log thô: `data/reports/pre-push-162ecc6-20261106T162118.log` (gitignored).
 Database/credential kiểm thử là tạm; không gọi Gemini hoặc ghi vào DB G0.
+
+### 06/11/2026 — 16:29:56 (UTC+07:00)
+
+- Commit đã kiểm tra: [`0e00ce9918ae0caeb670ab0d2f2ebf5bc2f9cedc`](https://github.com/hungntv210/NihonNihon/commit/0e00ce9918ae0caeb670ab0d2f2ebf5bc2f9cedc).
+- Bắt đầu: `2026-11-06T16:29:01.5242075+07:00`.
+- Kết thúc: `2026-11-06T16:29:56.7853175+07:00`.
+- Môi trường: Windows, Node `v24.10.0`, Chrome headless.
+- Lệnh: `npm run check`; exit code `0`.
+
+| Cổng | Kết quả |
+| --- | --- |
+| typecheck (`next typegen` + `tsc --noEmit`) | Đạt |
+| test — prototype | 22/22 đạt |
+| test — foundation | 12/12 đạt |
+| Tổng kiểm thử | **34/34 đạt**, 0 lỗi, 0 bỏ qua |
+| build — Next.js production/Webpack | Đạt |
+| test:app — HTTP và Chrome, desktop/mobile | Đạt |
+
+Đã tái hiện lỗi trước sửa bằng file thử
+`data/raw/OpenJLPT/scripts/nihon-foundation-exclude-regression.ts` chứa phép gán
+`string = 123`: TypeScript báo TS2322. Giữ nguyên file thử có lỗi trong toàn bộ
+lượt `npm run check` sau khi thêm `data` vào exclude; cả typecheck và build đều
+đạt. File thử là dữ liệu local gitignored và được dọn sau khi kiểm tra, không
+phải dữ liệu OpenJLPT được đưa vào fixture.
+
+`git check-ignore --no-index` xác nhận các đường dẫn raw/staging/private/
+requests/backups/mt-results, database và `.env*` được bỏ qua; fixture công khai
+và `.env.example` vẫn không bị ignore và được theo dõi. Tên package và cả hai
+trường tên trong lockfile hiện đều là `nihon-nihon`.
+
+[Hướng dẫn gộp package G0/G1](g0-g1-package-merge.md) quy định `test:data`,
+`test:app`, giữ smoke test HTTP/Chrome qua `test:browser`, hợp dependency và
+tạo lại lockfile. Chưa merge code G0 hoặc chạy bộ test G0 trong worktree G1.
+Log thô: `data/reports/pre-push-0e00ce9-20261106T162901.log` (gitignored).
+Schema, worker dịch và database G0 không thay đổi.
