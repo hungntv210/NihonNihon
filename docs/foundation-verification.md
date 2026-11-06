@@ -104,3 +104,15 @@ Schema, worker dịch và database G0 không thay đổi.
 - npm run check: PASS; prototype 22/22 + foundation 14/14 = **36/36**; typecheck, build và test:app đều đạt.
 - Foundation chỉ bổ sung ts-fsrs@6.0.0 và wanakana@5.3.1 cùng smoke test/hợp đồng dependency; không sửa schema. Đây là phần dùng chung, không thuộc phạm vi một tuyến chức năng.
 - Log local: data/reports/pre-push-a24b8f6-20261106T164550.log (gitignored).
+
+### 2026-11-06T21:06:50.4987672+07:00 — g1/srs
+
+- Commit kiểm tra: ad7a307f685f8ede3e8a066cc8f6df02e9e3a5fa.
+- Bắt đầu: 2026-11-06T21:05:58.1256109+07:00; kết thúc: 2026-11-06T21:06:50.4987672+07:00.
+- npm run check: PASS; 22 prototype +21 foundation/SRS = **43/43**; typecheck, build, test:app đều đạt.
+- node tools/check-route-scope.mjs origin/master srs: PASS (13 file tuyến trước audit).
+- Smoke riêng: offline chấm vào IndexedDB rồi reconnect đồng bộ, replay receipt không tạo review trùng, Chrome desktop/mobile PASS.
+- Soát mã phát hiện chặn đầu hàng do conflict; đã sửa và kiểm thử giữ event lỗi, tiếp tục các thẻ độc lập, giữ thứ tự cùng thẻ.
+- Không đổi schema/phần dùng chung; dependency nhận từ master qua foundation PR2.
+- Giới hạn: offline cold-load chờ PWA; shadow/cloze chưa hỗ trợ; không nghiệm thu G0 hoặc thiết bị thật.
+- Log local: data/reports/pre-push-ad7a307.log (gitignored).
