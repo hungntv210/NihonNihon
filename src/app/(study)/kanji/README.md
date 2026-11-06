@@ -30,7 +30,7 @@ Route tests are discovered by `npm test`. After a production build, extra HTTP/C
 coverage can be run with:
 
 ```sh
-node --import tsx "src/app/(study)/kanji/verify-browser.ts"
+node --import tsx "src/app/(study)/kanji/browser-check.ts"
 ```
 
 This creates an isolated demo database plus explicitly synthetic translations/stroke
