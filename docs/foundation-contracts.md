@@ -52,6 +52,10 @@ Thẻ mới có `state_json={"status":"new"}`, `scheduler_version='pending:g1/sr
 `due_at=now`. Đây là hợp đồng bàn giao: tuyến SRS phải khởi tạo trạng thái scheduler
 đã chọn trước lần chấm đầu tiên. Foundation không giả là đã triển khai FSRS.
 
+Foundation cung cấp dependency dùng chung `ts-fsrs@6.0.0` và `wanakana@5.3.1`
+cho tuyến SRS. SRS dùng model FSRS-6, retention 0.9, không fuzz; state vẫn nằm
+trong JSON của bảng hiện hành. Chuyển romaji dùng wanakana, không gọi API ngoài.
+
 ## Giao diện và kiểm thử
 
 - Token mới ở `src/styles/tokens.css`, theo `docs/interface-redesign.md`.
