@@ -145,7 +145,12 @@ try {
   assert.equal(await page.locator('article.content-card').count(), 1);
   await page.getByRole('link', { name: 'Mở từ và ví dụ →' }).click();
   await page.waitForURL(origin + '/vocab/' + encodeURIComponent(itemId));
-  await page.getByRole('heading', { name: '学生' }).waitFor();
+  await page.locator('main h1').waitFor();
+  assert.equal(await page.locator('main h1').evaluate(element => {
+    const copy=element.cloneNode(true) as HTMLElement;
+    copy.querySelectorAll('rt,rp').forEach(node=>node.remove());
+    return copy.textContent?.trim();
+  }), '学生');
   assert.ok(await page.getByText('Sinh viên', { exact: true }).count());
   assert.ok(await page.getByText('Tôi là sinh viên.', { exact: true }).count());
   assert.ok(await page.getByText(/gemini-synthetic/).count());
