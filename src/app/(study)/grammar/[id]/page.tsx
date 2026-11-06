@@ -5,6 +5,7 @@ import { SourceLabel } from '../../../../components/source-label.tsx';
 import { AddToReview } from '../../../../components/add-to-review.tsx';
 import { JaText, ViText } from '../../../../components/text.tsx';
 import { grammarHref, getGrammar, type GrammarTranslation } from '../repository.ts';
+import { decodeGrammarRouteId } from '../route-id.ts';
 import { focusOf, choiceQuestions, orderingQuestions } from '../practice.ts';
 import { Furigana } from '../furigana.tsx';
 import { PracticePanel } from '../practice-panel.tsx';
@@ -24,8 +25,9 @@ function Vietnamese({ value, grammarId }: { value: GrammarTranslation | null; gr
   );
 }
 export default async function GrammarDetailPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params,
-    data = await withContentDatabase((db) => {
+  const id = decodeGrammarRouteId((await params).id);
+  if (id === null) notFound();
+  const data = await withContentDatabase((db) => {
       const item = getGrammar(db, id);
       return item
         ? {

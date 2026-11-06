@@ -24,6 +24,12 @@ Route-owned implementation; no schema, shared dependency, or private-data change
 exclusion, provenance, exact practice reconstruction, safe furigana and report
 ownership/idempotency. It is picked up by root `npm test`.
 
+After `npm run check`, run `npx tsx "src/app/(study)/grammar/browser-check.ts"`.
+This starts an isolated production server with the public fixture, clicks every
+listing and related-group link at desktop/mobile widths, and verifies short IDs
+and malformed-encoding 404s. The raw result is in ignored
+`data/reports/grammar-browser-check.json`.
+
 Manual walkthrough after `npm run check`: search `subject`, clear/filter N2,
 open `〜は`, read ruby/formation/notes, complete a cloze and a four-piece sentence,
 check the correction/try-again flow, add a card, then inspect at 390px. A report

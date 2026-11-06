@@ -3,11 +3,32 @@ import assert from 'node:assert/strict';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { createElement } from 'react';
 import { fixture } from '../../../../tests/helpers.ts';
-import { getGrammar, listGrammar, fold } from './repository.ts';
+import { getGrammar, listGrammar, fold, grammarHref } from './repository.ts';
+import { decodeGrammarRouteId } from './route-id.ts';
 import { choiceQuestions, orderingQuestions, correctOrder, focusOf } from './practice.ts';
 import { rubySegments, Furigana } from './furigana.tsx';
 import { saveGrammarReport } from './report-repository.ts';
 import { SourceText } from './source-text.tsx';
+
+test('grammar route decodes listing and related IDs once and rejects malformed encoding', (t) => {
+  const { db } = fixture(t);
+  for (const entry of listGrammar(db).items) {
+    const segment = grammarHref(entry.id).slice('/grammar/'.length);
+    assert.match(segment, /%3A/);
+    const item = getGrammar(db, decodeGrammarRouteId(segment)!)!;
+    assert.equal(item.id, entry.id);
+    for (const related of item.related) {
+      const key = decodeGrammarRouteId(grammarHref(related.id).slice('/grammar/'.length));
+      assert.equal(getGrammar(db, key!)?.id, related.id);
+    }
+  }
+  assert.equal(getGrammar(db, decodeGrammarRouteId('wa')!)?.id, 'openjlpt:grammar:wa');
+  assert.equal(decodeGrammarRouteId('openjlpt:grammar:wa'), 'openjlpt:grammar:wa');
+  assert.equal(decodeGrammarRouteId('openjlpt%253Agrammar%253Awa'), 'openjlpt%3Agrammar%3Awa');
+  for (const malformed of ['%', '%2', '%GG', '%E0%A4%A']) {
+    assert.equal(decodeGrammarRouteId(malformed), null);
+  }
+});
 
 test('grammar listing searches Japanese/romaji/English, filters levels, clamps pages and resists SQL payloads', (t) => {
   const { db } = fixture(t);
