@@ -11,8 +11,10 @@ import { AddToReview } from '../../../../components/add-to-review.tsx';
 import styles from '../vocab.module.css';
 
 export default async function WordPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params,
-    item = await getVocabularyDetail(id);
+  const { id: encodedId } = await params;
+  let id: string;
+  try { id=decodeURIComponent(encodedId); } catch { notFound(); }
+  const item = await getVocabularyDetail(id);
   if (!item) notFound();
   return (
     <>
