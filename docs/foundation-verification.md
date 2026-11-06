@@ -145,3 +145,15 @@ Schema, worker dịch và database G0 không thay đổi.
 - Không đổi schema/phần dùng chung; dependency nhận từ master qua foundation PR2.
 - Giới hạn: offline cold-load chờ PWA; shadow/cloze chưa hỗ trợ; không nghiệm thu G0 hoặc thiết bị thật.
 - Log local: data/reports/pre-push-ad7a307.log (gitignored).
+
+### 2026-11-06T21:34:10.0343484+07:00 — PR4 SRS quick recognition regression
+
+- Checked commit: 2427860604c1f20df38ab6cdc74b26081b73accc, after merging latest origin/master e0d1963 (PR6 and PR5).
+- Start: 2026-11-06T21:33:22.1693567+07:00; end: 2026-11-06T21:34:10.0343484+07:00.
+- Environment: Windows, Node v24.10.0, local production server and headless Chrome; process/loopback access enabled for the successful run.
+- Full npm run check: PASS. Typecheck PASS; test **56/56** (22 prototype +34 foundation/routes), 0 failed/0 skipped; production build PASS; test:app PASS.
+- node tools/check-route-scope.mjs origin/master srs: PASS, 14 changed files within the SRS route and append-only verification log.
+- Committed SRS browser-check.ts walkthrough: PASS, including offline review persisted to IndexedDB, reconnect synchronization, receipt replay without duplicate history, desktop/mobile and no browser errors.
+- Quick SQL accepts only recognition cards for vocabulary/kanji. Regression seeds recognition/reading/recall/listening for 8 public vocabulary +4 kanji and grammar recognition; verifies the exact12 eligible recognition cards, adds4 synthetic copies of public fixture vocabulary to verify quick limit15, and retains full limit20. No schema/shared/G0 or audio autoplay changes.
+- The earlier restricted-sandbox attempt timed out starting the local server; the complete successful run above supersedes that attempt without source changes. Raw logs remain gitignored: data/reports/pre-push-2427860-final.log, data/reports/srs-scope-2427860.log, data/reports/srs-browser-2427860.log.
+- Limits: public demo only; cold offline load awaits the PWA shell; no physical-device benchmark or G0 acceptance claimed.
