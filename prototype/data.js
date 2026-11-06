@@ -25,8 +25,8 @@ const D = (() => {
     { id: 'srs', title: `Ôn ${dueTotal} thẻ đến hạn`, sub: due.map((r) => `${r.count} ${r.kind.toLowerCase()}`).join(' · '), mins: 25, href: '#on-tap', done: false },
     { id: 'recog', title: 'Nhận mặt nhanh', sub: '10 câu lạ chứa kính ngữ đã học', mins: 5, href: '#on-tap', done: true },
     { id: 'kanji', title: `Kanji mới: ${newKanji.join(' ')}`, sub: 'Khối Kính ngữ công sở, kèm 7 từ', mins: 15, href: '#kanji', done: false, jp: true },
-    { id: 'vocab', title: '17 từ mới', sub: '申し上げる, 伺う, 拝見する, 承る…', mins: 15, href: '#on-tap', done: false },
-    { id: 'grammar', title: 'Ngữ pháp: ～させていただく', sub: 'Tự đặt 2 câu', mins: 10, href: '#on-tap', done: false },
+    { id: 'vocab', title: 'Khám phá từ vựng', sub: '8 từ mẫu · tra cứu, lưu từ và luyện nghĩa', mins: 15, href: '#tu-vung', done: false },
+    { id: 'grammar', title: 'Ngữ pháp: ～させていただく', sub: 'Cấu trúc, ví dụ và 2 câu luyện tập', mins: 10, href: '#ngu-phap', done: false },
     { id: 'shadow', title: 'Shadowing bắt buộc: Gọi điện cho khách hàng', sub: 'Buổi 2 của tuần · Công sở · 8 câu · 0:35', mins: 20, href: '#shadowing', done: false, required: true },
   ];
 
