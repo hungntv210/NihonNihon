@@ -96,3 +96,11 @@ trường tên trong lockfile hiện đều là `nihon-nihon`.
 tạo lại lockfile. Chưa merge code G0 hoặc chạy bộ test G0 trong worktree G1.
 Log thô: `data/reports/pre-push-0e00ce9-20261106T162901.log` (gitignored).
 Schema, worker dịch và database G0 không thay đổi.
+
+### 2026-11-06T16:47:08.7534675+07:00 — foundation: dependency SRS
+
+- Commit kiểm tra: a24b8f63e79f52377e951d188293bf27674e676e.
+- Bắt đầu: 2026-11-06T16:45:50.0761446+07:00; kết thúc: 2026-11-06T16:47:08.7534675+07:00.
+- npm run check: PASS; prototype 22/22 + foundation 14/14 = **36/36**; typecheck, build và test:app đều đạt.
+- Foundation chỉ bổ sung ts-fsrs@6.0.0 và wanakana@5.3.1 cùng smoke test/hợp đồng dependency; không sửa schema. Đây là phần dùng chung, không thuộc phạm vi một tuyến chức năng.
+- Log local: data/reports/pre-push-a24b8f6-20261106T164550.log (gitignored).
