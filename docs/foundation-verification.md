@@ -105,6 +105,59 @@ Schema, worker dịch và database G0 không thay đổi.
 - Foundation chỉ bổ sung ts-fsrs@6.0.0 và wanakana@5.3.1 cùng smoke test/hợp đồng dependency; không sửa schema. Đây là phần dùng chung, không thuộc phạm vi một tuyến chức năng.
 - Log local: data/reports/pre-push-a24b8f6-20261106T164550.log (gitignored).
 
+### 2026-11-06T21:08:41.3451266+07:00 — g1/vocab
+
+- Commit kiểm tra: 417d4976fa5ef4266ecb32ea377cd3f0f0ea6631.
+- Bắt đầu: 2026-11-06T21:07:48.0149618+07:00; kết thúc: 2026-11-06T21:08:41.3451266+07:00.
+- Windows, Node v24.10.0, Chrome headless; npm run check: PASS.
+- Prototype 22/22 + foundation/route 21/21 = **43/43** kiểm thử, 0 lỗi/0 bỏ qua; typecheck, build production và test:app đều đạt.
+- node tools/check-route-scope.mjs origin/master vocab: PASS; chỉ 15 file tuyến vocab thay đổi trước bản ghi audit.
+- Browser riêng vocab: PASS (tìm kana, URL content ID mã hoá, nghĩa selected/nhãn model, ruby/ví dụ, Báo sai có auth/Origin, sổ từ đã lưu, bài học không đổi thứ tự sau lưu, desktop/mobile390px không tràn, 0 lỗi JavaScript).
+- Dữ liệu browser bổ sung chỉ là tổng hợp trong DB tạm; không commit dữ liệu dịch/private hoặc sửa schema. Không gọi Gemini.
+- Giới hạn: mẫu chỉ 8 từ; dữ liệu Việt/ví dụ/fullN5–N2 chờ G0 nghiệm thu và merge. Voice Nhật phụ thuộc trình duyệt/OS; Reader/subtitle custom-word integration chưa có trong tuyến này.
+- Log: data/reports/pre-push-vocab-417d497-20261106T210748.log; browser report data/reports/vocab-browser-check.json, ảnh desktop/mobile đều gitignored.
+
+### 2026-11-06T21:08:06.0870796+07:00 — g1/kanji
+
+- Commit đã kiểm tra: c68c7fc75335ba35d8c7eb8f7274fe6f114d15b8.
+- Bắt đầu: 2026-11-06T21:07:09.3463506+07:00; kết thúc: 2026-11-06T21:08:06.0870796+07:00.
+- npm run check: PASS; 22/22 prototype +20/20 foundation/kanji = **42/42**; typecheck, build, test:app đều đạt.
+- node tools/check-route-scope.mjs origin/master kanji: PASS; chỉ sửa tuyến kanji và thêm nhật ký.
+- Kiểm tra riêng HTTP/Chrome: PASS — tìm kiếm không dấu, detail URL encoded, selected/candidate HV và nhãn model, báo sai/CSRF/lưu DB, nét từng bước/phát lại/reduced-motion, memo NFC, thêm hàng ôn, mobile390 không tràn ngang; không có lỗi JS. Đã quan sát ảnh desktop/mobile.
+- Demo public chỉ 4 kanji; synthetic translations/strokes chỉ trong DB kiểm thử tạm. Full dữ liệu1038/HV/nét thực tế phụ thuộc nghiệm thu G0; TTS chỉ giọng Nhật cục bộ nếu có, memo chỉ thiết bị, chưa benchmark máy thật.
+- Không sửa schema/shared/G0. Log: data/reports/kanji-check-c68c7fc-20261106T210709.log (gitignored).
+
+### 2026-11-06T21:29:39.2878302+07:00 — PR5 Kanji browser runner
+
+- Checked commit 73bcc4b5f4d8d13aadfafccb40342fd0d5dd6f08; start 2026-11-06T21:28:31.6380719+07:00; end 2026-11-06T21:29:39.2878302+07:00.
+- Full npm run check PASS **49/49** (22 prototype+27 foundation/vocab/kanji); scope kanji PASS; committed browser-check.ts walkthrough PASS.
+- Merged latest master after PR6. Audit conflict resolved preserving every entry from both sides; master entries precede Kanji entries.
+- Log data/reports/pre-push-73bcc4b.log (gitignored). No schema/shared changes.
+
+### 2026-11-06T21:06:50.4987672+07:00 — g1/srs
+
+- Commit kiểm tra: ad7a307f685f8ede3e8a066cc8f6df02e9e3a5fa.
+- Bắt đầu: 2026-11-06T21:05:58.1256109+07:00; kết thúc: 2026-11-06T21:06:50.4987672+07:00.
+- npm run check: PASS; 22 prototype +21 foundation/SRS = **43/43**; typecheck, build, test:app đều đạt.
+- node tools/check-route-scope.mjs origin/master srs: PASS (13 file tuyến trước audit).
+- Smoke riêng: offline chấm vào IndexedDB rồi reconnect đồng bộ, replay receipt không tạo review trùng, Chrome desktop/mobile PASS.
+- Soát mã phát hiện chặn đầu hàng do conflict; đã sửa và kiểm thử giữ event lỗi, tiếp tục các thẻ độc lập, giữ thứ tự cùng thẻ.
+- Không đổi schema/phần dùng chung; dependency nhận từ master qua foundation PR2.
+- Giới hạn: offline cold-load chờ PWA; shadow/cloze chưa hỗ trợ; không nghiệm thu G0 hoặc thiết bị thật.
+- Log local: data/reports/pre-push-ad7a307.log (gitignored).
+
+### 2026-11-06T21:34:10.0343484+07:00 — PR4 SRS quick recognition regression
+
+- Checked commit: 2427860604c1f20df38ab6cdc74b26081b73accc, after merging latest origin/master e0d1963 (PR6 and PR5).
+- Start: 2026-11-06T21:33:22.1693567+07:00; end: 2026-11-06T21:34:10.0343484+07:00.
+- Environment: Windows, Node v24.10.0, local production server and headless Chrome; process/loopback access enabled for the successful run.
+- Full npm run check: PASS. Typecheck PASS; test **56/56** (22 prototype +34 foundation/routes), 0 failed/0 skipped; production build PASS; test:app PASS.
+- node tools/check-route-scope.mjs origin/master srs: PASS, 14 changed files within the SRS route and append-only verification log.
+- Committed SRS browser-check.ts walkthrough: PASS, including offline review persisted to IndexedDB, reconnect synchronization, receipt replay without duplicate history, desktop/mobile and no browser errors.
+- Quick SQL accepts only recognition cards for vocabulary/kanji. Regression seeds recognition/reading/recall/listening for 8 public vocabulary +4 kanji and grammar recognition; verifies the exact12 eligible recognition cards, adds4 synthetic copies of public fixture vocabulary to verify quick limit15, and retains full limit20. No schema/shared/G0 or audio autoplay changes.
+- The earlier restricted-sandbox attempt timed out starting the local server; the complete successful run above supersedes that attempt without source changes. Raw logs remain gitignored: data/reports/pre-push-2427860-final.log, data/reports/srs-scope-2427860.log, data/reports/srs-browser-2427860.log.
+- Limits: public demo only; cold offline load awaits the PWA shell; no physical-device benchmark or G0 acceptance claimed.
+
 ### 2026-11-06T21:02:15.3528179+07:00 — g1/grammar
 
 - Commit kiểm tra: 596953e3d26d210fb12b71241c94386205fd6efe.
