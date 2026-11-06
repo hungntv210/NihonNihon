@@ -1,0 +1,390 @@
+{
+  "source": {
+    "source_id": "openjlpt",
+    "name": "OpenJLPT",
+    "commit": "0d1d3410bec90bd4098a7c72de820543cb4f707c",
+    "url": "https://github.com/evanclan/OpenJLPT",
+    "license": "CC BY-SA 4.0",
+    "attribution": "OpenJLPT contributors; EDRDG (JMdict/KANJIDIC2); Jonathan Waller JLPT lists. Grammar examples by OpenJLPT contributors. Vocabulary examples omitted from this sample."
+  },
+  "vocab": [
+    {
+      "id": "ada066edfd",
+      "word": "会う",
+      "reading": "あう",
+      "romaji": "au",
+      "meanings": [
+        "to meet"
+      ],
+      "level": "N5",
+      "pos": [
+        "v5u",
+        "vi"
+      ],
+      "jmdict_id": 1198180,
+      "examples": []
+    },
+    {
+      "id": "452102ad0a",
+      "word": "学生",
+      "reading": "がくせい",
+      "romaji": "gakusei",
+      "meanings": [
+        "student"
+      ],
+      "level": "N5",
+      "pos": [
+        "n"
+      ],
+      "jmdict_id": 1206900,
+      "examples": []
+    },
+    {
+      "id": "dd8ac16bd2",
+      "word": "学校",
+      "reading": "がっこう",
+      "romaji": "gakkou",
+      "meanings": [
+        "school"
+      ],
+      "level": "N5",
+      "pos": [
+        "n"
+      ],
+      "jmdict_id": 1206730,
+      "examples": []
+    },
+    {
+      "id": "85b37b6884",
+      "word": "見る",
+      "reading": "みる",
+      "romaji": "miru",
+      "meanings": [
+        "to see",
+        "to watch"
+      ],
+      "level": "N5",
+      "pos": [
+        "v1",
+        "vt"
+      ],
+      "jmdict_id": 1259290,
+      "other_forms": [
+        "観る"
+      ],
+      "examples": []
+    },
+    {
+      "id": "86f67e2dc3",
+      "word": "食べる",
+      "reading": "たべる",
+      "romaji": "taberu",
+      "meanings": [
+        "to eat"
+      ],
+      "level": "N5",
+      "pos": [
+        "v1",
+        "vt"
+      ],
+      "jmdict_id": 1358280,
+      "examples": []
+    },
+    {
+      "id": "66e4692df7",
+      "word": "行く",
+      "reading": "いく",
+      "romaji": "iku",
+      "meanings": [
+        "to go"
+      ],
+      "level": "N5",
+      "pos": [
+        "v5k-s",
+        "vi"
+      ],
+      "jmdict_id": 1578850,
+      "examples": []
+    },
+    {
+      "id": "0e8f798dbf",
+      "word": "本",
+      "reading": "ほん",
+      "romaji": "hon",
+      "meanings": [
+        "book"
+      ],
+      "level": "N5",
+      "pos": [
+        "n"
+      ],
+      "jmdict_id": 1522150,
+      "examples": []
+    },
+    {
+      "id": "8ae27e3b51",
+      "word": "新しい",
+      "reading": "あたらしい",
+      "romaji": "atarashii",
+      "meanings": [
+        "new"
+      ],
+      "level": "N5",
+      "pos": [
+        "adj-i"
+      ],
+      "jmdict_id": 1361490,
+      "examples": []
+    }
+  ],
+  "kanji": [
+    {
+      "character": "日",
+      "level": "N5",
+      "strokes": 4,
+      "grade": 1,
+      "freq": 1,
+      "radical": "日",
+      "radical_number": 72,
+      "onyomi": [
+        "ニチ",
+        "ジツ"
+      ],
+      "kunyomi": [
+        "ひ",
+        "-び",
+        "-か"
+      ],
+      "meanings": [
+        "day",
+        "sun",
+        "Japan",
+        "counter for days"
+      ],
+      "nanori": [
+        "あ",
+        "あき",
+        "いる",
+        "く",
+        "くさ",
+        "こう",
+        "す",
+        "たち",
+        "に",
+        "にっ",
+        "につ",
+        "へ"
+      ],
+      "words": [
+        "明日",
+        "一日",
+        "五日",
+        "昨日",
+        "今日",
+        "九日",
+        "十日",
+        "七日"
+      ]
+    },
+    {
+      "character": "人",
+      "level": "N5",
+      "strokes": 2,
+      "grade": 1,
+      "freq": 5,
+      "radical": "人",
+      "radical_number": 9,
+      "onyomi": [
+        "ジン",
+        "ニン"
+      ],
+      "kunyomi": [
+        "ひと",
+        "-り",
+        "-と"
+      ],
+      "meanings": [
+        "person"
+      ],
+      "nanori": [
+        "じ",
+        "と",
+        "ね",
+        "ひこ",
+        "ふみ"
+      ],
+      "words": [
+        "人",
+        "大人",
+        "一人",
+        "二人",
+        "外国人",
+        "人口",
+        "人形",
+        "御主人"
+      ]
+    },
+    {
+      "character": "本",
+      "level": "N5",
+      "strokes": 5,
+      "grade": 1,
+      "freq": 10,
+      "radical": "木",
+      "radical_number": 75,
+      "onyomi": [
+        "ホン"
+      ],
+      "kunyomi": [
+        "もと"
+      ],
+      "meanings": [
+        "book",
+        "present",
+        "main",
+        "origin",
+        "true",
+        "real",
+        "counter for long cylindrical things"
+      ],
+      "nanori": [
+        "まと",
+        "ごう"
+      ],
+      "words": [
+        "本",
+        "本棚",
+        "基本",
+        "資本",
+        "日本",
+        "本人",
+        "本物",
+        "標本"
+      ]
+    },
+    {
+      "character": "学",
+      "level": "N5",
+      "strokes": 8,
+      "grade": 1,
+      "freq": 63,
+      "radical": "子",
+      "radical_number": 39,
+      "onyomi": [
+        "ガク"
+      ],
+      "kunyomi": [
+        "まな.ぶ"
+      ],
+      "meanings": [
+        "study",
+        "learning",
+        "science"
+      ],
+      "nanori": [
+        "たか",
+        "のり"
+      ],
+      "words": [
+        "学生",
+        "学校",
+        "大学",
+        "留学生",
+        "医学",
+        "科学",
+        "数学",
+        "入学"
+      ]
+    }
+  ],
+  "grammar": [
+    {
+      "id": "wa",
+      "pattern": "〜は",
+      "romaji": "wa",
+      "level": "N5",
+      "meaning": "as for; marks the topic of the sentence",
+      "formation": "Noun + は",
+      "examples": [
+        {
+          "ja": "私は学生です。",
+          "furigana": "{私|わたし}は{学生|がくせい}です。",
+          "en": "I am a student."
+        },
+        {
+          "ja": "今日は天気がいいです。",
+          "furigana": "{今日|きょう}は{天気|てんき}がいいです。",
+          "en": "The weather is nice today."
+        },
+        {
+          "ja": "この本はおもしろいです。",
+          "furigana": "この{本|ほん}はおもしろいです。",
+          "en": "This book is interesting."
+        }
+      ],
+      "tags": [
+        "particle",
+        "topic"
+      ],
+      "notes": "Written は but pronounced 'wa'. It sets up what the sentence is about; the key information comes after it."
+    },
+    {
+      "id": "ga-subject",
+      "pattern": "〜が（subject）",
+      "romaji": "ga (subject)",
+      "level": "N5",
+      "meaning": "marks the subject; points out new or focused information",
+      "formation": "Noun + が",
+      "examples": [
+        {
+          "ja": "雨が降っています。",
+          "furigana": "{雨|あめ}が{降|ふ}っています。",
+          "en": "It is raining."
+        },
+        {
+          "ja": "だれが窓を開けましたか。",
+          "furigana": "だれが{窓|まど}を{開|あ}けましたか。",
+          "en": "Who opened the window?"
+        },
+        {
+          "ja": "私が行きます。",
+          "furigana": "{私|わたし}が{行|い}きます。",
+          "en": "I'll be the one to go."
+        }
+      ],
+      "tags": [
+        "particle"
+      ],
+      "notes": "Question words such as だれ and 何 take が, never は, when they are the subject. が is also used with 好き, ほしい, 上手 and わかる for the thing liked, wanted or understood."
+    },
+    {
+      "id": "o",
+      "pattern": "〜を",
+      "romaji": "o",
+      "level": "N5",
+      "meaning": "marks the direct object of a verb; marks a place moved through or left",
+      "formation": "Noun + を",
+      "examples": [
+        {
+          "ja": "毎朝パンを食べます。",
+          "furigana": "{毎朝|まいあさ}パンを{食|た}べます。",
+          "en": "I eat bread every morning."
+        },
+        {
+          "ja": "姉は新しいかばんを買いました。",
+          "furigana": "{姉|あね}は{新|あたら}しいかばんを{買|か}いました。",
+          "en": "My older sister bought a new bag."
+        },
+        {
+          "ja": "公園を散歩しました。",
+          "furigana": "{公園|こうえん}を{散歩|さんぽ}しました。",
+          "en": "I took a walk in the park."
+        }
+      ],
+      "tags": [
+        "particle"
+      ],
+      "notes": "Written を but pronounced 'o'. With movement verbs such as 歩く, 散歩する and 出る it marks the route or the place being left."
+    }
+  ]
+}

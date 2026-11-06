@@ -1,2 +1,25 @@
 .superpowers/
 .taste-skill/
+
+# Local upstream downloads, staging, private media and database backups (G0).
+/data/raw/
+/data/downloads/
+/data/staging/
+/data/private/
+/data/requests/
+/data/backups/
+/data/mt-results/
+/data/reports/
+/data/*.sqlite*
+/data/*.db*
+/storage/private/
+/backups/
+/node_modules/
+/.env*
+!/.env.example
+
+# Application build/test output. Keep data/fixtures/ tracked.
+.next/
+out/
+*.tsbuildinfo
+.tmp/
