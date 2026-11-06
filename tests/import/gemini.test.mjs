@@ -103,3 +103,8 @@ test('terminology validation rejects cảm cúm and flattened humble speech',asy
  assert.throws(()=>validateTerminology([{request_id:'cold',output:{text_vi:'Cảm cúm lây truyền.'}}],q),/influenza/);assert.throws(()=>validateTerminology([{request_id:'visit',output:{text_vi:'Ngày mai tôi sẽ đến.'}}],q),/Humble/);
  validateTerminology([{request_id:'cold',output:{text_vi:'Bệnh cảm có thể lây.'}},{request_id:'visit',output:{text_vi:'Ngày mai tôi xin phép đến.'}}],q);
 });
+
+test('global call cap stops before another request and audits every response',async t=>{
+ const {options}=await setup(t);let calls=0;const attempts=[];const result=await runGemini({...options,limit:25,maxCalls:1,ai:fake(async p=>{calls++;return {text:JSON.stringify(output(p))};}),onAttempt:r=>attempts.push(r)});
+ assert.equal(calls,1);assert.equal(result.calls,1);assert.equal(result.status,'request_limit');assert.equal(result.sent,20);assert.equal(attempts.length,1);assert.equal(attempts[0].http_status,200);
+});

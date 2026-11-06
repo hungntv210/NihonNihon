@@ -193,3 +193,30 @@ biểu đạt khiêm nhường tường minh cho 伺います/伺いました. V
 và các mẫu khiêm nhường cụ thể trước khi lưu; đây là kiểm tra hữu hạn, không thay
 đánh giá đầy đủ sắc thái. Output v2 vẫn giữ riêng để truy vết, không đổi nhãn thành v3.
 V3 khai báo supersedes v1/v2; dữ liệu thử không đạt không được nhập thành selected.
+
+## Cổng 50 request và mẫu duyệt
+
+`runGemini` hỗ trợ maxCalls (CLI --max-calls) là trần **lần gọi API**, tính cả retry;
+không nhầm với số item hoặc số batch thành công. onAttempt nhận response/call status
+để audit trước normalization; không log raw response/khoá ra console. pause_after_response_ms
+cho phép nghỉ ít nhất 5 giây sau mỗi response thành công. max_compounds_sent giới hạn
+ngữ cảnh Hán Việt thực gửi và pin giới hạn trong release; vẫn kiểm tra căn cứ theo
+phần input đã gửi, không gửi raw bank.
+
+Hai model chạy song song dùng state_path riêng, được seed từ ledger cũ trước khi
+chạy; không reset quota hoặc chạy cùng model với ledger khác nhau. Counter tính cả
+lần thử HTTP lỗi bảo thủ, không khẳng định Google có tính lỗi đó vào RPD. Learning
+3.6 đặt daily_budget=17, RPD server=20; câu dùng Lite và không gọi 3.8.
+
+translation-gate.mjs kiểm tra JSON/array/schema, thiếu/thừa/trùng request_id, text_vi
+rỗng, text_vi bằng nguyên câu gốc, kana/kanji còn sót, NFC và tỷ lệ độ dài ký tự
+Unicode ngoài [0.5, 8]. Độ dài/kana là cờ cần xem lại, không kết luận dịch sai tự động.
+Báo cáo phân biệt lỗi HTTP trên số call, lỗi JSON/schema trên response 2xx, lỗi dòng
+trên tổng item được yêu cầu của response 2xx (bao gồm retry), và số câu đã lưu duy nhất.
+Không có output thì INCOMPLETE, không được PASS chỉ vì các bộ đếm bằng 0.
+
+review-sample.mjs lấy mẫu ngẫu nhiên 30 câu duy nhất: 8 N5, 8 N4, 7 N3, 7 N2;
+lưu ID của mẫu để đối chiếu, không chọn lại theo bản dịch trông đẹp. Câu dùng chung
+nhiều cấp được gán cấp đầu tiên trong thứ tự N5→N2, giữ toàn bộ owner/English variant
+trong provenance. Mẫu gửi duyệt có Nhật, Anh, Việt, model, request_id và cờ QA, kèm
+ít nhất 10 giải thích ngữ pháp dài đã có bản dịch.
