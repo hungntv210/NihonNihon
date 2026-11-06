@@ -1,3 +1,5 @@
+import { getStudyPreferences } from '../../server/preferences.ts';
+import { PreferencesProvider } from '../../components/preferences-provider.tsx';
 import { requireSession } from '../../server/auth.ts';
 import { getContentSummary } from '../../server/dal.ts';
 import { Shell } from '../../components/shell.tsx';
@@ -6,5 +8,6 @@ export const runtime = 'nodejs';
 export default async function StudyLayout({ children }: { children: React.ReactNode }) {
   await requireSession();
   const summary = await getContentSummary();
-  return <Shell reviewCount={summary.review}>{children}</Shell>;
+  return <Shell reviewCount={summary.review}><PreferencesProvider initial={await getStudyPreferences()} />{children}</Shell>;
 }
+
