@@ -6,12 +6,15 @@ import { JaText, ViText } from '../../../components/text.tsx';
 import { SourceLabel } from '../../../components/source-label.tsx';
 import { scheduler, previews, intervalLabel, type Engine, type StudySession } from './model.ts';
 import { queueReview, pendingReviews, acknowledge } from './outbox.ts';
+import { syncReviews } from './sync.ts';
+import type { ReviewEvent } from './model.ts';
 import css from './srs.module.css';
 const labels = ['Quên', 'Khó', 'Được', 'Dễ'];
 
 export function ReviewSession({ initial }: { initial: StudySession }) {
   const [session,setSession] = useState(initial), [seen,setSeen] = useState<string[]>([]), [revealed,setRevealed] = useState(false), [answer,setAnswer] = useState(''), [engine,setEngine] = useState<Engine>(), [ready,setReady] = useState(false), [busy,setBusy] = useState(false), [pendingCount,setPendingCount] = useState(0), [message,setMessage] = useState(''), [online,setOnline] = useState(true), [paused,setPaused] = useState(false), [voice,setVoice] = useState<SpeechSynthesisVoice>();
   const [gestures,setGestures] = useState(false);
+  const [conflicts,setConflicts] = useState<ReviewEvent[]>([]);
   const syncing=useRef(false), touch=useRef<{ x:number;y:number }|null>(null), offset=useRef(Date.parse(initial.serverNow)-Date.now()), started=useRef(Date.now());
   const cacheKey='nihon:srs:session:'+initial.mode;
   useEffect(()=>{let alive=true;offset.current=Date.parse(initial.serverNow)-Date.now();setGestures(false);void scheduler().then(s=>{if(alive)setEngine(s);}).catch(()=>setMessage('Chưa khởi tạo được lịch ôn. Hãy tải lại khi có mạng.'));
@@ -23,12 +26,8 @@ export function ReviewSession({ initial }: { initial: StudySession }) {
   useEffect(()=>{if(ready){try{localStorage.setItem(cacheKey,JSON.stringify({version:1,session,seen}));}catch{/* The durable review outbox is separate from the optional session snapshot. */}}},[cacheKey,ready,session,seen]);
   async function sync() {
     if(syncing.current||!navigator.onLine)return;syncing.current=true;
-    try{for(const event of await pendingReviews()){
-      const response=await fetch('/srs/review',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(event)});
-      if(response.redirected||response.status===401){setMessage('Đăng nhập lại để đồng bộ; lượt ôn vẫn được giữ trên thiết bị.');break;}
-      if(!response.ok){setMessage(response.status===409?'Có thẻ đã thay đổi ở phiên khác. Lượt ôn được giữ lại để kiểm tra.':'Chưa đồng bộ được. Lượt ôn vẫn được giữ trên thiết bị.');break;}
-      const receipt=await response.json();if(receipt.reviewId!==event.reviewId)throw Error('Receipt mismatch');await acknowledge(event.reviewId);
-    }}catch{setMessage('Mất kết nối. Các lượt đã chấm sẽ đồng bộ khi có mạng.');}finally{setPendingCount((await pendingReviews()).length);syncing.current=false;}
+    try{const result=await syncReviews(await pendingReviews(),event=>fetch('/srs/review',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(event)}),acknowledge);setConflicts(result.conflicts);if(result.stopped==='auth')setMessage('Đăng nhập lại để đồng bộ; lượt ôn vẫn được giữ trên thiết bị.');else if(result.conflicts.length)setMessage('Có lượt cần kiểm tra; các thẻ độc lập vẫn tiếp tục đồng bộ.');else if(result.stopped)setMessage('Chưa đồng bộ được; lượt ôn vẫn được giữ trên thiết bị.');
+    }catch{setMessage('Mất kết nối. Các lượt đã chấm sẽ đồng bộ khi có mạng.');}finally{try{setPendingCount((await pendingReviews()).length);}finally{syncing.current=false;}}
   }
   useEffect(()=>{if(ready&&online)void sync();},[ready,online,pendingCount]);
   const card=session.cards.find(c=>!seen.includes(c.cardId)), now=Date.now()+offset.current;
@@ -55,6 +54,7 @@ export function ReviewSession({ initial }: { initial: StudySession }) {
       <p className={css.hint}>{gestures?'Đang bật vuốt: trái Quên · phải Được · lên Dễ. Khó dùng nút.':'Mở đáp án rồi chọn một trong bốn mức tự đánh giá.'}</p>
     </article>:<div className={css.card}><span className={css.done}>✓</span><h2>{session.cards.length?'Xong một phiên nhỏ.':'Chưa có thẻ đến hạn.'}</h2><p>Còn {Math.max(0,session.due-session.cards.length)} thẻ đến hạn ngoài phiên này.</p><Link className="button button-primary" href="/srs">Mở phiên tiếp theo</Link><Link className="text-link" href="/vocab">Chọn từ để ôn →</Link></div>}
     <div role="status" className={css.status}>{message}{pendingCount>0&&<button className="button button-small" disabled={!online} onClick={()=>void sync()}>Đồng bộ lại</button>}</div>
+    {conflicts.length>0&&<details className={css.notice}><summary>{conflicts.length} lượt ôn cần xử lý</summary>{conflicts.map(event=><div key={event.reviewId}><p>Thẻ {event.cardId} · mức {labels[event.rating-1]} · {event.reviewedAt}</p><button className="button button-small" onClick={async()=>{if(!window.confirm('Bỏ lượt chưa đồng bộ này trên thiết bị? Lịch và lịch sử đã lưu trên máy chủ được giữ nguyên.'))return;await acknowledge(event.reviewId);setConflicts(previous=>previous.filter(e=>e.reviewId!==event.reviewId));setPendingCount((await pendingReviews()).length);}}>Bỏ lượt chưa đồng bộ này</button></div>)}</details>}
     <section className={css.forecast} aria-labelledby="forecast"><h2 id="forecast">Dự báo 7 ngày</h2><div>{session.forecast.map(day=><p key={day.day}><time dateTime={day.day}>{day.day.slice(5).split('-').reverse().join('/')}</time><strong>{day.count}</strong><small>thẻ</small></p>)}</div></section>
     <p className={css.note}>Mở phiên khi có mạng để tải thẻ. Phiên đang mở vẫn lưu lượt chấm khi offline và tự đồng bộ lại; mở app hoàn toàn offline sẽ cần nền PWA ở bước sau.</p>
   </section>;
