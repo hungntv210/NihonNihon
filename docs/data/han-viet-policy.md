@@ -1,6 +1,6 @@
-# Chính sách âm Hán Việt — HV-1.1
+# Chính sách âm Hán Việt — HV-1.2
 
-Revision **HV-1.1**, ngày 05/11/2026. Thay thế quy tắc cần người duyệt của HV-1.0. Hợp đồng dùng chung cho `g0/data-spec`, `g0/data-import` và màn
+Revision **HV-1.2**, ngày 06/11/2026. Thay thế quy tắc cần người duyệt của HV-1.0. Hợp đồng dùng chung cho `g0/data-spec`, `g0/data-import` và màn
 Kanji của `g1/kanji`. Đây là yêu cầu triển khai, chưa phải kết quả batch đã đo.
 
 ## 1. Gộp biến thể trước khi đếm nhiều âm
@@ -38,7 +38,7 @@ chọn/bỏ qua, source/release). Không có bước nào được tạo âm ngo
 | Bước | selection_method | Quy tắc |
 | --- | --- | --- |
 | 1 | single_after_normalization | Còn đúng một âm sau NFC/gộp alias → chọn ngay; không phụ thuộc CVDICT, Unihan hay AI |
-| 2 | cvdict_compound | Đếm các từ ghép tiếng Nhật khác nhau có bằng chứng CVDICT xác định âm của chữ. Chọn nếu chỉ một âm có bằng chứng; nếu nhiều âm có bằng chứng, chọn âm duy nhất có số từ ghép cao nhất và số đó >=2. Đồng hạng hoặc chưa đủ điều kiện → bước 3 |
+| 2 | cvdict_compound | Đếm các từ ghép tiếng Nhật khác nhau có bằng chứng CVDICT xác định âm của chữ. Chỉ chọn âm dẫn đầu duy nhất với ít nhất 2 từ ghép khác nhau, kể cả khi chỉ một âm có bằng chứng. Đồng hạng hoặc chưa đủ điều kiện → bước 3 |
 | 3 | unihan_match | Khi tải và pin được Unihan.kVietnamese, chuẩn hoá bằng cùng bảng alias rồi lấy giao với candidates. Giao có đúng một âm → chọn; thiếu nguồn/không khớp/nhiều âm → bước 4. Không chọn âm đầu theo thứ tự Unihan khi chưa kiểm tra ý nghĩa thứ tự trên dữ liệu thật |
 | 4 | ai_fallback | AI chọn một candidate_id trong danh sách đóng, kèm căn cứ từ ghép tiếng Nhật và nghĩa theo ngữ cảnh. Qua kiểm tra cấu trúc/membership/căn cứ → selected, không cần người duyệt; hiển thị nhãn “tự chọn” |
 
@@ -57,7 +57,7 @@ chưa được coi là số đo batch hoặc chỉ tiêu phải khớp; báo cá
 missing/no_match/ambiguous/unique_match. Không tải được thì ghi lỗi và đi tiếp AI,
 không chặn batch chỉ vì Unihan không sẵn. Câu hỏi thứ tự âm có phản ánh độ thông
 dụng vẫn mở: cần pin snapshot, mẫu kiểm tra, căn cứ độc lập và kết quả đo trước khi
-đổi rule version để dùng thứ tự; không mặc định như vậy ở HV-1.1. Bước trước đã
+đổi rule version để dùng thứ tự; không mặc định như vậy ở HV-1.2. Bước trước đã
 chọn được âm thì không bắt buộc đợi đối chiếu Unihan.
 
 **AI:** chỉ gửi dữ liệu cần thiết và được phép dùng; không gửi raw bank riêng tư
@@ -79,7 +79,7 @@ theo canonical khi hiển thị. Chọn âm chính cho kanji không quyết đ�
 từ ghép; phần ghép Hán Việt cho từ vẫn phân giải theo từng từ/reading.
 
 context_json bắt buộc có canonical_reading, candidate_readings, candidate_ids,
-raw_readings, alias_rules_version, selection_rule_version='HV-1.1', selection_method,
+raw_readings, alias_rules_version, selection_rule_version='HV-1.2', selection_method,
 selection_trace và evidence theo bước đã chọn. Không bắt bước 1 phải có bằng chứng
 CVDICT/Unihan; evidence của bước 1 là danh sách còn đúng một âm và provenance nguồn.
 Khi chưa thử Unihan ghi not_attempted; không giả là đã đối chiếu.
@@ -129,7 +129,7 @@ mục 3 được tính hợp lệ mà không cần người duyệt. Unihan unav
 phải lỗi nghiệm thu nếu lựa chọn đã hoàn tất qua bước khác. multi_after_alias phải
 <= multi_before_alias; không bịa số giảm hoặc ép bước CVDICT phải bằng 187.
 
-Test importer: alias/NFC; một candidate chọn ngay; CVDICT chỉ một âm có bằng chứng,
+Test importer: alias/NFC; một candidate chọn ngay; CVDICT một từ ghép phải đi tiếp, chỉ một âm có >=2 từ ghép được chọn,
 unique max >=2, đồng hạng, đếm trùng từ; Unihan giao một/nhiều/không có, lỗi tải và
 không suy từ thứ tự; AI đúng/sai candidate, thiếu căn cứ, source ID bịa, retry/cache;
 đa âm 大/行/長; method totals và 100%; idempotence giữ SRS. Kiểm tra UI có “tự chọn”,

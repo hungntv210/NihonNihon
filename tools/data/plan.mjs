@@ -4,7 +4,7 @@ import { pathToFileURL } from 'node:url';
 import { randomUUID } from 'node:crypto';
 import { sha,hash,stable,need,now,itemId,keyFor,nonempty } from './core.mjs';
 import { jmdictForms } from './adapters.mjs';
-import { createMT,selectHanViet,compoundEvidence,readingGroups,canonical } from './han-viet.mjs';
+import { RULE,createMT,selectHanViet,compoundEvidence,readingGroups,canonical } from './han-viet.mjs';
 
 const src=a=>({source_id:a.source.source_id,release_id:a.release_id});
 const kana=s=>s.replace(/[ァ-ヶ]/g,c=>String.fromCodePoint(c.codePointAt(0)-0x60));
@@ -178,6 +178,6 @@ export function buildPlan(loaded,data,db) {
   const counts={vocab:data.vocab.size,kanji:data.kanji.size,grammar:data.grammar.size,clips:data.clips.length,sentences:plan.rows.sentences.length};
   const expected=loaded.manifest.expected_counts || {};
   const countsMatch=Object.entries(expected).every(([k,n])=>counts[k]===n);
-  plan.report={run_id:plan.runId,started_at:plan.startedAt,manifest_hash:loaded.manifestHash,profile:loaded.manifest.profile || 'custom',acceptance_status:'NOT_RUN',data_complete:countsMatch&&Object.values(missing).every(v=>v.length===0)&&hv.status==='PASS'&&plan.requests.length===0,counts,expected_counts:expected,counts_match:countsMatch,han_viet:hv,missing,mt:{...mt.stats,pending_requests:plan.requests.length},sources:[...plan.sources.keys()],schema:'Draft 0.2',selection_rule:'HV-1.1'};
+  plan.report={run_id:plan.runId,started_at:plan.startedAt,manifest_hash:loaded.manifestHash,profile:loaded.manifest.profile || 'custom',acceptance_status:'NOT_RUN',data_complete:countsMatch&&Object.values(missing).every(v=>v.length===0)&&hv.status==='PASS'&&plan.requests.length===0,counts,expected_counts:expected,counts_match:countsMatch,han_viet:hv,missing,mt:{...mt.stats,pending_requests:plan.requests.length},sources:[...plan.sources.keys()],schema:'Draft 0.2',selection_rule:RULE,warnings:data.warnings};
   return plan;
 }

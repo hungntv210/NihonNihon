@@ -39,6 +39,8 @@ export async function applyPlan(db,plan,{dbPath=':memory:',backupDirectory}={}) 
     for(const row of plan.items.values()) {
       put(db,'content_items',row,['item_id']);
       db.prepare('UPDATE vi_translations SET needs_refresh=1 WHERE item_id=? AND base_content_hash<>?').run(row.item_id,row.source_hash);
+      // Revalidate kanji decisions each run, including decisions now left unresolved.
+      if(row.kind==='kanji')db.prepare("UPDATE vi_translations SET status='needs_review',needs_refresh=1 WHERE item_id=? AND field='han_viet' AND status='selected'").run(row.item_id);
     }
     for(const [table,parents,column] of [
       ['item_sentences',[...plan.rows.vocab,...plan.rows.grammar].map(r=>r.row.item_id),'item_id'],
@@ -61,8 +63,9 @@ export async function applyPlan(db,plan,{dbPath=':memory:',backupDirectory}={}) 
         if(row.status!=='selected')continue;
       }
       if(row.status==='selected' && previous && previous.translation_id!==row.translation_id) {
-        if(row.field!=='han_viet' && !previous.needs_refresh)row.status='candidate';
-        else db.prepare("UPDATE vi_translations SET status='needs_review' WHERE translation_id=?").run(previous.translation_id);
+        const dictionaryUpdate=row.method==='dictionary' && previous.method==='dictionary' && row.source_id===previous.source_id && row.release_id!==previous.release_id && row.match_method===previous.match_method && ['word','jmdict_form'].includes(row.match_method);
+        if(row.field!=='han_viet' && !previous.needs_refresh && !dictionaryUpdate)row.status='candidate';
+        else db.prepare("UPDATE vi_translations SET status='needs_review',needs_refresh=1 WHERE translation_id=?").run(previous.translation_id);
       }
       put(db,'vi_translations',row,['translation_id'],true);
       if(same && row.status==='selected' && (!previous || previous.translation_id!==row.translation_id))

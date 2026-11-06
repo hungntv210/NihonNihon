@@ -1,6 +1,28 @@
 # Chạy importer và xem batch
 
-Nhánh `g0/data-import` đã merge `g0/data-spec`: SQL Draft 0.2 và HV-1.1.
+## Bản sửa 06/11/2026
+
+- CVDICT bỏ qua tối đa 0,1% dòng dữ liệu lỗi (không tính dòng trống/comment).
+  Report `warnings` ghi release, tổng dòng, số lỗi, tỷ lệ và số dòng vật lý bắt đầu
+  từ 1. Quá ngưỡng dừng trước khi áp dụng database; thông báo nêu số lỗi/dòng mẫu.
+- Bản dịch từ điển cùng nguồn, release khác và cùng `word`/`jmdict_form` được chọn
+  thay bản cũ; bản cũ giữ text, chuyển needs_review/needs_refresh=1. Không dùng quy
+  tắc này để thay bản chọn từ nguồn khác hoặc cách khớp khác.
+- HV-1.2 yêu cầu >=2 từ ghép khác nhau cho bước CVDICT, kể cả chỉ một âm có căn cứ.
+  Chạy lại sẽ kiểm tra mọi âm chính trong cohort; chưa chọn được thì giữ lịch sử
+  nhưng gỡ selected cũ. Cache AI thay theo phiên bản quy tắc.
+- D (katakana đa nghĩa như パン) chưa tự lọc nghĩa; dùng Báo sai, chưa coi là đạt
+  kiểm tra chất lượng nghĩa.
+
+Đã tải KanjiVG chính thức tại commit
+`610091ce618cf757ed1357a8954cd65283e015d6` vào raw cục bộ, pin SHA-256 từng SVG.
+Smoke test cohort 50 kanji có đủ 50 bộ nét đúng số lượng; chưa kiểm tra trực quan
+từng chữ. Manifest local `data/private/batch-kanjivg-manifest.json`, report
+`data/reports/kanjivg-check.json`, SQLite kiểm tra riêng `data/kanjivg-check.sqlite`.
+Đây là cohort local ban đầu, không phải xác nhận batch bổ trợ của người kiểm thử;
+cần đưa source KanjiVG này vào manifest batch đang nghiệm thu. Không ghi đè DB batch.
+
+Nhánh `g0/data-import` đã merge `g0/data-spec`: SQL Draft 0.2 và HV-1.2.
 Code này nhập dữ liệu, tạo báo cáo/queue AI và có màn xem SQLite cục bộ. **Chưa
 nghiệm thu batch, chưa Frozen**. Không có dịch vụ AI hoặc dữ liệu riêng tư được gọi/tải
 ngầm; chưa có số liệu Hán Việt thật khi chưa cung cấp các nguồn bổ trợ.

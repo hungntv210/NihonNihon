@@ -15,8 +15,10 @@ test('NFC and whole-syllable aliases collapse variants without removing other ac
   const s=select('nhựt nhật');assert.equal(s.method,'single_after_normalization');assert.equal(s.chosen.reading,'nhật');
   assert.deepEqual(s.context.raw_readings,['nhựt','nhật']);
 });
-test('CVDICT: one supported reading wins; unique maximum needs >=2 distinct compounds',()=>{
-  assert.equal(select('a á',{compounds:[{reading:'á',compound_key:'one'}]}).chosen.reading,'á');
+test('CVDICT requires >=2 distinct compounds even for the only supported reading',()=>{
+  assert.equal(select('a á',{compounds:[{reading:'á',compound_key:'one'}]}).chosen,null);
+  assert.equal(select('a á',{compounds:[{reading:'á',compound_key:'one'}],unihan:{raw:'a',key:'test',a},unihanAvailable:true}).method,'unihan_match');
+  assert.equal(select('a á',{compounds:[{reading:'á',compound_key:'one'},{reading:'á',compound_key:'two'}]}).chosen.reading,'á');
   const enough=select('a á',{compounds:[{reading:'a',compound_key:'one'},{reading:'a',compound_key:'two'},{reading:'á',compound_key:'three'}]});
   assert.equal(enough.method,'cvdict_compound');assert.equal(enough.chosen.reading,'a');assert.equal(enough.context.evidence.rule,'unique_max_ge_2');
   const tied=select('a á',{compounds:[{reading:'a',compound_key:'one'},{reading:'a',compound_key:'one'},{reading:'á',compound_key:'two'}]});
@@ -33,7 +35,7 @@ test('Unihan chooses only a unique intersection, never its first reading',()=>{
 test('ordered selection does not call later steps for one candidate or a CVDICT decision',()=>{
   const mt={ask(){throw Error('Should not call AI');}};
   assert.equal(select('nhựt nhật',{mt}).method,'single_after_normalization');
-  assert.equal(select('a á',{mt,compounds:[{reading:'a',compound_key:'word'}]}).method,'cvdict_compound');
+  assert.equal(select('a á',{mt,compounds:[{reading:'a',compound_key:'word'},{reading:'a',compound_key:'second'}]}).method,'cvdict_compound');
 });
 test('AI: rejects out-of-list reading, retries valid output, persists separate MT provenance and report target',async t=>{
   const f=fixture(t);f.write('hv.json',[['日','nhật niết','','',[],{}]]);f.save();await runImport(f);

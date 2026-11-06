@@ -9,6 +9,21 @@ import { buildPlan } from '../../tools/data/plan.mjs';
 import { openDatabase,applyPlan } from '../../tools/data/store.mjs';
 import { fixture } from './helpers.mjs';
 
+test('same dictionary source and match promotes new release while preserving old text',async t=>{
+  const f=fixture(t);f.source('bunchaway-javi','javi-csv','vi.csv','日,nghĩa cũ\n');f.save();await runImport(f);
+  f.write('vi.csv','日,nghĩa mới\n');f.save();await runImport(f);
+  const db=f.open(),rows=db.prepare("SELECT text_vi,status,needs_refresh FROM vi_translations WHERE method='dictionary' ORDER BY text_vi").all();
+  assert.equal(rows.find(r=>r.text_vi==='nghĩa mới').status,'selected');
+  assert.equal(rows.find(r=>r.text_vi==='nghĩa cũ').status,'needs_review');assert.equal(rows.find(r=>r.text_vi==='nghĩa cũ').needs_refresh,1);
+  await runImport(f);assert.equal(db.prepare("SELECT count(*) n FROM vi_translations WHERE method='dictionary'").get().n,2);
+});
+
+test('an unresolved kanji decision retires a previous primary without deleting history',async t=>{
+  const f=fixture(t);await runImport(f);f.write('hv.json',[['日','nhật niết','','',[],{}]]);f.save();await runImport(f);
+  const db=f.open();assert.equal(db.prepare("SELECT count(*) n FROM vi_translations WHERE field='han_viet' AND status='selected'").get().n,0);
+  assert.equal(db.prepare("SELECT needs_refresh FROM vi_translations WHERE field='han_viet' AND text_vi='nhật' AND status='needs_review'").get().needs_refresh,1);
+});
+
 test('real SQLite import: NFC, stable IDs, examples, paths, counts, and honest acceptance status',async t=>{
   const f=fixture(t);let report=await runImport(f);
   assert.equal(report.acceptance_status,'NOT_RUN');assert.equal(report.data_complete,false);

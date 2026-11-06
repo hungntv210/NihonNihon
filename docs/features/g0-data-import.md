@@ -9,9 +9,9 @@ Tài liệu này đọc riêng được: mọi quyết định cần cho nhánh 
 
 ## Mốc code 0.1 — chờ chạy 11 bước nghiệm thu
 
-Đã merge `g0/data-spec` (Draft 0.2 + HV-1.1) và có importer Node 24/SQLite trong
+Đã merge `g0/data-spec` (Draft 0.2 + HV-1.2) và có importer Node 24/SQLite trong
 `tools/data/`. [Hướng dẫn chạy, manifest và adapter](../data/importer.md).
-Đã có 31 kiểm thử tự động bằng fixture tự tạo: schema, adapter, HV-1.1, AI result/cache,
+Đã có 34 kiểm thử tự động bằng fixture tự tạo: schema, adapter, HV-1.2, AI result/cache,
 transaction, bảo toàn SRS/bản dịch và màn xem batch loopback. Smoke test OpenJLPT thật
 không có các nguồn bổ trợ vẫn được ghi INCOMPLETE, không thay báo cáo nghiệm thu.
 
@@ -38,14 +38,14 @@ Viết script nhập dữ liệu từ các nguồn vào SQLite, chạy thử tr�
 
 ## Dữ liệu
 
-**Bổ sung bắt buộc — âm Hán Việt (HV-1.1):**
+**Bổ sung bắt buộc — âm Hán Việt (HV-1.2):**
 
 - [ ] Gộp alias có version (nhựt→nhật, nhơn→nhân, sanh→sinh, tí→tý), giữ dạng gốc.
-- [ ] Chọn âm tuần tự theo [HV-1.1](../data/han-viet-policy.md): một âm sau gộp →
+- [ ] Chọn âm tuần tự theo [HV-1.2](../data/han-viet-policy.md): một âm sau gộp →
   CVDICT có căn cứ từ ghép → Unihan khi tải được → AI có căn cứ, không cần người duyệt.
 - [ ] Ghi selection_method: single_after_normalization, cvdict_compound,
   unihan_match, ai_fallback; mỗi chữ chỉ ghi một method đã chọn, giữ trace bước đã thử.
-- [ ] Bước CVDICT chọn nếu chỉ một âm có căn cứ, hoặc âm dẫn đầu duy nhất có >=2
+- [ ] Bước CVDICT chỉ chọn âm dẫn đầu duy nhất có >=2
   từ ghép khác nhau. Đồng hạng/chưa đủ điều kiện đi tiếp. “Khoảng 187 chữ” là ước
   lượng do chủ dự án cung cấp, phải đo lại, không phải số liệu đã xác nhận.
 - [ ] Không suy độ thông dụng từ thứ tự âm Unihan khi chưa đo. Unihan không tải
@@ -56,7 +56,7 @@ Viết script nhập dữ liệu từ các nguồn vào SQLite, chạy thử tr�
 
 ### Báo cáo Hán Việt bắt buộc
 
-Theo [HV-1.1](../data/han-viet-policy.md), dùng
+Theo [HV-1.2](../data/han-viet-policy.md), dùng
 [mẫu báo cáo](../data/han-viet-batch-report.template.md); cohort cố định từ manifest.
 Ghi số đa âm trước/sau alias, coverage và **số lượng theo từng selection_method**.
 Tổng bốn method phải bằng số chữ có selected; mỗi chữ chỉ tính ở bước chọn thành công.

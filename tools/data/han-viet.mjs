@@ -1,6 +1,6 @@
 import { nfc,sha,nonempty,need,itemId } from './core.mjs';
 
-export const RULE='HV-1.1', ALIAS_VERSION='hv-alias-1';
+export const RULE='HV-1.2', ALIAS_VERSION='hv-alias-1';
 const aliases = new Map([['nhựt','nhật'],['nhơn','nhân'],['sanh','sinh'],['tí','tý']]);
 export const canonical = s => aliases.get(s.normalize('NFC').toLowerCase()) || s.normalize('NFC').toLowerCase();
 export function readingGroups(character,entries=[]) {
@@ -56,7 +56,7 @@ export function selectHanViet({character,entries,compounds=[],japaneseCompounds=
     for(const c of compounds) if(counts[c.reading])counts[c.reading].add(c.compound_key);
     const ranked=groups.map(g=>({g,count:counts[g.reading].size})).sort((a,b)=>b.count-a.count);
     const supported=ranked.filter(r=>r.count>0);
-    if(supported.length===1 || (ranked[0].count>=2 && ranked[0].count>ranked[1].count)) {
+    if(ranked[0].count>=2 && ranked[0].count>ranked[1].count) {
       chosen=ranked[0].g;method='cvdict_compound';
       evidence={rule:supported.length===1?'only_one_supported':'unique_max_ge_2',counts:Object.fromEntries(ranked.map(r=>[r.g.reading,r.count])),compounds:compounds.filter(c=>c.reading===chosen.reading)};
     }

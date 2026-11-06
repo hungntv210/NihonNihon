@@ -73,12 +73,17 @@ export function parseArtifacts(loaded) {
       }
     } else if(format==='cvdict') {
       need(sid==='cvdict','CVDICT source mismatch');
+      let total=0;const invalid=[];
       for(const [i,line] of a.body.split(/\r?\n/).entries()) {
         if(!line.trim() || line.startsWith('#')) continue;
-        const m=line.normalize('NFC').match(/^(\S+)\s+(\S+)\s+\[([^\]]+)\]\s+\/(.*)\/$/); need(m,`Invalid CVDICT line ${i+1}`);
+        total++;
+        const m=line.normalize('NFC').match(/^(\S+)\s+(\S+)\s+\[([^\[\]]+)\]\s+\/(.*)\/$/);
+        if(!m){invalid.push(i+1);continue;}
         const entry={traditional:m[1],simplified:m[2],pinyin:m[3],glosses:m[4].split('/'),a,key:`${a.file.path}#${i+1}`};
         for(const w of new Set([m[1],m[2]])) {if(!d.cvdict.has(w)) d.cvdict.set(w,[]);d.cvdict.get(w).push(entry);}
       }
+      if(invalid.length)d.warnings.push({source_id:sid,release_id:a.release_id,code:'cvdict_invalid_lines',total_lines:total,invalid_count:invalid.length,line_numbers:invalid,error_rate:invalid.length/total,max_error_rate:0.001});
+      need(!total || invalid.length/total<=0.001,`CVDICT malformed lines exceed 0.1%: ${invalid.length}/${total}; lines ${invalid.slice(0,20).join(',')}`);
     } else if(format==='unihan' || format==='kradfile' || format.startsWith('tatoeba-')) {
       for(const [i,line] of a.body.split(/\r?\n/).entries()) {
         if(!line.trim() || line.startsWith('#')) continue;

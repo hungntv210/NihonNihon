@@ -6,6 +6,15 @@ import {parseArtifacts,xml} from '../../tools/data/adapters.mjs';
 import {runImport} from '../../tools/data/import.mjs';
 import {selectBatch} from '../../tools/data/cohort.mjs';
 
+test('CVDICT tolerates 0.1% malformed records and reports exact physical lines',async t=>{
+  const f=fixture(t),valid='日 日 [ri4] /nhật/\n';
+  f.source('cvdict','cvdict','cvdict.txt','# comment\n'+valid.repeat(999)+'bad [[Ao4 tai2] ]\n');f.save();
+  const report=await runImport(f);const warning=report.warnings[0];
+  assert.equal(warning.invalid_count,1);assert.equal(warning.total_lines,1000);assert.deepEqual(warning.line_numbers,[1001]);
+  f.write('cvdict.txt',valid.repeat(998)+'bad\n');f.save();
+  await assert.rejects(()=>runImport(f),/exceed 0.1%/);
+});
+
 test('XML external entities are rejected and SVG labels are not parsed as strokes',async t=>{
   assert.throws(()=>xml('<!DOCTYPE x [<!ENTITY x SYSTEM "file:///private">]><x>&x;</x>'),/External XML/);
   const f=fixture(t);f.write('strokes.svg','<svg><path id="label" d="M0 0"/><path id="kvg:065e5-s1" d="M1 1 L2 2"/></svg>');f.save();

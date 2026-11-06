@@ -1,7 +1,7 @@
-# Báo cáo Hán Việt của batch — HV-1.1
+# Báo cáo Hán Việt của batch — HV-1.2
 
 Trạng thái **NOT_RUN**, mọi giá trị bên dưới chưa đo. Không dùng mẫu làm bằng chứng PASS.
-Quy tắc: [HV-1.1](han-viet-policy.md). Không yêu cầu người duyệt lựa chọn AI.
+Quy tắc: [HV-1.2](han-viet-policy.md). Không yêu cầu người duyệt lựa chọn AI.
 
 ## Manifest
 
