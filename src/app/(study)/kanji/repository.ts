@@ -177,6 +177,7 @@ function translationId(db: DatabaseSync, id: string, field: string): string | nu
   return row ? String(row.translation_id) : null;
 }
 export function kanjiDetail(db: DatabaseSync, character: string): KanjiDetail | null {
+  try { character = decodeURIComponent(character).normalize('NFC'); } catch { return null; }
   if ([...character].length !== 1) return null;
   const row = db
     .prepare(
