@@ -141,3 +141,22 @@ trong chuỗi. 3.8 hiện bị tắt trong config local; chỉ bật lại sau k
 nhận trạng thái ổn. Không tự dùng hết budget còn lại để thử model. Pilot một call
 mỗi model cần một nhóm task đồng nhất (không trộn translate và han_viet vì hai
 schema khác nhau), `max_api_attempts:1`, và số mục không vượt batch_size.
+
+## Một call chứa dịch và Hán Việt; import nhiều model
+
+Config `mixed_tasks:true` cho phép một request chứa translate và han_viet bằng
+schema anyOf; request_id bị ràng vào đúng nhánh schema. Mỗi output vẫn kiểm tra
+đúng validator của task gốc, candidate membership và căn cứ. Dùng chế độ này cho
+pilot khó cần đúng một call, không ghép field tùy tiện vào cùng một bản dịch.
+
+Manifest import có thể có `mt_profiles: [<config MT đã pin>, ...]` ngoài `mt`.
+Mỗi mt-results artifact phải ghi `mt_config_sha256: SHA256(stable(config))` trỏ
+đúng một profile cùng source_id. Không ghép model bằng tên file hoặc đổi model của
+release cũ. Importer tạo một source_releases cho từng cấu hình, lưu tất cả output
+hợp lệ thành selected/candidate với release tương ứng, kể cả các bản thay thế từ
+model khác; rerun không tạo bản sao. Khi đã có selected hiện hành thì giữ nguyên
+và nhập bản khác dưới dạng candidate, không tự coi model mới là người duyệt.
+
+Mỗi dòng vi_translations nối source_releases.release_id; model thực nằm trong
+source_releases.manifest_json.model. Model/prompt/config của từng dòng được giữ
+riêng dù source_id đều là mt:google-gemini. Report/queue và raw mt-results giữ local.

@@ -57,3 +57,11 @@ test('invalid AI evidence and fabricated input references leave the kanji unreso
   f.write('mt.json',requests.map(r=>({request_id:r.request_id,output:r.task==='han_viet'?{candidate_id:r.input.candidates[0].id,reason:'test',meaning:'test',compound:{word:'偽',reading:'にせ'},evidence_origin:'input',references:[{source_id:'fabricated',release_id:'fake'}]}:{text_vi:'Nghĩa thử'}})));f.save();
   const report=await runImport(f);assert.equal(report.han_viet.status,'INCOMPLETE');assert.equal(report.han_viet.primary_selected,0);assert.equal(report.han_viet.unresolved,1);
 });
+
+test('multi-model pending requests retain the correct sentence or learning route',async()=>{
+ const {createMT}=await import('../../tools/data/han-viet.mjs');const {sha}=await import('../../tools/data/core.mjs');
+ const base={source_id:'mt:test',prompt_version:'1',prompt_sha256:'a'.repeat(64)},lite={...base,model:'lite',config:{route:'sentences'}},flash={...base,model:'flash',config:{route:'learning'}};
+ const mt=createMT({manifest:{sources:[{source_id:'mt:test',license:'test',attribution:'test'}],mt_profiles:[lite,flash]},artifacts:[]},{responses:[]},null);
+ mt.ask('translate',{item_id:'sentence',field:'text'},()=>{});mt.ask('han_viet',{item_id:'kanji'},()=>{});
+ const requests=[...mt.requests.values()];assert.equal(requests[0].mt_release_id,'mt:test:config:'+sha(lite).slice(0,32));assert.equal(requests[1].mt_release_id,'mt:test:config:'+sha(flash).slice(0,32));
+});

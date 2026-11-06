@@ -87,3 +87,13 @@ test('fallback retries only unfinished contexts and records the actual model for
 test('disabled model makes no API call even when invoked directly',async t=>{
  const {options}=await setup(t);const r=await runGemini({...options,config:{...config,enabled:false},ai:fake(async()=>{throw Error('Must not call');})});assert.equal(r.status,'model_disabled');assert.equal(r.calls,0);
 });
+
+test('mixed translation and Han Viet tasks share one API call with strict per-task validation',async t=>{
+ const {f,options}=await setup(t);f.write('hv.json',[['日','nhật niết','','',[],{}]]);f.save();
+ const configMixed={...config,mixed_tasks:true,api:'interactions',max_api_attempts:1};
+ const paths={manifestPath:f.dir+'/mixed-manifest.json',requestsPath:f.dir+'/mixed-queue.json',resultsPath:f.dir+'/mixed-output.json'};
+ await prepare({manifestPath:f.manifestPath,config:configMixed,outputManifest:paths.manifestPath,requestsPath:paths.requestsPath,resultsPath:paths.resultsPath});
+ const q=JSON.parse(fs.readFileSync(paths.requestsPath));q.requests=[q.requests.find(r=>r.task==='translate'),q.requests.find(r=>r.task==='han_viet')];fs.writeFileSync(paths.requestsPath,JSON.stringify(q));let calls=0;
+ const ai={interactions:{create:async p=>{calls++;assert.equal(p.response_format.schema.items.anyOf.length,2);return {output_text:JSON.stringify(JSON.parse(p.input).map(r=>({request_id:r.request_id,output:r.task==='translate'?{text_vi:'nghĩa thử'}:{text_vi:r.input.candidates[0].reading,candidate_id:r.input.candidates[0].id,compound:{word:'日本',reading:'にほん'},meaning:'Nhật Bản',reason:'test',evidence_origin:'model-generated',references:[]}})))};}}};
+ const result=await runGemini({...paths,config:configMixed,statePath:f.dir+'/mixed-state.json',limit:2,ai});assert.equal(calls,1);assert.equal(result.sent,2);
+});

@@ -18,7 +18,7 @@ export function buildPlan(loaded,data,db) {
     plan.releases.set(a.release_id,{release_id:a.release_id,source_id:s.source_id,version:s.version,checksum:a.file.sha256,artifact_url:a.file.url || pathToFileURL(a.local).href,retrieved_at:a.file.retrieved_at || plan.startedAt,license:s.license,attribution:s.attribution,manifest_json:stable({format:a.file.format,encoding:a.file.encoding || 'utf-8',compression:a.file.compression || null,level:a.file.level || null})});
   }
   const mt=createMT(loaded,data,db);
-  if(mt.release)plan.releases.set(mt.release.release_id,{...mt.release,retrieved_at:plan.startedAt});
+  for(const release of mt.releases)plan.releases.set(release.release_id,{...release,retrieved_at:plan.startedAt});
   function content(id,kind,key,row,a,extra={}) {
     const record={item_id:id,kind,source_key:String(key),...src(a),source_hash:sha(row),field_sources:stable(extra),is_active:1};
     const existing=plan.items.get(id);
@@ -38,13 +38,13 @@ export function buildPlan(loaded,data,db) {
     return db?.prepare("SELECT 1 FROM vi_translations WHERE item_id=? AND field=? AND status='selected' AND needs_refresh=0 AND base_content_hash=?").get(id,field,plan.items.get(id).source_hash);
   }
   function machine(id,field,input) {
-    if(hasCurrent(id,field))return true;
+    const current=hasCurrent(id,field);
     const result=mt.ask('translate',{item_id:id,field,base_hash:plan.items.get(id).source_hash,...input},out=>{
       need(out && nonempty(out.text_vi),'MT text_vi is required');
       need(out.text_vi===out.text_vi.normalize('NFC'),'MT text must normalize to NFC');
-    });
-    if(!result)return false;
-    translation(id,field,result.output.text_vi,{source_id:result.source.source_id,release_id:result.release.release_id},'machine','machine_context',result.request_id,{request_id:result.request_id,mt_output:result.output,input});
+    },{allowRequest:!current});
+    if(!result)return !!current;
+    for(const [i,value] of [result,...result.alternatives??[]].entries())translation(id,field,value.output.text_vi,{source_id:value.source.source_id,release_id:value.release.release_id},'machine','machine_context',value.request_id,{request_id:value.request_id,mt_output:value.output,input},i===0);
     return true;
   }
   const seenSentences=new Set(), missingAttribution=[];
@@ -103,7 +103,7 @@ export function buildPlan(loaded,data,db) {
       const ref=group.refs[0], selected=result.chosen?.id===group.id && !result.ai;
       translation(id,'han_viet',group.reading,src(ref.a),'han_viet','codepoint',`${r.character}|${group.reading}`,selected?result.context:{canonical_reading:group.reading,raw_readings:group.raw_readings,alias_rules_version:'hv-alias-1',source_records:group.refs.map(r=>({key:r.key,...src(r.a)}))},selected);
     }
-    if(result.ai)translation(id,'han_viet',result.chosen.reading,{source_id:result.ai.source.source_id,release_id:result.ai.release.release_id},'machine','machine_context',result.ai.request_id,result.context);
+    if(result.ai)for(const [i,ai]of [result.ai,...result.ai.alternatives??[]].entries()){const group=result.groups.find(g=>g.id===ai.output.candidate_id);translation(id,'han_viet',group.reading,{source_id:ai.source.source_id,release_id:ai.release.release_id},'machine','machine_context',ai.request_id,{...result.context,canonical_reading:group.reading,request_id:ai.request_id,mt_output:ai.output,evidence:ai.output},i===0);}
     for(const [vid,{row:v}]of data.vocab)if((r.words || []).includes(v.word))add('kanji_vocab',{kanji_id:id,vocab_id:vid,...src(data.kanji.get(id).a)},['kanji_id','vocab_id']);
   }
   // Compose word Han Viet only when the Japanese reading can be all-On and each syllable is resolved.

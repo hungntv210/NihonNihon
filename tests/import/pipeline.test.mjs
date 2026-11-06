@@ -111,3 +111,16 @@ test('require-complete writes an honest incomplete report without applying stage
   const report=JSON.parse(fs.readFileSync(f.reportPath,'utf8'));assert.equal(report.db_committed,false);assert.equal(report.acceptance_status,'NOT_RUN');
   const db=f.open();assert.equal(db.prepare('SELECT count(*) n FROM content_items').get().n,0);
 });
+
+test('multiple pinned MT profiles import all model alternatives and preserve provenance on rerun',async t=>{
+ const f=fixture(t);await runImport(f);f.answerRequests();
+ const {sha}=await import('../../tools/data/core.mjs');const first=f.manifest.mt,second={...first,model:'synthetic-second'};
+ const requests=JSON.parse(fs.readFileSync(f.requestsPath,'utf8')).requests;
+ const release='mt:test:config:'+sha(second).slice(0,32);
+ f.manifest.sources.find(s=>s.source_id==='mt:test').files[0].mt_config_sha256=sha(first);
+ f.source('mt:test','mt-results','second.json',requests.map(r=>({request_id:sha({task:r.task,input:r.input,release}),output:{text_vi:'Bản dịch model thứ hai'}})),{mt_config_sha256:sha(second)});
+ f.manifest.mt_profiles=[first,second];f.save();await runImport(f);
+ const db=f.open(),rows=db.prepare("SELECT t.*,json_extract(r.manifest_json,'$.model') model FROM vi_translations t JOIN source_releases r USING(release_id) WHERE method='machine'").all();
+ assert.equal(rows.length,requests.length*2);assert.equal(rows.filter(r=>r.model===second.model).length,requests.length);assert.ok(rows.filter(r=>r.model===second.model).every(r=>r.status==='candidate'));
+ await runImport(f);assert.equal(db.prepare("SELECT count(*) n FROM vi_translations WHERE method='machine'").get().n,rows.length);
+});

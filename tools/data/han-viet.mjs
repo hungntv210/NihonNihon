@@ -14,6 +14,19 @@ export function readingGroups(character,entries=[]) {
   return {before:before.size,groups:[...groups.values()]};
 }
 export function createMT(loaded,data,db) {
+  if(loaded.manifest.mt_profiles){
+    const configs=loaded.manifest.mt_profiles;need(Array.isArray(configs)&&configs.length&&new Set(configs.map(sha)).size===configs.length,'Invalid MT profiles');
+    for(const a of loaded.artifacts.filter(a=>a.file.format==='mt-results'))need(configs.some(c=>c.source_id===a.source.source_id&&sha(c)===a.file.mt_config_sha256),'MT artifact requires a matching pinned profile');
+    const engines=configs.map(config=>createMT({...loaded,manifest:{...loaded.manifest,mt_profiles:undefined,mt:config}},data,db));
+    const requests=new Map();
+    return {source:engines[0].source,release:engines[0].release,releases:engines.flatMap(e=>e.releases),requests,
+      get stats(){return engines.reduce((sum,e)=>{for(const k of Object.keys(sum))sum[k]+=e.stats[k];return sum;},{cache_hits:0,invalid_outputs:0,attempts:0});},
+      ask(task,input,validate,options={}){const found=[],seen=new Set();
+        for(const engine of engines){const r=engine.ask(task,input,validate);if(r)for(const v of [r,...r.alternatives??[]]){const key=sha({release:v.release.release_id,request:v.request_id,output:v.output});if(!seen.has(key)){seen.add(key);found.push(v);}}}
+        if(found.length)return {...found[0],alternatives:found.slice(1)};
+        if(options.allowRequest!==false){const route=task==='translate'&&input.field==='text'?'sentences':'learning',index=configs.findIndex(c=>c.config?.route===route),engine=engines[index<0?0:index];const id=sha({task,input,release:engine.release?.release_id??null});requests.set(id,engine.requests.get(id));}return null;
+      }};
+  }
   const requests=new Map(), stats={cache_hits:0,invalid_outputs:0,attempts:0};
   const config=loaded.manifest.mt;
   let source=null,release=null;
@@ -26,22 +39,24 @@ export function createMT(loaded,data,db) {
     const checksum=sha(config);
     release={release_id:`${source.source_id}:config:${checksum.slice(0,32)}`,source_id:source.source_id,version:`${config.model}:${config.prompt_version}`,checksum,artifact_url:`local://mt/${checksum}/manifest.json`,license:source.license,attribution:source.attribution,manifest_json:JSON.stringify(config)};
   }
-  function ask(task,input,validate) {
+  function ask(task,input,validate,options={}) {
+    const found=[];
     const request_id=sha({task,input,release:release?.release_id ?? null});
     if(release && db) {
       const cached=db.prepare("SELECT context_json FROM vi_translations WHERE method='machine' AND release_id=? AND needs_refresh=0 AND json_extract(context_json,'$.request_id')=? ORDER BY created_at LIMIT 1").get(release.release_id,request_id);
-      if(cached) {const output=JSON.parse(cached.context_json).mt_output;try{validate(output);stats.cache_hits++;return {output,request_id,source,release};}catch{/* Source context changed; revalidate before reuse. */}}
+      if(cached) {const output=JSON.parse(cached.context_json).mt_output;try{validate(output);stats.cache_hits++;found.push({output,request_id,source,release});}catch{/* Source context changed; revalidate before reuse. */}}
     }
-    const attempts=data.responses.filter(r=>r.row.request_id===request_id && r.a.source.source_id===source?.source_id).slice(0,config?.max_attempts ?? 2);
+    const attempts=data.responses.filter(r=>r.row.request_id===request_id && r.a.source.source_id===source?.source_id && (!r.a.file.mt_config_sha256 || r.a.file.mt_config_sha256===sha(config))).slice(0,config?.max_attempts ?? 2);
     for(const attempt of attempts) {
       stats.attempts++;
-      try { const output=nfc(attempt.row.output);validate(output);return {output,request_id,source,release}; }
+      try { const output=nfc(attempt.row.output);validate(output);if(!found.some(r=>sha(r.output)===sha(output)))found.push({output,request_id,source,release}); }
       catch { stats.invalid_outputs++; }
     }
-    requests.set(request_id,{request_id,task,mt_release_id:release?.release_id ?? null,input,reason:!config?'provider_not_configured':attempts.length?'invalid_output':'result_not_supplied'});
+    if(found.length)return {...found[0],alternatives:found.slice(1)};
+    if(options.allowRequest!==false)requests.set(request_id,{request_id,task,mt_release_id:release?.release_id ?? null,input,reason:!config?'provider_not_configured':attempts.length?'invalid_output':'result_not_supplied'});
     return null;
   }
-  return {source,release,requests,stats,ask};
+  return {source,release,releases:release?[release]:[],requests,stats,ask};
 }
 
 export function selectHanViet({character,entries,compounds=[],japaneseCompounds=[],unihan=null,unihanAvailable=false,mt,item_id,base_hash}) {
