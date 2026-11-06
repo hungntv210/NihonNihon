@@ -36,6 +36,7 @@ export function settings(c){
  need(c.daily_budget<=c.requests_per_day,'daily_budget exceeds daily limit');
  need(Number.isSafeInteger(c.max_output_tokens)&&c.max_output_tokens>0,'Explicit max_output_tokens required');
  if(c.tokens_per_minute!=null)need(Number.isSafeInteger(c.tokens_per_minute)&&c.tokens_per_minute>0,'Invalid token limit');
+ if(c.max_api_attempts!=null)need(Number.isInteger(c.max_api_attempts)&&c.max_api_attempts>=1&&c.max_api_attempts<=5,'max_api_attempts must be 1..5');
  if(c.api!=null)need(['interactions','generateContent'].includes(c.api),'Invalid API');
  if(c.thinking_level!=null)need(['minimal','low','medium','high'].includes(c.thinking_level),'Invalid thinking level');
  if(c.route!=null)need(['learning','sentences'].includes(c.route),'Invalid route');
@@ -69,7 +70,7 @@ export async function prepare({manifestPath,config,outputManifest,requestsPath,r
 }
 export const quotaDay=timestamp=>new Intl.DateTimeFormat('en-CA',{timeZone:'America/Los_Angeles',year:'numeric',month:'2-digit',day:'2-digit'}).format(timestamp);
 export const routeMatches=(r,route)=>!route || (route==='sentences'?r.task==='translate'&&r.input.field==='text':r.task==='han_viet'||r.task==='translate'&&r.input.field!=='text');
-async function runUnlocked({manifestPath,config,requestsPath='data/requests/batch.json',resultsPath='data/mt-results/batch.json',limit=20,batchSize,statePath='data/mt-results/quota.json',ai,sleep=ms=>new Promise(r=>setTimeout(r,ms)),now=()=>Date.now()}){
+async function runUnlocked({manifestPath,config,requestsPath='data/requests/batch.json',resultsPath='data/mt-results/batch.json',limit=20,batchSize,statePath='data/mt-results/quota.json',ai,sleep=ms=>new Promise(r=>setTimeout(r,ms)),now=()=>Date.now(),random=Math.random}){
  const mt=settings(config);batchSize??=config.batch_size??20;need(Number.isSafeInteger(limit)&&limit>0,'Positive explicit limit required');need(batchSize>=20&&batchSize<=40&&Number.isInteger(batchSize),'Batch size must be 20..40');
  const manifest=JSON.parse(fs.readFileSync(manifestPath,'utf8'));need(stable(manifest.mt)===stable(mt),'Manifest model/prompt/config mismatch; prepare and regenerate queue');
  const resultFile=manifest.sources.find(s=>s.source_id===mt.source_id)?.files.find(f=>f.format==='mt-results');need(resultFile&&path.resolve(path.dirname(manifestPath),resultFile.path)===path.resolve(resultsPath),'Results must match manifest artifact');
@@ -99,11 +100,11 @@ async function runUnlocked({manifestPath,config,requestsPath='data/requests/batc
  if(config.api==='interactions'){
  response=await ai.interactions.create({model:mt.model,input:contents,system_instruction:PROMPT,store:false,generation_config:{temperature:0,max_output_tokens:mt.config.maxOutputTokens,...(config.thinking_level?{thinking_level:config.thinking_level}:{})},response_format:{type:'text',mime_type:'application/json',schema:resultSchema(task)}},{maxRetries:0,timeout:60000});text=response.output_text;
  }else{response=await ai.models.generateContent({model:mt.model,contents,config:{temperature:0,maxOutputTokens:mt.config.maxOutputTokens,responseMimeType:'application/json',systemInstruction:PROMPT,responseJsonSchema:resultSchema(task),...(config.thinking_level?{thinkingConfig:{thinkingLevel:config.thinking_level.toUpperCase()}}:{}),httpOptions:{retryOptions:{attempts:1},timeout:60000}}});text=response.text;}
- let output;try{output=nfc(JSON.parse(text));validateResults(output,batch);}catch{invalidOutputs++;if(retry<2){await sleep(1000);continue;}status='invalid_output';break outer;}
+ let output;try{output=nfc(JSON.parse(text));validateResults(output,batch);}catch{invalidOutputs++;if(retry<Math.min(2,(config.max_api_attempts??3)-1)){await sleep(1000);continue;}status='invalid_output';break outer;}
  results.push(...output);sent+=output.length;usage.push(response.usage??response.usageMetadata??null);saveResults();break;
- }catch(e){const code=Number(e.status??e.statusCode??e.code);if(code!==429){if([500,502,503,504].includes(code)&&retry<2){await sleep(5000*2**retry);continue;}errorStatus=Number.isFinite(code)?code:'unknown';status='api_error';break outer;}
+ }catch(e){const code=Number(e.status??e.statusCode??e.code);if(code!==429){if([500,502,503,504].includes(code)&&retry<(config.max_api_attempts??4)-1){await sleep(Math.min(30000*2**retry,120000)+Math.floor(random()*5001));continue;}errorStatus=Number.isFinite(code)?code:'unknown';status='api_error';break outer;}
  const details=String(e.message??'');if(/perday|per.day|daily/i.test(details)){ledger.blockedDay=ledger.day;saveState();status='daily_limit';break outer;}
- if(retry>=4){status='rate_limited';break outer;}const delay=details.match(/retryDelay[^0-9]*(\d+(?:\.\d+)?)s/);await sleep(Math.max(10000*2**retry,delay?Number(delay[1])*1000:0));
+ if(retry>=(config.max_api_attempts??5)-1){status='rate_limited';break outer;}const delay=details.match(/retryDelay[^0-9]*(\d+(?:\.\d+)?)s/);await sleep(Math.max(10000*2**retry,delay?Number(delay[1])*1000:0));
  }
  }
  }}

@@ -106,3 +106,32 @@ Ledger cục bộ vẫn không biết các ứng dụng khác dùng chung projec
 Tài liệu API chính thức:
 [Interactions](https://ai.google.dev/api/interactions-api),
 [rate limits](https://ai.google.dev/gemini-api/docs/rate-limits).
+
+## Backoff và chuyển model
+
+503/5xx dùng 30 → 60 → 120 giây + jitter ngẫu nhiên 0–5 giây, mặc định tối đa
+4 lần gọi mỗi nhóm (gồm lần đầu), rồi trả api_error. max_api_attempts cấu hình
+1–5; probe đặt 1 để không retry. 429 vẫn có backoff riêng, quota ngày dừng ngay.
+Không khẳng định Google trừ RPD cho lần 503: ledger local đếm mọi lần thử bảo thủ.
+
+`tools/data/mt-gemini-chain.mjs` đọc danh sách profile từ JSON theo đúng thứ tự.
+Mỗi profile có configPath, manifestPath, requestsPath, resultsPath, optional enabled.
+Chuẩn bị manifest/results riêng bằng --prepare cho mỗi model trước; config route
+phải cùng learning cho chuỗi nghĩa/ngữ pháp/HV. `enabled:false` bỏ qua model đang
+không khả dụng mà không gọi thêm. Chuỗi hiện tại trong config local: 3.8 Flash →
+3.6 Flash → 3.5 Flash Lite; câu ví dụ dùng profile sentences riêng, không đi chuỗi này.
+
+```sh
+node --env-file=.env tools/data/mt-gemini-chain.mjs --profiles data/private/gemini-learning-chain.json --limit 20 --report data/reports/gemini-learning-chain.json
+```
+
+Lệnh trên chỉ chạy sau khi duyệt pilot. `--limit` là số context **chưa hoàn thành**
+tối đa cho lượt chạy mới, không phải giới hạn tổng số kết quả tích luỹ.
+Model sau chỉ nhận context chưa có output hợp lệ ở model trước. Không gửi lại
+các mục đã hoàn thành chỉ để đổi model. Khi chuyển model, tạo request_id đúng release
+của model mới; không đổi nhãn kết quả model cũ. Report index ghi từng request_id,
+model thực sự được gọi, context_key và đường dẫn output; schema mt-results giữ nguyên
+và manifest của từng artifact pin model/prompt/API/thinking. Xem report này khi so
+chất lượng, không suy model từ tên file batch chung. Sau số lần retry hữu hạn thì
+chuyển profile tiếp theo, không chờ đến ngày sau. Schema/căn cứ sai hết retry thì
+dừng để kiểm tra thay vì âm thầm hạ chuẩn kiểm định.

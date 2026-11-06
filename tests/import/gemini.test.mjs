@@ -64,3 +64,22 @@ test('quota resumes on the next Pacific date and aliases share model identity',a
  clock=Date.parse('2026-11-06T08:05:00Z');const r=await runGemini({...options,config:c,ai,now:()=>clock});assert.ok(r.sent>0);assert.equal(calls,2);
  assert.equal(settings({...config,model:'models/gemini-test'}).model,'gemini-test');
 });
+
+test('503 retries wait 30/60/120 seconds plus jitter, then stop the model',async t=>{
+ const {options}=await setup(t);let clock=Date.now(),calls=0;const pauses=[];
+ const result=await runGemini({...options,config:{...config,max_api_attempts:4},limit:1,ai:fake(async()=>{calls++;throw {status:503};}),now:()=>clock,random:()=>0.5,sleep:async ms=>{pauses.push(ms);clock+=ms;}});
+ assert.equal(calls,4);assert.equal(result.status,'api_error');assert.equal(result.error_status,503);assert.deepEqual(pauses,[32500,62500,122500]);
+});
+
+test('fallback retries only unfinished contexts and records the actual model for every result',async t=>{
+ const {f,options}=await setup(t);const {runChain}=await import('../../tools/data/mt-gemini-chain.mjs');const backup={...config,model:'gemini-backup',max_api_attempts:1};
+ const second={config:backup,manifestPath:f.dir+'/backup-manifest.json',requestsPath:f.dir+'/backup-requests.json',resultsPath:f.dir+'/backup-results.json'};
+ await prepare({config:backup,manifestPath:f.manifestPath,outputManifest:second.manifestPath,requestsPath:second.requestsPath,resultsPath:second.resultsPath});
+ let clock=Date.now(),primaryCalls=0;const received=[];
+ const ai=fake(async p=>{received.push({model:p.model,items:JSON.parse(p.contents)});if(p.model===config.model&&++primaryCalls===2)throw {status:503};return {text:JSON.stringify(output(p))};});
+ const report=await runChain({profiles:[{...options,config:{...config,max_api_attempts:1}},second],limit:22,statePath:options.statePath,reportPath:f.dir+'/chain-report.json',ai,now:()=>clock,sleep:async ms=>{clock+=ms;}});
+ assert.equal(report.remaining,0);assert.equal(report.results.filter(r=>r.model===config.model).length,20);assert.equal(report.results.filter(r=>r.model===backup.model).length,2);
+ assert.equal(received.at(-1).items.length,2);assert.notEqual(received[1].items[0].request_id,received[2].items[0].request_id);
+ assert.equal(JSON.parse(fs.readFileSync(second.manifestPath)).mt.model,backup.model);
+ assert.equal(JSON.parse(fs.readFileSync(second.resultsPath)).length,2);
+});
