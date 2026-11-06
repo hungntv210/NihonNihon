@@ -65,3 +65,11 @@ test('multi-model pending requests retain the correct sentence or learning route
  mt.ask('translate',{item_id:'sentence',field:'text'},()=>{});mt.ask('han_viet',{item_id:'kanji'},()=>{});
  const requests=[...mt.requests.values()];assert.equal(requests[0].mt_release_id,'mt:test:config:'+sha(lite).slice(0,32));assert.equal(requests[1].mt_release_id,'mt:test:config:'+sha(flash).slice(0,32));
 });
+
+test('multiple profiles prefer upgraded sentence prompt and dedupe NFC aliases in pending queue',async()=>{
+ const {createMT}=await import('../../tools/data/han-viet.mjs');const {sha}=await import('../../tools/data/core.mjs');
+ const old={source_id:'mt:test',model:'lite',prompt_version:'1',prompt_sha256:'a'.repeat(64),config:{route:'sentences'}},current={...old,prompt_version:'2',config:{route:'sentences',sentence_key:'ja-nfc-v1',supersedes_prompt_versions:['1']}};
+ const mt=createMT({manifest:{sources:[{source_id:'mt:test',license:'test',attribution:'test'}],mt_profiles:[old,current]},artifacts:[]},{responses:[]},null);
+ mt.ask('translate',{item_id:'tatoeba:sentence:1',field:'text',base_hash:'old',ja:'カ\u3099',en:'first'},()=>{});mt.ask('translate',{item_id:'openjlpt:sentence:2',field:'text',base_hash:'other',ja:'ガ',en:'second'},()=>{});
+ assert.equal(mt.requests.size,1);assert.equal([...mt.requests.values()][0].mt_release_id,'mt:test:config:'+sha(current).slice(0,32));
+});

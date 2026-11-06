@@ -97,3 +97,9 @@ test('mixed translation and Han Viet tasks share one API call with strict per-ta
  const ai={interactions:{create:async p=>{calls++;assert.equal(p.response_format.schema.items.anyOf.length,2);return {output_text:JSON.stringify(JSON.parse(p.input).map(r=>({request_id:r.request_id,output:r.task==='translate'?{text_vi:'nghĩa thử'}:{text_vi:r.input.candidates[0].reading,candidate_id:r.input.candidates[0].id,compound:{word:'日本',reading:'にほん'},meaning:'Nhật Bản',reason:'test',evidence_origin:'model-generated',references:[]}})))};}}};
  const result=await runGemini({...paths,config:configMixed,statePath:f.dir+'/mixed-state.json',limit:2,ai});assert.equal(calls,1);assert.equal(result.sent,2);
 });
+
+test('terminology validation rejects cảm cúm and flattened humble speech',async()=>{
+ const {validateTerminology}=await import('../../tools/data/mt-gemini.mjs');const q=[{request_id:'cold',task:'translate',input:{ja:'風邪は伝染する。'}},{request_id:'visit',task:'translate',input:{ja:'明日伺います。'}}];
+ assert.throws(()=>validateTerminology([{request_id:'cold',output:{text_vi:'Cảm cúm lây truyền.'}}],q),/influenza/);assert.throws(()=>validateTerminology([{request_id:'visit',output:{text_vi:'Ngày mai tôi sẽ đến.'}}],q),/Humble/);
+ validateTerminology([{request_id:'cold',output:{text_vi:'Bệnh cảm có thể lây.'}},{request_id:'visit',output:{text_vi:'Ngày mai tôi xin phép đến.'}}],q);
+});

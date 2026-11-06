@@ -160,3 +160,36 @@ và nhập bản khác dưới dạng candidate, không tự coi model mới là
 Mỗi dòng vi_translations nối source_releases.release_id; model thực nằm trong
 source_releases.manifest_json.model. Model/prompt/config của từng dòng được giữ
 riêng dù source_id đều là mt:google-gemini. Report/queue và raw mt-results giữ local.
+
+## Prompt v2 và gộp câu NFC
+
+`gemini-vi-hv-2` thêm thuật ngữ bắt buộc 学生=sinh viên, 生徒=học sinh, 風邪=cảm,
+và giữ mức lịch sự/kính ngữ/khiêm nhường. Prompt hash và version được pin trong
+release mới, không ghi nhãn v2 lên output v1.
+
+Config MT v2 có sentence_key=ja-nfc-v1: request dịch câu công khai chỉ phụ thuộc
+text Nhật NFC + model/prompt release; không phụ thuộc item ID, English gloss hay
+Tatoeba ID. Giữ nguyên sentence IDs và quan hệ item_sentences. Một output được
+fan-out vào mọi sentence item cùng text, source_record_key/request_id giống nhau.
+Không gộp NFKC, không xoá dấu câu hay viết lại câu. Clip/subtitle cá nhân không
+được canonical hoá chung với nguồn công khai và vẫn bị chặn trước API.
+
+Các English gloss khác nhau của cùng sentence ID được giữ trong field_sources
+example_variants; câu Nhật khác nhau cho cùng ID vẫn bị từ chối. Prompt v1 giữ
+cách tính request_id cũ để đọc được cache/lịch sử. Prompt mới khai báo rõ
+supersedes_prompt_versions, cho phép chuyển selected cũ sang needs_review và chọn
+output mới, không sửa text cũ. Các profile cùng route ưu tiên prompt chưa bị thay thế.
+
+Thống kê nguồn local: data/reports/openjlpt-sentence-dedupe.json. Số dòng ví dụ và
+số câu NFC duy nhất là hai đại lượng khác nhau; không dùng số hàng vi_translations
+để suy ra số request phải gọi. Chạy dài dừng/checkpoint khi hết quota, không tự chờ
+qua ngày hoặc chuyển toàn bộ nghĩa/ngữ pháp sang Lite nếu chỉ được phép chạy Flash.
+
+## Thuật ngữ và sắc thái: prompt v3
+
+Lượt v2 đã phát hiện lỗi “cảm cúm” và làm phẳng 伺います. Không coi việc chỉ chứa
+substring “cảm” là đạt. `gemini-vi-hv-3` cấm dùng cúm/cảm cúm cho 風邪 và yêu cầu
+biểu đạt khiêm nhường tường minh cho 伺います/伺いました. Validator kiểm tra thuật ngữ
+và các mẫu khiêm nhường cụ thể trước khi lưu; đây là kiểm tra hữu hạn, không thay
+đánh giá đầy đủ sắc thái. Output v2 vẫn giữ riêng để truy vết, không đổi nhãn thành v3.
+V3 khai báo supersedes v1/v2; dữ liệu thử không đạt không được nhập thành selected.

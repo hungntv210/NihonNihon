@@ -124,3 +124,19 @@ test('multiple pinned MT profiles import all model alternatives and preserve pro
  assert.equal(rows.length,requests.length*2);assert.equal(rows.filter(r=>r.model===second.model).length,requests.length);assert.ok(rows.filter(r=>r.model===second.model).every(r=>r.status==='candidate'));
  await runImport(f);assert.equal(db.prepare("SELECT count(*) n FROM vi_translations WHERE method='machine'").get().n,rows.length);
 });
+
+test('NFC Japanese sentence dedupe translates once and fans out across distinct sentence IDs',async t=>{
+ const f=fixture(t);f.manifest.mt.config={sentence_key:'ja-nfc-v1'};
+ f.vocab[0].examples=[{ja:'カ\u3099',en:'first English',tatoeba_id:1001}];f.grammar[0].examples=[{ja:'ガ',en:'different English',tatoeba_id:1002}];
+ f.write('vocab.json',f.vocab);f.write('grammar.json',f.grammar);f.save();await runImport(f);
+ const requests=JSON.parse(fs.readFileSync(f.requestsPath,'utf8')).requests.filter(r=>r.input.field==='text');assert.equal(requests.length,1);assert.equal(requests[0].input.ja,'ガ');assert.equal(requests[0].input.en,undefined);
+ f.answerRequests();await runImport(f);const rows=f.open().prepare("SELECT item_id,text_vi,source_record_key FROM vi_translations WHERE field='text'").all();assert.equal(rows.length,2);assert.equal(rows[0].text_vi,rows[1].text_vi);assert.equal(rows[0].source_record_key,rows[1].source_record_key);
+});
+
+test('prompt upgrade explicitly supersedes v1 translations without changing old text',async t=>{
+ const f=fixture(t);f.manifest.mt.prompt_version='gemini-vi-hv-1';f.save();await runImport(f);const initial=JSON.parse(fs.readFileSync(f.requestsPath,'utf8')).requests;f.answerRequests();await runImport(f);
+ const old=f.open().prepare("SELECT * FROM vi_translations WHERE method='machine' AND field='meaning' AND item_id LIKE 'openjlpt:vocab:%'").get();
+ const {sha}=await import('../../tools/data/core.mjs');const {canonicalMTInput}=await import('../../tools/data/han-viet.mjs');f.manifest.mt={...f.manifest.mt,prompt_version:'gemini-vi-hv-2',config:{sentence_key:'ja-nfc-v1',supersedes_prompt_versions:['gemini-vi-hv-1']}};
+ const release='mt:test:config:'+sha(f.manifest.mt).slice(0,32);f.source('mt:test','mt-results','v2.json',initial.map(r=>({request_id:sha({task:r.task,input:canonicalMTInput(r.task,r.input,f.manifest.mt),release}),output:{text_vi:'Sinh viên'}})));f.save();await runImport(f);
+ const db=f.open(),current=db.prepare("SELECT * FROM vi_translations WHERE item_id=? AND field='meaning' AND status='selected'").get(old.item_id);assert.equal(current.text_vi,'Sinh viên');assert.notEqual(current.translation_id,old.translation_id);const previous=db.prepare('SELECT * FROM vi_translations WHERE translation_id=?').get(old.translation_id);assert.equal(previous.text_vi,old.text_vi);assert.equal(previous.status,'needs_review');assert.equal(previous.needs_refresh,1);
+});

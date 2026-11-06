@@ -64,7 +64,10 @@ export async function applyPlan(db,plan,{dbPath=':memory:',backupDirectory}={}) 
       }
       if(row.status==='selected' && previous && previous.translation_id!==row.translation_id) {
         const dictionaryUpdate=row.method==='dictionary' && previous.method==='dictionary' && row.source_id===previous.source_id && row.release_id!==previous.release_id && row.match_method===previous.match_method && ['word','jmdict_form'].includes(row.match_method);
-        if(row.field!=='han_viet' && !previous.needs_refresh && !dictionaryUpdate)row.status='candidate';
+        const newConfig=JSON.parse(db.prepare('SELECT manifest_json FROM source_releases WHERE release_id=?').get(row.release_id).manifest_json);
+        const oldConfig=JSON.parse(db.prepare('SELECT manifest_json FROM source_releases WHERE release_id=?').get(previous.release_id).manifest_json);
+        const promptUpgrade=row.method==='machine'&&previous.method==='machine'&&row.source_id===previous.source_id&&newConfig.config?.supersedes_prompt_versions?.includes(oldConfig.prompt_version);
+        if(row.field!=='han_viet' && !previous.needs_refresh && !dictionaryUpdate && !promptUpgrade)row.status='candidate';
         else db.prepare("UPDATE vi_translations SET status='needs_review',needs_refresh=1 WHERE translation_id=?").run(previous.translation_id);
       }
       put(db,'vi_translations',row,['translation_id'],true);

@@ -58,7 +58,7 @@ export function buildPlan(loaded,data,db) {
     const record={text_ja:example.ja,text_en:example.en,furigana_notation:example.furigana || null,tatoeba_ja_id:example.tatoeba_id || null,author_attribution:author};
     if(example.furigana)need(example.furigana.replace(/\{([^|{}]+)\|[^{}]+\}/g,'$1')===example.ja,'Furigana does not reconstruct sentence');
     const old=plan.items.get(id);
-    if(old) {const prior=plan.rows.sentences.find(r=>r.row.item_id===id).row;need(prior.text_ja===record.text_ja && prior.text_en===record.text_en,'Conflicting sentence translations; resolve upstream before import');}
+    if(old) {const prior=plan.rows.sentences.find(r=>r.row.item_id===id).row;need(prior.text_ja===record.text_ja,'Conflicting Japanese text for sentence ID');if(prior.text_en!==record.text_en){const sources=JSON.parse(old.field_sources);sources.example_variants??=[];const variant={text_en:record.text_en,furigana_notation:record.furigana_notation,...src(a)};if(!sources.example_variants.some(v=>stable(v)===stable(variant)))sources.example_variants.push(variant);old.field_sources=stable(sources);}}
     else {content(id,'sentence',example.tatoeba_id || sha(example.ja),record,owner,{examples:src(a)});add('sentences',{item_id:id,...record},['item_id']);}
     if(!seenSentences.has(id)) {
       seenSentences.add(id);

@@ -13,6 +13,11 @@ export function readingGroups(character,entries=[]) {
   }
   return {before:before.size,groups:[...groups.values()]};
 }
+export function canonicalMTInput(task,input,config){
+ if(task==='translate'&&input.field==='text'&&config?.config?.sentence_key==='ja-nfc-v1'&&/^(?:tatoeba:sentence:|openjlpt:sentence:|ja:sentence:)/.test(input.item_id)){
+ const ja=input.ja.normalize('NFC');return {item_id:'ja:sentence:'+sha(ja),field:'text',base_hash:sha({ja}),ja,reading:null};}
+ return input;
+}
 export function createMT(loaded,data,db) {
   if(loaded.manifest.mt_profiles){
     const configs=loaded.manifest.mt_profiles;need(Array.isArray(configs)&&configs.length&&new Set(configs.map(sha)).size===configs.length,'Invalid MT profiles');
@@ -24,7 +29,7 @@ export function createMT(loaded,data,db) {
       ask(task,input,validate,options={}){const found=[],seen=new Set();
         for(const engine of engines){const r=engine.ask(task,input,validate);if(r)for(const v of [r,...r.alternatives??[]]){const key=sha({release:v.release.release_id,request:v.request_id,output:v.output});if(!seen.has(key)){seen.add(key);found.push(v);}}}
         if(found.length)return {...found[0],alternatives:found.slice(1)};
-        if(options.allowRequest!==false){const route=task==='translate'&&input.field==='text'?'sentences':'learning',index=configs.findIndex(c=>c.config?.route===route),engine=engines[index<0?0:index];const id=sha({task,input,release:engine.release?.release_id??null});requests.set(id,engine.requests.get(id));}return null;
+        if(options.allowRequest!==false){const route=task==='translate'&&input.field==='text'?'sentences':'learning',index=configs.findIndex(c=>c.config?.route===route&&!configs.some(other=>other.source_id===c.source_id&&other.config?.route===route&&other.config?.supersedes_prompt_versions?.includes(c.prompt_version))),engine=engines[index<0?0:index];const id=sha({task,input:canonicalMTInput(task,input,configs[index<0?0:index]),release:engine.release?.release_id??null});requests.set(id,engine.requests.get(id));}return null;
       }};
   }
   const requests=new Map(), stats={cache_hits:0,invalid_outputs:0,attempts:0};
@@ -40,6 +45,7 @@ export function createMT(loaded,data,db) {
     release={release_id:`${source.source_id}:config:${checksum.slice(0,32)}`,source_id:source.source_id,version:`${config.model}:${config.prompt_version}`,checksum,artifact_url:`local://mt/${checksum}/manifest.json`,license:source.license,attribution:source.attribution,manifest_json:JSON.stringify(config)};
   }
   function ask(task,input,validate,options={}) {
+    input=canonicalMTInput(task,input,config);
     const found=[];
     const request_id=sha({task,input,release:release?.release_id ?? null});
     if(release && db) {
