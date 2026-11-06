@@ -104,7 +104,8 @@ try {
   }
   assert.equal((await page.goto(origin + '/grammar/wa'))?.status(), 200);
   await page.getByRole('heading', { level: 1, name: '〜は', exact: true }).waitFor();
-  for (const segment of ['%', '%GG', '%E0%A4%A', 'openjlpt%253Agrammar%253Awa']) {
+  // Escape percent signs so malformed keys reach the page rather than Next's URL matcher.
+  for (const segment of ['%25', '%25GG', '%25E0%25A4%25A', 'openjlpt%253Agrammar%253Awa']) {
     assert.equal((await page.goto(origin + '/grammar/' + segment))?.status(), 404, segment);
   }
   assert.deepEqual(errors, []);
