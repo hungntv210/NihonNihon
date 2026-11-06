@@ -4,7 +4,7 @@
 - **Giai đoạn:** Giai đoạn 1 – MVP (càng sớm càng tốt)
 - **Phụ thuộc:** `g1/foundation`, `g1/srs`
 - **Tài liệu gốc:** Đặc tả v2 mục 9; Kế hoạch mục 9 (trên Claude: [Đặc tả chức năng v2](https://claude.ai/artifact/4ApVpJNZA9s3311eurPcCX), [Kế hoạch phát triển](https://claude.ai/artifact/HarDe5qR2isfbLRypcAboS), [Lộ trình N5 → N2](https://claude.ai/artifact/5eT7QNEDrNDnXousnhTbHb); chỉ mở được bằng tài khoản Claude của chủ dự án)
-- **Giao diện:** theo thiết kế 8-bit × bóng đá trong `docs/superpowers/specs/2026-11-01-giao-dien-8bit-bong-da-design.md` và prototype `prototype/` (màn shadowing, player, lịch trận)
+- **Giao diện:** theo [thiết kế giao diện học tập](../interface-redesign.md) (`docs/interface-redesign.md`) và prototype `prototype/` hiện hành.
 
 Tài liệu này đọc riêng được: mọi quyết định cần cho nhánh đều nằm ở đây.
 
