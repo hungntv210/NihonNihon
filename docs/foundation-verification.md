@@ -104,3 +104,13 @@ Schema, worker dịch và database G0 không thay đổi.
 - npm run check: PASS; prototype 22/22 + foundation 14/14 = **36/36**; typecheck, build và test:app đều đạt.
 - Foundation chỉ bổ sung ts-fsrs@6.0.0 và wanakana@5.3.1 cùng smoke test/hợp đồng dependency; không sửa schema. Đây là phần dùng chung, không thuộc phạm vi một tuyến chức năng.
 - Log local: data/reports/pre-push-a24b8f6-20261106T164550.log (gitignored).
+
+### 2026-11-06T21:02:15.3528179+07:00 — g1/grammar
+
+- Commit kiểm tra: 596953e3d26d210fb12b71241c94386205fd6efe.
+- Bắt đầu: 2026-11-06T21:00:43.2698194+07:00; kết thúc: 2026-11-06T21:02:15.3528179+07:00.
+- npm run check: PASS; typecheck, build production và test:app HTTP/Chrome desktop/mobile đều đạt.
+- Kiểm thử: prototype 22/22 + foundation/grammar 21/21 = **43/43**, không lỗi hoặc bỏ qua.
+- node tools/check-route-scope.mjs origin/master grammar: PASS; trước nhật ký có 14 file, tất cả trong src/app/(study)/grammar/.
+- Log local: data/reports/grammar-check-596953e.log và data/reports/grammar-scope.log (gitignored).
+- Có tìm kiếm/lọc/phân trang, chi tiết nguồn-aware, ví dụ/furigana, bài tập dựng lại câu gốc và Báo sai. Chưa nghiệm thu đủ403 mẫu/VI/clip vì G0 chưa merge; không tự tạo nội dung thiếu, không sửa schema.
