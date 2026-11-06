@@ -235,3 +235,10 @@ Kiểm thử tự động dùng fixture tự tạo, không dùng dữ liệu res
 đã nhập OpenJLPT N5 và cohort 100/50/20 chỉ với nguồn OpenJLPT, đúng trạng thái thiếu
 nguồn bổ trợ; đây **không phải** báo cáo batch nghiệm thu và không được điền số HV từ đó.
 `.gitignore` loại raw/database/backups/reports/requests/media riêng, không chỉ code.
+
+## Adapter Gemini
+
+Đã có adapter gọi API Gemini cho **dữ liệu công khai**, schema/Ajv, checkpoint và
+quota. Xem [hướng dẫn Gemini](gemini.md). Luồng file exchange phía trên vẫn dùng
+được; Gemini tự ghi đúng mt-results. Phải xác nhận model/hạn mức và duyệt lượt thử
+20 mục trước khi chạy toàn bộ. Không gửi câu của clip cá nhân.

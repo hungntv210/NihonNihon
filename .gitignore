@@ -16,3 +16,4 @@
 /data/backups/
 /.env
 /.env.*
+/data/mt-results/

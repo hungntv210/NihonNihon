@@ -13,6 +13,7 @@
     "data:preview": "node tools/data/preview.mjs"
   },
   "dependencies": {
+    "@google/genai": "2.32.0",
     "ajv": "8.20.0",
     "csv-parse": "7.0.3",
     "fast-xml-parser": "5.12.0"
