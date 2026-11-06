@@ -109,9 +109,9 @@ Tài liệu API chính thức:
 
 ## Backoff và chuyển model
 
-503/5xx dùng 30 → 60 → 120 giây + jitter ngẫu nhiên 0–5 giây, mặc định tối đa
-4 lần gọi mỗi nhóm (gồm lần đầu), rồi trả api_error. max_api_attempts cấu hình
-1–5; probe đặt 1 để không retry. 429 vẫn có backoff riêng, quota ngày dừng ngay.
+503/5xx nghỉ 30–60 giây (có jitter, không vượt 60 giây), tối đa
+3 lần gọi mỗi nhóm gồm lần đầu, rồi trả api_error để chuyển model. Trần 3 áp dụng
+kể cả cấu hình cũ lớn hơn. max_api_attempts=1 cho pilot/probe để không retry. 429 vẫn có backoff riêng, quota ngày dừng ngay.
 Không khẳng định Google trừ RPD cho lần 503: ledger local đếm mọi lần thử bảo thủ.
 
 `tools/data/mt-gemini-chain.mjs` đọc danh sách profile từ JSON theo đúng thứ tự.
@@ -135,3 +135,9 @@ và manifest của từng artifact pin model/prompt/API/thinking. Xem report nà
 chất lượng, không suy model từ tên file batch chung. Sau số lần retry hữu hạn thì
 chuyển profile tiếp theo, không chờ đến ngày sau. Schema/căn cứ sai hết retry thì
 dừng để kiểm tra thay vì âm thầm hạ chuẩn kiểm định.
+
+Cấu hình `enabled:false` còn chặn cả lệnh gọi trực tiếp tới model, không chỉ profile
+trong chuỗi. 3.8 hiện bị tắt trong config local; chỉ bật lại sau khi chủ dự án xác
+nhận trạng thái ổn. Không tự dùng hết budget còn lại để thử model. Pilot một call
+mỗi model cần một nhóm task đồng nhất (không trộn translate và han_viet vì hai
+schema khác nhau), `max_api_attempts:1`, và số mục không vượt batch_size.

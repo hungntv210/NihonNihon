@@ -65,10 +65,10 @@ test('quota resumes on the next Pacific date and aliases share model identity',a
  assert.equal(settings({...config,model:'models/gemini-test'}).model,'gemini-test');
 });
 
-test('503 retries wait 30/60/120 seconds plus jitter, then stop the model',async t=>{
+test('503 stops after at most three calls, with waits in the 30-60 second range',async t=>{
  const {options}=await setup(t);let clock=Date.now(),calls=0;const pauses=[];
  const result=await runGemini({...options,config:{...config,max_api_attempts:4},limit:1,ai:fake(async()=>{calls++;throw {status:503};}),now:()=>clock,random:()=>0.5,sleep:async ms=>{pauses.push(ms);clock+=ms;}});
- assert.equal(calls,4);assert.equal(result.status,'api_error');assert.equal(result.error_status,503);assert.deepEqual(pauses,[32500,62500,122500]);
+ assert.equal(calls,3);assert.equal(result.status,'api_error');assert.equal(result.error_status,503);assert.deepEqual(pauses,[32500,60000]);
 });
 
 test('fallback retries only unfinished contexts and records the actual model for every result',async t=>{
@@ -82,4 +82,8 @@ test('fallback retries only unfinished contexts and records the actual model for
  assert.equal(received.at(-1).items.length,2);assert.notEqual(received[1].items[0].request_id,received[2].items[0].request_id);
  assert.equal(JSON.parse(fs.readFileSync(second.manifestPath)).mt.model,backup.model);
  assert.equal(JSON.parse(fs.readFileSync(second.resultsPath)).length,2);
+});
+
+test('disabled model makes no API call even when invoked directly',async t=>{
+ const {options}=await setup(t);const r=await runGemini({...options,config:{...config,enabled:false},ai:fake(async()=>{throw Error('Must not call');})});assert.equal(r.status,'model_disabled');assert.equal(r.calls,0);
 });
