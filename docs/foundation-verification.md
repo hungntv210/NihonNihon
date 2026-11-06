@@ -157,3 +157,25 @@ Schema, worker dịch và database G0 không thay đổi.
 - Quick SQL accepts only recognition cards for vocabulary/kanji. Regression seeds recognition/reading/recall/listening for 8 public vocabulary +4 kanji and grammar recognition; verifies the exact12 eligible recognition cards, adds4 synthetic copies of public fixture vocabulary to verify quick limit15, and retains full limit20. No schema/shared/G0 or audio autoplay changes.
 - The earlier restricted-sandbox attempt timed out starting the local server; the complete successful run above supersedes that attempt without source changes. Raw logs remain gitignored: data/reports/pre-push-2427860-final.log, data/reports/srs-scope-2427860.log, data/reports/srs-browser-2427860.log.
 - Limits: public demo only; cold offline load awaits the PWA shell; no physical-device benchmark or G0 acceptance claimed.
+
+### 2026-11-06T21:02:15.3528179+07:00 — g1/grammar
+
+- Commit kiểm tra: 596953e3d26d210fb12b71241c94386205fd6efe.
+- Bắt đầu: 2026-11-06T21:00:43.2698194+07:00; kết thúc: 2026-11-06T21:02:15.3528179+07:00.
+- npm run check: PASS; typecheck, build production và test:app HTTP/Chrome desktop/mobile đều đạt.
+- Kiểm thử: prototype 22/22 + foundation/grammar 21/21 = **43/43**, không lỗi hoặc bỏ qua.
+- node tools/check-route-scope.mjs origin/master grammar: PASS; trước nhật ký có 14 file, tất cả trong src/app/(study)/grammar/.
+- Log local: data/reports/grammar-check-596953e.log và data/reports/grammar-scope.log (gitignored).
+- Có tìm kiếm/lọc/phân trang, chi tiết nguồn-aware, ví dụ/furigana, bài tập dựng lại câu gốc và Báo sai. Chưa nghiệm thu đủ403 mẫu/VI/clip vì G0 chưa merge; không tự tạo nội dung thiếu, không sửa schema.
+
+### 2026-11-06T21:36:54.0848994+07:00 — PR3 grammar encoded navigation regression
+
+- Checked commit: a93111ab57d33dcbd3e00c122e5524b08007183d, after merging origin/master b2910fd6e7e4343cf653ae308830a16f586dc2e3 (PR6, PR5 and PR4); all prior verification entries preserved.
+- Full-check start: 2026-11-06T21:35:40.2444464+07:00; end: 2026-11-06T21:36:31.5231050+07:00.
+- Environment: Windows, Node v24.10.0, npm 11.6.1, local production server and headless Chrome; Windows child-process and loopback access enabled.
+- Full npm run check: PASS. Typecheck PASS; tests **64/64** (22 prototype +42 foundation/routes, including8 grammar), 0 failed/0 skipped; production build PASS; test:app PASS.
+- node tools/check-route-scope.mjs origin/master grammar: PASS, 17 changed files confined to the grammar route and append-only verification log. No schema/shared/G0 changes.
+- Committed grammar browser-check.ts: PASS, start 2026-11-06T21:36:43.6748426+07:00; end 2026-11-06T21:36:54.0848994+07:00. Clicked all3 actual listing links and all6 actual related-group links at1440px and390px (18 clicks), asserted destination headings/content and no horizontal overflow or browser errors. Short /grammar/wa returned200; URL-escaped malformed keys and a double-encoded ID returned404.
+- Route boundary decodes the ID exactly once; malformed URI decoding returns not-found. Regression tests cover generated listing/related IDs, short and canonical keys, malformed encoding and no second decode. Browser malformed keys use valid URL escaping to reach the route; invalid raw URL escaping is handled by Next's matcher before the page.
+- Raw logs/report are gitignored: data/reports/grammar-final-a93111a.log, data/reports/grammar-final-scope-a93111a.log, data/reports/grammar-final-browser-a93111a.log, data/reports/grammar-browser-check.json. Only this audit entry changes after the successful checks.
+- Limits: public three-pattern demo only; no full403-pattern, Vietnamese translation, clip, G0 data acceptance or physical-device claims.
