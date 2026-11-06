@@ -31,3 +31,33 @@ Kiểm thử tạo database/credential tạm và không gọi Gemini hoặc DB c
   đã pass CI Linux. Runner pin Ubuntu 24.04 để tránh thay đổi ubuntu-latest.
 - Chưa thử trên thiết bị Android/Safari iOS thật hoặc triển khai qua VPS/Tailscale.
 - PWA/offline, sao lưu, scheduler FSRS và tính năng học chi tiết chưa thuộc PR khung.
+
+## Nhật ký local trước mỗi lần push
+
+Trong lúc GitHub Actions bị khóa billing, mỗi lần push phải có một lượt
+`npm run check` đầy đủ đạt. Ghi commit thực sự được kiểm tra, thời gian có múi
+giờ và số kiểm thử đạt/tổng. Commit báo cáo chỉ thêm bản ghi vào tệp này sau
+lượt check; không đổi code/config. Nếu có thay đổi khác phải check lại toàn bộ.
+Không dùng dịch vụ CI khác hoặc runner tự dựng.
+
+### 06/11/2026 — 16:22:16 (UTC+07:00)
+
+- Commit đã kiểm tra: [`162ecc61e820aa12a58860113bb539aea197e9da`](https://github.com/hungntv210/NihonNihon/commit/162ecc61e820aa12a58860113bb539aea197e9da).
+- Bắt đầu: `2026-11-06T16:21:18.9253252+07:00`.
+- Kết thúc: `2026-11-06T16:22:16.6577090+07:00`.
+- Môi trường: Windows, Node `v24.10.0`, Chrome headless.
+- Lệnh: `npm run check`; exit code `0`.
+
+| Cổng | Kết quả |
+| --- | --- |
+| typecheck (`next typegen` + `tsc --noEmit`) | Đạt |
+| test — prototype | 22/22 đạt |
+| test — foundation | 12/12 đạt |
+| Tổng kiểm thử | **34/34 đạt**, 0 lỗi, 0 bỏ qua |
+| build — Next.js production/Webpack | Đạt |
+| test:app — HTTP và Chrome, desktop/mobile | Đạt |
+
+Kiểm thử phạm vi đã xác nhận nhánh chức năng được thêm nhật ký kiểm tra,
+đồng thời bị chặn khi sửa bản ghi cũ hoặc di chuyển file dùng chung vào tuyến.
+Log thô: `data/reports/pre-push-162ecc6-20261106T162118.log` (gitignored).
+Database/credential kiểm thử là tạm; không gọi Gemini hoặc ghi vào DB G0.
