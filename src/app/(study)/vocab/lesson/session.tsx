@@ -9,6 +9,7 @@ import { Speak } from '../speech.tsx';
 import { ReportTranslation } from '../report.tsx';
 import styles from '../vocab.module.css';
 export function Lesson({ items }: { items: Vocabulary[] }) {
+  // Saving refreshes server props; keep the current lesson order until the learner advances.
   const [words] = useState(items);
   const [index, setIndex] = useState(0),
     [revealed, setRevealed] = useState(false);

@@ -42,3 +42,14 @@ Manual review after setup:
 `npm run check` covers the foundation plus these route unit tests. Before push,
 also run `node tools/check-route-scope.mjs origin/master vocab` and append the
 actual commit/time/results to the central verification log.
+
+After the build, run the route-specific browser checks with:
+
+```sh
+node --import tsx "src/app/(study)/vocab/browser-check.ts"
+```
+
+It uses a temporary database with clearly synthetic Vietnamese translations,
+verifies their source label and error reporting, and exercises search, queued
+filter, lesson navigation and mobile overflow. Screenshots/reports remain local
+under gitignored `data/reports/`.
