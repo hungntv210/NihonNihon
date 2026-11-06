@@ -5,7 +5,7 @@ dependencies come from merged foundation PR#2. No schema changes.
 
 - 20-card normal sessions,15-card quick sessions, four actual FSRS-6 previews at
   retention90%, reading input with romaji conversion, seven-day forecast, pause/resume.
-- Quick mode excludes grammar/listening; no autoplay. Swiping is opt-in to avoid
+- Quick mode uses only vocabulary/kanji recognition cards; no autoplay. Swiping is opt-in to avoid
   grading during ordinary scrolling. Browser speech requires an installed local
   Japanese voice. No cloud TTS/API key.
 - Native IndexedDB outbox stores each review before advancing; sync sends one

@@ -12,7 +12,7 @@ export function session(db: DatabaseSync, engine: Engine, mode: 'quick' | 'full'
     LEFT JOIN vocab v USING(item_id) LEFT JOIN kanji k USING(item_id) LEFT JOIN grammar g USING(item_id)
     WHERE i.is_active=1 AND c.due_at<=? AND c.card_type IN ('recognition','reading','recall','listening')
       AND i.kind IN ('vocab','kanji','grammar')
-      AND (?='full' OR (i.kind IN ('vocab','kanji') AND c.card_type<>'listening'))
+      AND (?='full' OR (i.kind IN ('vocab','kanji') AND c.card_type='recognition'))
     ORDER BY c.due_at,c.card_id`).all(now.toISOString(), mode);
   const cards: StudyCard[] = [];let due = 0, unsupported = mode === 'full' ? Number(db.prepare(`SELECT count(*) n FROM srs_cards c JOIN content_items i USING(item_id) WHERE i.is_active=1 AND c.due_at<=? AND (i.kind NOT IN ('vocab','kanji','grammar') OR c.card_type NOT IN ('recognition','reading','recall','listening'))`).get(now.toISOString())?.n ?? 0) : 0;
   for (const row of rows) {

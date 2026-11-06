@@ -6,11 +6,30 @@ import { enqueueCard } from '../../../core/review.ts';
 import { session, recordReview } from './repository.ts';
 import { scheduler, hydrate, VERSION, appendReview } from './model.ts';
 const created = new Date('2026-11-06T09:00:00Z'), now = new Date('2026-11-06T10:00:00Z');
-test('quick sessions cap at15, full sessions20; quick excludes grammar and listening',async t=>{
- const {db,file}=fixture(t);for(const r of db.prepare('SELECT item_id FROM vocab').all())for(const type of ['recognition','reading','recall','listening'] as const)enqueueCard(file,String(r.item_id),type,created);
+test('quick sessions select only vocab/kanji recognition and cap at15; full sessions cap at20',async t=>{
+ const {db,file,itemId}=fixture(t);
+ const items=db.prepare("SELECT item_id FROM content_items WHERE kind IN ('vocab','kanji') ORDER BY item_id").all();
+ for(const row of items)for(const type of ['recognition','reading','recall','listening'] as const)enqueueCard(file,String(row.item_id),type,created);
  enqueueCard(file,String(db.prepare('SELECT item_id FROM grammar LIMIT 1').get()!.item_id),'recognition',created);
  const e=await scheduler(), quick=session(db,e,'quick',now),full=session(db,e,'full',now);
- assert.equal(quick.cards.length,15);assert.equal(quick.due,24);assert.ok(quick.cards.every(c=>c.kind!=='grammar'&&c.type!=='listening'));assert.equal(full.cards.length,20);assert.equal(full.due,33);assert.equal(full.forecast[0].count,33);
+ assert.equal(quick.cards.length,12);assert.equal(quick.due,12);
+ assert.deepEqual(quick.cards.map(c=>c.itemId).sort(),items.map(r=>String(r.item_id)).sort());
+ assert.deepEqual([...new Set(quick.cards.map(c=>c.type))],['recognition']);
+ assert.deepEqual([...new Set(quick.cards.map(c=>c.kind))].sort(),['kanji','vocab']);
+ assert.equal(full.cards.length,20);assert.equal(full.due,49);assert.equal(full.forecast[0].count,49);
+ // Duplicate public fixture vocabulary under synthetic test IDs to exceed the quick limit.
+ for(let n=0;n<4;n++){
+  const id=`test:quick-limit:${n}`;
+  db.prepare(`INSERT INTO content_items(item_id,kind,source_id,source_key,release_id,source_hash)
+   SELECT ?,kind,source_id,?,release_id,source_hash FROM content_items WHERE item_id=?`).run(id,id,itemId);
+  db.prepare(`INSERT INTO vocab(item_id,word,reading,romaji,level,meanings_en,pos,jmdict_id)
+   SELECT ?,word,reading,romaji,level,meanings_en,pos,jmdict_id FROM vocab WHERE item_id=?`).run(id,itemId);
+  enqueueCard(file,id,'recognition',created);
+ }
+ const capped=session(db,e,'quick',now);
+ assert.equal(capped.cards.length,15);assert.equal(capped.due,16);
+ assert.ok(capped.cards.every(c=>c.type==='recognition'&&['vocab','kanji'].includes(c.kind)));
+ assert.equal(session(db,e,'full',now).cards.length,20);
 });
 test('ratings persist real FSRS state once; receipt replay is idempotent and schema unchanged',async t=>{
  const {db,file,itemId}=fixture(t), initial=enqueueCard(file,itemId,'recognition',created), schema=db.prepare('SELECT name,sql FROM sqlite_schema ORDER BY name').all();
