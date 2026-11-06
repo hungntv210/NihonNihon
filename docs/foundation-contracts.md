@@ -12,6 +12,8 @@ bản ghi báo cáo sau lượt check; thay đổi code/config cần check lại
 ## Dữ liệu và xác thực
 
 - Node >=24, Next.js App Router, React, Tailwind; dùng `node:sqlite` giống G0.
+  Khi merge G0, gộp package/lockfile theo
+  [g0-g1-package-merge.md](g0-g1-package-merge.md); không bỏ bộ test của phía nào.
   Dev/build dùng Webpack được Next.js hỗ trợ; Turbopack trên máy Windows kiểm
   thử lỗi khởi chạy worker PostCSS nên không dùng làm đường chạy mặc định.
   Không thêm ORM hoặc migration. `docs/data/schema.draft.sql` là bản sao không sửa

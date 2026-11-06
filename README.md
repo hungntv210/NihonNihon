@@ -2,6 +2,8 @@
 
 Khung ứng dụng riêng tư theo [giao diện hiện hành](docs/interface-redesign.md).
 PR này dùng database mẫu OpenJLPT riêng, không sửa schema hay dùng dữ liệu riêng tư G0.
+Khi merge G0, dùng [hướng dẫn gộp package.json](docs/g0-g1-package-merge.md) để
+giữ đủ dependency và tách `test:data`/`test:app` cùng test trình duyệt.
 
 ## Chạy thử
 
