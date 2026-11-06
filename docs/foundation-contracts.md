@@ -4,6 +4,10 @@ PR này là khung có thể chạy và kiểm thử, chưa phải toàn bộ tí
 liệu foundation. Sau khi chủ dự án duyệt và PR được merge mới mở công việc song
 song cho srs/vocab/kanji/grammar. Mỗi nhánh chỉ sửa thư mục tuyến của mình theo
 `AGENTS.md`, gồm cả component, handler và test riêng.
+Ngoại lệ duy nhất là thêm nhật ký kiểm tra vào `docs/foundation-verification.md`;
+không sửa bản ghi cũ. Mọi lần push trong lúc CI bị khóa billing phải có một lượt
+`npm run check` đầy đủ đạt trên commit được ghi rõ trong nhật ký. Chỉ commit
+bản ghi báo cáo sau lượt check; thay đổi code/config cần check lại toàn bộ.
 
 ## Dữ liệu và xác thực
 

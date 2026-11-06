@@ -49,6 +49,13 @@ npx playwright install chromium
 `CHROME_PATH` có thể chỉ tới Chrome cục bộ. Ảnh desktop/mobile và report kiểm tra nằm
 trong `data/reports/` (gitignored). Schema được test so với blob G0 nguyên bản.
 
+Trong lúc GitHub Actions bị khóa billing, phải chạy đầy đủ `npm run check` trước
+**mỗi lần push** và chỉ push khi cả bốn cổng đạt. Ghi commit thực sự được kiểm tra,
+ngày giờ có múi giờ và số kiểm thử đạt/tổng vào
+[foundation-verification.md](docs/foundation-verification.md), rồi commit nhật ký.
+Sau lượt check chỉ được thêm bản ghi này; nếu đổi code/config phải chạy lại toàn bộ.
+Không thêm dịch vụ CI hoặc runner tự dựng.
+
 ## Sau khi khung được merge
 
 Hợp đồng API, kiểu thẻ mới, font và quyền sở hữu thư mục nằm ở
@@ -61,5 +68,8 @@ Chỉ sau khi PR này được merge mới phát triển đồng thời bốn nh
 | g1/vocab | `src/app/(study)/vocab/` |
 | g1/kanji | `src/app/(study)/kanji/` |
 | g1/grammar | `src/app/(study)/grammar/` |
+
+Ngoại lệ duy nhất ngoài thư mục tuyến là thêm nhật ký kiểm tra vào
+`docs/foundation-verification.md`; bộ kiểm tra phạm vi chặn sửa/xoá nội dung cũ.
 
 PWA/offline, sao lưu, FSRS và chức năng học chi tiết chưa nằm trong PR khung này.

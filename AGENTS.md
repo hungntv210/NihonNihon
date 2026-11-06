@@ -25,5 +25,19 @@ its own demo database by default; use a snapshot for integration with G0.
 Commit only the public OpenJLPT fixture, never private dictionaries, live databases,
 translation outputs, environment files, access credentials, or test reports.
 
-Run `npm run check` before a PR. After foundation merge, also run
+While GitHub Actions is billing-locked, run the complete `npm run check`
+(typecheck, test, build, test:app) before **every push**, including documentation
+pushes. Do not push on failure. Do not add another CI service or a self-hosted runner.
+
+Commit implementation/config changes first, then run the check on that commit.
+Append the checked commit SHA, start/end timestamps with timezone, environment,
+passed/total test counts, and all four gate results to
+`docs/foundation-verification.md`. Commit that audit entry and push. Only this
+report entry may change after the successful check; any other change requires
+running the complete check again. Never label a different commit as checked.
+Keep raw logs/screenshots in gitignored `data/reports/`.
+
+The sole exception to feature route ownership is an **append-only** entry in
+`docs/foundation-verification.md`; do not edit prior entries or shared code.
+After foundation merge, also run
 `node tools/check-route-scope.mjs origin/master <srs|vocab|kanji|grammar>`.
