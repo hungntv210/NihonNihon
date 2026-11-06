@@ -15,17 +15,19 @@ const context=r=>sha({task:r.task,input:r.input});
 
 export async function importCampaign({baseManifest,profiles,directory,dbPath}){
  const manifest=read(baseManifest),base=path.dirname(path.resolve(baseManifest)),root=path.resolve(directory);
- for(const s of manifest.sources)for(const f of s.files)f.path=path.relative(root,path.resolve(base,f.path));
+ // Keep the manifest beside its base: raw record keys include these relative paths.
  const configs=new Map([manifest.mt,...manifest.mt_profiles??[]].filter(Boolean).map(c=>[sha(c),c]));
  const source=manifest.sources.find(s=>s.source_id==='mt:google-gemini');need(source,'Missing Gemini source');
  for(const f of source.files)if(f.format==='mt-results')f.mt_config_sha256??=sha(manifest.mt);
  for(const p of profiles){const m=read(p.manifestPath),c=m.mt;configs.set(sha(c),c);const file=m.sources.find(s=>s.source_id===c.source_id).files.find(f=>f.format==='mt-results');
   const local=path.resolve(path.dirname(p.manifestPath),file.path);need(hash(fs.readFileSync(local))===file.sha256,'Campaign result checksum mismatch');
-  source.files.push({...file,path:path.relative(root,local),mt_config_sha256:sha(c)});
+  source.files.push({...file,path:path.relative(base,local),mt_config_sha256:sha(c)});
  }
  // The approved campaign covers every public N2–N5 record, not just the pilot cohort.
- manifest.cohort={};manifest.mt=read(profiles.find(p=>read(p.manifestPath).mt.config.route==='learning')?.manifestPath??profiles[0].manifestPath).mt;manifest.mt_profiles=[...configs.values()];
- const manifestPath=path.join(root,'import-manifest.json');write(manifestPath,manifest);
+ manifest.cohort={};manifest.mt=read(profiles.find(p=>read(p.manifestPath).mt.config.route==='learning')?.manifestPath??profiles[0].manifestPath).mt;
+ // Prefer new outputs when present; unchanged cached fields retain their original release.
+ manifest.mt_profiles=[...new Map([...profiles.map(p=>read(p.manifestPath).mt),...configs.values()].map(c=>[sha(c),c])).values()];
+ const manifestPath=path.join(base,path.basename(root)+'-import-manifest.json');need(manifestPath!==path.resolve(baseManifest),'Import would overwrite base manifest');write(manifestPath,manifest);
  return runImport({manifestPath,dbPath,reportPath:path.join(root,'import-report.json'),requestsPath:path.join(root,'remaining-requests.json')});
 }
 
@@ -135,5 +137,5 @@ export async function runCampaign(configPath){
  }finally{process.removeListener('SIGINT',stop);process.removeListener('SIGTERM',stop);fs.closeSync(fd);fs.unlinkSync(lock);}
 }
 if(process.argv[1]&&path.resolve(process.argv[1])===fileURLToPath(import.meta.url)){
- try{const {values:a}=parseArgs({options:{config:{type:'string'}}});need(a.config,'--config FILE required');await runCampaign(a.config);}catch{console.error('Campaign stopped; checkpoint retained; no raw API error logged');process.exitCode=1;}
+ try{const {values:a}=parseArgs({options:{config:{type:'string'}}});need(a.config,'--config FILE required');const result=await runCampaign(a.config);if(result.status==='blocked')process.exitCode=1;}catch{console.error('Campaign stopped; checkpoint retained; no raw API error logged');process.exitCode=1;}
 }

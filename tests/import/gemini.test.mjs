@@ -142,9 +142,17 @@ test('quality gate rejects output before checkpointing and audits the reason wit
 
 test('campaign imports preserve model provenance and reruns do not duplicate output',async t=>{
  const {f,options}=await setup(t);await runGemini({...options,ai:fake(async p=>({text:JSON.stringify(output(p))}))});
+ const {publicPlan}=await import('../../tools/data/mt-gemini.mjs'),{hash}=await import('../../tools/data/core.mjs');
+ const oldManifest=JSON.parse(fs.readFileSync(options.manifestPath));oldManifest.mt.prompt_version='gemini-vi-hv-3';fs.writeFileSync(options.manifestPath,JSON.stringify(oldManifest));
+ const oldQueue=(await publicPlan(options.manifestPath)).requests;const oldRows=JSON.parse(fs.readFileSync(options.resultsPath));oldRows.forEach((r,i)=>r.request_id=oldQueue[i].request_id);fs.writeFileSync(options.resultsPath,JSON.stringify(oldRows));oldManifest.sources.find(s=>s.source_id==='mt:google-gemini').files[0].sha256=hash(fs.readFileSync(options.resultsPath));fs.writeFileSync(options.manifestPath,JSON.stringify(oldManifest));
+ const {runImport}=await import('../../tools/data/import.mjs');await runImport({manifestPath:options.manifestPath,dbPath:f.dbPath,reportPath:f.reportPath,requestsPath:f.requestsPath});
  const backup={...config,model:'gemini-second',route:'learning'},p={config:backup,manifestPath:f.dir+'/second-manifest.json',requestsPath:f.dir+'/second-queue.json',resultsPath:f.dir+'/second-results.json',statePath:f.dir+'/second-quota.json'};
  await prepare({manifestPath:f.manifestPath,config:backup,outputManifest:p.manifestPath,requestsPath:p.requestsPath,resultsPath:p.resultsPath});await runGemini({...p,ai:fake(async params=>({text:JSON.stringify(output(params).map(r=>({...r,output:{text_vi:'Bản khác'}})))}))});
  const {importCampaign}=await import('../../tools/data/translation-campaign.mjs');const args={baseManifest:options.manifestPath,profiles:[p],directory:f.dir+'/campaign',dbPath:f.dbPath};
  await importCampaign(args);const db=f.open();const query="SELECT json_extract(r.manifest_json,'$.model') model,count(*) n FROM vi_translations t JOIN source_releases r USING(release_id) WHERE t.method='machine' GROUP BY model ORDER BY model";
- const first=db.prepare(query).all().map(r=>({...r}));assert.ok(first.some(r=>r.model===config.model&&r.n===20));assert.ok(first.some(r=>r.model===backup.model&&r.n===20));await importCampaign(args);assert.deepEqual(db.prepare(query).all().map(r=>({...r})),first);
+ const first=db.prepare(query).all().map(r=>({...r}));assert.ok(first.some(r=>r.model===config.model&&r.n===20));assert.ok(first.some(r=>r.model===backup.model&&r.n===20));
+ assert.equal(db.prepare("SELECT count(*) n FROM vi_translations WHERE method='machine' AND text_vi='Bản khác' AND status='selected'").get().n,20);
+ assert.equal(db.prepare("SELECT count(*) n FROM vi_translations WHERE method='machine' AND text_vi='tiếng Việt' AND status='needs_review'").get().n,20);
+ await importCampaign(args);assert.deepEqual(db.prepare(query).all().map(r=>({...r})),first);
+ assert.equal(db.prepare("SELECT count(*) n FROM vi_translations WHERE method='machine' AND text_vi='Bản khác' AND status='selected'").get().n,20);
 });
