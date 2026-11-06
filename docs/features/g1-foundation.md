@@ -4,7 +4,7 @@
 - **Giai đoạn:** Giai đoạn 1 – MVP (càng sớm càng tốt)
 - **Phụ thuộc:** `g0/data-spec`
 - **Tài liệu gốc:** Đặc tả v2 mục 13, 14.3; Kế hoạch mục 5.1, 8 (trên Claude: [Đặc tả chức năng v2](https://claude.ai/artifact/4ApVpJNZA9s3311eurPcCX), [Kế hoạch phát triển](https://claude.ai/artifact/HarDe5qR2isfbLRypcAboS), [Lộ trình N5 → N2](https://claude.ai/artifact/5eT7QNEDrNDnXousnhTbHb); chỉ mở được bằng tài khoản Claude của chủ dự án)
-- **Giao diện:** theo thiết kế 8-bit × bóng đá trong `docs/superpowers/specs/2026-11-01-giao-dien-8bit-bong-da-design.md` và prototype `prototype/`
+- **Giao diện:** theo [thiết kế giao diện học tập](../interface-redesign.md) (`docs/interface-redesign.md`) và prototype `prototype/` hiện hành.
 
 Tài liệu này đọc riêng được: mọi quyết định cần cho nhánh đều nằm ở đây.
 
@@ -12,10 +12,23 @@ Tài liệu này đọc riêng được: mọi quyết định cần cho nhánh 
 
 Dựng khung ứng dụng mà mọi nhánh Giai đoạn 1 dựa vào: dự án, database, đăng nhập một tài khoản, PWA chạy offline, sao lưu, hiển thị chữ Việt – Nhật chuẩn.
 
+## PR khung đầu tiên
+
+Phạm vi đã thống nhất trước khi chia nhánh: dự án Next.js/React/Tailwind,
+lớp đọc DB G0 nguyên schema, bản dịch selected kèm nhãn nguồn/model, đăng nhập
+chặn mọi trang nội dung, robots/noindex, khung giao diện + token mới,
+`<ViText>`/`<JaText>`, thêm thẻ vào hàng ôn và script kiểm thử.
+Mẫu công khai chỉ từ OpenJLPT. Chi tiết API và tiêu chí kiểm thử tại
+[`docs/foundation-contracts.md`](../foundation-contracts.md).
+
+PWA/offline, sao lưu, FTS5, cài đặt và triển khai chưa thuộc PR khung này.
+Chỉ sau khi khung được kiểm thử và merge mới triển khai đồng thời bốn nhánh
+SRS, Từ vựng, Kanji và Ngữ pháp trong thư mục tuyến tương ứng; không sửa schema.
+
 ## Chức năng
 
-- [ ] Next.js (React) + Tailwind; SQLite (Drizzle hoặc Prisma); SQLite FTS5 cho tìm kiếm
-- [ ] Mang bộ token giao diện từ `prototype/tokens.css`, `sprites.js`, `transitions.js` sang
+- [ ] Next.js (React) + Tailwind; SQLite qua `node:sqlite` của Node 24 như G0; FTS5 cho bước tìm kiếm sau
+- [ ] Dựng token giao diện mới theo `docs/interface-redesign.md`; không mang các token cũ của prototype sang.
 - [ ] **Đăng nhập:** một tài khoản, mật khẩu hoặc passkey; mọi trang yêu cầu đăng nhập; `robots` chặn công cụ tìm kiếm
 - [ ] **Triển khai:** VPS nhỏ hoặc máy nhà + Tailscale (không mở cổng ra Internet khi dùng Tailscale)
 - [ ] **PWA:** cài lên màn hình điện thoại; service worker cache để ôn SRS, xem thẻ, đọc bài đã tải khi offline; đồng bộ khi có mạng
@@ -36,7 +49,7 @@ Dựng khung ứng dụng mà mọi nhánh Giai đoạn 1 dựa vào: dự án, 
 | Tiếng Việt (giao diện, nghĩa, giải thích) | Be Vietnam Pro |
 | Tiếng Nhật nội dung | Zen Kaku Gothic New hoặc Noto Sans JP (thiết kế UI hiện dùng Shippori Mincho) |
 | Kanji cỡ lớn | Shippori Mincho hoặc Noto Serif JP |
-| Tiêu đề, số kiểu 8-bit | VT323 (có dấu tiếng Việt) |
+| Tiêu đề, số và giao diện | Be Vietnam Pro |
 
 - **Không dùng font monospace cho chữ tiếng Việt** (không xếp được hai dấu chồng như Ộ).
 - Tự lưu font trên máy chủ (không gọi Google Fonts lúc chạy) để PWA hiển thị đúng khi offline.

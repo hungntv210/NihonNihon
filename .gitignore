@@ -1,2 +1,11 @@
 .superpowers/
 .taste-skill/
+node_modules/
+.next/
+out/
+.env*
+!.env.example
+data/*.sqlite*
+data/reports/
+*.tsbuildinfo
+.tmp/

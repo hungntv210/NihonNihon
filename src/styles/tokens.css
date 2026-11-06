@@ -1,0 +1,52 @@
+@font-face {
+  font-family: 'Be Vietnam Pro';
+  src: url('/fonts/BeVietnamPro-Regular.ttf') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Be Vietnam Pro';
+  src: url('/fonts/BeVietnamPro-SemiBold.ttf') format('truetype');
+  font-weight: 600 800;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Shippori Mincho';
+  src: url('/fonts/ShipporiMincho-Regular.ttf') format('truetype');
+  font-weight: 400 700;
+  font-style: normal;
+  font-display: swap;
+}
+:root {
+  color-scheme: light;
+  --color-background: #f7f6f1;
+  --color-surface: #ffffff;
+  --color-ink: #24332d;
+  --color-muted: #606a63;
+  --color-accent: #2f684e;
+  --color-accent-soft: #e8eee3;
+  --color-border: #e0e5dc;
+  --color-warm: #ead5b4;
+  --color-error: #9b3d30;
+  --font-vi: 'Be Vietnam Pro', system-ui, sans-serif;
+  --font-ja: 'Shippori Mincho', 'Yu Mincho', serif;
+  --radius-card: 16px;
+  --radius-control: 999px;
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-12: 48px;
+  --sidebar-width: 226px;
+  --content-width: 1100px;
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+}
+@theme inline {
+  --color-paper: var(--color-background);
+  --color-forest: var(--color-accent);
+  --font-sans: var(--font-vi);
+}

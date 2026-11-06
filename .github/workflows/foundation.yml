@@ -1,0 +1,27 @@
+name: G1 checks
+on:
+  pull_request:
+  push:
+    branches: [master]
+jobs:
+  foundation:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npm run check
+        env:
+          NEXT_TELEMETRY_DISABLED: 1
+      - name: Check feature route ownership
+        if: startsWith(github.head_ref, 'g1/') && contains(fromJSON('["g1/srs","g1/vocab","g1/kanji","g1/grammar"]'), github.head_ref)
+        env:
+          FEATURE_BRANCH: ${{ github.head_ref }}
+          BASE_BRANCH: ${{ github.base_ref }}
+        run: node tools/check-route-scope.mjs "origin/$BASE_BRANCH" "${FEATURE_BRANCH#g1/}"
