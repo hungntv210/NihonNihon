@@ -19,9 +19,8 @@ các số bên dưới làm hạn mức mặc định):
 ```
 
 Các số 0 là placeholder, adapter từ chối chạy. daily_budget là số request còn
-được phép cho công việc này trong 24 giờ, không lớn hơn requests_per_day. Có TPM
-thì thêm tokens_per_minute; adapter tính biên byte bảo thủ và giãn mỗi request ít
-nhất 60 giây. max_output_tokens là ngân sách sinh, cần phù hợp model đã chọn.
+được phép cho công việc này trong ngày quota Pacific, không lớn hơn requests_per_day. Có TPM
+thì thêm tokens_per_minute; adapter tính biên byte bảo thủ theo cửa sổ 60 giây. max_output_tokens là ngân sách sinh, cần phù hợp model đã chọn.
 Hạn mức thuộc cả project; ledger cục bộ không thấy request từ ứng dụng khác.
 
 ## Chuẩn bị manifest và queue mới (không gọi API)
@@ -55,7 +54,7 @@ Khoá hiện ở checkout `C:/Users/Admin/NihonNihon/.env`, còn code trong work
 20–40 mục/call, nhóm riêng dịch và HV để dùng schema chính xác; nhóm cuối có thể
 ít hơn 20. Từng call tuần tự, nghỉ theo RPM; SDK retry tự động bị tắt để mỗi lần
 thử đều được đếm. 429 nghỉ tăng dần tối đa 5 lần thử, có RetryInfo thì tôn trọng.
-Quota ngày dừng và chặn thêm 24 giờ bảo thủ; hết budget cục bộ cũng dừng. Lỗi khác
+Quota ngày dừng đến ngày Pacific kế tiếp; hết budget cục bộ cũng dừng. Lỗi khác
 hoặc output không hợp lệ dừng, không ghi response thô ra console. Output kiểm tra
 Ajv, tập ID phải đúng cả batch, HV đúng candidate/căn cứ, NFC trước khi ghi.
 
@@ -72,5 +71,38 @@ thử mới tăng --limit theo số mục còn lại. Import kết quả bằng 
 node tools/data/import.mjs --manifest data/private/gemini-manifest.json --db data/batch.sqlite --report data/reports/gemini-batch.json --requests data/requests/gemini-remaining.json
 ```
 
-Chưa có kiểm thử API thật hoặc đánh giá chất lượng dịch khi thiếu model/hạn mức.
+Không dùng kiểm thử schema tự động để thay cho đánh giá chất lượng dịch.
 Kiểm thử mock không tính là đã hoàn thành lượt thử 20 mục thật.
+
+## Hai luồng và Interactions (06/11/2026)
+
+Model và hạn mức đọc từ config; không có tên model mặc định trong adapter.
+Config nhận thêm:
+
+- api: interactions hoặc generateContent (mặc định cũ là generateContent).
+- thinking_level: minimal / low / medium / high, pin trong MT release.
+- route: learning (nghĩa, ngữ pháp, Hán Việt) hoặc sentences (field=text).
+- batch_size: 20–40; min_interval_ms: khoảng nghỉ tối thiểu ngoài kiểm tra RPM.
+
+Interactions dùng response_format `{type:"text", mime_type:"application/json",
+schema:...}`, generation_config.thinking_level và output_text; store=false,
+maxRetries=0. GenerateContent vẫn hỗ trợ responseJsonSchema/thinkingConfig.
+Cả hai đường kiểm tra Ajv/membership/NFC trước khi ghi; JSON hỏng retry tối đa
+hai lần sau lần đầu, mỗi lần đều tính quota. 5xx tạm thời retry hữu hạn; lỗi khác
+trả api_error và mã HTTP, không in raw error hoặc request/headers chứa khoá.
+
+Mỗi model dùng manifest/queue/results riêng để giữ đúng release và request_id.
+Model dự phòng cũng cần chuẩn bị manifest riêng; không trộn output model dự phòng
+vào release của model chính. Không tự gọi dự phòng khi model chính còn hoạt động.
+Sau khi duyệt pilot, có thể dùng config dự phòng để tiếp tục phần chưa có kết quả;
+phải tái dựng IDs theo release mới và lọc nội dung đã hoàn thành theo item/field.
+
+TPM dùng biên byte input + schema + tối đa token output và ledger cửa sổ 60 giây,
+không bắt buộc nghỉ 60 giây giữa mọi request. RPD reset theo ngày
+America/Los_Angeles (midnight Pacific), tương ứng khoảng 14–15h Việt Nam tuỳ DST.
+Không tự chạy qua ngày: khi hết quota dừng/checkpoint, lần chạy sau tự nhận ngày mới.
+Ledger cục bộ vẫn không biết các ứng dụng khác dùng chung project.
+
+Tài liệu API chính thức:
+[Interactions](https://ai.google.dev/api/interactions-api),
+[rate limits](https://ai.google.dev/gemini-api/docs/rate-limits).

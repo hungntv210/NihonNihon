@@ -44,3 +44,23 @@ assert.throws(()=>validateResults([{...row,output:{...row.output,candidate_id:'o
 assert.throws(()=>validateResults([{...row,output:{text_vi:'nhật'}}],requests));
 assert.throws(()=>validateResults([{...row,output:{...row.output,evidence_origin:'input'}}],requests));
 });
+
+test('Interactions enforces JSON schema, thinking, routing, and retries invalid JSON',async t=>{
+ const {options}=await setup(t);const c={...config,api:'interactions',thinking_level:'medium',route:'learning',min_interval_ms:13000,tokens_per_minute:250000};
+ const manifest=JSON.parse(fs.readFileSync(options.manifestPath));manifest.mt=settings(c);fs.writeFileSync(options.manifestPath,JSON.stringify(manifest));
+ const {publicPlan}=await import('../../tools/data/mt-gemini.mjs');const plan=await publicPlan(options.manifestPath);fs.writeFileSync(options.requestsPath,JSON.stringify({version:1,requests:plan.requests}));
+ let clock=Date.now(),calls=0;const pauses=[];
+ const ai={interactions:{create:async(p,opts)=>{calls++;assert.equal(p.store,false);assert.equal(p.generation_config.thinking_level,'medium');assert.equal(p.response_format.mime_type,'application/json');assert.ok(p.response_format.schema);assert.equal(opts.maxRetries,0);const batch=JSON.parse(p.input);assert.ok(batch.every(r=>r.input.field!=='text'));
+ if(calls===2)throw {statusCode:503,message:'temporarily unavailable'};return {output_text:calls===1?'bad JSON':JSON.stringify(batch.map(r=>({request_id:r.request_id,output:{text_vi:'Nghĩa thử'}})))};}}};
+ const result=await runGemini({...options,config:c,ai,sleep:async n=>{pauses.push(n);clock+=n;},now:()=>clock});
+ assert.equal(result.sent,20);assert.equal(result.invalid_outputs,1);assert.equal(calls,3);assert.ok(pauses.reduce((n,v)=>n+v,0)>=13000);
+});
+
+test('quota resumes on the next Pacific date and aliases share model identity',async t=>{
+ const {options}=await setup(t);let clock=Date.parse('2026-11-06T07:55:00Z');let calls=0;
+ const ai=fake(async p=>{calls++;return {text:JSON.stringify(output(p))};});
+ const c={...config,daily_budget:1};await runGemini({...options,config:c,ai,now:()=>clock});
+ assert.equal((await runGemini({...options,config:c,ai,now:()=>clock})).status,'daily_limit');
+ clock=Date.parse('2026-11-06T08:05:00Z');const r=await runGemini({...options,config:c,ai,now:()=>clock});assert.ok(r.sent>0);assert.equal(calls,2);
+ assert.equal(settings({...config,model:'models/gemini-test'}).model,'gemini-test');
+});
