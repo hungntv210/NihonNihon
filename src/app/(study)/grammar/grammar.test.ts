@@ -7,6 +7,7 @@ import { getGrammar, listGrammar, fold } from './repository.ts';
 import { choiceQuestions, orderingQuestions, correctOrder, focusOf } from './practice.ts';
 import { rubySegments, Furigana } from './furigana.tsx';
 import { saveGrammarReport } from './report-repository.ts';
+import { SourceText } from './source-text.tsx';
 
 test('grammar listing searches Japanese/romaji/English, filters levels, clamps pages and resists SQL payloads', (t) => {
   const { db } = fixture(t);
@@ -102,6 +103,11 @@ test('furigana validates the source reconstruction and React escapes every sourc
   );
   assert.ok(html.includes('&lt;script&gt;'));
   assert.ok(html.includes('<mark>は</mark>'));
+});
+
+test('Japanese quoted inside English source notes retains its own language and font', () => {
+  const html=renderToStaticMarkup(createElement(SourceText,{text:'Written は but pronounced wa.'}));
+  assert.ok(html.includes('lang="ja"'));assert.ok(html.includes('text-ja'));assert.ok(html.includes('>は</span>'));assert.ok(html.includes('Written '));
 });
 test('selected grammar translations carry model and reports only accept fresh selected translations in this grammar', (t) => {
   const { db, file } = fixture(t),

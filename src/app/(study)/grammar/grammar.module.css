@@ -139,6 +139,7 @@
   color: var(--color-muted);
   font-weight: 400;
 }
+.formation code.japaneseFormation { font-family: var(--font-ja); font-size: 18px; }
 .note {
   background: #fafaf6;
   margin-top: 20px;

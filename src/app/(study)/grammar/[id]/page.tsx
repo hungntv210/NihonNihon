@@ -10,6 +10,7 @@ import { Furigana } from '../furigana.tsx';
 import { PracticePanel } from '../practice-panel.tsx';
 import { Speak } from '../speak.tsx';
 import { ReportForm } from '../report-form.tsx';
+import { SourceText, hasJapanese } from '../source-text.tsx';
 import styles from '../grammar.module.css';
 function Vietnamese({ value, grammarId }: { value: GrammarTranslation | null; grammarId: string }) {
   return value ? (
@@ -61,7 +62,7 @@ export default async function GrammarDetailPage({ params }: { params: Promise<{ 
           <h2 id="meaning-title">Ý nghĩa</h2>
           <Vietnamese value={item.meaningVi} grammarId={item.id} />
           <p lang="en" className={styles.original}>
-            {item.meaningEn}
+            <SourceText text={item.meaningEn} />
           </p>
           <AddToReview itemId={item.id} />
         </section>
@@ -72,7 +73,7 @@ export default async function GrammarDetailPage({ params }: { params: Promise<{ 
             {item.formationEn.split(/\s*\+\s*/u).map((part, i) => (
               <span key={i}>
                 {i > 0 && <b aria-hidden="true">+</b>}
-                <code>{part}</code>
+                  <code lang={hasJapanese(part) ? 'ja' : 'en'} className={hasJapanese(part) ? styles.japaneseFormation : undefined}><SourceText text={part} /></code>
               </span>
             ))}
           </div>
@@ -84,7 +85,7 @@ export default async function GrammarDetailPage({ params }: { params: Promise<{ 
           <Vietnamese value={item.notesVi} grammarId={item.id} />
           {item.notesEn && (
             <p lang="en" className={styles.original}>
-              {item.notesEn}
+              <SourceText text={item.notesEn} />
             </p>
           )}
         </section>
@@ -113,7 +114,7 @@ export default async function GrammarDetailPage({ params }: { params: Promise<{ 
                   <Vietnamese value={example.vietnamese} grammarId={item.id} />
                   {example.english && (
                     <p className={styles.original} lang="en">
-                      {example.english}
+                      <SourceText text={example.english} />
                     </p>
                   )}
                   <p className={styles.help}>{example.attribution}</p>
