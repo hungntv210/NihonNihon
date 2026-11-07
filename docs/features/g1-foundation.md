@@ -73,6 +73,44 @@ SRS, Từ vựng, Kanji và Ngữ pháp trong thư mục tuyến tương ứng; 
 - Chọn VPS hay máy nhà.
 - Dịch vụ thông báo đẩy cho PWA trên iOS (yêu cầu cài PWA lên màn hình).
 
+## Hướng dẫn triển khai và vận hành
+
+Dùng Node 24+, chạy `npm ci` và cấu hình `.env.local` từ `.env.example`.
+Đặt `APP_ORIGIN` đúng địa chỉ HTTPS truy cập qua VPS/Tailscale, tạo mật khẩu bằng
+`npm run auth:password` và tạo `SESSION_SECRET` riêng cho máy chủ.
+
+**DB production phải có tên tệp `demo.sqlite`, hoặc đặt `NIHON_DB_ROLE=snapshot`.**
+Tên `demo.sqlite` chỉ là điều kiện hiện tại của bộ sao lưu, không xác định đây là
+dữ liệu mẫu. Khi dùng tên khác, cấu hình rõ trong `.env.local`, ví dụ:
+
+```dotenv
+NIHON_DB_PATH=./data/production.sqlite
+NIHON_DB_ROLE=snapshot
+```
+
+Dùng bản DB riêng cho G1; không trỏ vào DB live của worker G0. Các thư mục backup,
+ghi âm, cài đặt và tiến độ phải nằm dưới thư mục chứa DB. Không seed dữ liệu mẫu
+lên DB production. Sau khi cấu hình, chạy `npm run build` rồi `npm run start`;
+dịch vụ máy chủ cần tự khởi động lại ứng dụng sau khi máy khởi động.
+
+Server đang hoạt động kiểm tra sao lưu mỗi giờ và tạo tối đa một bản cho mỗi ngày
+UTC. Để sao lưu cả khi chưa mở trang học, đặt scheduler của máy chủ chạy
+`npm run backup:daily` hằng ngày từ thư mục dự án. Lệnh đọc `.env` rồi `.env.local`;
+biến môi trường của process được ưu tiên.
+
+Sau khi có bản ngày, tự dọn các archive tên `YYYY-MM-DD.json`: giữ **14 bản ngày
+mới nhất**, cộng tối đa **4 bản tuần cũ hơn**, mỗi tuần lấy bản muộn nhất và không
+trùng tuần đã có trong nhóm bản ngày. Tuần tính từ Thứ Hai theo UTC. File tạm,
+tệp không đúng tên, thư mục, symlink và bản `before-restore-*` được giữ nguyên.
+Các bản an toàn trước khôi phục chỉ nên dọn thủ công sau khi xác nhận dữ liệu ổn.
+
+**Giới hạn archive là 128 MiB**, gồm DB, ghi âm và JSON cài đặt/tiến độ. Ghi âm
+được mã hóa base64 trong archive nên dung lượng archive lớn hơn tổng file gốc.
+Khi tích lũy ghi âm, cần theo dõi kích thước backup và lỗi `BACKUP_TOO_LARGE`;
+vượt giới hạn thì tạo/khôi phục archive bị từ chối, không tự bỏ bớt ghi âm.
+Một lượt tạo backup thất bại không chạy dọn các bản ngày cũ. Giữ thêm bản sao
+ngoài máy chủ và thử khôi phục trên DB riêng trước khi cần phục hồi production.
+
 ## Bối cảnh chung (tóm tắt)
 
 - Web học tiếng Nhật **cho riêng một người dùng**, miễn phí, không kinh doanh, **không công khai** (bắt buộc đăng nhập mọi trang).
