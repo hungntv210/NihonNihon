@@ -224,3 +224,13 @@ Schema, worker dịch và database G0 không thay đổi.
 - npm run check PASS: typecheck PASS; tests77/77 (22 prototype+55 foundation/routes), zero failures/skips; production build PASS; test:app PASS including15 HTTP/browser checks and cold offline review sync exactly+1.
 - node tools/check-route-scope.mjs origin/master today-roadmap PASS (12 changed route/audit files); committed route browser-check PASS: desktop/mobile,87weeks,20-minute plan, manual shadowing persistence, CSRF, makeup and duplicate validation.
 - Raw logs remain ignored: data/reports/merge7-check.log, merge7-scope.log, merge7-browser.log, merge7-check-start.json and merge7-check-end.json. Only this append-only audit changes after the checked merge commit. Existing implementation limitations remain unchanged.
+
+### 2026-11-07T12:18:47.5604061+07:00 — backup retention and deployment follow-up
+
+- Checked implementation: 9240db9f700cbf5e06e4017b0813f0f42f579bb2 on origin/master a3e6c31374cd3744a7bd2158c2ec8c57bb90a800 after PR8 then PR7 merged. Their complete verification entries remain preserved.
+- Full-check start 2026-11-07T12:17:42.6053000+07:00; end 2026-11-07T12:18:47.5604061+07:00. Windows, Node24.10.0, npm11.6.1, production Next and installed headless Chrome; process/loopback access enabled; disposable fixtures only.
+- npm run check PASS: typecheck PASS; tests78/78 (22 prototype+56 foundation/routes), zero failures/skips; build PASS; test:app PASS including15 HTTP/browser checks, backup restore and cold offline SRS exact+1 synchronization.
+- node tools/check-route-scope.mjs origin/master foundation PASS (4 shared implementation/doc/test files before this audit). No schema or feature-route changes.
+- Backup regression verifies14 newest daily archives plus4 distinct older UTC weeks, idempotence, cleanup when today's archive already exists, and preservation of before-restore files, future/invalid names, unrelated files and date-named directories. Cleanup runs only after a daily archive exists; failed new archive creation skips cleanup.
+- Deployment guide states production DB filename demo.sqlite or NIHON_DB_ROLE=snapshot, separate G1 snapshot, scheduler env loading, and128MiB archive limit including base64 recording overhead. Existing before-restore recovery copies require deliberate manual cleanup.
+- Raw logs remain ignored: data/reports/retention-focused.log, retention-check.log, retention-scope.log, retention-check-start.json and retention-check-end.json. Only this append-only audit changes after the checked commit.
