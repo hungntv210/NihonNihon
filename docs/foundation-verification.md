@@ -225,6 +225,14 @@ Schema, worker dịch và database G0 không thay đổi.
 - node tools/check-route-scope.mjs origin/master today-roadmap PASS (12 changed route/audit files); committed route browser-check PASS: desktop/mobile,87weeks,20-minute plan, manual shadowing persistence, CSRF, makeup and duplicate validation.
 - Raw logs remain ignored: data/reports/merge7-check.log, merge7-scope.log, merge7-browser.log, merge7-check-start.json and merge7-check-end.json. Only this append-only audit changes after the checked merge commit. Existing implementation limitations remain unchanged.
 
+### 2026-11-07T15:12:37.2704250+07:00 — G1 CI ownership registry
+
+- Checked implementation020aa8d16e4e538cdbb03069541fec42a4f98843; start2026-11-07T15:11:26.1782990+07:00, end2026-11-07T15:12:37.2704250+07:00. Windows, Node24.10.0/npm11.6.1, production Next and installed headless Chrome, disposable fixtures and process/loopback access enabled.
+- Full npm run check PASS: typecheck PASS, tests78/78 (22prototype+56foundation/routes), zero failures/skips, build PASS, test:app PASS including15HTTP/browser checks.
+- Workflow ownership condition is exactly startsWith(github.head_ref, 'g1/'); full branch is passed to the script. One registry in tools/check-route-scope.mjs owns mappings; README/AGENTS point to it. Unknown owners fail before git lookup with an explicit registration error.
+- Regression checks cover full g1/shadowing and g1/common-tools branch names, rejection of shared-file changes, unknown-branch failure, workflow condition, append-only audit and move detection. Existing ownership restrictions are retained.
+- This dedicated codex/ci-scope-g1 PR modifies only workflow, registry, scope tests and ownership documentation; no feature-route/schema/G0 changes. Raw logs data/reports/ci-scope-final.log and ci-scope-final-{start,end}.json stay ignored. Only this audit entry changes after the checked implementation.
+
 ### 2026-11-07T12:18:47.5604061+07:00 — backup retention and deployment follow-up
 
 - Checked implementation: 9240db9f700cbf5e06e4017b0813f0f42f579bb2 on origin/master a3e6c31374cd3744a7bd2158c2ec8c57bb90a800 after PR8 then PR7 merged. Their complete verification entries remain preserved.
