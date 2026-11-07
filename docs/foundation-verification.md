@@ -291,3 +291,12 @@ Schema, worker dịch và database G0 không thay đổi.
 - Browser harness fixes use an explicit accessible select name, the isolated Chrome context for denied microphone permission, and wait for React cleanup after navigation. An earlier concurrent browser run failed because build was recreating .next; the successful sequential final run above supersedes it. No source changed after the full check.
 - Fixture is public synthetic canvas + tones only, with original test captions and no spoken Japanese. Not valid study content; never writes study sessions/quotas/progress. Recordings remain in browser memory/download only; no private data, TTS, Whisper, media AI, schema, server upload or storage added. Three real legal sources, private server persistence and physical Android/iOS acceptance remain deferred. Home host/Tailscale Serve HTTPS and backup off the host are documented handoff requirements, not deployed or verified here.
 - Raw logs/screenshots remain gitignored in data/reports/: shadowing-full-check.log, shadowing-scope.log, shadowing-final-browser.log, shadowing-check.json, shadowing-{desktop,mobile}.png and exact gate/browser timestamps. Only this append-only audit changes after the checked implementation.
+
+
+### 2026-11-07T19:02:24.8497682+07:00 — PR13 pre-push merge-sequence verification
+
+- Checked commit: ae6aa514703cc2d23e47e4d28261a1dc95a73022; branch g1/shadowing. Full-check start 2026-11-07T19:01:13.7976503+07:00; end 2026-11-07T19:02:24.8497682+07:00.
+- npm run check PASS: typecheck PASS; tests85/85, zero failures/skips; production build PASS; test:app PASS. Windows, Node24.10.0/npm11.6.1, installed headless Chrome, disposable OpenJLPT fixtures; process/loopback access enabled.
+- Journal resolution retains all entries from both sides. Raw log stays ignored: data/reports/merge-sequence/pr13-pre-push-ae6aa51.log. Existing implementation and physical-device/deployment limitations remain unchanged.
+- Current origin/master scope guard PASS; only registered owned paths and append-only verification changes.
+- Route browser-check also PASS on this checked commit; raw browser log stays ignored beside the full-check log.
