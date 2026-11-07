@@ -1,5 +1,14 @@
 @import 'tailwindcss';
 @import '../styles/tokens.css';
+.shared-tools { display: flex; flex-wrap: wrap; align-items: end; gap: 16px; padding: 16px 32px; border-bottom: 1px solid var(--color-border); }
+.shared-tools form { flex: 1 1 290px; min-width: 0; max-width: 620px; }
+.shared-search-label { display: block; margin-bottom: 6px; font-size: 12px; color: var(--color-muted); }
+.shared-search-controls { display: flex; gap: 8px; }
+.shared-search-controls input { min-width: 0; width: 100%; padding: 10px 14px; border: 1px solid var(--color-border); border-radius: 12px; background: var(--color-surface); color: var(--color-ink); font: inherit; font-size: 16px; }
+.shared-search-controls button { flex-shrink: 0; }
+.shared-tool-links { display: flex; flex-wrap: wrap; gap: 16px; padding-bottom: 12px; font-size: 13px; }
+.shared-tool-links a { color: var(--color-accent); }
+@media (max-width: 680px) { .shared-tools { padding: 12px 20px; gap: 10px; } .shared-tool-links { padding-bottom: 0; } }
 * {
   box-sizing: border-box;
 }

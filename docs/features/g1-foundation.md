@@ -119,3 +119,30 @@ ngoài máy chủ và thử khôi phục trên DB riêng trước khi cần ph�
 - Nhịp ngày đi làm: **ban ngày 5–10 phút Ôn nhanh** (chỉ thẻ từ vựng + kanji, không âm thanh); **buổi tối 45–60 phút** cho bài mới, ngữ pháp, dạng đề JLPT, shadowing.
 - Bắt buộc **2 buổi shadowing/tuần** (Thứ Ba, Thứ Năm; Thứ Bảy khuyến khích). Thiếu buổi → khoá bài mới tuần sau; **ôn tập SRS không bao giờ bị khoá**.
 - Người dùng là người học, **không biên tập nội dung**: tiếng Việt lấy từ nguồn có sẵn, phần thiếu dùng dịch máy (luôn kèm bản tiếng Anh và nút Báo sai).
+
+## Máy chủ đã chọn: máy nhà + Tailscale
+
+Quyết định ngày 07/11/2026: chạy máy nhà, dùng `tailscale serve` cho HTTPS;
+không triển khai TTS mới. Bật HTTPS trong tailnet, chạy ứng dụng production
+trên `127.0.0.1:3000`, rồi dùng:
+
+```sh
+tailscale serve --bg http://127.0.0.1:3000
+tailscale serve status
+```
+
+Đặt `APP_ORIGIN` bằng đúng URL HTTPS mà Serve hiển thị, rồi khởi động lại ứng dụng.
+Giữ đăng nhập của Nihon Nihon; giới hạn quyền truy cập tailnet cho thiết bị được
+phép. HTTPS cần cho PWA và microphone khi mở trên điện thoại. Đối chiếu
+[tài liệu Serve chính thức](https://tailscale.com/docs/reference/tailscale-cli/serve).
+
+Sao lưu trong `data/backups/` trên cùng máy **chưa phải bản sao ngoài máy**.
+Sau mỗi lần tạo backup thành công, sao chép archive sang máy khác hoặc ổ rời,
+kiểm tra checksum của bản sao và định kỳ thử khôi phục trên DB riêng. Không phục
+vụ thư mục backup qua Serve. Địa chỉ/ổ đích và quyền truy cập cần được chủ dự án
+cấu hình trước khi tự động chép; mã hiện tại chưa tự chọn đích hay xác nhận đã có
+bản sao ngoài máy. Các archive có thể chứa ghi âm riêng tư.
+
+Ô tìm kiếm và lối vào Shadowing/Báo sai/Tiến độ thuộc shell dùng chung. Merge
+hai nhánh tính năng tương ứng trước khi bật bản shell này; phần entry chỉ chuyển
+đến route, không sao chép logic tìm kiếm hay player vào foundation.

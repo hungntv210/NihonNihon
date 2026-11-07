@@ -300,3 +300,21 @@ Schema, worker dịch và database G0 không thay đổi.
 - Journal resolution retains all entries from both sides. Raw log stays ignored: data/reports/merge-sequence/pr13-pre-push-ae6aa51.log. Existing implementation and physical-device/deployment limitations remain unchanged.
 - Current origin/master scope guard PASS; only registered owned paths and append-only verification changes.
 - Route browser-check also PASS on this checked commit; raw browser log stays ignored beside the full-check log.
+
+### 2026-11-07T18:37:32.0498589+07:00 — shared G1 feature entries and home deployment guide
+
+- Checked implementationea04f283e7c0f72991bc72c35c0f3005ff0427b6; start2026-11-07T18:36:16.5439569+07:00, end2026-11-07T18:37:32.0498589+07:00. Windows, Node24.10.0/npm11.6.1, locked dependencies, production Next and installed headless Chrome; disposable data and process/loopback access enabled.
+- Full npm run check PASS: typecheck PASS; tests77/77 (22prototype+55foundation/routes), zero failures/skips; production build PASS; test:app PASS with16HTTP/browser checks. Native GET search navigation preserves the Japanese/Vietnamese query with the real service worker active; feature backend tests live in common-tools.
+- node tools/check-route-scope.mjs origin/master foundation PASS (4 owned shared/doc/test files before this append). Shared shell supplies search and Shadowing/reports/progress entry links; no feature implementation is duplicated or modified.
+- Desktop/mobile screenshots visually inspected;390px no overflow. Encrypted cold SRS unlock/reconnect and backup/restore baseline checks still pass. An earlier synthetic page.route interception was superseded by real GET routing because the active worker handles navigations.
+- Deployment guide records home server + Tailscale Serve HTTPS, matching APP_ORIGIN, off-machine copy/checksum/recovery requirements and deferred TTS. No actual server or external backup destination is configured by these changes.
+- Merge the common-tools/shadowing feature PRs before this entry PR; standalone routing checks do not imply their endpoints exist on this isolated branch. PR9 remains unchanged/unmerged. Raw logs data/reports/shared-entry-final.log, shared-entry-final-scope.log and shared-entry-final-{start,end}.json remain ignored. Only this audit entry changes after the checked implementation.
+
+
+### 2026-11-07T19:05:07.4032740+07:00 — PR12 pre-push merge-sequence verification
+
+- Checked commit: 1678809f0dfa0ba087f1489c473c7b210f282e32; branch codex/g1-shared-entry. Full-check start 2026-11-07T19:04:13.4573378+07:00; end 2026-11-07T19:05:07.4032740+07:00.
+- npm run check PASS: typecheck PASS; tests85/85, zero failures/skips; production build PASS; test:app PASS. Windows, Node24.10.0/npm11.6.1, installed headless Chrome, disposable OpenJLPT fixtures; process/loopback access enabled.
+- Journal resolution retains all entries from both sides. Raw log stays ignored: data/reports/merge-sequence/pr12-pre-push-1678809.log. Existing implementation and physical-device/deployment limitations remain unchanged.
+- Current origin/master scope guard PASS; only registered owned paths and append-only verification changes.
+- Route browser-check also PASS on this checked commit; raw browser log stays ignored beside the full-check log.
