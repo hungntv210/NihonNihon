@@ -4,6 +4,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import { createHash } from 'node:crypto';
+import { execFileSync } from 'node:child_process';
 import { fixture } from './helpers.ts';
 import { createBackup, restoreBackup, validateBackup, saveDailyBackup } from '../src/core/backup.ts';
 test('backup snapshots SQLite and recordings, rejects corruption/path traversal, restores with safety copy',async t=>{
@@ -35,4 +36,13 @@ test('backup snapshots SQLite and recordings, rejects corruption/path traversal,
  t.mock.restoreAll();assert.ok(retained&&fs.existsSync(retained));assert.equal(fs.readFileSync(path.join(retained,'one.webm'),'utf8'),'keep recording');
  assert.equal(existing.prepare("SELECT count(*) n FROM vocab WHERE word='keep-after-failed-restore'").get()?.n,1);
  delete process.env.NIHON_SETTINGS_PATH;
+});
+test('scheduled backup loads local environment and uses only its configured snapshot',t=>{
+ const {file}=fixture(t),root=path.dirname(file),env={...process.env};
+ for(const key of ['NIHON_DB_PATH','NIHON_DB_ROLE','NIHON_SETTINGS_PATH','NIHON_ROADMAP_PATH','NIHON_RECORDINGS_DIR','NIHON_BACKUP_DIR'])delete env[key];
+ fs.writeFileSync(path.join(root,'.env'),'NIHON_DB_PATH=missing-snapshot.sqlite\nNIHON_DB_ROLE=snapshot\n');
+ fs.writeFileSync(path.join(root,'.env.local'),'NIHON_DB_PATH='+file+'\n');
+ const command=JSON.parse(fs.readFileSync('package.json','utf8')).scripts['backup:daily'];assert.equal(command,'node --env-file-if-exists=.env --env-file-if-exists=.env.local --import tsx tools/backup.ts');
+ const result=execFileSync(process.execPath,['--env-file-if-exists=.env','--env-file-if-exists=.env.local','--import','tsx',path.resolve('tools/backup.ts')],{cwd:root,env,encoding:'utf8'}).trim();
+ assert.equal(path.dirname(result),path.join(root,'backups'));assert.ok(fs.existsSync(result));
 });
