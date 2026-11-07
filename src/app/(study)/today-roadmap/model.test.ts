@@ -59,6 +59,7 @@ test('catalog and quick count use active OpenJLPT and recognition cards only', (
  try {
  const data=roadmapData(db,new Date('2100-01-01'));
  assert.equal(data.items.length,15);assert.deepEqual(new Set(data.items.map(i=>i.kind)),new Set(['vocab','kanji','grammar']));
+ assert.equal(Object.getPrototypeOf(data.items[0]),Object.prototype,'RSC catalog rows must be plain serializable objects');
  assert.equal(data.due,0);assert.deepEqual(data.clips,[]);
  } finally {db.close();fs.rmSync(dir,{recursive:true,force:true});}
 });

@@ -34,6 +34,6 @@ export function roadmapData(db: DatabaseSync, now = new Date()) {
     UNION ALL SELECT i.item_id,i.kind,g.level,g.pattern,NULL FROM content_items i JOIN grammar g USING(item_id) WHERE i.is_active=1 AND i.source_id='openjlpt'`).all() as unknown as CatalogItem[];
   const clips = db.prepare("SELECT item_id id,source_key title FROM content_items WHERE kind='clip' AND is_active=1 ORDER BY item_id LIMIT 20").all().map(r => ({ id: String(r.id), title: String(r.title) }));
   const saved = db.prepare(`SELECT DISTINCT i.item_id id FROM content_items i JOIN srs_cards c USING(item_id) WHERE i.is_active=1`).all().map(r => String(r.id));
-  return { due, items, clips, saved };
+  return { due, items: items.map(item => ({ ...item })), clips, saved };
 }
 
