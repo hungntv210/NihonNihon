@@ -216,3 +216,11 @@ Schema, worker dịch và database G0 không thay đổi.
 - Settings and roadmap defaults now derive from path.dirname(databasePath()), matching the foundation settings/backup/lesson-gate contract for custom snapshots. Explicit NIHON_SETTINGS_PATH/NIHON_ROADMAP_PATH overrides retain precedence. A regression uses a nested custom database directory without either override, reads its settings/progress, then verifies explicit overrides.
 - Committed route browser check: PASS, start 2026-11-07T12:04:19.2426545+07:00; end 2026-11-07T12:04:24.2297791+07:00. The harness now omits path overrides, changes settings beside its isolated database to exercise day/evening UI, and asserts manual shadowing persists under that database's private directory. All prior desktop/mobile, CSRF, makeup, duplicate, 87-week and 20-minute checks also pass.
 - Logs/screenshots remain ignored: data/reports/today-roadmap/snapshot.log, snapshot-scope.log, snapshot-browser.log, browser-eTBSKV/. Prior limitations remain unchanged; no schema/shared/G0 edits. Only this audit entry changes after the checked implementation commit.
+
+### 2026-11-07T12:15:02.8771778+07:00 — PR7 after foundation PR8 merge
+
+- Checked merge commit: b8512ec485a1afb567c97cdaa3c16fb34fee002b; received origin/master 59cbb9cd38b16d08b74f0aa7501f26288efe3066 after PR8 merged. The verification-log conflict retains every original entry from both branches.
+- Full check start 2026-11-07T12:13:41.1557157+07:00; end 2026-11-07T12:15:02.8771778+07:00. Windows, Node24.10.0, npm11.6.1, production Next/installed headless Chrome, disposable OpenJLPT fixtures, process/loopback access enabled.
+- npm run check PASS: typecheck PASS; tests77/77 (22 prototype+55 foundation/routes), zero failures/skips; production build PASS; test:app PASS including15 HTTP/browser checks and cold offline review sync exactly+1.
+- node tools/check-route-scope.mjs origin/master today-roadmap PASS (12 changed route/audit files); committed route browser-check PASS: desktop/mobile,87weeks,20-minute plan, manual shadowing persistence, CSRF, makeup and duplicate validation.
+- Raw logs remain ignored: data/reports/merge7-check.log, merge7-scope.log, merge7-browser.log, merge7-check-start.json and merge7-check-end.json. Only this append-only audit changes after the checked merge commit. Existing implementation limitations remain unchanged.
