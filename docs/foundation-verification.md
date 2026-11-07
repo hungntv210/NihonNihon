@@ -280,3 +280,23 @@ Schema, worker dịch và database G0 không thay đổi.
 - Journal resolution retains all entries from both sides. Raw log stays ignored: data/reports/merge-sequence/pr11-pre-push-5a2434b.log. Existing implementation and physical-device/deployment limitations remain unchanged.
 - Current origin/master scope guard PASS; only registered owned paths and append-only verification changes.
 - Route browser-check also PASS on this checked commit; raw browser log stays ignored beside the full-check log.
+
+### 2026-11-07T18:41:10.6926020+07:00 — g1/shadowing interaction demo
+
+- Checked implementation commit: 34aed48f63b46140457de36665001a84344df050. Preserved published origin/g1/shadowing documentation ancestry with merge cabeef7; no force push.
+- Full-check start: 2026-11-07T18:39:35.5298148+07:00; end: 2026-11-07T18:40:24.0437198+07:00. Environment: Windows, Node v24.10.0, npm 11.6.1, Next production and installed headless Chrome, process/loopback access enabled; locked dependencies reused through the foundation worktree junction.
+- npm run check PASS: typecheck PASS; tests 80/80 (22 prototype +58 foundation/route, including3 shadowing), zero failures/skips; production build PASS; test:app PASS including15 HTTP/browser checks and cold offline SRS synchronization.
+- Scope guard: node ../ci-scope-g1/tools/check-route-scope.mjs origin/master g1/shadowing PASS, 10 changed route files before this audit. Expanded registry is isolated in the sibling shared-scope branch; no shared files copied here.
+- Committed route browser-check.ts PASS 13/13, start 2026-11-07T18:40:51.4607727+07:00; end 2026-11-07T18:41:10.6926020+07:00. Verified protected route/media, byte ranges and416, actual9-second synthetic video playback, speed, finite/infinite segment repeats, JP/VI/hidden captions, native fake-device MediaRecorder capture/replay/download, replace/delete blob revocation, actual browser permission denial, track release after route cleanup, no external requests/browser errors, desktop1440/mobile390 without horizontal overflow. Visually inspected both screenshots.
+- Browser harness fixes use an explicit accessible select name, the isolated Chrome context for denied microphone permission, and wait for React cleanup after navigation. An earlier concurrent browser run failed because build was recreating .next; the successful sequential final run above supersedes it. No source changed after the full check.
+- Fixture is public synthetic canvas + tones only, with original test captions and no spoken Japanese. Not valid study content; never writes study sessions/quotas/progress. Recordings remain in browser memory/download only; no private data, TTS, Whisper, media AI, schema, server upload or storage added. Three real legal sources, private server persistence and physical Android/iOS acceptance remain deferred. Home host/Tailscale Serve HTTPS and backup off the host are documented handoff requirements, not deployed or verified here.
+- Raw logs/screenshots remain gitignored in data/reports/: shadowing-full-check.log, shadowing-scope.log, shadowing-final-browser.log, shadowing-check.json, shadowing-{desktop,mobile}.png and exact gate/browser timestamps. Only this append-only audit changes after the checked implementation.
+
+
+### 2026-11-07T19:02:24.8497682+07:00 — PR13 pre-push merge-sequence verification
+
+- Checked commit: ae6aa514703cc2d23e47e4d28261a1dc95a73022; branch g1/shadowing. Full-check start 2026-11-07T19:01:13.7976503+07:00; end 2026-11-07T19:02:24.8497682+07:00.
+- npm run check PASS: typecheck PASS; tests85/85, zero failures/skips; production build PASS; test:app PASS. Windows, Node24.10.0/npm11.6.1, installed headless Chrome, disposable OpenJLPT fixtures; process/loopback access enabled.
+- Journal resolution retains all entries from both sides. Raw log stays ignored: data/reports/merge-sequence/pr13-pre-push-ae6aa51.log. Existing implementation and physical-device/deployment limitations remain unchanged.
+- Current origin/master scope guard PASS; only registered owned paths and append-only verification changes.
+- Route browser-check also PASS on this checked commit; raw browser log stays ignored beside the full-check log.
