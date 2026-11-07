@@ -1,0 +1,11 @@
+import Link from 'next/link';
+import { withContentDatabase } from '../../../../server/dal.ts';
+import { SourceLabel } from '../../../../components/source-label.tsx';
+import { AddToReview } from '../../../../components/add-to-review.tsx';
+import { JaText,ViText } from '../../../../components/text.tsx';
+import { searchContent } from '../repository.ts';
+export default async function SearchPage({searchParams}:{searchParams:Promise<Record<string,string|string[]|undefined>>}) {
+  const p=await searchParams, result=await withContentDatabase(db=>searchContent(db,typeof p.q==='string'?p.q:'',Number(p.page??1)));
+  const href=(page:number)=>'/common-tools/search?'+new URLSearchParams({q:result.q,page:String(page)});
+  return <><div className="page-heading"><p className="eyebrow">MỘT CHỖ ĐỂ TÌM</p><h1>Tra cứu chung</h1><p>Kanji, kana, romaji, Hán Việt, nghĩa Việt hoặc Anh.</p></div><form action="/common-tools/search"><label htmlFor="common-query">Nội dung cần tìm</label><input id="common-query" name="q" defaultValue={result.q} maxLength={160} placeholder="Ví dụ: gakusei, học sinh, hoc sinh"/><button className="button button-primary">Tìm kiếm</button></form><p role="status">{result.total} kết quả · trang {result.page}</p>{!result.total&&<p>Chưa tìm thấy. Thử cách đọc hoặc nghĩa tiếng Anh; chỉ tìm trong dữ liệu đã nhập.</p>}<div className="content-grid">{result.items.map(item=><article className="content-card" key={item.id}><span className="level">{item.kind} · {item.level}</span><JaText as="h2"><Link href={item.href}>{item.title}</Link></JaText><JaText as="p">{item.reading}</JaText>{item.hanViet&&<><ViText as="p">{'Hán Việt: '+item.hanViet.text}</ViText><SourceLabel translation={item.hanViet}/></>}{item.meaning&&<ViText as="p">{item.meaning.text}</ViText>}<p lang="en">{item.english.join('; ')}</p><SourceLabel translation={item.meaning} fallback={item.sourceName}/><p><Link href={item.href}>Chi tiết · ví dụ · Báo sai</Link></p><AddToReview itemId={item.id} cardType={item.kind==='kanji'?'reading':'recognition'}/></article>)}</div><nav aria-label="Trang kết quả">{result.page>1&&<Link href={href(result.page-1)}>← Trang trước</Link>}{result.page*24<result.total&&<Link href={href(result.page+1)}>Trang sau →</Link>}</nav><p>Câu trong clip và từ điển ngoài dữ liệu đã nhập chưa có tuyến tra cứu chung.</p></>;
+}
