@@ -12,6 +12,7 @@ const directory=fs.mkdtempSync(path.join(reports,'browser-')),dbPath=path.join(d
 const port=await new Promise<number>(resolve=>{const s=createServer();s.listen(0,'127.0.0.1',()=>{const p=(s.address() as {port:number}).port;s.close(()=>resolve(p));});});
 const origin=`http://127.0.0.1:${port}`,password=randomBytes(24).toString('hex');
 const child=spawn(process.execPath,['node_modules/next/dist/bin/next','start','--hostname','127.0.0.1','--port',String(port)],{env:{...process.env,NODE_ENV:'production',APP_ORIGIN:origin,NIHON_DB_PATH:dbPath,NIHON_ROADMAP_PATH:path.join(directory,'progress.json'),NIHON_SETTINGS_PATH:path.join(directory,'preferences.json'),NIHON_PASSWORD_HASH:hashPassword(password),SESSION_SECRET:randomBytes(32).toString('hex'),NEXT_TELEMETRY_DISABLED:'1'},stdio:['ignore','pipe','pipe']});
+fs.writeFileSync(path.join(directory,'preferences.json'),JSON.stringify({eveningTime:'23:59'}));
 let log='';child.stdout.on('data',b=>log+=b);child.stderr.on('data',b=>log+=b);
 let browser:Awaited<ReturnType<typeof chromium.launch>>|undefined;
 try {
@@ -28,6 +29,9 @@ try {
  assert.equal(await page.locator('summary').count(),87);
  await page.screenshot({path:path.join(directory,`${width}.png`),fullPage:true});
  }
+ assert.equal(await page.getByRole('button',{name:'Bắt đầu →',exact:true}).count(),0);
+ fs.writeFileSync(path.join(directory,'preferences.json'),JSON.stringify({eveningTime:'00:00'}));await page.reload();await page.getByRole('heading',{name:'Buổi tối, dành chút thời gian cho mình.'}).waitFor();
+ await page.screenshot({path:path.join(directory,'evening-mobile.png'),fullPage:true});
  await page.getByRole('button',{name:'Tối nay chỉ có 20 phút'}).click();await page.getByRole('button',{name:'Đã chọn tối 20 phút'}).waitFor();
  await page.getByLabel('Số phút đã luyện').fill('25');await page.getByLabel('Clip 1').fill('Synthetic browser check clip');await page.getByRole('checkbox').check();await page.getByRole('button',{name:'Ghi nhận buổi đã luyện'}).click();await page.getByText('Shadowing tuần này · 1/2').waitFor();
  await page.reload();await page.getByText('Shadowing tuần này · 1/2').waitFor();
