@@ -271,3 +271,12 @@ Schema, worker dịch và database G0 không thay đổi.
 - Committed route browser check PASS, start 2026-11-07T18:37:17.5947481+07:00; end 2026-11-07T18:37:27.2917798+07:00: all five pages authenticated, selected accent-free Vietnamese search, actual model provenance, real enqueue, canonical detail link, owner-route report persistence and queue display. Seven reported check groups, zero browser errors; desktop1440/mobile390 without horizontal overflow. Visually inspected both progress screenshots and mobile search/report screenshots: shared border/accent tokens render and review-chart rows fill the available width.
 - Ignored evidence: `data/reports/common-77b444c-check.log`, `common-77b444c-browser.log`, start/end timestamp files, `common-tools-browser-check.json`, and `common-*.png`. Only this append-only audit entry changes after the checked implementation commit.
 - Limits: full imported-snapshot search latency remains unmeasured; the200ms target is not an established benchmark. Report queue is read-only; selected translations retain actual source/model metadata. Progress counts actual SRS events and manually confirmed shadowing. Clip/token popup/external-dictionary contracts and TTS remain deferred. No physical phone, home-host Tailscale HTTPS deployment or off-machine backup acceptance claimed. Shared navigation integration remains a separate change.
+
+
+### 2026-11-07T18:58:54.9465746+07:00 — PR11 pre-push merge-sequence verification
+
+- Checked commit: 5a2434b09873dd527bd56374fb251de7a0ba918f; branch g1/common-tools. Full-check start 2026-11-07T18:57:58.7354930+07:00; end 2026-11-07T18:58:54.9465746+07:00.
+- npm run check PASS: typecheck PASS; tests82/82, zero failures/skips; production build PASS; test:app PASS. Windows, Node24.10.0/npm11.6.1, installed headless Chrome, disposable OpenJLPT fixtures; process/loopback access enabled.
+- Journal resolution retains all entries from both sides. Raw log stays ignored: data/reports/merge-sequence/pr11-pre-push-5a2434b.log. Existing implementation and physical-device/deployment limitations remain unchanged.
+- Current origin/master scope guard PASS; only registered owned paths and append-only verification changes.
+- Route browser-check also PASS on this checked commit; raw browser log stays ignored beside the full-check log.
