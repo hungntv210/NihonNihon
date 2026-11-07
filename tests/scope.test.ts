@@ -32,12 +32,26 @@ test('route guard permits append-only verification and rejects shared-file moves
   fs.writeFileSync(verification, '# Existing verification\n');
   commit();
   const initial = git('rev-parse', 'HEAD');
+  const script = path.resolve('tools/check-route-scope.mjs');
+  for (const owner of ['shadowing', 'common-tools']) {
+    git('checkout', '-b', `g1/${owner}`, initial);
+    const owned = path.join(directory, `src/app/(study)/${owner}`);
+    fs.mkdirSync(owned, { recursive: true });
+    fs.writeFileSync(path.join(owned, 'page.tsx'), 'owned');
+    commit();
+    const run = () => spawnSync(process.execPath, [script, initial, `g1/${owner}`], { cwd: directory, encoding: 'utf8' });
+    assert.equal(run().status, 0, owner);
+    fs.writeFileSync(path.join(directory, 'shared.txt'), 'outside the route');
+    commit();
+    assert.equal(run().status, 1, 'new G1 routes still reject shared edits');
+    assert.match(run().stderr, /shared\.txt/);
+    git('checkout', 'master');
+  }
   const route = path.join(directory, 'src/app/(study)/vocab');
   fs.mkdirSync(route, { recursive: true });
   fs.writeFileSync(path.join(route, 'own component.tsx'), 'owned');
   commit();
-  const script = path.resolve('tools/check-route-scope.mjs'),
-    check = () =>
+  const check = () =>
       spawnSync(process.execPath, [script, initial, 'vocab'], { cwd: directory, encoding: 'utf8' });
   assert.equal(check().status, 0);
   fs.appendFileSync(verification, '\nSynthetic successful check entry\n');
@@ -53,4 +67,17 @@ test('route guard permits append-only verification and rejects shared-file moves
   const result = check();
   assert.equal(result.status, 1);
   assert.match(result.stderr, /shared\.txt/);
+});
+
+test('CI guards every G1 branch and an unregistered branch fails explicitly before git lookup', () => {
+  const workflow = fs.readFileSync('.github/workflows/foundation.yml', 'utf8');
+  assert.match(workflow, /if: startsWith\(github\.head_ref, 'g1\/'\)\s*\n/);
+  assert.doesNotMatch(workflow, /contains\(fromJSON/);
+  assert.ok(workflow.includes('"$FEATURE_BRANCH"'), 'pass the full branch to the single registry');
+  const unknown = spawnSync(process.execPath,
+    [path.resolve('tools/check-route-scope.mjs'), 'nonexistent-base', 'g1/not-registered'], { encoding: 'utf8' });
+  assert.equal(unknown.status, 1);
+  assert.match(unknown.stderr, /Unknown G1 branch\/route: g1\/not-registered/);
+  assert.match(unknown.stderr, /Register its owned paths/);
+  assert.doesNotMatch(unknown.stderr, /ambiguous argument|fatal:/);
 });
