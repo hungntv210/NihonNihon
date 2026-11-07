@@ -4,14 +4,10 @@ This PR is the foundation only. Do not start feature implementations in parallel
 until `g1/foundation` has merged into `master` and the owner has tested the frame.
 
 After that merge, update each feature branch from the merged `origin/master`.
-Use separate worktrees. Each branch may change only its route directory:
-
-| Branch | Owned directory |
-| --- | --- |
-| g1/srs | `src/app/(study)/srs/` |
-| g1/vocab | `src/app/(study)/vocab/` |
-| g1/kanji | `src/app/(study)/kanji/` |
-| g1/grammar | `src/app/(study)/grammar/` |
+Use separate worktrees. Each branch may change only its registered owned paths.
+The authoritative branch/path registry is `tools/check-route-scope.mjs`; do not
+maintain a second allowlist in workflows or documentation. Unknown G1 branches
+must fail the guard with an explicit registration error.
 
 Keep route-specific components, handlers, server functions, styles and tests under
 that directory. Root `npm test` also discovers route-local `*.test.ts(x)` files.
@@ -40,7 +36,7 @@ Keep raw logs/screenshots in gitignored `data/reports/`.
 The sole exception to feature route ownership is an **append-only** entry in
 `docs/foundation-verification.md`; do not edit prior entries or shared code.
 After foundation merge, also run
-`node tools/check-route-scope.mjs origin/master <srs|vocab|kanji|grammar>`.
+`node tools/check-route-scope.mjs origin/master <g1/BRANCH|ROUTE>`.
 
 ## Remaining foundation and today-roadmap work
 
@@ -50,4 +46,6 @@ owns only the exact shared whitelist in `tools/check-route-scope.mjs`, the setti
 route, and font assets. Neither may edit existing feature directories, schema,
 G0 tooling, live databases or private data. Run the guard with `foundation` or
 `today-roadmap` against the starting `origin/master` commit, before every push.
-The full check and append-only verification rules above still apply.
+The full check and append-only verification rules above still apply. The owner
+also authorized parallel shadowing and common-tools work, confined to the paths
+in the same registry. Both require a route README and rerunnable browser-check.ts.

@@ -62,14 +62,10 @@ Không thêm dịch vụ CI hoặc runner tự dựng.
 
 Hợp đồng API, kiểu thẻ mới, font và quyền sở hữu thư mục nằm ở
 [foundation-contracts.md](docs/foundation-contracts.md) và [AGENTS.md](AGENTS.md).
-Chỉ sau khi PR này được merge mới phát triển đồng thời bốn nhánh:
-
-| Nhánh | Thư mục duy nhất được sửa |
-| --- | --- |
-| g1/srs | `src/app/(study)/srs/` |
-| g1/vocab | `src/app/(study)/vocab/` |
-| g1/kanji | `src/app/(study)/kanji/` |
-| g1/grammar | `src/app/(study)/grammar/` |
+Nhánh tính năng dùng worktree riêng và chỉ sửa các đường dẫn được đăng ký trong
+[`tools/check-route-scope.mjs`](tools/check-route-scope.mjs). Đây là nơi duy nhất
+quản lý ánh xạ nhánh/thư mục; CI kiểm tra mọi nhánh `g1/` và báo lỗi nếu nhánh
+chưa được đăng ký.
 
 Ngoại lệ duy nhất ngoài thư mục tuyến là thêm nhật ký kiểm tra vào
 `docs/foundation-verification.md`; bộ kiểm tra phạm vi chặn sửa/xoá nội dung cũ.

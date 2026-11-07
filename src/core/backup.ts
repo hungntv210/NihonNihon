@@ -47,10 +47,31 @@ export function validateBackup(bytes:Buffer):Archive {
  for(const f of a.files){if(f.name==='settings.json')validatePreferences(JSON.parse(Buffer.from(f.bytes,'base64').toString('utf8')));if(f.name==='roadmap.json')validateRoadmap(JSON.parse(Buffer.from(f.bytes,'base64').toString('utf8')));}
  return a;
 }
+export function pruneDailyBackups(now=new Date()) {
+ const {backups}=backupPaths(),today=now.toISOString().slice(0,10);
+ if(!fs.existsSync(backups))return [];
+ const daily=fs.readdirSync(backups,{withFileTypes:true}).filter(entry=>{
+  if(!entry.isFile()||!/^\d{4}-\d{2}-\d{2}\.json$/.test(entry.name))return false;
+  const date=entry.name.slice(0,10),time=Date.parse(date+'T00:00:00Z');
+  return Number.isFinite(time)&&new Date(time).toISOString().slice(0,10)===date&&date<=today;
+ }).map(entry=>entry.name).sort((a,b)=>b.localeCompare(a));
+ const week=(name:string)=>{const date=new Date(name.slice(0,10)+'T00:00:00Z');date.setUTCDate(date.getUTCDate()-(date.getUTCDay()+6)%7);return date.toISOString().slice(0,10);};
+ const keep=new Set(daily.slice(0,14)),weeks=new Set([...keep].map(week));let weekly=0;
+ for(const name of daily.slice(14)){const bucket=week(name);if(weekly<4&&!weeks.has(bucket)){keep.add(name);weeks.add(bucket);weekly++;}}
+ const removed:string[]=[];
+ for(const name of daily){
+  if(keep.has(name))continue;
+  const target=path.resolve(backups,name);
+  if(path.dirname(target)!==path.resolve(backups))throw Error('UNSAFE_BACKUP_CLEANUP');
+  try{if(fs.lstatSync(target).isFile()){fs.unlinkSync(target);removed.push(name);}}
+  catch(error){if((error as NodeJS.ErrnoException).code!=='ENOENT')throw error;}
+ }
+ return removed;
+}
 export async function saveDailyBackup(now=new Date()) {
  const p=backupPaths();fs.mkdirSync(p.backups,{recursive:true});const file=path.join(p.backups,now.toISOString().slice(0,10)+'.json');
- if(fs.existsSync(file))return file;
- const bytes=await createBackup(),tmp=file+'.'+randomUUID()+'.tmp';try{fs.writeFileSync(tmp,bytes,{flag:'wx',mode:0o600});fs.renameSync(tmp,file);}finally{if(fs.existsSync(tmp))fs.unlinkSync(tmp);}return file;
+ if(fs.existsSync(file)){pruneDailyBackups(now);return file;}
+ const bytes=await createBackup(),tmp=file+'.'+randomUUID()+'.tmp';try{fs.writeFileSync(tmp,bytes,{flag:'wx',mode:0o600});fs.renameSync(tmp,file);}finally{if(fs.existsSync(tmp))fs.unlinkSync(tmp);}pruneDailyBackups(now);return file;
 }
 function validateRoadmap(value:unknown) {
  const v=value as Record<string,unknown>;
