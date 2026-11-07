@@ -191,3 +191,14 @@ Schema, worker dịch và database G0 không thay đổi.
 - Browser testing found SQLite null-prototype rows could not cross the RSC boundary; committed plain-object conversion and a regression assertion before this successful run.
 - Public OpenJLPT demo only. Shadowing is explicit manual confirmation, not recording or pronunciation assessment. JLPT/weekly exercises, background notifications, planned leave and automatic freeze consumption remain unavailable and documented. Shared foundation owns navigation, direct new-lesson enforcement, settings UI and backup integration. The route reads that settings file through a validated adapter until the shared preferences reader is merged.
 - Raw logs/screenshots stay gitignored in data/reports/today-roadmap/: final.log, scope-final.log, final-browser.log, browser-gL8Yhc/. An earlier restricted run failed loopback readiness; this successful full run supersedes it. Only this audit entry changes after the checked commit.
+
+### 2026-11-07T12:04:24.2297791+07:00 — PR7 snapshot path integration regression
+
+- Checked commit: 3f0809091dbfa7b2b2bb479b452439264edf24dc.
+- Full-check start: 2026-11-07T12:02:54.7157804+07:00; end: 2026-11-07T12:04:10.6355234+07:00.
+- Environment: Windows, Node v24.10.0, npm 11.6.1, production Next server and installed headless Chrome; identical locked dependencies reused through the foundation node_modules junction, process/loopback access enabled.
+- Full npm run check: PASS. Typecheck PASS; tests **73/73** (22 prototype +51 foundation/routes including9 Today), 0 failed/0 skipped; production build PASS; test:app PASS.
+- Scope guard: node ../g1-foundation/tools/check-route-scope.mjs origin/master today-roadmap PASS, 12 changed files confined to the route and append-only verification log.
+- Settings and roadmap defaults now derive from path.dirname(databasePath()), matching the foundation settings/backup/lesson-gate contract for custom snapshots. Explicit NIHON_SETTINGS_PATH/NIHON_ROADMAP_PATH overrides retain precedence. A regression uses a nested custom database directory without either override, reads its settings/progress, then verifies explicit overrides.
+- Committed route browser check: PASS, start 2026-11-07T12:04:19.2426545+07:00; end 2026-11-07T12:04:24.2297791+07:00. The harness now omits path overrides, changes settings beside its isolated database to exercise day/evening UI, and asserts manual shadowing persists under that database's private directory. All prior desktop/mobile, CSRF, makeup, duplicate, 87-week and 20-minute checks also pass.
+- Logs/screenshots remain ignored: data/reports/today-roadmap/snapshot.log, snapshot-scope.log, snapshot-browser.log, browser-eTBSKV/. Prior limitations remain unchanged; no schema/shared/G0 edits. Only this audit entry changes after the checked implementation commit.
