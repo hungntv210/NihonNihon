@@ -1,4 +1,5 @@
 import { NextResponse, type NextRequest } from 'next/server';
+import { lessonAccessLocked, maintenanceActive } from './core/backup.ts';
 import { authConfig } from './core/config.ts';
 import { SESSION_COOKIE, verifySession } from './core/session.ts';
 
@@ -8,7 +9,7 @@ export function proxy(request: NextRequest) {
     path === '/login' ||
     path === '/api/session' ||
     path === '/robots.txt' ||
-    path === '/icon.svg' ||
+    path === '/icon.svg' || path === '/sw.js' || path === '/offline.html' || path === '/manifest.webmanifest' ||
     path.startsWith('/_next/static/') ||
     path.startsWith('/fonts/');
   const headers = {
@@ -31,6 +32,8 @@ export function proxy(request: NextRequest) {
     return path.startsWith('/api/')
       ? NextResponse.json({ error: 'Cần đăng nhập.' }, { status: 401, headers })
       : NextResponse.redirect(new URL('/login', request.url), { headers });
+  if (maintenanceActive() && !['GET','HEAD','OPTIONS'].includes(request.method)) return NextResponse.json({error:'Đang khôi phục dữ liệu. Thử lại sau.'},{status:503,headers:{...headers,'Retry-After':'5'}});
+  if ((path==='/vocab/lesson'||path.startsWith('/vocab/lesson/'))&&lessonAccessLocked()) return new NextResponse('Bài mới đang khóa: hoàn thành buổi shadowing bù trong Hôm nay. Bạn vẫn luôn có thể ôn SRS.',{status:423,headers:{...headers,'Content-Type':'text/plain; charset=utf-8'}});
   const response = NextResponse.next();
   for (const [key, value] of Object.entries(headers)) response.headers.set(key, value);
   return response;

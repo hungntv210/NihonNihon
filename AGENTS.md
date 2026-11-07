@@ -41,3 +41,13 @@ The sole exception to feature route ownership is an **append-only** entry in
 `docs/foundation-verification.md`; do not edit prior entries or shared code.
 After foundation merge, also run
 `node tools/check-route-scope.mjs origin/master <srs|vocab|kanji|grammar>`.
+
+## Remaining foundation and today-roadmap work
+
+The owner explicitly authorized parallel completion of remaining foundation and
+`g1/today-roadmap`. Today owns only `src/app/(study)/today-roadmap/`; foundation
+owns only the exact shared whitelist in `tools/check-route-scope.mjs`, the settings
+route, and font assets. Neither may edit existing feature directories, schema,
+G0 tooling, live databases or private data. Run the guard with `foundation` or
+`today-roadmap` against the starting `origin/master` commit, before every push.
+The full check and append-only verification rules above still apply.

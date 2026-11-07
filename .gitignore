@@ -23,3 +23,7 @@
 out/
 *.tsbuildinfo
 .tmp/
+/data/settings.json*
+/data/today-roadmap.json*
+/data/recordings/
+/data/maintenance.lock
