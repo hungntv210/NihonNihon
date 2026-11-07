@@ -318,3 +318,38 @@ Schema, worker dịch và database G0 không thay đổi.
 - Journal resolution retains all entries from both sides. Raw log stays ignored: data/reports/merge-sequence/pr12-pre-push-1678809.log. Existing implementation and physical-device/deployment limitations remain unchanged.
 - Current origin/master scope guard PASS; only registered owned paths and append-only verification changes.
 - Route browser-check also PASS on this checked commit; raw browser log stays ignored beside the full-check log.
+
+
+### 2026-11-07T18:55:00.6701836+07:00 — PR10 master merge-sequence verification
+
+- Checked commit: 14111389ef8cbda45725f32a30fe9e791ab06cc8; branch master. Full-check start 2026-11-07T18:54:05.5588879+07:00; end 2026-11-07T18:55:00.6701836+07:00.
+- npm run check PASS: typecheck PASS; tests78/78, zero failures/skips; production build PASS; test:app PASS. Windows, Node24.10.0/npm11.6.1, installed headless Chrome, disposable OpenJLPT fixtures; process/loopback access enabled.
+- Journal resolution retains all entries from both sides. Raw log stays ignored: data/reports/merge-sequence/pr10-master-1411138.log. Existing implementation and physical-device/deployment limitations remain unchanged.
+
+
+### 2026-11-07T18:57:41.4030262+07:00 — PR9 master merge-sequence verification
+
+- Checked commit: 7285102a8aa562814373da7f65ef8321fa35ccfc; branch master. Full-check start 2026-11-07T18:56:57.8792226+07:00; end 2026-11-07T18:57:41.4030262+07:00.
+- npm run check PASS: typecheck PASS; tests79/79, zero failures/skips; production build PASS; test:app PASS. Windows, Node24.10.0/npm11.6.1, installed headless Chrome, disposable OpenJLPT fixtures; process/loopback access enabled.
+- Journal resolution retains all entries from both sides. Raw log stays ignored: data/reports/merge-sequence/pr9-master-7285102.log. Existing implementation and physical-device/deployment limitations remain unchanged.
+
+
+### 2026-11-07T19:00:48.5414452+07:00 — PR11 master merge-sequence verification
+
+- Checked commit: 8fc6c60546cd3dbb84646e0ced841dc6f7dd18dc; branch master. Full-check start 2026-11-07T18:59:50.5897316+07:00; end 2026-11-07T19:00:48.5414452+07:00.
+- npm run check PASS: typecheck PASS; tests82/82, zero failures/skips; production build PASS; test:app PASS. Windows, Node24.10.0/npm11.6.1, installed headless Chrome, disposable OpenJLPT fixtures; process/loopback access enabled.
+- Journal resolution retains all entries from both sides. Raw log stays ignored: data/reports/merge-sequence/pr11-master-8fc6c60.log. Existing implementation and physical-device/deployment limitations remain unchanged.
+
+
+### 2026-11-07T19:04:02.2153211+07:00 — PR13 master merge-sequence verification
+
+- Checked commit: 0dc4bb92f03abbf95f83c140cd1ffda36d473433; branch master. Full-check start 2026-11-07T19:03:08.9677573+07:00; end 2026-11-07T19:04:02.2153211+07:00.
+- npm run check PASS: typecheck PASS; tests85/85, zero failures/skips; production build PASS; test:app PASS. Windows, Node24.10.0/npm11.6.1, installed headless Chrome, disposable OpenJLPT fixtures; process/loopback access enabled.
+- Journal resolution retains all entries from both sides. Raw log stays ignored: data/reports/merge-sequence/pr13-master-0dc4bb9.log. Existing implementation and physical-device/deployment limitations remain unchanged.
+
+
+### 2026-11-07T19:07:41.7014949+07:00 — PR12 master merge-sequence verification
+
+- Checked commit: ae3865cb3056390ebc8f9e88202fbbbc6e7ddc31; branch master. Full-check start 2026-11-07T19:06:55.1708048+07:00; end 2026-11-07T19:07:41.7014949+07:00.
+- npm run check PASS: typecheck PASS; tests85/85, zero failures/skips; production build PASS; test:app PASS. Windows, Node24.10.0/npm11.6.1, installed headless Chrome, disposable OpenJLPT fixtures; process/loopback access enabled.
+- Journal resolution retains all entries from both sides. Raw log stays ignored: data/reports/merge-sequence/pr12-master-ae3865c.log. Existing implementation and physical-device/deployment limitations remain unchanged.
