@@ -278,3 +278,24 @@ và ghi `import-report.json`; không gán model dự phòng cho release model ch
 Giữ máy và worker chạy để tự tiếp tục qua reset. Nếu bị ngắt, xác minh PID trong
 `campaign.lock` đã kết thúc rồi mới xoá đúng lock cũ, chạy lại cùng config.
 Không chạy song song worker thứ hai; raw/cache/kết quả/ledger vẫn gitignored.
+
+## Prompt v5: chỉ dịch phần chưa có
+
+Prompt `gemini-vi-hv-5` giữ glossary v4, thêm yêu cầu không tự thêm chủ ngữ,
+đại từ hay thông tin không có trong câu Nhật; `恐縮` giữ nghĩa xin lỗi vì làm phiền.
+`prompt_version` có thể pin v4 để kiểm tra/reproduce release cũ. V5 không khai báo
+supersede bất kỳ prompt cũ nào; kết quả đã nhận giữ model/prompt/release thực tế.
+
+Dừng worker ở checkpoint chờ ngày, xác minh PID đã kết thúc rồi mới xoá đúng
+`campaign.lock`. Chạy offline rotation bằng export `rotateCampaign({configPath,
+outputConfig,directory})` trong `tools/data/translation-campaign.mjs`, dùng đường
+dẫn mới cho output config/directory. Hàm không gọi AI; nó giữ manifest/results
+cũ, tái dùng nguyên đường dẫn quota, copy hold/probe và chuẩn bị queue chỉ gồm
+câu/context chưa có. `accepted_profiles` giữ các manifest nguồn cũ để cache và
+lần import cuối vẫn nhận đúng release. `rotation-report.json` ghi số đã có/còn
+lại và hold; kiểm tra report trước khi chạy worker với config mới. Không xoá
+`hold_day`, `finished_day` hay `probe.started` để thử model đang trả 503 lại.
+
+Giới hạn learning vẫn là 17 call/ngày Pacific trong trần 20 RPD, bao gồm retry;
+503 tối đa ba lần với backoff 30–60 giây. Source plan chỉ nhận allowlist public;
+clips, subtitles và recordings không được gửi đến AI.
