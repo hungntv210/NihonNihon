@@ -1,0 +1,48 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import path from 'node:path';
+import { DatabaseSync } from 'node:sqlite';
+import { createHash } from 'node:crypto';
+import { execFileSync } from 'node:child_process';
+import { fixture } from './helpers.ts';
+import { createBackup, restoreBackup, validateBackup, saveDailyBackup } from '../src/core/backup.ts';
+test('backup snapshots SQLite and recordings, rejects corruption/path traversal, restores with safety copy',async t=>{
+ const {file,db:existing}=fixture(t),root=path.dirname(file);process.env.NIHON_DB_PATH=file;process.env.NIHON_DB_ROLE='snapshot';
+ for(const k of ['NIHON_SETTINGS_PATH','NIHON_ROADMAP_PATH','NIHON_RECORDINGS_DIR','NIHON_BACKUP_DIR'])delete process.env[k];
+ fs.mkdirSync(path.join(root,'recordings'));fs.writeFileSync(path.join(root,'recordings','one.webm'),'recorded audio');
+ const bytes=await createBackup();const a=validateBackup(bytes);assert.ok(a.files.some(f=>f.name==='recordings/one.webm'));
+ const corrupt=structuredClone(a);corrupt.files[0].sha256='bad';assert.throws(()=>validateBackup(Buffer.from(JSON.stringify(corrupt))));
+ const traversal=structuredClone(a);traversal.files[0].name='recordings/../../secret';assert.throws(()=>validateBackup(Buffer.from(JSON.stringify(traversal))));
+ const settings=structuredClone(a), invalid=Buffer.from(JSON.stringify({theme:'invalid'}));settings.files.push({name:'settings.json',bytes:invalid.toString('base64'),sha256:createHash('sha256').update(invalid).digest('hex')});assert.throws(()=>validateBackup(Buffer.from(JSON.stringify(settings))));
+ const roadmap=structuredClone(a), bad=Buffer.from(JSON.stringify({version:1,shadow:[{date:'2026-11-01',kind:'makeup',minutes:1,clips:['one'],method:'manual'}],activity:[],activeTask:null,shortDays:[]}));roadmap.files.push({name:'roadmap.json',bytes:bad.toString('base64'),sha256:createHash('sha256').update(bad).digest('hex')});assert.throws(()=>validateBackup(Buffer.from(JSON.stringify(roadmap))));
+ existing.exec("UPDATE vocab SET word='changed' WHERE word='学生'");
+ fs.writeFileSync(path.join(root,'recordings','one.webm'),'changed');await restoreBackup(bytes);assert.equal(fs.readFileSync(path.join(root,'recordings','one.webm'),'utf8'),'recorded audio');
+ assert.equal(existing.prepare("SELECT count(*) n FROM vocab WHERE word='学生'").get()?.n,1,'already-open connection sees restored database identity');
+ const db=new DatabaseSync(file,{readOnly:true});assert.equal(db.prepare('PRAGMA integrity_check').get()?.integrity_check,'ok');db.close();
+ assert.ok(fs.readdirSync(path.join(root,'backups')).some(f=>f.startsWith('before-restore-')));assert.equal(await saveDailyBackup(),await saveDailyBackup());
+ const incoming=path.join(root,'invalid.sqlite');fs.writeFileSync(incoming,Buffer.from(a.files[0].bytes,'base64'));const altered=new DatabaseSync(incoming);altered.exec('CREATE TABLE extra(a TEXT)');altered.close();const mismatch=structuredClone(a),b=fs.readFileSync(incoming);mismatch.files[0]={...mismatch.files[0],bytes:b.toString('base64'),sha256:createHash('sha256').update(b).digest('hex')};await assert.rejects(restoreBackup(Buffer.from(JSON.stringify(mismatch))),/SCHEMA_MISMATCH/);assert.equal(existing.prepare("SELECT count(*) n FROM vocab WHERE word='学生'").get()?.n,1);
+ const withSettings=structuredClone(a), valid=Buffer.from('{}');withSettings.files.push({name:'settings.json',bytes:valid.toString('base64'),sha256:createHash('sha256').update(valid).digest('hex')});
+ fs.writeFileSync(path.join(root,'blocked'),'file prevents directory creation');process.env.NIHON_SETTINGS_PATH=path.join(root,'blocked','settings.json');
+ existing.exec("UPDATE vocab SET word='keep-after-failed-restore' WHERE word='学生'");fs.writeFileSync(path.join(root,'recordings','one.webm'),'keep recording');
+ await assert.rejects(restoreBackup(Buffer.from(JSON.stringify(withSettings))));
+ assert.equal(existing.prepare("SELECT count(*) n FROM vocab WHERE word='keep-after-failed-restore'").get()?.n,1,'SQL rollback preserves data when filesystem replacement fails');assert.equal(fs.readFileSync(path.join(root,'recordings','one.webm'),'utf8'),'keep recording');assert.equal(fs.existsSync(path.join(root,'maintenance.lock')),false);
+ delete process.env.NIHON_SETTINGS_PATH;
+ // A second filesystem failure during rollback must leave the only old copy intact.
+ process.env.NIHON_SETTINGS_PATH=path.join(root,'blocked','settings.json');
+ const rename=fs.renameSync;let retained='';
+ t.mock.method(fs,'renameSync',(from:fs.PathLike,to:fs.PathLike)=>{if(String(from).includes('recordings.pre-restore-')){retained=String(from);throw Error('injected rollback rename failure');}return rename(from,to);});
+ await assert.rejects(restoreBackup(Buffer.from(JSON.stringify(withSettings))),/RECOVERY_FILES_RETAINED/);
+ t.mock.restoreAll();assert.ok(retained&&fs.existsSync(retained));assert.equal(fs.readFileSync(path.join(retained,'one.webm'),'utf8'),'keep recording');
+ assert.equal(existing.prepare("SELECT count(*) n FROM vocab WHERE word='keep-after-failed-restore'").get()?.n,1);
+ delete process.env.NIHON_SETTINGS_PATH;
+});
+test('scheduled backup loads local environment and uses only its configured snapshot',t=>{
+ const {file}=fixture(t),root=path.dirname(file),env={...process.env};
+ for(const key of ['NIHON_DB_PATH','NIHON_DB_ROLE','NIHON_SETTINGS_PATH','NIHON_ROADMAP_PATH','NIHON_RECORDINGS_DIR','NIHON_BACKUP_DIR'])delete env[key];
+ fs.writeFileSync(path.join(root,'.env'),'NIHON_DB_PATH=missing-snapshot.sqlite\nNIHON_DB_ROLE=snapshot\n');
+ fs.writeFileSync(path.join(root,'.env.local'),'NIHON_DB_PATH='+file+'\n');
+ const command=JSON.parse(fs.readFileSync('package.json','utf8')).scripts['backup:daily'];assert.equal(command,'node --env-file-if-exists=.env --env-file-if-exists=.env.local --import tsx tools/backup.ts');
+ const result=execFileSync(process.execPath,['--env-file-if-exists=.env','--env-file-if-exists=.env.local','--import','tsx',path.resolve('tools/backup.ts')],{cwd:root,env,encoding:'utf8'}).trim();
+ assert.equal(path.dirname(result),path.join(root,'backups'));assert.ok(fs.existsSync(result));
+});

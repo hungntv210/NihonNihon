@@ -11,7 +11,7 @@ export default async function TodayPage() {
         <h1>Chào bạn, cùng học nhé.</h1>
         <p>Không cần học thật nhiều. Chỉ cần hôm nay tiến thêm một bước.</p>
       </div>
-      <section className="welcome-panel" aria-labelledby="welcome-title">
+      <p><Link className="button button-primary" href="/today-roadmap">Hôm nay và lộ trình →</Link></p><section className="welcome-panel" aria-labelledby="welcome-title">
         <div>
           <span className="small-label">GÓC NHỎ TIẾNG NHẬT</span>
           <h2 id="welcome-title">
@@ -98,3 +98,4 @@ export default async function TodayPage() {
     </>
   );
 }
+

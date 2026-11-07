@@ -180,6 +180,20 @@ Schema, worker dịch và database G0 không thay đổi.
 - Raw logs/report are gitignored: data/reports/grammar-final-a93111a.log, data/reports/grammar-final-scope-a93111a.log, data/reports/grammar-final-browser-a93111a.log, data/reports/grammar-browser-check.json. Only this audit entry changes after the successful checks.
 - Limits: public three-pattern demo only; no full403-pattern, Vietnamese translation, clip, G0 data acceptance or physical-device claims.
 
+
+### 2026-11-07T12:04:10.3485110+07:00 — remaining g1/foundation
+
+- Checked commit: 1bbca148e27d94bec1cfeb82999415cdda4d1f81. Full-check start: 2026-11-07T12:02:48.9180844+07:00; end: 2026-11-07T12:04:10.3485110+07:00.
+- Environment: Windows, Node v24.10.0, npm 11.6.1, production Next.js server and headless Chrome 156.0.8078.80; process/loopback access enabled. All test private paths use disposable G1 fixtures; no G0 live database access.
+- Full npm run check PASS: typecheck PASS; tests **68/68** (22 prototype +46 foundation/routes), 0 failed/0 skipped; production build PASS; test:app PASS (15 HTTP/browser checks, 1440px/390px).
+- node tools/check-route-scope.mjs 2c25fa6 foundation PASS: 39 changed files before this append-only audit entry, exact shared whitelist/settings/fonts only. No existing feature route or schema changes.
+- Browser checks: authenticated settings persistence, actual /vocab/lesson gate with SRS still accessible, maintenance503 for writes, backup download/restore API roundtrip, local subset fonts, service-worker restart then offline navigation/password rejection/unlock, offline SRS review durable queue and exactly one additional server review after reconnect, logout clearing page/proof cache entries, no page errors or third-party requests. Desktop/mobile screenshots visually checked.
+- Restore tests cover hash/path/JSON/schema validation, stable live SQLite file identity, foreign-key checks, SQL/filesystem rollback, and a second injected rollback-rename failure retaining recovery copies. Scheduled-backup CLI regression proves .env then .env.local load the configured temporary snapshot. Daily backups also run hourly in the active server and create at most one daily archive; npm run backup:daily is available for an external scheduler. Archive size limit128MiB.
+- Font subset generation is deterministic and asserts Vietnamese/Japanese specimens; primary WOFF2 total653108bytes versus8946968bytes original TTF, with original TTF glyph fallback retained.
+- Raw logs/screenshots remain gitignored under data/reports/: foundation-full-check.log, foundation-gate-start.json, foundation-gate-end.json, foundation-check.json, foundation-desktop.png, foundation-mobile.png. Earlier successful b86c752 gate preceded the CLI fix and is not the checked SHA for this final state.
+- Limits: opt-in encrypted HTML cache, not full browser-storage encryption. Existing SRS localStorage session snapshots remain plaintext while studying; logout/remove-download clears snapshots, but unsynchronized review outbox is kept. Retention is fixed90% and new-card-limit control is read-only until SRS integration. No physical Android/iOS install, Tailscale/VPS deployment, or full G0-data acceptance claimed. Root/nav Today links require today-roadmap PR7 to merge first; preserve both branches' appended audit entries if resolving their verification-log conflict.
+- Only this audit entry changes after the successful full check.
+
 ### 2026-11-07T12:00:01.4999135+07:00 — g1/today-roadmap
 
 - Checked commit: 0f83028e9f67789ce599ff9c315902e88458cc0e; preserved origin/g1/today-roadmap documentation ancestry with a merge, without force pushing.

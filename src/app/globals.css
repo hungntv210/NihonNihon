@@ -887,3 +887,12 @@ main#main {
     transform: none;
   }
 }
+
+.settings-form { display:grid;gap:18px;max-width:640px;padding:24px;background:var(--color-surface);border:1px solid var(--color-border);border-radius:16px;margin:24px 0; }
+.settings-form label { display:grid;gap:6px; }
+.settings-form input,.settings-form select { font:inherit;padding:10px;border:1px solid var(--color-border);border-radius:8px;background:var(--color-surface);color:var(--color-ink);min-width:0; }
+.settings-form input[type=checkbox] { width:20px;height:20px; }
+.settings-form fieldset {display:flex;flex-wrap:wrap;gap:12px;border:1px solid var(--color-border);}
+.settings-form small { color:var(--color-muted); }
+html[data-theme=dark] {color-scheme:dark;--color-background:#15231d;--color-surface:#1c2e25;--color-ink:#eef3e9;--color-muted:#b5c5b9;--color-accent:#a2d4af;--color-accent-soft:#2a4435;--color-border:#405447;--color-warm:#6a5436;}
+html[data-furigana=false] ruby rt {visibility:hidden;}

@@ -23,7 +23,7 @@ export function Shell({ children, reviewCount }: { children: ReactNode; reviewCo
           Không gian học riêng tư<small>Đi chậm, nhưng đều đặn.</small>
         </div>
         <div className="sidebar-footer">
-          <Link href="/sources">Nguồn dữ liệu ↗</Link>
+          <Link href="/settings">Cài đặt</Link><Link href="/sources">Nguồn dữ liệu ↗</Link>
           <form action="/api/logout" method="post">
             <button className="quiet-button">Đăng xuất</button>
           </form>
@@ -32,7 +32,7 @@ export function Shell({ children, reviewCount }: { children: ReactNode; reviewCo
       <div className="main-sheet">
         <header className="topbar">
           <span className="topbar-label">TIẾNG NHẬT · N5 → N2</span>
-          <div className="topbar-links">
+          <div className="topbar-links"><Link href="/settings">Cài đặt</Link>
             <Link href="/sources" className="mobile-source">
               Nguồn dữ liệu
             </Link>
@@ -55,3 +55,4 @@ export function Shell({ children, reviewCount }: { children: ReactNode; reviewCo
     </div>
   );
 }
+

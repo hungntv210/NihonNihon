@@ -2,7 +2,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 const links = [
-  ['/', 'Hôm nay', 'home'],
+  ['/today-roadmap', 'Hôm nay', 'home'],
   ['/srs', 'Ôn tập', 'review'],
   ['/vocab', 'Từ vựng', 'vocab'],
   ['/kanji', 'Kanji', 'kanji'],
@@ -40,7 +40,7 @@ export function Navigation() {
           key={href}
           className="nav-link"
           aria-current={
-            current === href || (href !== '/' && current.startsWith(href + '/'))
+            current === href || current.startsWith(href + '/')
               ? 'page'
               : undefined
           }
@@ -52,3 +52,4 @@ export function Navigation() {
     </nav>
   );
 }
+
