@@ -193,3 +193,34 @@ Schema, worker dịch và database G0 không thay đổi.
 - Raw logs/screenshots remain gitignored under data/reports/: foundation-full-check.log, foundation-gate-start.json, foundation-gate-end.json, foundation-check.json, foundation-desktop.png, foundation-mobile.png. Earlier successful b86c752 gate preceded the CLI fix and is not the checked SHA for this final state.
 - Limits: opt-in encrypted HTML cache, not full browser-storage encryption. Existing SRS localStorage session snapshots remain plaintext while studying; logout/remove-download clears snapshots, but unsynchronized review outbox is kept. Retention is fixed90% and new-card-limit control is read-only until SRS integration. No physical Android/iOS install, Tailscale/VPS deployment, or full G0-data acceptance claimed. Root/nav Today links require today-roadmap PR7 to merge first; preserve both branches' appended audit entries if resolving their verification-log conflict.
 - Only this audit entry changes after the successful full check.
+
+### 2026-11-07T12:00:01.4999135+07:00 — g1/today-roadmap
+
+- Checked commit: 0f83028e9f67789ce599ff9c315902e88458cc0e; preserved origin/g1/today-roadmap documentation ancestry with a merge, without force pushing.
+- Full-check start: 2026-11-07T11:58:39.1026368+07:00; end: 2026-11-07T11:59:50.6797108+07:00.
+- Environment: Windows, Node v24.10.0, npm 11.6.1, Next production server, installed headless Chrome. Reused identical locked dependencies through a local junction to the foundation worktree; Windows process and loopback access enabled.
+- Full npm run check: PASS. Typecheck PASS; tests **72/72** (22 prototype +50 foundation/routes including8 Today), 0 failed/0 skipped; production build PASS; test:app PASS.
+- Scope guard: node ../g1-foundation/tools/check-route-scope.mjs origin/master today-roadmap PASS, 11 route files before this append-only audit. No shared/schema/G0 changes.
+- Committed Today browser-check.ts: PASS, start 2026-11-07T11:59:56.6190604+07:00; end 2026-11-07T12:00:01.4999135+07:00. Verified unauthenticated redirect, CSRF rejection, invalid makeup rejection, all87 weeks, desktop1440/mobile390 without horizontal overflow or browser errors, persisted manual shadowing, duplicate rejection, 20-minute plan and actual daytime/evening UI after changing isolated settings. Visually inspected desktop/mobile, evening tasks and shadow form screenshots.
+- Browser testing found SQLite null-prototype rows could not cross the RSC boundary; committed plain-object conversion and a regression assertion before this successful run.
+- Public OpenJLPT demo only. Shadowing is explicit manual confirmation, not recording or pronunciation assessment. JLPT/weekly exercises, background notifications, planned leave and automatic freeze consumption remain unavailable and documented. Shared foundation owns navigation, direct new-lesson enforcement, settings UI and backup integration. The route reads that settings file through a validated adapter until the shared preferences reader is merged.
+- Raw logs/screenshots stay gitignored in data/reports/today-roadmap/: final.log, scope-final.log, final-browser.log, browser-gL8Yhc/. An earlier restricted run failed loopback readiness; this successful full run supersedes it. Only this audit entry changes after the checked commit.
+
+### 2026-11-07T12:04:24.2297791+07:00 — PR7 snapshot path integration regression
+
+- Checked commit: 3f0809091dbfa7b2b2bb479b452439264edf24dc.
+- Full-check start: 2026-11-07T12:02:54.7157804+07:00; end: 2026-11-07T12:04:10.6355234+07:00.
+- Environment: Windows, Node v24.10.0, npm 11.6.1, production Next server and installed headless Chrome; identical locked dependencies reused through the foundation node_modules junction, process/loopback access enabled.
+- Full npm run check: PASS. Typecheck PASS; tests **73/73** (22 prototype +51 foundation/routes including9 Today), 0 failed/0 skipped; production build PASS; test:app PASS.
+- Scope guard: node ../g1-foundation/tools/check-route-scope.mjs origin/master today-roadmap PASS, 12 changed files confined to the route and append-only verification log.
+- Settings and roadmap defaults now derive from path.dirname(databasePath()), matching the foundation settings/backup/lesson-gate contract for custom snapshots. Explicit NIHON_SETTINGS_PATH/NIHON_ROADMAP_PATH overrides retain precedence. A regression uses a nested custom database directory without either override, reads its settings/progress, then verifies explicit overrides.
+- Committed route browser check: PASS, start 2026-11-07T12:04:19.2426545+07:00; end 2026-11-07T12:04:24.2297791+07:00. The harness now omits path overrides, changes settings beside its isolated database to exercise day/evening UI, and asserts manual shadowing persists under that database's private directory. All prior desktop/mobile, CSRF, makeup, duplicate, 87-week and 20-minute checks also pass.
+- Logs/screenshots remain ignored: data/reports/today-roadmap/snapshot.log, snapshot-scope.log, snapshot-browser.log, browser-eTBSKV/. Prior limitations remain unchanged; no schema/shared/G0 edits. Only this audit entry changes after the checked implementation commit.
+
+### 2026-11-07T12:15:02.8771778+07:00 — PR7 after foundation PR8 merge
+
+- Checked merge commit: b8512ec485a1afb567c97cdaa3c16fb34fee002b; received origin/master 59cbb9cd38b16d08b74f0aa7501f26288efe3066 after PR8 merged. The verification-log conflict retains every original entry from both branches.
+- Full check start 2026-11-07T12:13:41.1557157+07:00; end 2026-11-07T12:15:02.8771778+07:00. Windows, Node24.10.0, npm11.6.1, production Next/installed headless Chrome, disposable OpenJLPT fixtures, process/loopback access enabled.
+- npm run check PASS: typecheck PASS; tests77/77 (22 prototype+55 foundation/routes), zero failures/skips; production build PASS; test:app PASS including15 HTTP/browser checks and cold offline review sync exactly+1.
+- node tools/check-route-scope.mjs origin/master today-roadmap PASS (12 changed route/audit files); committed route browser-check PASS: desktop/mobile,87weeks,20-minute plan, manual shadowing persistence, CSRF, makeup and duplicate validation.
+- Raw logs remain ignored: data/reports/merge7-check.log, merge7-scope.log, merge7-browser.log, merge7-check-start.json and merge7-check-end.json. Only this append-only audit changes after the checked merge commit. Existing implementation limitations remain unchanged.
