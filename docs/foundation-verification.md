@@ -224,3 +224,14 @@ Schema, worker dịch và database G0 không thay đổi.
 - npm run check PASS: typecheck PASS; tests77/77 (22 prototype+55 foundation/routes), zero failures/skips; production build PASS; test:app PASS including15 HTTP/browser checks and cold offline review sync exactly+1.
 - node tools/check-route-scope.mjs origin/master today-roadmap PASS (12 changed route/audit files); committed route browser-check PASS: desktop/mobile,87weeks,20-minute plan, manual shadowing persistence, CSRF, makeup and duplicate validation.
 - Raw logs remain ignored: data/reports/merge7-check.log, merge7-scope.log, merge7-browser.log, merge7-check-start.json and merge7-check-end.json. Only this append-only audit changes after the checked merge commit. Existing implementation limitations remain unchanged.
+
+## 2026-11-07 · g1/common-tools
+
+- Checked implementation commit: `2b7d6b00e391924fb8284a719aab72e33009c72a` (base `a3e6c31374cd3744a7bd2158c2ec8c57bb90a800`).
+- Full check started 2026-11-07T15:11:02+07:00; all checks and additional browser verification completed by 2026-11-07T15:13:03+07:00 (Asia/Ho_Chi_Minh).
+- Environment: Windows PowerShell, Node v24.10.0, production Next.js/Webpack, installed Windows Chrome; reused installed foundation node_modules through a local junction. Isolated public demo DB plus synthetic test-only translation provenance; no private data or external translation calls.
+- Required gates: `typecheck` PASS; `test` PASS (22/22 prototype and 58/58 TypeScript tests, including 3 common-tools tests); `build` PASS; `test:app` PASS (15 reported checks, real production server, desktop/mobile and encrypted cold offline SRS).
+- Additional production browser check PASS: 7 reported check groups, 0 browser errors; all five common-tools pages at 1440/390 px without horizontal overflow; authenticated search, real model provenance, enqueue, canonical detail link, persisted report through owner route and queue display. Inspected mobile search screenshot. Command: `node --import tsx 'src/app/(study)/common-tools/browser-check.ts'`.
+- Ownership guard PASS: `node ../ci-scope-g1/tools/check-route-scope.mjs origin/master g1/common-tools` (11 changed feature files). Uses the separate pending CI registry update, with no shared guard changes copied into this branch.
+- Logs/screenshots remain ignored in `.tmp/common-full-check.log`, `.tmp/common-browser-check.log`, `data/reports/common-tools-browser-check.json`, and `data/reports/common-*.png`.
+- Limitations: shared navigation integration belongs to foundation; search scan latency on a full imported snapshot is unmeasured; clip/popup/external dictionary lookup contracts absent; no physical-phone or deployed home-host Tailscale HTTPS/off-machine backup test. TTS deferred. Report queue is read-only and never retranslates. Settings reuse the shared page/API. Progress counts real SRS events; shadowing is labeled manual.
