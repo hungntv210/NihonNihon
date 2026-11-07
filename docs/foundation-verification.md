@@ -242,3 +242,11 @@ Schema, worker dịch và database G0 không thay đổi.
 - Backup regression verifies14 newest daily archives plus4 distinct older UTC weeks, idempotence, cleanup when today's archive already exists, and preservation of before-restore files, future/invalid names, unrelated files and date-named directories. Cleanup runs only after a daily archive exists; failed new archive creation skips cleanup.
 - Deployment guide states production DB filename demo.sqlite or NIHON_DB_ROLE=snapshot, separate G1 snapshot, scheduler env loading, and128MiB archive limit including base64 recording overhead. Existing before-restore recovery copies require deliberate manual cleanup.
 - Raw logs remain ignored: data/reports/retention-focused.log, retention-check.log, retention-scope.log, retention-check-start.json and retention-check-end.json. Only this append-only audit changes after the checked commit.
+
+
+### 2026-11-07T18:56:21.9991704+07:00 — PR9 pre-push merge-sequence verification
+
+- Checked commit: af2c98ae28d85bd5469b8f4597e0cc2a7c9d6806; branch g1/foundation. Full-check start 2026-11-07T18:55:23.8998008+07:00; end 2026-11-07T18:56:21.9991704+07:00.
+- npm run check PASS: typecheck PASS; tests79/79, zero failures/skips; production build PASS; test:app PASS. Windows, Node24.10.0/npm11.6.1, installed headless Chrome, disposable OpenJLPT fixtures; process/loopback access enabled.
+- Journal resolution retains all entries from both sides. Raw log stays ignored: data/reports/merge-sequence/pr9-pre-push-af2c98a.log. Existing implementation and physical-device/deployment limitations remain unchanged.
+- Current origin/master scope guard PASS; only registered owned paths and append-only verification changes.
