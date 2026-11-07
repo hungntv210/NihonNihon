@@ -4,7 +4,8 @@ import path from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { requireSession } from './auth.ts';
 import { DEFAULT_PREFERENCES, validatePreferences } from '../core/preferences.ts';
-export const settingsPath = () => path.resolve(process.env.NIHON_SETTINGS_PATH || 'data/settings.json');
+import { databasePath } from '../core/config.ts';
+export const settingsPath = () => path.resolve(process.env.NIHON_SETTINGS_PATH || path.join(path.dirname(databasePath()),'settings.json'));
 export async function getStudyPreferences() {
   await requireSession();
   try { return validatePreferences(JSON.parse(fs.readFileSync(settingsPath(), 'utf8'))); }

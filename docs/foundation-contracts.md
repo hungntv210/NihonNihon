@@ -38,7 +38,7 @@ bản ghi báo cáo sau lượt check; thay đổi code/config cần check lại
 - Chỉ `/login`, `/api/session`, `/robots.txt` và tài nguyên tĩnh được mở công khai.
   Mọi trang nội dung/tuyến chưa biết đều chặn khi chưa đăng nhập; API yêu cầu
   session. POST phải có Origin trùng APP_ORIGIN; body giới hạn 4 KiB. Tất cả trang
-  nội dung no-store/noindex. Không cache nội dung riêng tư bằng service worker.
+  nội dung no-store/noindex. Chỉ cache bản trang riêng tư khi chủ tài khoản bật tải ngoại tuyến; bản trang trong Cache Storage được mã hóa AES-GCM và mở khóa bằng mật khẩu cục bộ.
 
 ## Thêm vào hàng ôn
 
@@ -72,3 +72,13 @@ trong JSON của bảng hiện hành. Chuyển romaji dùng wanakana, không g�
 
 Chưa thuộc PR khung: thuật toán FSRS/phiên ôn, tra cứu chi tiết/tìm kiếm FTS5,
 ghi âm, PWA/offline, sao lưu tự động, cài đặt và triển khai VPS/Tailscale.
+
+## Phần foundation tiếp theo
+
+- Settings JSON nằm cạnh DB G1 (NIHON_SETTINGS_PATH), roadmap ở data/private/today-roadmap.json (NIHON_ROADMAP_PATH). Cài đặt giờ học, ngày bắt đầu/thi, múi giờ, ít nhất hai ngày shadowing, theme, furigana và giọng đọc dùng chung. Hạn mức thẻ mới và retention hiện chỉ đọc: SRS hiện dùng 90%, chưa áp dụng hạn mức.
+- /vocab/lesson được proxy khóa nếu tuần trước chưa có hai ngày shadowing thường và tuần này chưa có buổi bù hợp lệ. Tuần đầu tiên không khóa. Duyệt nội dung và ôn SRS luôn mở. Thuật toán dùng cùng mốc tuần thứ Hai và múi giờ với today-roadmap.
+- PWA đăng ký /sw.js từ khung đăng nhập. Chủ tài khoản nhập lại mật khẩu để bật tải; sau đó cần mở từng URL muốn lưu khi có mạng. HTML navigation được mã hóa AES-GCM; khóa PBKDF2 không ghi xuống đĩa. Khi worker khởi động lại và mất mạng, màn hình mở khóa cục bộ xuất hiện trước nội dung. Script, CSS, font được cache công khai vì không chứa dữ liệu người học. Không cache phản hồi API/RSC riêng tư.
+- SRS đã có bộ nhớ phục hồi phiên plaintext trong localStorage từ nhánh SRS trước đó; phần PWA này không thay đổi tuyến SRS. Chỉ dùng thiết bị riêng. Đăng xuất/xóa trang tải xóa bản cache và snapshot phiên, nhưng giữ hàng lượt chấm chưa đồng bộ để tránh mất lượt ôn. Không coi đây là mã hóa toàn bộ bộ nhớ trình duyệt.
+- Sao lưu gồm SQLite snapshot, recordings, settings và roadmap trong một archive JSON với SHA-256 từng file, giới hạn 128 MiB. Hằng ngày khi server đang chạy, và npm run backup:daily cho scheduler của máy chủ. Chỉ DB demo hoặc NIHON_DB_ROLE=snapshot rõ ràng được dùng; không cấu hình DB G0 live. Đường dẫn riêng tư phải ở dưới thư mục DB G1.
+- Khôi phục kiểm tra archive/path/hash, schema trùng DB hiện hành, SQLite integrity/FK và JSON cài đặt/roadmap trước khi thay đổi. Tạo bản sao an toàn; maintenance gate chặn request ghi mới. Database giữ nguyên file và được thay dữ liệu trong BEGIN IMMEDIATE, defer_foreign_keys + FK check, nên writer SQLite đang/chờ chạy được tuần tự hóa. File recordings/settings/roadmap được stage và đổi tên với rollback; lỗi SQL/file giữ dữ liệu hiện tại. Khôi phục là thay thế trạng thái ở thời điểm bản sao, nên cần tạm ngừng học trước khi xác nhận.
+- Chưa xác nhận cài đặt trên Android/iOS thật hoặc triển khai Tailscale/VPS. Browser production tests kiểm tra mở SRS hoàn toàn ngoại tuyến sau restart service worker, nhập sai/đúng mật khẩu, chấm và đồng bộ lại.

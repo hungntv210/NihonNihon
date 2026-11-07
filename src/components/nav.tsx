@@ -40,7 +40,7 @@ export function Navigation() {
           key={href}
           className="nav-link"
           aria-current={
-            current === href || (href !== '/' && current.startsWith(href + '/'))
+            current === href || current.startsWith(href + '/')
               ? 'page'
               : undefined
           }

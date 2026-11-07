@@ -17,5 +17,6 @@ export async function POST(request: Request) {
     sameSite: 'strict',
     maxAge: 0,
   });
+  response.headers.set('Clear-Site-Data', '"cache"');
   return response;
 }
