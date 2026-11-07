@@ -45,6 +45,20 @@ export function Shell({ children, reviewCount }: { children: ReactNode; reviewCo
             </form>
           </div>
         </header>
+        <div className="shared-tools">
+          <form action="/common-tools/search" method="get" role="search" aria-label="Tìm trong thư viện">
+            <label className="shared-search-label" htmlFor="global-search">Tìm từ, kanji, ngữ pháp hoặc Hán Việt</label>
+            <div className="shared-search-controls">
+              <input id="global-search" name="q" type="search" maxLength={160} placeholder="Tiếng Nhật, romaji, tiếng Việt…" />
+              <button className="button" type="submit">Tìm</button>
+            </div>
+          </form>
+          <nav className="shared-tool-links" aria-label="Công cụ học tập">
+            <Link href="/shadowing">Shadowing</Link>
+            <Link href="/common-tools/reports">Báo sai</Link>
+            <Link href="/common-tools/progress">Tiến độ</Link>
+          </nav>
+        </div>
         <main id="main" tabIndex={-1}>
           {children}
         </main>

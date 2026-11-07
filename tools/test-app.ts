@@ -223,6 +223,16 @@ try {
   const reports = 'data/reports';
   fs.mkdirSync(reports, { recursive: true });
   await page.screenshot({ path: path.join(reports, 'foundation-desktop.png'), fullPage: true });
+  const globalSearch=page.getByRole('search',{name:'Tìm trong thư viện'});
+  assert.equal(await globalSearch.getAttribute('action'),'/common-tools/search');
+  assert.equal(await page.getByRole('navigation',{name:'Công cụ học tập'}).getByRole('link',{name:'Shadowing'}).getAttribute('href'),'/shadowing');
+  await page.route('**/common-tools/search?*',route=>route.fulfill({contentType:'text/html',body:'<h1>Synthetic search destination</h1>'}));
+  await globalSearch.getByRole('searchbox').fill('hán việt 働');
+  await globalSearch.getByRole('button',{name:'Tìm',exact:true}).click();
+  await page.getByRole('heading',{name:'Synthetic search destination'}).waitFor();
+  assert.equal(new URL(page.url()).pathname,'/common-tools/search');
+  assert.equal(new URL(page.url()).searchParams.get('q'),'hán việt 働');
+  await page.unroute('**/common-tools/search?*');
   for (const url of ['/vocab', '/kanji', '/grammar', '/srs', '/sources']) {
     await page.goto(origin + url);
     assert.equal(await page.locator('main h1').count(), 1);
@@ -298,6 +308,7 @@ try {
       'local fonts',
       'desktop/mobile',
       'no browser errors',
+      'shared search GET routing and feature entry links (synthetic destination; feature backend tested separately)',
       'encrypted cold offline SRS password unlock',
       'offline review outbox reconnect synchronization',
       'logout clears private offline cache',
