@@ -2,8 +2,9 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { randomUUID } from 'node:crypto';
 import type { DatabaseSync } from 'node:sqlite';
+import { databasePath } from '../../../core/config.ts';
 import { emptyProgress, validDate, tasks, type Progress, type CatalogItem } from './model.ts';
-export function roadmapPath() { return path.resolve(process.env.NIHON_ROADMAP_PATH || 'data/private/today-roadmap.json'); }
+export function roadmapPath() { return path.resolve(process.env.NIHON_ROADMAP_PATH || path.join(path.dirname(databasePath()), 'private', 'today-roadmap.json')); }
 export function validateProgress(value: unknown): Progress {
   const p = value as Progress;
   if (!p || p.version !== 1 || !Array.isArray(p.activity) || !Array.isArray(p.shortDays) || !Array.isArray(p.shadow) || p.activity.length > 10000 || p.shadow.length > 10000 || p.shortDays.length > 10000 || !p.activity.every(validDate) || !p.shortDays.every(validDate) || (p.activeTask !== null && !(typeof p.activeTask === 'string' && Object.hasOwn(tasks, p.activeTask)))) throw Error('INVALID_PROGRESS');

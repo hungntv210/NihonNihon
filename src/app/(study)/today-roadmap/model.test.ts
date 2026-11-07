@@ -83,3 +83,23 @@ test('settings adapter reads shared preferences and rejects corrupt settings', a
  fs.writeFileSync(file,'{}');assert.deepEqual(readTodaySettings(file),defaults);
  }finally{fs.rmSync(dir,{recursive:true,force:true});}
 });
+test('custom database defaults keep settings and roadmap beside the selected snapshot', async () => {
+ const {readTodaySettings}=await import('./settings.ts');
+ const {roadmapPath}=await import('./repository.ts');
+ const dir=fs.mkdtempSync(path.join(path.resolve('.tmp'),'roadmap-snapshot-'));
+ const keys=['NIHON_DB_PATH','NIHON_SETTINGS_PATH','NIHON_ROADMAP_PATH'] as const;
+ const previous=keys.map(key=>process.env[key]);
+ try {
+ process.env.NIHON_DB_PATH=path.join(dir,'nested','snapshot.sqlite');delete process.env.NIHON_SETTINGS_PATH;delete process.env.NIHON_ROADMAP_PATH;
+ fs.mkdirSync(path.join(dir,'nested','private'),{recursive:true});
+ fs.writeFileSync(path.join(dir,'nested','settings.json'),JSON.stringify({...defaults,eveningTime:'20:45'}));
+ const progress={...emptyProgress(),activity:['2026-11-03']};
+ fs.writeFileSync(path.join(dir,'nested','private','today-roadmap.json'),JSON.stringify(progress));
+ assert.equal(readTodaySettings().eveningTime,'20:45');
+ assert.equal(roadmapPath(),path.join(dir,'nested','private','today-roadmap.json'));
+ assert.deepEqual(readProgress(),progress);
+ process.env.NIHON_SETTINGS_PATH=path.join(dir,'override-settings.json');fs.writeFileSync(process.env.NIHON_SETTINGS_PATH,JSON.stringify({...defaults,eveningTime:'21:10'}));
+ process.env.NIHON_ROADMAP_PATH=path.join(dir,'override-roadmap.json');
+ assert.equal(readTodaySettings().eveningTime,'21:10');assert.equal(roadmapPath(),process.env.NIHON_ROADMAP_PATH);
+ }finally{keys.forEach((key,index)=>{if(previous[index]===undefined)delete process.env[key];else process.env[key]=previous[index];});fs.rmSync(dir,{recursive:true,force:true});}
+});

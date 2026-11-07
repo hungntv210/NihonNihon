@@ -1,8 +1,9 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import { databasePath } from '../../../core/config.ts';
 import { defaults, validDate, type Settings } from './model.ts';
 // shortcut: route-local adapter until foundation's authenticated preferences reader is merged.
-export function readTodaySettings(file = path.resolve(process.env.NIHON_SETTINGS_PATH || 'data/settings.json')): Settings {
+export function readTodaySettings(file = path.resolve(process.env.NIHON_SETTINGS_PATH || path.join(path.dirname(databasePath()), 'settings.json'))): Settings {
  let input: Record<string, unknown>;
  try { if(fs.statSync(file).size>65536)throw Error('INVALID_SETTINGS');input=JSON.parse(fs.readFileSync(file,'utf8')); }
  catch(error){if((error as NodeJS.ErrnoException).code==='ENOENT')return {...defaults};throw error;}
