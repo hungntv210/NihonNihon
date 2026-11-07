@@ -179,3 +179,15 @@ Schema, worker dịch và database G0 không thay đổi.
 - Route boundary decodes the ID exactly once; malformed URI decoding returns not-found. Regression tests cover generated listing/related IDs, short and canonical keys, malformed encoding and no second decode. Browser malformed keys use valid URL escaping to reach the route; invalid raw URL escaping is handled by Next's matcher before the page.
 - Raw logs/report are gitignored: data/reports/grammar-final-a93111a.log, data/reports/grammar-final-scope-a93111a.log, data/reports/grammar-final-browser-a93111a.log, data/reports/grammar-browser-check.json. Only this audit entry changes after the successful checks.
 - Limits: public three-pattern demo only; no full403-pattern, Vietnamese translation, clip, G0 data acceptance or physical-device claims.
+
+### 2026-11-07T12:00:01.4999135+07:00 — g1/today-roadmap
+
+- Checked commit: 0f83028e9f67789ce599ff9c315902e88458cc0e; preserved origin/g1/today-roadmap documentation ancestry with a merge, without force pushing.
+- Full-check start: 2026-11-07T11:58:39.1026368+07:00; end: 2026-11-07T11:59:50.6797108+07:00.
+- Environment: Windows, Node v24.10.0, npm 11.6.1, Next production server, installed headless Chrome. Reused identical locked dependencies through a local junction to the foundation worktree; Windows process and loopback access enabled.
+- Full npm run check: PASS. Typecheck PASS; tests **72/72** (22 prototype +50 foundation/routes including8 Today), 0 failed/0 skipped; production build PASS; test:app PASS.
+- Scope guard: node ../g1-foundation/tools/check-route-scope.mjs origin/master today-roadmap PASS, 11 route files before this append-only audit. No shared/schema/G0 changes.
+- Committed Today browser-check.ts: PASS, start 2026-11-07T11:59:56.6190604+07:00; end 2026-11-07T12:00:01.4999135+07:00. Verified unauthenticated redirect, CSRF rejection, invalid makeup rejection, all87 weeks, desktop1440/mobile390 without horizontal overflow or browser errors, persisted manual shadowing, duplicate rejection, 20-minute plan and actual daytime/evening UI after changing isolated settings. Visually inspected desktop/mobile, evening tasks and shadow form screenshots.
+- Browser testing found SQLite null-prototype rows could not cross the RSC boundary; committed plain-object conversion and a regression assertion before this successful run.
+- Public OpenJLPT demo only. Shadowing is explicit manual confirmation, not recording or pronunciation assessment. JLPT/weekly exercises, background notifications, planned leave and automatic freeze consumption remain unavailable and documented. Shared foundation owns navigation, direct new-lesson enforcement, settings UI and backup integration. The route reads that settings file through a validated adapter until the shared preferences reader is merged.
+- Raw logs/screenshots stay gitignored in data/reports/today-roadmap/: final.log, scope-final.log, final-browser.log, browser-gL8Yhc/. An earlier restricted run failed loopback readiness; this successful full run supersedes it. Only this audit entry changes after the checked commit.
