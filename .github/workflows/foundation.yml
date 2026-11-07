@@ -20,8 +20,8 @@ jobs:
         env:
           NEXT_TELEMETRY_DISABLED: 1
       - name: Check feature route ownership
-        if: startsWith(github.head_ref, 'g1/') && contains(fromJSON('["g1/srs","g1/vocab","g1/kanji","g1/grammar"]'), github.head_ref)
+        if: startsWith(github.head_ref, 'g1/')
         env:
           FEATURE_BRANCH: ${{ github.head_ref }}
           BASE_BRANCH: ${{ github.base_ref }}
-        run: node tools/check-route-scope.mjs "origin/$BASE_BRANCH" "${FEATURE_BRANCH#g1/}"
+        run: node tools/check-route-scope.mjs "origin/$BASE_BRANCH" "$FEATURE_BRANCH"

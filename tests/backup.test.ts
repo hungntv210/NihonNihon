@@ -6,7 +6,7 @@ import { DatabaseSync } from 'node:sqlite';
 import { createHash } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
 import { fixture } from './helpers.ts';
-import { createBackup, restoreBackup, validateBackup, saveDailyBackup } from '../src/core/backup.ts';
+import { createBackup, restoreBackup, validateBackup, saveDailyBackup, pruneDailyBackups } from '../src/core/backup.ts';
 test('backup snapshots SQLite and recordings, rejects corruption/path traversal, restores with safety copy',async t=>{
  const {file,db:existing}=fixture(t),root=path.dirname(file);process.env.NIHON_DB_PATH=file;process.env.NIHON_DB_ROLE='snapshot';
  for(const k of ['NIHON_SETTINGS_PATH','NIHON_ROADMAP_PATH','NIHON_RECORDINGS_DIR','NIHON_BACKUP_DIR'])delete process.env[k];
@@ -45,4 +45,26 @@ test('scheduled backup loads local environment and uses only its configured snap
  const command=JSON.parse(fs.readFileSync('package.json','utf8')).scripts['backup:daily'];assert.equal(command,'node --env-file-if-exists=.env --env-file-if-exists=.env.local --import tsx tools/backup.ts');
  const result=execFileSync(process.execPath,['--env-file-if-exists=.env','--env-file-if-exists=.env.local','--import','tsx',path.resolve('tools/backup.ts')],{cwd:root,env,encoding:'utf8'}).trim();
  assert.equal(path.dirname(result),path.join(root,'backups'));assert.ok(fs.existsSync(result));
+});
+
+test('daily cleanup keeps fourteen recent archives and four older weekly snapshots, preserving recovery files',async t=>{
+ const {file}=fixture(t),root=path.dirname(file),directory=path.join(root,'backups');
+ process.env.NIHON_DB_PATH=file;process.env.NIHON_DB_ROLE='snapshot';
+ for(const key of ['NIHON_SETTINGS_PATH','NIHON_ROADMAP_PATH','NIHON_RECORDINGS_DIR','NIHON_BACKUP_DIR'])delete process.env[key];
+ fs.mkdirSync(directory);
+ const now=new Date('2026-11-07T12:00:00Z');
+ for(let day=0;day<60;day++){const date=new Date(now.getTime()-day*86400000).toISOString().slice(0,10);fs.writeFileSync(path.join(directory,date+'.json'),'{}');}
+ const untouched=['before-restore-123.json','other.json','2026-02-30.json','2026-11-08.json','draft.tmp','snapshot.sqlite'];
+ for(const name of untouched)fs.writeFileSync(path.join(directory,name),'retain');
+ fs.mkdirSync(path.join(directory,'2026-01-01.json'));
+ assert.equal(pruneDailyBackups(now).length,42);
+ const expected=Array.from({length:14},(_,day)=>new Date(now.getTime()-day*86400000).toISOString().slice(0,10)+'.json');
+ expected.push('2026-10-18.json','2026-10-11.json','2026-10-04.json','2026-09-27.json');
+ for(const name of expected)assert.ok(fs.existsSync(path.join(directory,name)),name);
+ for(const name of untouched)assert.equal(fs.readFileSync(path.join(directory,name),'utf8'),'retain');
+ assert.ok(fs.statSync(path.join(directory,'2026-01-01.json')).isDirectory());
+ assert.deepEqual(pruneDailyBackups(now),[],'cleanup is idempotent');
+ fs.writeFileSync(path.join(directory,'2026-08-01.json'),'old');
+ await saveDailyBackup(now);
+ assert.equal(fs.existsSync(path.join(directory,'2026-08-01.json')),false,'existing daily archive also triggers cleanup');
 });

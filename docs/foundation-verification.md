@@ -225,6 +225,82 @@ Schema, worker dịch và database G0 không thay đổi.
 - node tools/check-route-scope.mjs origin/master today-roadmap PASS (12 changed route/audit files); committed route browser-check PASS: desktop/mobile,87weeks,20-minute plan, manual shadowing persistence, CSRF, makeup and duplicate validation.
 - Raw logs remain ignored: data/reports/merge7-check.log, merge7-scope.log, merge7-browser.log, merge7-check-start.json and merge7-check-end.json. Only this append-only audit changes after the checked merge commit. Existing implementation limitations remain unchanged.
 
+### 2026-11-07T15:12:37.2704250+07:00 — G1 CI ownership registry
+
+- Checked implementation020aa8d16e4e538cdbb03069541fec42a4f98843; start2026-11-07T15:11:26.1782990+07:00, end2026-11-07T15:12:37.2704250+07:00. Windows, Node24.10.0/npm11.6.1, production Next and installed headless Chrome, disposable fixtures and process/loopback access enabled.
+- Full npm run check PASS: typecheck PASS, tests78/78 (22prototype+56foundation/routes), zero failures/skips, build PASS, test:app PASS including15HTTP/browser checks.
+- Workflow ownership condition is exactly startsWith(github.head_ref, 'g1/'); full branch is passed to the script. One registry in tools/check-route-scope.mjs owns mappings; README/AGENTS point to it. Unknown owners fail before git lookup with an explicit registration error.
+- Regression checks cover full g1/shadowing and g1/common-tools branch names, rejection of shared-file changes, unknown-branch failure, workflow condition, append-only audit and move detection. Existing ownership restrictions are retained.
+- This dedicated codex/ci-scope-g1 PR modifies only workflow, registry, scope tests and ownership documentation; no feature-route/schema/G0 changes. Raw logs data/reports/ci-scope-final.log and ci-scope-final-{start,end}.json stay ignored. Only this audit entry changes after the checked implementation.
+
+### 2026-11-07T12:18:47.5604061+07:00 — backup retention and deployment follow-up
+
+- Checked implementation: 9240db9f700cbf5e06e4017b0813f0f42f579bb2 on origin/master a3e6c31374cd3744a7bd2158c2ec8c57bb90a800 after PR8 then PR7 merged. Their complete verification entries remain preserved.
+- Full-check start 2026-11-07T12:17:42.6053000+07:00; end 2026-11-07T12:18:47.5604061+07:00. Windows, Node24.10.0, npm11.6.1, production Next and installed headless Chrome; process/loopback access enabled; disposable fixtures only.
+- npm run check PASS: typecheck PASS; tests78/78 (22 prototype+56 foundation/routes), zero failures/skips; build PASS; test:app PASS including15 HTTP/browser checks, backup restore and cold offline SRS exact+1 synchronization.
+- node tools/check-route-scope.mjs origin/master foundation PASS (4 shared implementation/doc/test files before this audit). No schema or feature-route changes.
+- Backup regression verifies14 newest daily archives plus4 distinct older UTC weeks, idempotence, cleanup when today's archive already exists, and preservation of before-restore files, future/invalid names, unrelated files and date-named directories. Cleanup runs only after a daily archive exists; failed new archive creation skips cleanup.
+- Deployment guide states production DB filename demo.sqlite or NIHON_DB_ROLE=snapshot, separate G1 snapshot, scheduler env loading, and128MiB archive limit including base64 recording overhead. Existing before-restore recovery copies require deliberate manual cleanup.
+- Raw logs remain ignored: data/reports/retention-focused.log, retention-check.log, retention-scope.log, retention-check-start.json and retention-check-end.json. Only this append-only audit changes after the checked commit.
+
+
+### 2026-11-07T18:56:21.9991704+07:00 — PR9 pre-push merge-sequence verification
+
+- Checked commit: af2c98ae28d85bd5469b8f4597e0cc2a7c9d6806; branch g1/foundation. Full-check start 2026-11-07T18:55:23.8998008+07:00; end 2026-11-07T18:56:21.9991704+07:00.
+- npm run check PASS: typecheck PASS; tests79/79, zero failures/skips; production build PASS; test:app PASS. Windows, Node24.10.0/npm11.6.1, installed headless Chrome, disposable OpenJLPT fixtures; process/loopback access enabled.
+- Journal resolution retains all entries from both sides. Raw log stays ignored: data/reports/merge-sequence/pr9-pre-push-af2c98a.log. Existing implementation and physical-device/deployment limitations remain unchanged.
+- Current origin/master scope guard PASS; only registered owned paths and append-only verification changes.
+
+## 2026-11-07 · g1/common-tools
+
+- Checked implementation commit: `2b7d6b00e391924fb8284a719aab72e33009c72a` (base `a3e6c31374cd3744a7bd2158c2ec8c57bb90a800`).
+- Full check started 2026-11-07T15:11:02+07:00; all checks and additional browser verification completed by 2026-11-07T15:13:03+07:00 (Asia/Ho_Chi_Minh).
+- Environment: Windows PowerShell, Node v24.10.0, production Next.js/Webpack, installed Windows Chrome; reused installed foundation node_modules through a local junction. Isolated public demo DB plus synthetic test-only translation provenance; no private data or external translation calls.
+- Required gates: `typecheck` PASS; `test` PASS (22/22 prototype and 58/58 TypeScript tests, including 3 common-tools tests); `build` PASS; `test:app` PASS (15 reported checks, real production server, desktop/mobile and encrypted cold offline SRS).
+- Additional production browser check PASS: 7 reported check groups, 0 browser errors; all five common-tools pages at 1440/390 px without horizontal overflow; authenticated search, real model provenance, enqueue, canonical detail link, persisted report through owner route and queue display. Inspected mobile search screenshot. Command: `node --import tsx 'src/app/(study)/common-tools/browser-check.ts'`.
+- Ownership guard PASS: `node ../ci-scope-g1/tools/check-route-scope.mjs origin/master g1/common-tools` (11 changed feature files). Uses the separate pending CI registry update, with no shared guard changes copied into this branch.
+- Logs/screenshots remain ignored in `.tmp/common-full-check.log`, `.tmp/common-browser-check.log`, `data/reports/common-tools-browser-check.json`, and `data/reports/common-*.png`.
+- Limitations: shared navigation integration belongs to foundation; search scan latency on a full imported snapshot is unmeasured; clip/popup/external dictionary lookup contracts absent; no physical-phone or deployed home-host Tailscale HTTPS/off-machine backup test. TTS deferred. Report queue is read-only and never retranslates. Settings reuse the shared page/API. Progress counts real SRS events; shadowing is labeled manual.
+
+### 2026-11-07T18:37:27.2917798+07:00 — g1/common-tools design-token verification
+
+- Checked implementation commit: `77b444cf5cdef03acd1b9fcd5b5092beb1c9ec8e`; fresh fetch retained `origin/master` at `a3e6c31374cd3744a7bd2158c2ec8c57bb90a800`. Remote common-tools documentation ancestry is preserved through merge `9197700`; no force push.
+- Full `npm run check` start: 2026-11-07T18:35:43.7034456+07:00; end: 2026-11-07T18:37:05.1740327+07:00. Windows PowerShell, Node v24.10.0, npm 11.6.1, production Next.js/Webpack, installed headless Chrome, foundation node_modules junction, process/loopback access enabled. Isolated public demo and synthetic provenance only; no private G0 database or translation service calls.
+- All four gates PASS: typecheck; tests **80/80** (22 prototype +58 TypeScript, including3 common-tools), zero failures/skips; production build; test:app (15 HTTP/browser check groups including encrypted cold offline SRS unlock, durable review outbox/reconnect, settings and backup restore).
+- Scope guard `node ../ci-scope-g1/tools/check-route-scope.mjs origin/master g1/common-tools` PASS: 12 changed route/audit files. Uses the pending shared registry update without copying shared files into this branch.
+- Committed route browser check PASS, start 2026-11-07T18:37:17.5947481+07:00; end 2026-11-07T18:37:27.2917798+07:00: all five pages authenticated, selected accent-free Vietnamese search, actual model provenance, real enqueue, canonical detail link, owner-route report persistence and queue display. Seven reported check groups, zero browser errors; desktop1440/mobile390 without horizontal overflow. Visually inspected both progress screenshots and mobile search/report screenshots: shared border/accent tokens render and review-chart rows fill the available width.
+- Ignored evidence: `data/reports/common-77b444c-check.log`, `common-77b444c-browser.log`, start/end timestamp files, `common-tools-browser-check.json`, and `common-*.png`. Only this append-only audit entry changes after the checked implementation commit.
+- Limits: full imported-snapshot search latency remains unmeasured; the200ms target is not an established benchmark. Report queue is read-only; selected translations retain actual source/model metadata. Progress counts actual SRS events and manually confirmed shadowing. Clip/token popup/external-dictionary contracts and TTS remain deferred. No physical phone, home-host Tailscale HTTPS deployment or off-machine backup acceptance claimed. Shared navigation integration remains a separate change.
+
+
+### 2026-11-07T18:58:54.9465746+07:00 — PR11 pre-push merge-sequence verification
+
+- Checked commit: 5a2434b09873dd527bd56374fb251de7a0ba918f; branch g1/common-tools. Full-check start 2026-11-07T18:57:58.7354930+07:00; end 2026-11-07T18:58:54.9465746+07:00.
+- npm run check PASS: typecheck PASS; tests82/82, zero failures/skips; production build PASS; test:app PASS. Windows, Node24.10.0/npm11.6.1, installed headless Chrome, disposable OpenJLPT fixtures; process/loopback access enabled.
+- Journal resolution retains all entries from both sides. Raw log stays ignored: data/reports/merge-sequence/pr11-pre-push-5a2434b.log. Existing implementation and physical-device/deployment limitations remain unchanged.
+- Current origin/master scope guard PASS; only registered owned paths and append-only verification changes.
+- Route browser-check also PASS on this checked commit; raw browser log stays ignored beside the full-check log.
+
+### 2026-11-07T18:41:10.6926020+07:00 — g1/shadowing interaction demo
+
+- Checked implementation commit: 34aed48f63b46140457de36665001a84344df050. Preserved published origin/g1/shadowing documentation ancestry with merge cabeef7; no force push.
+- Full-check start: 2026-11-07T18:39:35.5298148+07:00; end: 2026-11-07T18:40:24.0437198+07:00. Environment: Windows, Node v24.10.0, npm 11.6.1, Next production and installed headless Chrome, process/loopback access enabled; locked dependencies reused through the foundation worktree junction.
+- npm run check PASS: typecheck PASS; tests 80/80 (22 prototype +58 foundation/route, including3 shadowing), zero failures/skips; production build PASS; test:app PASS including15 HTTP/browser checks and cold offline SRS synchronization.
+- Scope guard: node ../ci-scope-g1/tools/check-route-scope.mjs origin/master g1/shadowing PASS, 10 changed route files before this audit. Expanded registry is isolated in the sibling shared-scope branch; no shared files copied here.
+- Committed route browser-check.ts PASS 13/13, start 2026-11-07T18:40:51.4607727+07:00; end 2026-11-07T18:41:10.6926020+07:00. Verified protected route/media, byte ranges and416, actual9-second synthetic video playback, speed, finite/infinite segment repeats, JP/VI/hidden captions, native fake-device MediaRecorder capture/replay/download, replace/delete blob revocation, actual browser permission denial, track release after route cleanup, no external requests/browser errors, desktop1440/mobile390 without horizontal overflow. Visually inspected both screenshots.
+- Browser harness fixes use an explicit accessible select name, the isolated Chrome context for denied microphone permission, and wait for React cleanup after navigation. An earlier concurrent browser run failed because build was recreating .next; the successful sequential final run above supersedes it. No source changed after the full check.
+- Fixture is public synthetic canvas + tones only, with original test captions and no spoken Japanese. Not valid study content; never writes study sessions/quotas/progress. Recordings remain in browser memory/download only; no private data, TTS, Whisper, media AI, schema, server upload or storage added. Three real legal sources, private server persistence and physical Android/iOS acceptance remain deferred. Home host/Tailscale Serve HTTPS and backup off the host are documented handoff requirements, not deployed or verified here.
+- Raw logs/screenshots remain gitignored in data/reports/: shadowing-full-check.log, shadowing-scope.log, shadowing-final-browser.log, shadowing-check.json, shadowing-{desktop,mobile}.png and exact gate/browser timestamps. Only this append-only audit changes after the checked implementation.
+
+
+### 2026-11-07T19:02:24.8497682+07:00 — PR13 pre-push merge-sequence verification
+
+- Checked commit: ae6aa514703cc2d23e47e4d28261a1dc95a73022; branch g1/shadowing. Full-check start 2026-11-07T19:01:13.7976503+07:00; end 2026-11-07T19:02:24.8497682+07:00.
+- npm run check PASS: typecheck PASS; tests85/85, zero failures/skips; production build PASS; test:app PASS. Windows, Node24.10.0/npm11.6.1, installed headless Chrome, disposable OpenJLPT fixtures; process/loopback access enabled.
+- Journal resolution retains all entries from both sides. Raw log stays ignored: data/reports/merge-sequence/pr13-pre-push-ae6aa51.log. Existing implementation and physical-device/deployment limitations remain unchanged.
+- Current origin/master scope guard PASS; only registered owned paths and append-only verification changes.
+- Route browser-check also PASS on this checked commit; raw browser log stays ignored beside the full-check log.
+
 ### 2026-11-07T18:37:32.0498589+07:00 — shared G1 feature entries and home deployment guide
 
 - Checked implementationea04f283e7c0f72991bc72c35c0f3005ff0427b6; start2026-11-07T18:36:16.5439569+07:00, end2026-11-07T18:37:32.0498589+07:00. Windows, Node24.10.0/npm11.6.1, locked dependencies, production Next and installed headless Chrome; disposable data and process/loopback access enabled.
