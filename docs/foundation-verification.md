@@ -401,3 +401,10 @@ Schema, worker dịch và database G0 không thay đổi.
 - Additional checks: all three PowerShell scripts parsed; PLAN_ONLY confirmed S4U/Limited, app startup, backup daily23:30, and absolute NodePath in both task actions. Confirmed no AtLogOn trigger, no duplicate backup:daily invocation, and append redirection for app.log.
 - Scope: only three deploy scripts and docs/deploy-home.md; infrastructure branch has no G1 route mapping. This audit is append-only.
 - Owner approved S4U for both tasks; scripts remain plan-only without -Apply. No task was registered, no service/Tailscale changed, and D: was not written. Actual reboot-without-login, phone HTTPS, scheduled backup and restore integrity acceptance remain pending deployment approval.
+
+## 2026-11-08 — PR #15: verify after preserving both master and deployment journals
+
+- Checked merge commit: `6ec9dbec540715de722fa7d8c35238681ec01254`; merged origin/master `17f3e3b63e4ef2b8778acdda9a8d04fdc14c3f80` into codex/deploy-home. Only conflict was docs/foundation-verification.md; retained the complete master text and the full branch-only suffix.
+- Full gate: 2026-11-08T23:37:37.0586672+07:00 → 2026-11-08T23:38:24.3349371+07:00, Windows/Node24.
+- `npm run check`: PASS — typecheck, 87/87 tests (22 prototype + 65 TypeScript), production build, test:app 16/16. The extra test is inherited from master; the approved deployment corrections remain unchanged.
+- No task installation, live deployment, Tailscale changes or D: writes. Reboot without interactive login and phone/backup acceptance still require the later approved deployment steps.
