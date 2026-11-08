@@ -361,3 +361,12 @@ Schema, worker dịch và database G0 không thay đổi.
 - Backup test creates a fixture archive, copies outside its synthetic project, validates SHA256/all archive entries and temporary DB integrity/FK/schema; current live fixture remains modified and untouched by restore verification. Corrupt copies and differing existing destinations are rejected; inside-project destinations are rejected.
 - Runbook targets C:\Users\Admin\NihonNihon and D:\NihonNihonBackup, explains interactive logon (not pre-login),3restart attempts, tailscale serve HTTPS/APP_ORIGIN, npm run backup:daily then copy, D same-machine failure limitation and weekly removable/phone copy, and owner acceptance checks. Actual reboot/phone/mic/D-copy acceptance remains pending.
 - Raw plan/test/check logs stay ignored under data/reports/. Only this audit entry changes after successful checks. No schema/G0/private secrets or deployment side effects.
+
+## 2026-11-08 — PR #15: approved S4U task plan and daily backup corrections
+
+- Checked commit: `0b637c647aa93906212085ed947d67c701479483` (`codex/deploy-home`).
+- Full local gate: 2026-11-08T23:32:26.1130636+07:00 → 2026-11-08T23:33:24.2350728+07:00; Windows, Node 24, public OpenJLPT fixture.
+- `npm run check`: PASS — typecheck, 86/86 tests (22 prototype + 64 TypeScript), production build, test:app 16/16 checks.
+- Additional checks: all three PowerShell scripts parsed; PLAN_ONLY confirmed S4U/Limited, app startup, backup daily23:30, and absolute NodePath in both task actions. Confirmed no AtLogOn trigger, no duplicate backup:daily invocation, and append redirection for app.log.
+- Scope: only three deploy scripts and docs/deploy-home.md; infrastructure branch has no G1 route mapping. This audit is append-only.
+- Owner approved S4U for both tasks; scripts remain plan-only without -Apply. No task was registered, no service/Tailscale changed, and D: was not written. Actual reboot-without-login, phone HTTPS, scheduled backup and restore integrity acceptance remain pending deployment approval.
