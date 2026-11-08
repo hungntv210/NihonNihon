@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import {fixture} from './helpers.mjs';
-import {randomSample,writeReviewCheckpoint,reviewFeedback,applyTranslationFlags} from '../../tools/data/campaign-review.mjs';
+import {randomSample,writeReviewCheckpoint,reviewFeedback,applyTranslationFlags,retainCampaignBackups} from '../../tools/data/campaign-review.mjs';
 import {prepare,runGemini,publicPlan} from '../../tools/data/mt-gemini.mjs';
 import {importCampaign} from '../../tools/data/translation-campaign.mjs';
 import {createMT} from '../../tools/data/han-viet.mjs';
@@ -26,6 +26,14 @@ test('review checkpoint samples thirty unique new sentences near 500 and survive
  assert.equal(state.review_cursor,610);assert.equal(writeReviewCheckpoint({directory:f.dir,state:JSON.parse(JSON.stringify(state)),rows,provenance:{}}),null);
  assert.ok(fs.readFileSync(path.join(f.dir,'review-0001.md'),'utf8').includes('chưa được duyệt nghĩa'));
  assert.equal(reviewFeedback(sample,JSON.parse(fs.readFileSync(path.join(f.dir,'review-0001.feedback.json')))).reviewed,0);
+});
+
+test('campaign retention keeps first and latest two registered snapshots without touching other backups',t=>{
+ const f=fixture(t),backupDir=path.join(f.dir,'backups');fs.mkdirSync(backupDir);fs.writeFileSync(path.join(backupDir,'before-999-aaaaaaaa.sqlite'),'unregistered');fs.writeFileSync(path.join(backupDir,'before-restore.sqlite'),'unrelated');
+ for(let i=0;i<6;i++){const file=path.join(backupDir,`before-${i}-aaaaaaaa.sqlite`);fs.writeFileSync(file,'snapshot');retainCampaignBackups(f.dir,file);}
+ assert.deepEqual(JSON.parse(fs.readFileSync(path.join(f.dir,'campaign-backups.json'))),['before-0-aaaaaaaa.sqlite','before-4-aaaaaaaa.sqlite','before-5-aaaaaaaa.sqlite']);
+ assert.equal(fs.readFileSync(path.join(backupDir,'before-999-aaaaaaaa.sqlite'),'utf8'),'unregistered');assert.equal(fs.readFileSync(path.join(backupDir,'before-restore.sqlite'),'utf8'),'unrelated');
+ assert.throws(()=>retainCampaignBackups(f.dir,path.join(f.dir,'before-6-aaaaaaaa.sqlite')),/outside/);
 });
 
 test('review stops only above ten percent major errors and rejects mismatched feedback IDs',()=>{

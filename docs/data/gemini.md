@@ -358,3 +358,10 @@ hồi trước mỗi lượt gọi, ghi cờ cho minor/major và tự dừng c�
 hết. Phản hồi chưa có không được báo thành đã duyệt hoặc 0% lỗi nghĩa.
 Mẫu ngẫu nhiên/QA không tự phát hiện được mọi lỗi nghĩa: ngưỡng này dựa trên
 phản hồi kiểm thử, không dùng thêm model AI để giả lập người duyệt.
+
+Mỗi lần nhập vẫn tạo snapshot trước khi ghi. Snapshot mới của campaign đặt riêng
+trong `<campaign>/backups/`: sau commit thành công giữ bản đầu và hai bản gần nhất.
+Chỉ dọn các tên đã đăng ký trong `campaign-backups.json`; không đụng bản cũ ở
+`data/backups/`, bản before-restore, tệp lạ hoặc symlink. Như vậy nhập hàng chục
+lô không nhân DB hàng trăm MB thành hàng chục GB backup. Kết quả MT và manifest
+đã pin vẫn được giữ để tái dựng mọi lô; lỗi nhập không kích hoạt dọn snapshot.

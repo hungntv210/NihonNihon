@@ -7,7 +7,7 @@ import {inspectBatch,summarizeGate} from './translation-gate.mjs';
 import {stratifiedSample} from './review-sample.mjs';
 import {privateWrite,sha,hash,need} from './core.mjs';
 import {runImport} from './import.mjs';
-import {writeReviewCheckpoint,reviewFeedback,applyTranslationFlags} from './campaign-review.mjs';
+import {writeReviewCheckpoint,reviewFeedback,applyTranslationFlags,retainCampaignBackups} from './campaign-review.mjs';
 
 const read=p=>JSON.parse(fs.readFileSync(p,'utf8'));
 const write=(p,v)=>privateWrite(p,JSON.stringify(v,null,2)+'\n');
@@ -82,8 +82,9 @@ export async function importCampaign({baseManifest,profiles,directory,dbPath,fla
  // Profile order preserves accepted output priority; unchanged fields keep their release.
  manifest.mt_profiles=[...new Map([...profiles.map(p=>read(p.manifestPath).mt),...configs.values()].map(c=>[sha(c),c])).values()];
  const manifestPath=path.join(base,path.basename(root)+'-import-manifest.json');need(manifestPath!==path.resolve(baseManifest),'Import would overwrite base manifest');write(manifestPath,manifest);
- const report=await runImport({manifestPath,dbPath,reportPath:path.join(root,'import-report.json'),requestsPath:path.join(root,'remaining-requests.json')});
- report.review_flags_added=applyTranslationFlags(dbPath,flags);return report;
+ const backupDirectory=path.join(root,'backups');if(fs.existsSync(backupDirectory))need(fs.lstatSync(backupDirectory).isDirectory()&&!fs.lstatSync(backupDirectory).isSymbolicLink(),'Unsafe campaign backup directory');
+ const report=await runImport({manifestPath,dbPath,reportPath:path.join(root,'import-report.json'),requestsPath:path.join(root,'remaining-requests.json'),backupDirectory});
+ report.review_flags_added=applyTranslationFlags(dbPath,flags);retainCampaignBackups(root,report.backup_path);return report;
 }
 
 export async function runCampaign(configPath){

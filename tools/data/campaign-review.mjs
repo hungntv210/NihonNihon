@@ -37,3 +37,14 @@ export function applyTranslationFlags(dbPath,flags){
   for(const {translation_id}of translations)count+=db.prepare("INSERT OR IGNORE INTO translation_reports (report_id,translation_id,reason,reported_at,status) VALUES (?,?,?,?,'open')").run('campaign:'+sha({translation_id,reason:flag.reason}),translation_id,flag.reason.normalize('NFC'),new Date().toISOString()).changes;
  }db.exec('COMMIT');return count;}catch(e){db.exec('ROLLBACK');throw e;}finally{db.close();}
 }
+export function retainCampaignBackups(directory,currentFile){
+ if(!currentFile)return;const root=path.resolve(directory),backupDir=path.join(root,'backups'),index=path.join(root,'campaign-backups.json');
+ need(!fs.lstatSync(backupDir).isSymbolicLink(),'Unsafe campaign backup directory');
+ need(path.dirname(path.resolve(currentFile))===backupDir,'Backup is outside campaign directory');
+ const names=[...new Set([...(fs.existsSync(index)?JSON.parse(fs.readFileSync(index,'utf8')):[]),path.basename(currentFile)])];
+ need(names.every(name=>/^before-\d+-[a-f0-9]{8}\.sqlite$/.test(name)),'Invalid campaign backup name');
+ const existing=names.filter(name=>fs.existsSync(path.join(backupDir,name)));
+ const keep=new Set([existing[0],...existing.slice(-2)]);
+ for(const name of existing)if(!keep.has(name)){const file=path.join(backupDir,name);need(fs.lstatSync(file).isFile()&&!fs.lstatSync(file).isSymbolicLink(),'Unsafe campaign backup file');fs.unlinkSync(file);}
+ privateWrite(index,JSON.stringify(existing.filter(name=>keep.has(name)),null,2)+'\n');
+}
