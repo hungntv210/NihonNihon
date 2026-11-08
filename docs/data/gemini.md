@@ -365,3 +365,7 @@ Chỉ dọn các tên đã đăng ký trong `campaign-backups.json`; không đ�
 `data/backups/`, bản before-restore, tệp lạ hoặc symlink. Như vậy nhập hàng chục
 lô không nhân DB hàng trăm MB thành hàng chục GB backup. Kết quả MT và manifest
 đã pin vẫn được giữ để tái dựng mọi lô; lỗi nhập không kích hoạt dọn snapshot.
+Khi mọi release nguồn gốc đã có trong DB với đúng checksum, lô tiếp theo chỉ
+thêm `import_runs` cho Gemini thay vì nhân bản cùng báo cáo cho từng tệp KanjiVG.
+Nguồn thay version/checksum hoặc DB mới vẫn ghi audit đầy đủ. Mọi artifact vẫn
+được xác minh và dữ liệu vẫn được nhập trong transaction như trước.

@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import {randomInt} from 'node:crypto';
+import {DatabaseSync} from 'node:sqlite';
 import {privateWrite,sha,need} from './core.mjs';
 import {openDatabase} from './store.mjs';
 
@@ -8,6 +9,15 @@ export function randomSample(rows,count=30,choose=randomInt){
  const unique=[...new Map(rows.map(r=>[r.ja.normalize('NFC'),r])).values()];
  for(let i=unique.length-1;i>0;i--){const j=choose(i+1);[unique[i],unique[j]]=[unique[j],unique[i]];}
  return unique.slice(0,count);
+}
+export function knownSourceReleases(dbPath,manifest){
+ if(!fs.existsSync(dbPath)||!fs.statSync(dbPath).size)return false;
+ // Allow SQLite to recover a rollback journal left by an interrupted import.
+ const db=new DatabaseSync(dbPath);
+ try{const lookup=db.prepare('SELECT 1 FROM source_releases WHERE release_id=? AND checksum=?');return manifest.sources.filter(s=>!s.source_id.startsWith('mt:')).every(s=>s.files.every(f=>{
+  const id=`${s.source_id}:${sha({version:s.version,sha256:f.sha256,format:f.format,level:f.level??null,variant:f.variant??null,encoding:f.encoding||'utf-8',compression:f.compression||null}).slice(0,32)}`;
+  return !!lookup.get(id,f.sha256);
+ }));}finally{db.close();}
 }
 export function writeReviewCheckpoint({directory,state,rows,provenance,force=false,choose}){
  const cursor=state.review_cursor??rows.length,delta=rows.length-cursor;if(delta<500&&!(force&&delta>0))return null;

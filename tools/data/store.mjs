@@ -24,7 +24,7 @@ function put(db,table,row,keys,ignore=false) {
   const update=columns.filter(c=>!keys.includes(c)).map(c=>`${c}=excluded.${c}`).join(',');
   db.prepare(`INSERT INTO ${table} (${columns.join(',')}) VALUES (${columns.map(()=>'?').join(',')}) ON CONFLICT(${keys.join(',')}) DO ${ignore || !update?'NOTHING':`UPDATE SET ${update}`}`).run(...columns.map(c=>row[c]));
 }
-export async function applyPlan(db,plan,{dbPath=':memory:',backupDirectory}={}) {
+export async function applyPlan(db,plan,{dbPath=':memory:',backupDirectory,auditSources}={}) {
   let backupPath=null;
   if(dbPath!==':memory:' && db.prepare('SELECT count(*) n FROM content_items').get().n>0) {
     const dir=backupDirectory || path.join(path.dirname(dbPath),'backups');fs.mkdirSync(dir,{recursive:true});
@@ -82,7 +82,7 @@ export async function applyPlan(db,plan,{dbPath=':memory:',backupDirectory}={}) 
     }
     need(db.prepare('PRAGMA foreign_key_check').all().length===0,'Foreign key check failed');
     for(const r of db.prepare('SELECT text_vi FROM vi_translations').all())need(r.text_vi===r.text_vi.normalize('NFC'),'Non-NFC Vietnamese text in database');
-    for(const row of plan.releases.values())put(db,'import_runs',{run_id:`${plan.runId}:${row.release_id}`,source_id:row.source_id,release_id:row.release_id,started_at:plan.startedAt,finished_at:now(),status:'committed',report_json:JSON.stringify(plan.report)},['run_id']);
+    for(const row of plan.releases.values())if(!auditSources||auditSources.includes(row.source_id))put(db,'import_runs',{run_id:`${plan.runId}:${row.release_id}`,source_id:row.source_id,release_id:row.release_id,started_at:plan.startedAt,finished_at:now(),status:'committed',report_json:JSON.stringify(plan.report)},['run_id']);
     db.exec('PRAGMA user_version=2; COMMIT');
   } catch(error) {db.exec('ROLLBACK');throw error;}
   return {backupPath};
