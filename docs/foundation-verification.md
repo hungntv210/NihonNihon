@@ -408,3 +408,11 @@ Schema, worker dịch và database G0 không thay đổi.
 - Full gate: 2026-11-08T23:37:37.0586672+07:00 → 2026-11-08T23:38:24.3349371+07:00, Windows/Node24.
 - `npm run check`: PASS — typecheck, 87/87 tests (22 prototype + 65 TypeScript), production build, test:app 16/16. The extra test is inherited from master; the approved deployment corrections remain unchanged.
 - No task installation, live deployment, Tailscale changes or D: writes. Reboot without interactive login and phone/backup acceptance still require the later approved deployment steps.
+
+## 2026-11-08 — master after PR #15 merge and deployment operation notes
+
+- PR #15 merged using Create a merge commit: `82cd6a553cd99d8f9e75885f603fcda6a94bbb08` (reviewed head b104ab7, CI 42501010442 SUCCESS).
+- Checked commit: `38eab287568d3238535f651599d916e3e04a775c`; adds only the two requested deployment notes: re-register tasks after Node upgrade/path changes, and check the non-rotating appended app.log monthly.
+- Full gate: 2026-11-08T23:43:42.1075082+07:00 → 2026-11-08T23:44:48.1104131+07:00; Windows, Node24, public fixture.
+- `npm run check`: PASS — typecheck, 87/87 tests (22 prototype + 65 TypeScript), production build, test:app 16/16.
+- No installation, task registration, Tailscale changes or D: writes. Physical deployment acceptance remains pending.
