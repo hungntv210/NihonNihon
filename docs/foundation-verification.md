@@ -384,3 +384,27 @@ Schema, worker dịch và database G0 không thay đổi.
 - Checked commit: 179de3db5f549b616835bbff461de011ababe8e1; branch master. Full-check start 2026-11-08T23:09:28.4155906+07:00; end 2026-11-08T23:10:22.7945091+07:00.
 - npm run check PASS: typecheck PASS; tests86/86, zero failures/skips; production build PASS; test:app PASS. Windows, Node24.10.0/npm11.6.1, installed headless Chrome, disposable OpenJLPT fixtures; process/loopback access enabled.
 - Journal resolution retains all entries from both sides. Raw log stays ignored: data/reports/merge-sequence/pr14-master-179de3d.log. Existing implementation and physical-device/deployment limitations remain unchanged.
+
+### 2026-11-08T22:38:14.5386412+07:00 — Windows home deployment preparation only
+
+- Checkedcbec3942903e5c7a073d70b7f87ce9cf91855129; start2026-11-08T22:36:59.8278677+07:00, end2026-11-08T22:38:14.5386412+07:00. Full npm run check PASS86/86 (22prototype+64foundation/routes), typecheck/build/app16checks PASS; Windows Node24.10.0/npm11.6.1/installed Chrome, disposable fixtures.
+- PowerShell home-tasks default PLAN_ONLY ran without registering tasks. App logon/restart and daily/logon backup registration require explicit -Apply and owner step approval. No service/task/Tailscale/production-checkout/D-drive changes were made.
+- Backup test creates a fixture archive, copies outside its synthetic project, validates SHA256/all archive entries and temporary DB integrity/FK/schema; current live fixture remains modified and untouched by restore verification. Corrupt copies and differing existing destinations are rejected; inside-project destinations are rejected.
+- Runbook targets C:\Users\Admin\NihonNihon and D:\NihonNihonBackup, explains interactive logon (not pre-login),3restart attempts, tailscale serve HTTPS/APP_ORIGIN, npm run backup:daily then copy, D same-machine failure limitation and weekly removable/phone copy, and owner acceptance checks. Actual reboot/phone/mic/D-copy acceptance remains pending.
+- Raw plan/test/check logs stay ignored under data/reports/. Only this audit entry changes after successful checks. No schema/G0/private secrets or deployment side effects.
+
+## 2026-11-08 — PR #15: approved S4U task plan and daily backup corrections
+
+- Checked commit: `0b637c647aa93906212085ed947d67c701479483` (`codex/deploy-home`).
+- Full local gate: 2026-11-08T23:32:26.1130636+07:00 → 2026-11-08T23:33:24.2350728+07:00; Windows, Node 24, public OpenJLPT fixture.
+- `npm run check`: PASS — typecheck, 86/86 tests (22 prototype + 64 TypeScript), production build, test:app 16/16 checks.
+- Additional checks: all three PowerShell scripts parsed; PLAN_ONLY confirmed S4U/Limited, app startup, backup daily23:30, and absolute NodePath in both task actions. Confirmed no AtLogOn trigger, no duplicate backup:daily invocation, and append redirection for app.log.
+- Scope: only three deploy scripts and docs/deploy-home.md; infrastructure branch has no G1 route mapping. This audit is append-only.
+- Owner approved S4U for both tasks; scripts remain plan-only without -Apply. No task was registered, no service/Tailscale changed, and D: was not written. Actual reboot-without-login, phone HTTPS, scheduled backup and restore integrity acceptance remain pending deployment approval.
+
+## 2026-11-08 — PR #15: verify after preserving both master and deployment journals
+
+- Checked merge commit: `6ec9dbec540715de722fa7d8c35238681ec01254`; merged origin/master `17f3e3b63e4ef2b8778acdda9a8d04fdc14c3f80` into codex/deploy-home. Only conflict was docs/foundation-verification.md; retained the complete master text and the full branch-only suffix.
+- Full gate: 2026-11-08T23:37:37.0586672+07:00 → 2026-11-08T23:38:24.3349371+07:00, Windows/Node24.
+- `npm run check`: PASS — typecheck, 87/87 tests (22 prototype + 65 TypeScript), production build, test:app 16/16. The extra test is inherited from master; the approved deployment corrections remain unchanged.
+- No task installation, live deployment, Tailscale changes or D: writes. Reboot without interactive login and phone/backup acceptance still require the later approved deployment steps.
