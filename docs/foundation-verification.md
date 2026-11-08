@@ -377,3 +377,10 @@ Schema, worker dịch và database G0 không thay đổi.
 - Runner uses asynchronous child execution with Windows taskkill /T /F or a dedicated Unix process group on timeout. Each check receives a unique runner-owned fixture root; all browser-check changes only select that root, and runner cleanup validates the absolute parent before removal. App/schema/G0 unchanged.
 - Temporary detached worktree timeout proof: a fake browser-check started real Next PID16012, health endpoint was ready, then hung. With8000ms test timeout runner returned FAIL/exit1 and timedOut=true; Next PID was absent and its fixture root removed. Fake file/worktree removed without commit. Default real-check timeout remains180000ms.
 - Evidence stays ignored under data/reports/timeout-proof/, timeout-check.log, timeout-browser.log and timeout-check-end.json. Only this append-only entry changes after the checked commit.
+
+
+### 2026-11-08T23:10:22.7945091+07:00 — PR14 master merge-sequence verification
+
+- Checked commit: 179de3db5f549b616835bbff461de011ababe8e1; branch master. Full-check start 2026-11-08T23:09:28.4155906+07:00; end 2026-11-08T23:10:22.7945091+07:00.
+- npm run check PASS: typecheck PASS; tests86/86, zero failures/skips; production build PASS; test:app PASS. Windows, Node24.10.0/npm11.6.1, installed headless Chrome, disposable OpenJLPT fixtures; process/loopback access enabled.
+- Journal resolution retains all entries from both sides. Raw log stays ignored: data/reports/merge-sequence/pr14-master-179de3d.log. Existing implementation and physical-device/deployment limitations remain unchanged.
