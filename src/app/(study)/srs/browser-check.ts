@@ -194,7 +194,11 @@ try {
   await page.getByRole('button', { name: 'Mở góc học tập' }).click();
   await page.waitForURL(origin + '/');
   await page.getByRole('heading', { name: 'Chào bạn, cùng học nhé.' }).waitFor();
-  await page.evaluate(() => document.fonts.ready);
+  await page.evaluate(async () => {
+    await document.fonts.load('16px "Be Vietnam Pro"', 'Ộ Ệ Ờ Ữ Ỹ Đ');
+    await document.fonts.load('32px "Shippori Mincho"', '働 返 直 骨');
+    await document.fonts.ready;
+  });
   assert.ok(
     await page.evaluate(() => document.fonts.check('16px "Be Vietnam Pro"', 'Ộ Ệ Ờ Ữ Ỹ Đ')),
   );

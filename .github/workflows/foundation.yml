@@ -19,6 +19,15 @@ jobs:
       - run: npm run check
         env:
           NEXT_TELEMETRY_DISABLED: 1
+      - name: Run every route browser check
+        run: npm run test:browser
+      - name: Upload browser check logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: browser-check-logs
+          path: data/reports/browser-suite/
+          if-no-files-found: ignore
       - name: Check feature route ownership
         if: startsWith(github.head_ref, 'g1/')
         env:
