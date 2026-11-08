@@ -104,6 +104,35 @@ test('terminology validation rejects cảm cúm and flattened humble speech',asy
  validateTerminology([{request_id:'cold',output:{text_vi:'Bệnh cảm có thể lây.'}},{request_id:'visit',output:{text_vi:'Ngày mai tôi xin phép đến.'}}],q);
 });
 
+test('longest glossary match distinguishes 留学生 and 小学生 while retaining standalone 学生',async()=>{
+ const {validateTerminology,glossaryRequirements}=await import('../../tools/data/mt-gemini.mjs');
+ const verify=(ja,vi)=>validateTerminology([{request_id:'x',output:{text_vi:vi}}],[{request_id:'x',task:'translate',input:{ja}}]);
+ verify('留学生も入れるのかしら。','Không biết du học sinh có được vào không nhỉ.');verify('彼らは小学生でした。','Họ từng là học sinh tiểu học.');verify('私は学生です。','Tôi là sinh viên.');
+ assert.throws(()=>verify('私は学生です。','Tôi là học sinh.'),/Glossary/);assert.throws(()=>verify('留学生もいる。','Cũng có sinh viên.'),/Glossary/);
+ assert.deepEqual(glossaryRequirements('留学生と学生と小学生。').map(r=>r.expected).sort(),['du học sinh','học sinh','sinh viên'].sort());
+});
+
+test('proper-name QA rejects substituted or omitted public names without exempting Japanese leftovers',async()=>{
+ const {inspectBatch,summarizeGate}=await import('../../tools/data/translation-gate.mjs');
+ const requests=[{request_id:'x',task:'translate',input:{ja:'キートンはハトの頭に磁石を取り付けた。',field:'text'}}];
+ const check=vi=>inspectBatch(JSON.stringify([{request_id:'x',output:{text_vi:vi}}]),requests,{properNames:true});
+ assert.equal(check('Keeton đã gắn nam châm lên đầu bồ câu.').proper_name,0);
+ const bad=check('Keaton đã gắn nam châm lên đầu bồ câu.');assert.equal(bad.proper_name,1);assert.ok(bad.items[0].flags.includes('proper_name'));
+ assert.equal(check('キートン đã gắn nam châm lên đầu bồ câu.').japanese_left,1);
+ assert.equal(summarizeGate([{http_status:200,validation_error:'quality_gate',qa:bad}],0).counts.proper_name,1);
+ const {properNameIssues}=await import('../../tools/data/mt-gemini.mjs');assert.deepEqual(properNameIssues('アトムです。','Đây là Atom.'),[]);
+});
+
+test('API failures preserve real HTTP 400/429/503 and distinguish network errors without logging secrets',async t=>{
+ const {apiErrorStatus}=await import('../../tools/data/mt-gemini.mjs');
+ assert.equal(apiErrorStatus({response:{status:503}}),503);assert.equal(apiErrorStatus({code:'ECONNRESET'}),null);assert.equal(apiErrorStatus({status:null}),null);
+ for(const code of [400,429,503]){
+  const {options}=await setup(t),attempts=[];
+  const result=await runGemini({...options,config:{...config,max_api_attempts:1},ai:fake(async()=>{throw {response:{status:code},message:'secret-do-not-log'};}),onAttempt:a=>attempts.push(a)});
+  assert.equal(result.error_status,code);assert.equal(attempts[0].http_status,code);assert.equal(attempts[0].error_kind,'http');assert.ok(!JSON.stringify(attempts).includes('secret-do-not-log'));
+ }
+});
+
 test('global call cap stops before another request and audits every response',async t=>{
  const {options}=await setup(t);let calls=0;const attempts=[];const result=await runGemini({...options,limit:25,maxCalls:1,ai:fake(async p=>{calls++;return {text:JSON.stringify(output(p))};}),onAttempt:r=>attempts.push(r)});
  assert.equal(calls,1);assert.equal(result.calls,1);assert.equal(result.status,'request_limit');assert.equal(result.sent,20);assert.equal(attempts.length,1);assert.equal(attempts[0].http_status,200);

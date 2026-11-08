@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {parseArgs} from 'node:util';
-import {runGemini,prepare,settings,quotaDay,nextPacificReset,validateResults,publicPlan} from './mt-gemini.mjs';
+import {runGemini,prepare,settings,quotaDay,nextPacificReset,validateResults,publicPlan,PROMPT_VERSION} from './mt-gemini.mjs';
 import {inspectBatch,summarizeGate} from './translation-gate.mjs';
 import {stratifiedSample} from './review-sample.mjs';
 import {privateWrite,sha,hash,need} from './core.mjs';
@@ -42,13 +42,13 @@ export async function acceptedCampaignCache(cfg){
 }
 
 // Offline rotation: never edit accepted artifacts, quota ledgers, or the old checkpoint.
-export async function rotateCampaign({configPath,outputConfig,directory}){
+export async function rotateCampaign({configPath,outputConfig,directory,promptVersion=PROMPT_VERSION}){
  const cfg=read(configPath),oldRoot=path.resolve(cfg.directory),root=path.resolve(directory);
  need(root!==oldRoot&&!fs.existsSync(root)&&!fs.existsSync(outputConfig),'Rotation outputs already exist');
  need(!fs.existsSync(path.join(oldRoot,'campaign.lock')),'Stop worker and verify stale lock before rotation');
  const state=read(path.join(oldRoot,'status.json'));
  const next={...cfg,directory,accepted_profiles:[...cfg.accepted_profiles??[],...['sentences-primary','sentences-backup','learning'].map(role=>({manifestPath:path.join(cfg.directory,role+'-manifest.json')}))]};
- for(const role of ['sentence_primary','sentence_backup','learning','probe'])next[role]={...cfg[role],prompt_version:'gemini-vi-hv-5'};
+ for(const role of ['sentence_primary','sentence_backup','learning','probe'])next[role]={...cfg[role],prompt_version:promptVersion};
  const {sentenceDone,learningDone}=await acceptedCampaignCache(next);fs.mkdirSync(root,{recursive:true});
  const counts={sentences:{cached:sentenceDone.size},learning:{cached:learningDone.size}};
  for(const [role,key,base]of [['sentences-primary','sentence_primary','sentence_base'],['sentences-backup','sentence_backup','sentence_base'],['learning','learning','learning_base']]){
@@ -58,10 +58,10 @@ export async function rotateCampaign({configPath,outputConfig,directory}){
   const pending=pendingCampaignRequests(full,sentenceDone,learningDone);write(p.requestsPath,{version:1,requests:pending});
   const c=counts[p.config.route];c.total=full.length;c.pending=pending.length;need(c.total-c.pending===c.cached,'Accepted cache is outside campaign source plan');
  }
- state.rotated_from=cfg.directory;state.prompt_version='gemini-vi-hv-5';delete state.status;delete state.stopping;delete state.error;
+ state.rotated_from=cfg.directory;state.prompt_version=promptVersion;delete state.status;delete state.stopping;delete state.error;
  state.sentences={...state.sentences,done:counts.sentences.cached};state.learning={...state.learning,done:counts.learning.cached};
  write(path.join(root,'status.json'),state);write(path.join(root,'sentences-completed.json'),[...sentenceDone.values()]);write(path.join(root,'learning-completed.json'),[...learningDone.values()]);
- const report={prompt_version:'gemini-vi-hv-5',counts,accepted_profiles:next.accepted_profiles,quota_paths:['sentence_primary','sentence_backup','learning','probe'].map(k=>next[k].state_path),holds:{sentences:state.sentences.hold_day,learning:state.learning.finished_day,probe_started:state.probe.started},accepted_contexts_queued:0};
+ const report={prompt_version:promptVersion,counts,accepted_profiles:next.accepted_profiles,quota_paths:['sentence_primary','sentence_backup','learning','probe'].map(k=>next[k].state_path),holds:{sentences:state.sentences.hold_day,learning:state.learning.finished_day,probe_started:state.probe.started},accepted_contexts_queued:0};
  write(path.join(root,'rotation-report.json'),report);write(outputConfig,next);return report;
 }
 
@@ -92,6 +92,7 @@ export async function runCampaign(configPath){
  fs.writeFileSync(fd,JSON.stringify({pid:process.pid,started_at:state.started_at}));
  const stop=()=>{stopping=true;state.stopping=true;save();};process.once('SIGINT',stop);process.once('SIGTERM',stop);
  const emit=value=>console.log(JSON.stringify(value));
+ for(const [role,entry]of [['learning',state.learning.last_result],['probe',state.probe.result]])if(entry)emit({event:'checkpoint_result',role,model:entry.model??state.probe.model,status:entry.status,error_status:entry.error_status??null});
  async function profile(role,base,config){
   const prefix=path.join(root,role),p={config,manifestPath:prefix+'-manifest.json',requestsPath:prefix+'-requests.json',resultsPath:prefix+'-results.json'};
   if(!fs.existsSync(p.manifestPath))await prepare({config,manifestPath:base,outputManifest:p.manifestPath,requestsPath:p.requestsPath,resultsPath:p.resultsPath});
@@ -102,13 +103,14 @@ export async function runCampaign(configPath){
  async function call(p,batch,size,maxCalls){
   write(p.requestsPath,{version:1,requests:batch});
   const result=await runGemini({...p,limit:batch.length,batchSize:size,maxCalls,validateOutput:(rows,requests)=>{
-   if(p.config.route==='sentences'){const qa=inspectBatch(JSON.stringify(rows),requests);need(!qa.items.length,'Sentence quality gate');}
+   if(p.config.route==='sentences'){const qa=inspectBatch(JSON.stringify(rows),requests,{properNames:p.config.prompt_version==='gemini-vi-hv-6'});need(!qa.items.length,'Sentence quality gate');}
   },onAttempt:a=>{
-   audit.push({model:a.model,http_status:a.http_status,validation_error:a.validation_error??null,request_ids:a.requests.map(r=>r.request_id),qa:a.http_status===200&&p.config.route==='sentences'?inspectBatch(a.text,a.requests):null});
+   emit({event:'api_attempt',role:p.config.route,model:a.model,call:a.call,http_status:a.http_status,error_kind:a.error_kind??null,validation_error:a.validation_error??null});
+   audit.push({model:a.model,http_status:a.http_status,error_kind:a.error_kind??null,validation_error:a.validation_error??null,request_ids:a.requests.map(r=>r.request_id),qa:a.http_status===200&&p.config.route==='sentences'?inspectBatch(a.text,a.requests,{properNames:p.config.prompt_version==='gemini-vi-hv-6'}):null});
    write(path.join(root,'audit.json'),audit);
    if(a.validation_error){write(path.join(root,'rejected-'+p.config.model+'.json'),{model:a.model,reason:a.validation_error,requests:a.requests,response:a.text});}
   }});
-  emit({role:p.config.route,model:p.config.model,sent:result.sent,calls:result.calls,status:result.status});
+  emit({role:p.config.route,model:p.config.model,sent:result.sent,calls:result.calls,status:result.status,error_status:result.error_status});
   return result;
  }
  const resultRows=p=>{const byId=new Map(p.requests.map(r=>[r.request_id,r]));return read(p.resultsPath).map(row=>({row,request:byId.get(row.request_id),model:p.config.model,manifest:p.manifestPath,results:p.resultsPath}));};

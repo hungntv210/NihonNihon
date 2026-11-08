@@ -299,3 +299,30 @@ lại và hold; kiểm tra report trước khi chạy worker với config mới.
 Giới hạn learning vẫn là 17 call/ngày Pacific trong trần 20 RPD, bao gồm retry;
 503 tối đa ba lần với backoff 30–60 giây. Source plan chỉ nhận allowlist public;
 clips, subtitles và recordings không được gửi đến AI.
+
+## Prompt v6 và lượt kiểm tra lại 30 câu
+
+`gemini-vi-hv-6` giữ nguyên v4/v5 và thêm ví dụ chống tự thêm nước, chủ ngữ,
+quan hệ, danh xưng thủ đô; giữ lời mời/câu trần thuật và tên riêng.
+Glossary khớp cụm dài trước: `留学生` → du học sinh, `小学生/中学生/高校生`
+→ học sinh, `大学生` → sinh viên, `大学院生` → học viên cao học. `学生` đứng
+riêng vẫn bắt buộc sinh viên. Không bỏ gate cũ để nhận lô từng bị loại.
+
+QA `proper_name` kiểm tra mất/đổi tên trong bảng đối chiếu tên công khai ở
+`mt-gemini.mjs` (ví dụ キートン → Keeton, không phải Keaton). Đây là bảng hữu
+hạn, không phải bộ nhận diện mọi tên riêng; tên ngoài bảng và thông tin tự thêm
+vẫn cần người duyệt. Không cho phép giữ chữ Nhật trong bản Việt để né QA.
+Gate này áp dụng đầu ra v6 mới, không áp ngược rồi dịch lại cache đã chấp nhận.
+
+`rotateCampaign` mặc định dùng prompt hiện tại; truyền `promptVersion` nếu cần
+tái hiện bản cũ. Luôn tạo thư mục/config mới, giữ nguyên quota, probe, hold và
+accepted profiles. Với lượt duyệt, chỉ gửi lại 30 câu chưa được chấp nhận của
+lô bị loại, dùng một request, rồi xuất Nhật/Anh/Việt/model/cờ QA để duyệt;
+không nhập DB hoặc tự mở toàn hàng đợi trước lượt duyệt này.
+
+Worker stdout ghi từng `api_attempt` với model, `http_status`, loại lỗi và cờ
+validation, cùng `error_status` trong kết quả lô. Khi khởi động, nó cũng ghi lại
+mã HTTP đã lưu của learning/probe, không gọi model lại để lấy mã lỗi. HTTP 429,
+400, 503 được giữ riêng; lỗi mạng không có HTTP ghi null/unknown, không đoán.
+Không ghi nguyên lỗi từ SDK vì có thể chứa thông tin nhạy cảm. Retry 503 vẫn
+tối đa ba lần, chờ 30–60 giây; 3.8 lỗi probe không tự trở thành fallback.
