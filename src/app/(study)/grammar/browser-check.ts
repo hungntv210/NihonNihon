@@ -10,7 +10,7 @@ import { hashPassword } from '../../../core/session.ts';
 
 // Run from the repository root after npm run build:
 // npx tsx "src/app/(study)/grammar/browser-check.ts"
-const base = path.resolve('.tmp');
+const base = path.resolve(process.env.NIHON_BROWSER_FIXTURE_ROOT || '.tmp');
 fs.mkdirSync(base, { recursive: true });
 const directory = fs.mkdtempSync(path.join(base, 'grammar-browser-'));
 const dbPath = path.join(directory, 'app.sqlite');

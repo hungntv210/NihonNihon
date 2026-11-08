@@ -10,7 +10,7 @@ import { seedDemo } from '../../../../tools/seed-demo.ts';
 import { hashPassword, SESSION_COOKIE } from '../../../core/session.ts';
 
 // Run after the production build; all additional content is synthetic test data.
-const base = path.resolve('.tmp');
+const base = path.resolve(process.env.NIHON_BROWSER_FIXTURE_ROOT || '.tmp');
 fs.mkdirSync(base, { recursive: true });
 const directory = fs.mkdtempSync(path.join(base, 'vocab-browser-')),
   file = path.join(directory, 'app.sqlite');
