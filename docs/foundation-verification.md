@@ -353,3 +353,11 @@ Schema, worker dịch và database G0 không thay đổi.
 - Checked commit: ae3865cb3056390ebc8f9e88202fbbbc6e7ddc31; branch master. Full-check start 2026-11-07T19:06:55.1708048+07:00; end 2026-11-07T19:07:41.7014949+07:00.
 - npm run check PASS: typecheck PASS; tests85/85, zero failures/skips; production build PASS; test:app PASS. Windows, Node24.10.0/npm11.6.1, installed headless Chrome, disposable OpenJLPT fixtures; process/loopback access enabled.
 - Journal resolution retains all entries from both sides. Raw log stays ignored: data/reports/merge-sequence/pr12-master-ae3865c.log. Existing implementation and physical-device/deployment limitations remain unchanged.
+
+### 2026-11-08T22:38:14.5386412+07:00 — Windows home deployment preparation only
+
+- Checkedcbec3942903e5c7a073d70b7f87ce9cf91855129; start2026-11-08T22:36:59.8278677+07:00, end2026-11-08T22:38:14.5386412+07:00. Full npm run check PASS86/86 (22prototype+64foundation/routes), typecheck/build/app16checks PASS; Windows Node24.10.0/npm11.6.1/installed Chrome, disposable fixtures.
+- PowerShell home-tasks default PLAN_ONLY ran without registering tasks. App logon/restart and daily/logon backup registration require explicit -Apply and owner step approval. No service/task/Tailscale/production-checkout/D-drive changes were made.
+- Backup test creates a fixture archive, copies outside its synthetic project, validates SHA256/all archive entries and temporary DB integrity/FK/schema; current live fixture remains modified and untouched by restore verification. Corrupt copies and differing existing destinations are rejected; inside-project destinations are rejected.
+- Runbook targets C:\Users\Admin\NihonNihon and D:\NihonNihonBackup, explains interactive logon (not pre-login),3restart attempts, tailscale serve HTTPS/APP_ORIGIN, npm run backup:daily then copy, D same-machine failure limitation and weekly removable/phone copy, and owner acceptance checks. Actual reboot/phone/mic/D-copy acceptance remains pending.
+- Raw plan/test/check logs stay ignored under data/reports/. Only this audit entry changes after successful checks. No schema/G0/private secrets or deployment side effects.
