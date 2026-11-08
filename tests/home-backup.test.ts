@@ -1,0 +1,23 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import path from 'node:path';
+import { fixture } from './helpers.ts';
+import { saveDailyBackup } from '../src/core/backup.ts';
+import { copyVerifiedArchive, verifyArchive } from '../tools/home-backup.ts';
+test('copied backup is hash-verified and checked in a temporary DB without touching the live DB',async t=>{
+ const {file,db}=fixture(t),root=path.dirname(file);process.env.NIHON_DB_PATH=file;process.env.NIHON_DB_ROLE='snapshot';
+ for(const key of ['NIHON_SETTINGS_PATH','NIHON_ROADMAP_PATH','NIHON_RECORDINGS_DIR','NIHON_BACKUP_DIR'])delete process.env[key];
+ const archive=await saveDailyBackup(),project=path.join(root,'project'),destination=path.join(root,'copy');
+ fs.mkdirSync(project);
+ const result=copyVerifiedArchive(archive,destination,project);
+ assert.equal(result.integrity,'ok');assert.ok(fs.existsSync(result.file));
+ db.exec("UPDATE vocab SET word='live value stays' WHERE word='学生'");
+ assert.equal(verifyArchive(result.file).integrity,'ok');
+ assert.equal(db.prepare("SELECT count(*) n FROM vocab WHERE word='live value stays'").get()?.n,1);
+ assert.deepEqual(copyVerifiedArchive(archive,destination,project),result);
+ assert.throws(()=>copyVerifiedArchive(archive,path.join(project,'data'),project),/INSIDE_PROJECT/);
+ fs.writeFileSync(result.file,'corrupt');assert.throws(()=>verifyArchive(result.file));
+ assert.throws(()=>copyVerifiedArchive(archive,destination,project),/EXISTING_COPY_DIFFERS/);
+ assert.equal(fs.readFileSync(result.file,'utf8'),'corrupt','existing copies are never silently overwritten');
+});
