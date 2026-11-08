@@ -326,3 +326,35 @@ mã HTTP đã lưu của learning/probe, không gọi model lại để lấy m�
 400, 503 được giữ riêng; lỗi mạng không có HTTP ghi null/unknown, không đoán.
 Không ghi nguyên lỗi từ SDK vì có thể chứa thông tin nhạy cảm. Retry 503 vẫn
 tối đa ba lần, chờ 30–60 giây; 3.8 lỗi probe không tự trở thành fallback.
+
+## Quy trình được duyệt sau lô v6 ngày 08/11
+
+Quyết định chủ dự án thay thế bước chờ duyệt toàn bộ nêu trên: giữ 26/30 câu;
+chỉ dịch lại một lần các dòng #2, #17, #24, #28. Đại từ chủ ngữ được câu Anh
+nguồn hỗ trợ là hợp lệ. Câu dịch lại còn lỗi nghĩa nhưng qua gate cấu trúc vẫn
+nhập DB, mở `translation_reports` để xem lại và tiếp tục worker; không đổi schema
+hay xoá bản dịch đang selected để gắn cờ.
+
+Prompt vẫn là v6, cấu hình `prompt_revision: 2` ghi `config.promptRevision=2`
+và hash mới; cấu hình v6 không có revision vẫn giữ hash của lô 30 gốc.
+Thêm quy tắc ～ませんか là lời mời lịch sự, ～てきた/～ていく giữ diễn biến,
+でしょう dự đoán không thành “nhỉ”, và không suy ra nước từ chiếc cốc đầy.
+`reference_en` chỉ được dựng từ các câu trong nguồn công khai đã kiểm checksum,
+không lấy từ tệp tuỳ ý hay clip riêng; JA NFC vẫn là khoá dedupe, không đổi ID
+của release cũ và không dịch lại context đã chấp nhận.
+
+Worker nhập sau mỗi lô có kết quả đạt QA, tuần tự hoá các lần ghi DB giữa hai
+luồng câu/learning. Gate JSON/schema, đủ ID, rỗng, chữ Nhật, sao chép, độ dài,
+NFC, glossary và tên riêng vẫn giữ nguyên. Lỗi API hay gate không được gán
+thành bản dịch hợp lệ. Checkpoint lưu trước khi tiếp tục gọi API.
+
+Mỗi khoảng 500 câu mới (tối đa lệch một lô 30), xuất ngẫu nhiên 30 câu vào
+`review-NNNN.md/.json`, gồm Nhật/Anh/Việt/model. Mẫu cuối được xuất khi hoàn tất
+phần câu dù chưa đủ 500. Tài khoản kiểm thử điền các dòng trong
+`review-NNNN.feedback.json`: `severity` là null (chưa duyệt), `ok`, `minor`,
+hoặc `major`, cùng `note`; giữ nguyên sample_id/request_id. Worker đọc lại phản
+hồi trước mỗi lượt gọi, ghi cờ cho minor/major và tự dừng cả hai luồng khi
+**major / tổng mẫu > 10%** (4/30 dừng; 3/30 tiếp tục), kể cả phản hồi chưa điền
+hết. Phản hồi chưa có không được báo thành đã duyệt hoặc 0% lỗi nghĩa.
+Mẫu ngẫu nhiên/QA không tự phát hiện được mọi lỗi nghĩa: ngưỡng này dựa trên
+phản hồi kiểm thử, không dùng thêm model AI để giả lập người duyệt.

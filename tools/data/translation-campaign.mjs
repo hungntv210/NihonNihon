@@ -7,6 +7,7 @@ import {inspectBatch,summarizeGate} from './translation-gate.mjs';
 import {stratifiedSample} from './review-sample.mjs';
 import {privateWrite,sha,hash,need} from './core.mjs';
 import {runImport} from './import.mjs';
+import {writeReviewCheckpoint,reviewFeedback,applyTranslationFlags} from './campaign-review.mjs';
 
 const read=p=>JSON.parse(fs.readFileSync(p,'utf8'));
 const write=(p,v)=>privateWrite(p,JSON.stringify(v,null,2)+'\n');
@@ -19,8 +20,9 @@ export async function acceptedProfileRows(profiles){
  for(const p of profiles){
   const manifest=read(p.manifestPath),mt=manifest.mt,file=manifest.sources.find(s=>s.source_id===mt.source_id)?.files.find(f=>f.format==='mt-results');need(file,'Missing accepted MT artifact');
   const results=path.resolve(path.dirname(p.manifestPath),file.path);need(hash(fs.readFileSync(results))===file.sha256,'Accepted result checksum mismatch');
+  const outputs=read(results);need(Array.isArray(outputs),'Invalid accepted result array');if(!outputs.length)continue;
   const requests=new Map((await publicPlan(p.manifestPath,{cache:true})).requests.map(r=>[r.request_id,r]));
-  for(const row of read(results)){const request=requests.get(row.request_id);need(request,'Accepted output has unknown provenance');validateResults([row],[request]);rows.push({row,request,model:mt.model,manifest:p.manifestPath,results});}
+  for(const row of outputs){const request=requests.get(row.request_id);need(request,'Accepted output has unknown provenance');validateResults([row],[request]);rows.push({row,request,model:mt.model,manifest:p.manifestPath,results});}
  }
  return rows;
 }
@@ -65,7 +67,7 @@ export async function rotateCampaign({configPath,outputConfig,directory,promptVe
  write(path.join(root,'rotation-report.json'),report);write(outputConfig,next);return report;
 }
 
-export async function importCampaign({baseManifest,profiles,directory,dbPath}){
+export async function importCampaign({baseManifest,profiles,directory,dbPath,flags=[]}){
  const manifest=read(baseManifest),base=path.dirname(path.resolve(baseManifest)),root=path.resolve(directory);
  // Keep the manifest beside its base: raw record keys include these relative paths.
  const configs=new Map([manifest.mt,...manifest.mt_profiles??[]].filter(Boolean).map(c=>[sha(c),c]));
@@ -80,7 +82,8 @@ export async function importCampaign({baseManifest,profiles,directory,dbPath}){
  // Profile order preserves accepted output priority; unchanged fields keep their release.
  manifest.mt_profiles=[...new Map([...profiles.map(p=>read(p.manifestPath).mt),...configs.values()].map(c=>[sha(c),c])).values()];
  const manifestPath=path.join(base,path.basename(root)+'-import-manifest.json');need(manifestPath!==path.resolve(baseManifest),'Import would overwrite base manifest');write(manifestPath,manifest);
- return runImport({manifestPath,dbPath,reportPath:path.join(root,'import-report.json'),requestsPath:path.join(root,'remaining-requests.json')});
+ const report=await runImport({manifestPath,dbPath,reportPath:path.join(root,'import-report.json'),requestsPath:path.join(root,'remaining-requests.json')});
+ report.review_flags_added=applyTranslationFlags(dbPath,flags);return report;
 }
 
 export async function runCampaign(configPath){
@@ -122,28 +125,43 @@ export async function runCampaign(configPath){
   const backup=await profile('sentences-backup',cfg.sentence_base,cfg.sentence_backup);
   const learning=await profile('learning',cfg.learning_base,cfg.learning);
   const profiles=[...acceptedProfiles,primary,backup,learning];
+  let importTail=Promise.resolve();
+  const flagsPath=path.join(root,'translation-flags.json');
+  const syncImport=()=>{need(cfg.import,'Continuous campaign requires an import database');const task=importTail.then(async()=>{state.import=await importCampaign({...cfg.import,directory:root,profiles,flags:fs.existsSync(flagsPath)?read(flagsPath):[]});save();emit({event:'db_import',committed:state.import.db_committed,review_flags_added:state.import.review_flags_added});});importTail=task;return task;};
+  async function checkReviews(){
+   for(const review of state.sentences.reviews??[]){
+    const file=path.join(root,review.sample_id+'.feedback.json'),feedback=read(file),checksum=sha(feedback);let result=review.feedback;
+    if(review.feedback_sha256!==checksum){result=reviewFeedback(read(path.join(root,review.sample_id+'.json')),feedback);review.feedback_sha256=checksum;review.feedback=result;
+     if(result.flags.length){const flags=fs.existsSync(flagsPath)?read(flagsPath):[];write(flagsPath,[...new Map([...flags,...result.flags].map(f=>[sha(f),f])).values()]);await syncImport();}
+    }
+    if(result.pause){state.review_pause={sample_id:review.sample_id,major:result.major,total:result.total,major_percent:result.major_percent};state.status='review_paused';stopping=true;save();emit({event:'review_paused',...state.review_pause});return false;}
+   }delete state.review_pause;return !stopping;
+  }
   const allSentences=primary.requests.filter(r=>r.task==='translate'&&r.input.field==='text');
   const allLearning=learning.requests.filter(r=>r.task==='han_viet'||r.input.field!=='text');
   need(new Set(allSentences.map(r=>r.input.ja)).size===allSentences.length,'Sentence queue is not deduplicated');
   for(const p of [primary,backup])for(const v of resultRows(p))if(v.request)sentenceDone.set(v.request.input.ja,{ja:v.request.input.ja,request_id:v.row.request_id,output:v.row.output,model:v.model,manifest:v.manifest});
   for(const v of resultRows(learning))if(v.request)learningDone.set(context(v.request),v);
   const sentOrder=read(cfg.sentence_order).requests,rank=new Map(sentOrder.map((r,i)=>[r.input.ja,i]));allSentences.sort((a,b)=>(rank.get(a.input.ja)??1e9)-(rank.get(b.input.ja)??1e9));
-  state.sentences={...state.sentences,total:allSentences.length,done:sentenceDone.size};delete state.stopping;delete state.error;delete state.status;
+  state.sentences={...state.sentences,total:allSentences.length,done:sentenceDone.size,review_cursor:state.sentences.review_cursor??sentenceDone.size};delete state.stopping;delete state.error;delete state.status;
   state.learning={...state.learning,total:allLearning.length,done:learningDone.size,not_before:cfg.learning_not_before};save();
+  await syncImport();if(!await checkReviews())return {...state,status:'review_paused'};
   async function sentenceLoop(){
    while(!stopping){
-    const day=quotaDay(Date.now()),pending=pendingCampaignRequests(allSentences,sentenceDone,learningDone);if(!pending.length){state.sentences.complete=true;save();return;}
+    if(!await checkReviews())return;
+    const day=quotaDay(Date.now()),pending=pendingCampaignRequests(allSentences,sentenceDone,learningDone);if(!pending.length){writeReviewCheckpoint({directory:root,state:state.sentences,rows:[...sentenceDone.values()],provenance:read(cfg.sentence_provenance),force:true});state.sentences.complete=true;save();return;}
     const deferred=state.sentences.deferred_day===day?new Set(state.sentences.deferred??[]):new Set();const ready=pending.filter(r=>!deferred.has(r.input.ja));
     if(state.sentences.hold_day===day||!ready.length){await sleep(Math.min(60000,nextPacificReset()-Date.now()+1000));continue;}
     const batch=ready.slice(0,30);let good=false,last;
     for(const p of [primary,backup]){
-     if(stopping)return;const byJa=new Map(p.requests.map(r=>[r.input.ja,r])),tasks=batch.map(r=>byJa.get(r.input.ja));need(tasks.every(Boolean),'Fallback source mismatch');
+     if(stopping||!await checkReviews())return;const byJa=new Map(p.requests.map(r=>[r.input.ja,r])),tasks=batch.map(r=>byJa.get(r.input.ja));need(tasks.every(Boolean),'Fallback source mismatch');
      const result=await call(p,tasks,30,p===primary?1:3);last=result;
      for(const v of resultRows(p))if(v.request)sentenceDone.set(v.request.input.ja,{ja:v.request.input.ja,request_id:v.row.request_id,output:v.row.output,model:v.model,manifest:v.manifest});
      if(batch.every(r=>sentenceDone.has(r.input.ja))){good=true;break;}
      if(result.status!=='daily_limit')await sleep(5000);
     }
-    state.sentences.done=sentenceDone.size;write(path.join(root,'sentences-completed.json'),[...sentenceDone.values()]);
+    const previousDone=state.sentences.done;state.sentences.done=sentenceDone.size;write(path.join(root,'sentences-completed.json'),[...sentenceDone.values()]);
+    if(sentenceDone.size>previousDone){await syncImport();const review=writeReviewCheckpoint({directory:root,state:state.sentences,rows:[...sentenceDone.values()],provenance:read(cfg.sentence_provenance)});if(review)emit({event:'review_ready',sample_id:review.sample_id,from_count:review.from_count,to_count:review.to_count,path:path.join(root,review.sample_id+'.md')});}
     if(!good){if(last.status==='invalid_output'){state.sentences.deferred_day=day;state.sentences.deferred=[...deferred,...batch.map(r=>r.input.ja)];}else state.sentences.hold_day=day;}
     state.sentences.validation_failures=audit.filter(a=>[cfg.sentence_primary.model,cfg.sentence_backup.model].includes(a.model)&&a.validation_error).length;
     state.sentences.gate=summarizeGate(audit.filter(a=>a.qa||a.model===cfg.sentence_primary.model||a.model===cfg.sentence_backup.model),sentenceDone.size);save();
@@ -151,6 +169,7 @@ export async function runCampaign(configPath){
   }
   async function learningLoop(){
    while(!stopping){
+    if(!await checkReviews())return;
     const now=Date.now();if(now<Date.parse(cfg.learning_not_before)){state.learning.waiting_for_reset=true;save();await sleep(Math.min(60000,Date.parse(cfg.learning_not_before)-now));continue;}
     state.learning.waiting_for_reset=false;const day=quotaDay(now);
     if(!state.probe.started){
@@ -165,7 +184,8 @@ export async function runCampaign(configPath){
     const hv=ready.filter(r=>r.task==='han_viet'),other=ready.filter(r=>r.task!=='han_viet');const batch=[...hv.slice(0,20),...other.slice(0,60-Math.min(20,hv.length))];if(batch.length<60)batch.push(...hv.slice(20,20+60-batch.length));
     const result=await call(learning,batch,60,3);
     for(const v of resultRows(learning))if(v.request)learningDone.set(context(v.request),v);
-    state.learning={...state.learning,done:learningDone.size,last_result:result};
+    const previousDone=state.learning.done;state.learning={...state.learning,done:learningDone.size,last_result:result};
+    if(learningDone.size>previousDone)await syncImport();
     if(result.status==='invalid_output'){state.learning.deferred_day=day;state.learning.deferred=[...deferred,...batch.map(context)];}
     else if(result.status!=='complete')state.learning.finished_day=day;
     write(path.join(root,'learning-completed.json'),[...learningDone.values()]);save();
@@ -174,7 +194,7 @@ export async function runCampaign(configPath){
   const fail=error=>{stopping=true;state.error='Job failed; no raw API error logged';save();throw error;};
   const outcomes=await Promise.allSettled([sentenceLoop().catch(fail),learningLoop().catch(fail)]);
   if(outcomes.some(r=>r.status==='rejected')){state.status='blocked';save();return state;}
-  if(stopping){state.status='stopped';save();return state;}
+  if(stopping){state.status=state.review_pause?'review_paused':'stopped';save();return state;}
   need(state.sentences.complete&&state.learning.complete,'Campaign not complete');
   const storedQA=inspectBatch(JSON.stringify(allSentences.map(r=>({request_id:r.request_id,output:sentenceDone.get(r.input.ja).output}))),allSentences);
   state.sentences.stored_gate=storedQA;need(!storedQA.items.length&&!storedQA.schema_invalid&&!storedQA.missing,'Stored sentence QA failed');save();

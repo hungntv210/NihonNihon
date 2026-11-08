@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import {fixture} from './helpers.mjs';
-import {prepare,runGemini,settings,PROMPT,PROMPT_V4,PROMPT_V5,promptFor} from '../../tools/data/mt-gemini.mjs';
+import {prepare,runGemini,settings,PROMPT,PROMPT_V4,PROMPT_V5,PROMPT_V6_INITIAL,promptFor} from '../../tools/data/mt-gemini.mjs';
 import {rotateCampaign,acceptedCampaignCache,pendingCampaignRequests,importCampaign} from '../../tools/data/translation-campaign.mjs';
 import {hash} from '../../tools/data/core.mjs';
 const config={model:'gemini-test',prompt_version:'gemini-vi-hv-4',requests_per_minute:10,requests_per_day:20,daily_budget:17,max_output_tokens:4096};
@@ -14,7 +14,8 @@ test('v5 preserves all v4 glossary rules and pins historical prompt hashes separ
  assert.ok(PROMPT.startsWith(PROMPT_V4));assert.match(PROMPT,/Do not add a subject/);assert.match(PROMPT,/恐縮/);assert.match(PROMPT,/xin lỗi vì làm phiền/);
  assert.equal(settings(config).prompt_sha256,hash(PROMPT_V4));assert.equal(promptFor(config).text,PROMPT_V4);
  const next=settings({...config,prompt_version:'gemini-vi-hv-5'});assert.equal(next.prompt_sha256,hash(PROMPT_V5));assert.deepEqual(next.config.supersedes_prompt_versions,[]);
- const v6=settings({...config,prompt_version:'gemini-vi-hv-6'});assert.ok(PROMPT.startsWith(PROMPT_V5));assert.equal(v6.prompt_sha256,hash(PROMPT));assert.notEqual(v6.prompt_sha256,next.prompt_sha256);assert.deepEqual(v6.config.supersedes_prompt_versions,[]);assert.match(PROMPT,/longest matching/);assert.match(PROMPT,/proper names/);assert.match(PROMPT,/unspecified full glass/);
+ const original=settings({...config,prompt_version:'gemini-vi-hv-6'});assert.equal(original.prompt_sha256,hash(PROMPT_V6_INITIAL));assert.ok(!original.config.promptRevision);
+ const v6=settings({...config,prompt_version:'gemini-vi-hv-6',prompt_revision:2});assert.ok(PROMPT.startsWith(PROMPT_V5));assert.equal(v6.prompt_sha256,hash(PROMPT));assert.notEqual(v6.prompt_sha256,original.prompt_sha256);assert.equal(v6.config.promptRevision,2);assert.notEqual(v6.prompt_sha256,next.prompt_sha256);assert.deepEqual(v6.config.supersedes_prompt_versions,[]);assert.match(PROMPT,/longest matching/);assert.match(PROMPT,/proper names/);assert.match(PROMPT,/unspecified full glass/);assert.match(PROMPT,/～ませんか/);assert.match(PROMPT,/～てきた/);assert.match(PROMPT,/～ていく/);assert.match(PROMPT,/subject pronoun supported by reference_en is acceptable/);
  assert.throws(()=>settings({...config,prompt_version:'unknown'}),/Unsupported/);
 });
 
