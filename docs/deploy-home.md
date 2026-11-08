@@ -40,10 +40,15 @@ powershell -NoProfile -File tools/home-tasks.ps1
 
 Lệnh mặc định chỉ in kế hoạch, không tạo task. Khi chủ dự án duyệt kế hoạch,
 chạy cùng lệnh với `-Apply -Confirm`. Hai task dùng tài khoản Windows hiện tại,
-không lưu mật khẩu: app chạy lúc đăng nhập; backup chạy lúc đăng nhập và 22:00
-hằng ngày. App/task lỗi được thử lại 3 lần, cách 1 phút; không chạy trùng.
-Đây là chạy **sau đăng nhập**, không phải dịch vụ trước màn hình đăng nhập.
-App chạy ở127.0.0.1:3000; log tại `data/reports/home/app.log`.
+không lưu mật khẩu, `LogonType=S4U`, `RunLevel=Limited`: app chạy lúc khởi động
+Windows; backup chỉ chạy 23:30 hằng ngày, không có trigger đăng nhập.
+S4U chạy cả khi chưa đăng nhập, không truy cập được ổ mạng hoặc tệp EFS;
+đích backup phải là ổ cục bộ. Chủ dự án đã xác nhận D: là ổ Fixed NTFS trong
+máy và thư mục dự án không dùng EFS. App/task lỗi được thử lại 3 lần,
+cách 1 phút; không chạy trùng. `StartWhenAvailable` chạy bù lịch bị lỡ.
+Đường dẫn tuyệt đối của `node.exe` được lấy lúc đăng ký và truyền cho cả hai
+task, tránh phụ thuộc PATH của phiên chưa đăng nhập; backup không cần npm.
+App chạy ở127.0.0.1:3000; log được nối thêm tại `data/reports/home/app.log`.
 
 Sau xác nhận riêng, dùng `Start-ScheduledTask -TaskName NihonNihon-App` để thử.
 Xem LastTaskResult/History khi lỗi. Cần dừng/xóa task thì xin xác nhận trước khi
@@ -56,7 +61,7 @@ powershell -NoProfile -File tools/home-copy-backup.ps1 -ProjectPath C:\Users\Adm
 node --env-file-if-exists=.env --env-file-if-exists=.env.local --import tsx tools/home-backup.ts verify D:\NihonNihonBackup\YYYY-MM-DD.json
 ```
 
-Tập lệnh chạy `npm run backup:daily`, rồi chép archive ngày vừa tạo,
+Tập lệnh gọi `home-backup.ts copy` để tạo backup ngày đúng một lần rồi chép archive,
 so SHA-256 nguồn/đích và trích DB **vào thư mục tạm** để kiểm tra integrity, FK và
 bảng chính. Hash mọi thành phần archive cũng được kiểm tra. Không phục hồi vào
 DB đang dùng. Bản đích khác hash sẽ báo lỗi, không tự ghi đè; không tự xóa bản cũ
@@ -68,7 +73,13 @@ Kiểm tra D còn đủ dung lượng; backup task thất bại phải được 
 
 ## 5. Nghiệm thu thực tế
 
-- Khởi động lại Windows rồi đăng nhập: app tự lên, task có trạng thái/exit đúng.
+- Khởi động lại Windows và **không đăng nhập**: từ điện thoại truy cập app qua
+  Tailscale HTTPS; app tự lên, task có trạng thái/exit đúng. Tailscale cần được
+  chủ dự án cấu hình chạy trước đăng nhập theo hướng dẫn của Tailscale.
+- Khi máy vẫn chưa đăng nhập tương tác, từ phiên quản trị từ xa chạy
+  `Start-ScheduledTask -TaskName NihonNihon-Backup`; xác nhận có archive ở
+  `D:\NihonNihonBackup` và lệnh verify trả `integrity: ok`. Nếu không tìm thấy
+  node/npm, kiểm tra action có `-NodePath` tuyệt đối lấy lúc đăng ký; không cần npm.
 - Dừng mô phỏng tiến trình app sau khi được duyệt: task tự thử chạy lại.
 - Điện thoại qua HTTPS: đăng nhập, ôn một thẻ, ghi âm/nghe lại (chưa xác nhận
   Safari/Android thật bằng kiểm thử desktop).
