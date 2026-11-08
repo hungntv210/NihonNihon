@@ -8,7 +8,7 @@ import { chromium } from 'playwright';
 import { seedDemo } from '../../../../tools/seed-demo.ts';
 import { hashPassword } from '../../../core/session.ts';
 
-const base = path.resolve('.tmp'); fs.mkdirSync(base, { recursive: true });
+const base = path.resolve(process.env.NIHON_BROWSER_FIXTURE_ROOT || '.tmp'); fs.mkdirSync(base, { recursive: true });
 const directory = fs.mkdtempSync(path.join(base, 'shadowing-'));
 const dbPath = path.join(directory, 'demo.sqlite'); seedDemo(dbPath);
 const port = await new Promise<number>(resolve => {
@@ -32,7 +32,7 @@ try {
   console.log('shadowing: server ready; auth and media ranges');
   for (const route of ['/shadowing', '/shadowing/media']) assert.equal((await fetch(origin + route, { redirect: 'manual' })).status, 307);
   checks++;
-  browser = await chromium.launch({ headless: true, ...(chrome && fs.existsSync(chrome) ? { executablePath: chrome } : {}), args: ['--use-fake-device-for-media-stream', '--autoplay-policy=no-user-gesture-required'] });
+  browser = await chromium.launch({ headless: true, ...(chrome && fs.existsSync(chrome) ? { executablePath: chrome } : { channel: 'chromium' }), args: ['--use-fake-device-for-media-stream', '--autoplay-policy=no-user-gesture-required'] });
   const context = await browser.newContext({ permissions: ['microphone'], viewport: { width: 1440, height: 1080 }, reducedMotion: 'reduce' });
   await context.addInitScript('globalThis.__name = (value) => value');
   const login = await context.request.post(origin + '/api/session', { headers: { origin }, form: { password }, maxRedirects: 0 });
@@ -78,12 +78,13 @@ try {
     const state = window as typeof window & { shadowTracks: MediaStreamTrack[]; shadowRevoked: string[] };
     state.shadowTracks = []; state.shadowRevoked = [];
     const get = navigator.mediaDevices.getUserMedia.bind(navigator.mediaDevices);
-    navigator.mediaDevices.getUserMedia = async constraints => { const stream = await get(constraints); state.shadowTracks.push(...stream.getTracks()); return stream; };
+    navigator.mediaDevices.getUserMedia = async constraints => { try { const stream = await get(constraints); state.shadowTracks.push(...stream.getTracks()); return stream; } catch(error) { (state as typeof state & { shadowMediaError:string }).shadowMediaError=String(error);throw error; } };
     const revoke = URL.revokeObjectURL.bind(URL);
     URL.revokeObjectURL = url => { state.shadowRevoked.push(url); revoke(url); };
   });
   await page.getByRole('button', { name: 'Ghi âm câu 2', exact: true }).click();
-  await page.getByRole('button', { name: 'Dừng ghi âm', exact: true }).waitFor();
+  try { await page.getByRole('button', { name: 'Dừng ghi âm', exact: true }).waitFor(); }
+  catch(error) { console.error('Native microphone diagnostics:',await page.evaluate(()=>({status:[...document.querySelectorAll('[role=status]')].map(x=>x.textContent),captureError:(window as typeof window & {shadowMediaError?:string}).shadowMediaError,recorder:typeof MediaRecorder,formats:['audio/webm;codecs=opus','audio/mp4','audio/webm'].map(type=>({type,supported:typeof MediaRecorder!=='undefined'&&MediaRecorder.isTypeSupported(type)}))})));throw error; }
   await page.waitForTimeout(1100);
   await page.getByRole('button', { name: 'Dừng ghi âm', exact: true }).click();
   await page.getByRole('link', { name: 'Tải bản ghi', exact: true }).waitFor();

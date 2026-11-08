@@ -354,6 +354,37 @@ Schema, worker dịch và database G0 không thay đổi.
 - npm run check PASS: typecheck PASS; tests85/85, zero failures/skips; production build PASS; test:app PASS. Windows, Node24.10.0/npm11.6.1, installed headless Chrome, disposable OpenJLPT fixtures; process/loopback access enabled.
 - Journal resolution retains all entries from both sides. Raw log stays ignored: data/reports/merge-sequence/pr12-master-ae3865c.log. Existing implementation and physical-device/deployment limitations remain unchanged.
 
+### 2026-11-08T22:24:48.8934952+07:00 — SRS font loading and complete route browser CI
+
+- Checked implementationfd55f025394531effac598e78c8ed37fa32d3fd3; start2026-11-08T22:22:47.7883572+07:00, end2026-11-08T22:24:48.8934952+07:00. Windows Node24.10.0/npm11.6.1, installed headless Chrome, production Next build, disposable fixtures and process/loopback access enabled.
+- Full npm run check PASS: typecheck PASS; tests86/86 (22prototype+64foundation/routes), zero failures/skips; production build PASS; test:app PASS16checks.
+- npm run test:browser PASS7/7: common-tools, grammar, kanji, shadowing, srs, today-roadmap, vocab. Auto-discovery has no route allowlist; each script runs sequentially with a180s timeout and any failure fails the suite. Per-script logs/summary remain ignored under data/reports/browser-suite/; CI uploads these logs even after failures.
+- SRS browser-check explicitly loads Vietnamese/Japanese specimen fonts before asserting document.fonts.check; no app behavior changed. The existing app and all route walkthroughs pass. Auto-discovery regression covers new/nested checks and ignores backup filenames.
+- This dedicated test/CI PR changes only the workflow, package script, browser runner/discovery test and SRS browser test, plus this append-only audit. No schema, app behavior, G0 data or private credentials changes. Raw fullcheck/start/end logs stay ignored. Only this audit entry changes after successful checks.
+
+### 2026-11-08T22:31:39.8291032+07:00 — native microphone CI parity follow-up
+
+- Checked56cb12f751f5573c2df460df8aba71f2fd723456; start2026-11-08T22:29:39.4179650+07:00, end2026-11-08T22:31:39.8291032+07:00. Windows Node24.10.0/npm11.6.1, production Next/installed Chrome, isolated fixtures.
+- Full npm run check PASS86/86, typecheck/build/app16checks PASS; all7browser checks PASS. Shadowing keeps native fake-device recording/replay/denial assertions, uses full Chromium when no installed Chrome is specified, and emits capture diagnostics on failure.
+- First GitHub Ubuntu run passed SRS and6/7browser checks; native microphone initialization failed in default headless shell. This update tests full Chromium instead of skipping microphone assertions. Linux rerun remains required; local pass alone does not establish Linux success.
+- Logs data/reports/browser-ci-final-check.log, browser-ci-final-all.log, browser-ci-final-end.json and browser-suite/ remain ignored. Only this audit entry changes after the checked commit.
+
+### 2026-11-08T23:05:53.1538508+07:00 — PR14 scope-always and timeout cleanup review fixes
+
+- Checked implementation2eeaac5a6a197723ad6ef1fb8529ec088ab83eec; start2026-11-08T23:03:47.7255818+07:00, end2026-11-08T23:05:53.1538508+07:00. Windows Node24.10.0/npm11.6.1, locked dependencies, production Next and installed Chrome, disposable data; process/loopback access enabled.
+- Full npm run check PASS86/86, typecheck/build/app16checks PASS; npm run test:browser PASS7/7. No managed browser-suite fixture directories remain after the suite.
+- Ownership step now always() && startsWith(github.head_ref, 'g1/'). Exactly the one approved assertion in tests/scope.test.ts changed; all other scope assertions retained.
+- Runner uses asynchronous child execution with Windows taskkill /T /F or a dedicated Unix process group on timeout. Each check receives a unique runner-owned fixture root; all browser-check changes only select that root, and runner cleanup validates the absolute parent before removal. App/schema/G0 unchanged.
+- Temporary detached worktree timeout proof: a fake browser-check started real Next PID16012, health endpoint was ready, then hung. With8000ms test timeout runner returned FAIL/exit1 and timedOut=true; Next PID was absent and its fixture root removed. Fake file/worktree removed without commit. Default real-check timeout remains180000ms.
+- Evidence stays ignored under data/reports/timeout-proof/, timeout-check.log, timeout-browser.log and timeout-check-end.json. Only this append-only entry changes after the checked commit.
+
+
+### 2026-11-08T23:10:22.7945091+07:00 — PR14 master merge-sequence verification
+
+- Checked commit: 179de3db5f549b616835bbff461de011ababe8e1; branch master. Full-check start 2026-11-08T23:09:28.4155906+07:00; end 2026-11-08T23:10:22.7945091+07:00.
+- npm run check PASS: typecheck PASS; tests86/86, zero failures/skips; production build PASS; test:app PASS. Windows, Node24.10.0/npm11.6.1, installed headless Chrome, disposable OpenJLPT fixtures; process/loopback access enabled.
+- Journal resolution retains all entries from both sides. Raw log stays ignored: data/reports/merge-sequence/pr14-master-179de3d.log. Existing implementation and physical-device/deployment limitations remain unchanged.
+
 ### 2026-11-08T22:38:14.5386412+07:00 — Windows home deployment preparation only
 
 - Checkedcbec3942903e5c7a073d70b7f87ce9cf91855129; start2026-11-08T22:36:59.8278677+07:00, end2026-11-08T22:38:14.5386412+07:00. Full npm run check PASS86/86 (22prototype+64foundation/routes), typecheck/build/app16checks PASS; Windows Node24.10.0/npm11.6.1/installed Chrome, disposable fixtures.

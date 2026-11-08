@@ -71,7 +71,7 @@ test('route guard permits append-only verification and rejects shared-file moves
 
 test('CI guards every G1 branch and an unregistered branch fails explicitly before git lookup', () => {
   const workflow = fs.readFileSync('.github/workflows/foundation.yml', 'utf8');
-  assert.match(workflow, /if: startsWith\(github\.head_ref, 'g1\/'\)\s*\n/);
+  assert.match(workflow, /if: always\(\) && startsWith\(github\.head_ref, 'g1\/'\)\s*\n/);
   assert.doesNotMatch(workflow, /contains\(fromJSON/);
   assert.ok(workflow.includes('"$FEATURE_BRANCH"'), 'pass the full branch to the single registry');
   const unknown = spawnSync(process.execPath,
