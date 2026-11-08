@@ -8,7 +8,7 @@ import { chromium } from 'playwright';
 import { seedDemo } from '../../../../tools/seed-demo.ts';
 import { hashPassword } from '../../../core/session.ts';
 const reports=path.resolve('data/reports/today-roadmap');fs.mkdirSync(reports,{recursive:true});
-const directory=fs.mkdtempSync(path.join(reports,'browser-')),dbPath=path.join(directory,'demo.sqlite');seedDemo(dbPath);
+const directory=fs.mkdtempSync(path.join(process.env.NIHON_BROWSER_FIXTURE_ROOT || reports,'browser-')),dbPath=path.join(directory,'demo.sqlite');seedDemo(dbPath);
 const port=await new Promise<number>(resolve=>{const s=createServer();s.listen(0,'127.0.0.1',()=>{const p=(s.address() as {port:number}).port;s.close(()=>resolve(p));});});
 const origin=`http://127.0.0.1:${port}`,password=randomBytes(24).toString('hex');
 const child=spawn(process.execPath,['node_modules/next/dist/bin/next','start','--hostname','127.0.0.1','--port',String(port)],{env:{...process.env,NODE_ENV:'production',APP_ORIGIN:origin,NIHON_DB_PATH:dbPath,NIHON_ROADMAP_PATH:'',NIHON_SETTINGS_PATH:'',NIHON_PASSWORD_HASH:hashPassword(password),SESSION_SECRET:randomBytes(32).toString('hex'),NEXT_TELEMETRY_DISABLED:'1'},stdio:['ignore','pipe','pipe']});

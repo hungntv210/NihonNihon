@@ -9,7 +9,7 @@ import { chromium } from 'playwright';
 import { seedDemo } from '../../../../tools/seed-demo.ts';
 import { hashPassword } from '../../../core/session.ts';
 
-const base = path.resolve('.tmp');
+const base = path.resolve(process.env.NIHON_BROWSER_FIXTURE_ROOT || '.tmp');
 fs.mkdirSync(base, { recursive: true });
 const directory = fs.mkdtempSync(path.join(base, 'app-')),
   dbPath = path.join(directory, 'app.sqlite');

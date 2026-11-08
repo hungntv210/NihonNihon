@@ -1,7 +1,33 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { spawnSync } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
+
+async function runCheck(file, fixtureRoot, log) {
+  const timeout = Number(process.env.BROWSER_CHECK_TIMEOUT_MS ?? 180000);
+  if (!Number.isSafeInteger(timeout) || timeout < 1000 || timeout > 180000) throw Error('Invalid browser timeout');
+  const fd = fs.openSync(log, 'w');
+  try {
+    const child = spawn(process.execPath, ['--import', 'tsx', file], {
+      detached: process.platform !== 'win32', stdio: ['ignore', fd, fd],
+      env: { ...process.env, NIHON_BROWSER_FIXTURE_ROOT: fixtureRoot },
+    });
+    return await new Promise(resolve => {
+      let timedOut = false;
+      const timer = setTimeout(() => {
+        timedOut = true;
+        if (process.platform === 'win32') {
+          const killed = spawnSync('taskkill', ['/PID', String(child.pid), '/T', '/F'], { encoding: 'utf8' });
+          fs.writeSync(fd, `\nTIMEOUT process tree: ${killed.stdout ?? ''}${killed.stderr ?? ''}`);
+        } else {
+          try { process.kill(-child.pid, 'SIGKILL'); } catch (error) { if (error.code !== 'ESRCH') fs.writeSync(fd, String(error)); }
+        }
+      }, timeout);
+      child.once('error', error => { clearTimeout(timer);fs.writeSync(fd, String(error));resolve({ ok: false, timedOut }); });
+      child.once('close', code => { clearTimeout(timer);resolve({ ok: code === 0 && !timedOut, timedOut }); });
+    });
+  } finally { fs.closeSync(fd); }
+}
 
 export function discoverBrowserChecks(root) {
   return fs.readdirSync(root, { recursive: true, withFileTypes: true })
@@ -17,13 +43,17 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
   const results = [];
   for (const [index, file] of files.entries()) {
     const start = new Date().toISOString();
-    const result = spawnSync(process.execPath, ['--import', 'tsx', file], {
-      encoding: 'utf8', timeout: 180000, maxBuffer: 8 * 1024 * 1024,
-    });
     const log = path.join(directory, `${index + 1}-${path.basename(path.dirname(file))}.log`);
-    fs.writeFileSync(log, (result.stdout ?? '') + (result.stderr ?? '') + (result.error ? String(result.error) : ''));
-    const ok = result.status === 0 && !result.error;
-    results.push({ file, start, end: new Date().toISOString(), ok, log });
+    const base = path.resolve('.tmp');fs.mkdirSync(base, { recursive: true });
+    const fixtures = fs.mkdtempSync(path.join(base, 'browser-suite-'));
+    let result;
+    try { result = await runCheck(file, fixtures, log); }
+    finally {
+      if (path.dirname(path.resolve(fixtures)) !== base) throw Error('Unsafe browser fixture cleanup');
+      fs.rmSync(fixtures, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 });
+    }
+    const { ok, timedOut } = result;
+    results.push({ file, start, end: new Date().toISOString(), ok, timedOut, log });
     console.log(`${ok ? 'PASS' : 'FAIL'} ${file} (${log})`);
     if (!ok) console.error(fs.readFileSync(log, 'utf8').split('\n').slice(-25).join('\n'));
   }

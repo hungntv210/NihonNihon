@@ -29,7 +29,7 @@ jobs:
           path: data/reports/browser-suite/
           if-no-files-found: ignore
       - name: Check feature route ownership
-        if: startsWith(github.head_ref, 'g1/')
+        if: always() && startsWith(github.head_ref, 'g1/')
         env:
           FEATURE_BRANCH: ${{ github.head_ref }}
           BASE_BRANCH: ${{ github.base_ref }}

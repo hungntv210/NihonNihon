@@ -8,7 +8,7 @@ import { chromium } from 'playwright';
 import { seedDemo } from '../../../../tools/seed-demo.ts';
 import { hashPassword } from '../../../core/session.ts';
 
-const base = path.resolve('.tmp'); fs.mkdirSync(base, { recursive: true });
+const base = path.resolve(process.env.NIHON_BROWSER_FIXTURE_ROOT || '.tmp'); fs.mkdirSync(base, { recursive: true });
 const directory = fs.mkdtempSync(path.join(base, 'shadowing-'));
 const dbPath = path.join(directory, 'demo.sqlite'); seedDemo(dbPath);
 const port = await new Promise<number>(resolve => {
