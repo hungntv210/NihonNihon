@@ -48,7 +48,9 @@ máy và thư mục dự án không dùng EFS. App/task lỗi được thử l�
 cách 1 phút; không chạy trùng. `StartWhenAvailable` chạy bù lịch bị lỡ.
 Đường dẫn tuyệt đối của `node.exe` được lấy lúc đăng ký và truyền cho cả hai
 task, tránh phụ thuộc PATH của phiên chưa đăng nhập; backup không cần npm.
+Khi nâng cấp Node hoặc đổi đường dẫn Node, đăng ký lại cả hai task để cập nhật `NodePath`.
 App chạy ở127.0.0.1:3000; log được nối thêm tại `data/reports/home/app.log`.
+`app.log` không tự xoay vòng; kiểm tra dung lượng hằng tháng và lưu trữ/dọn log khi cần.
 
 Sau xác nhận riêng, dùng `Start-ScheduledTask -TaskName NihonNihon-App` để thử.
 Xem LastTaskResult/History khi lỗi. Cần dừng/xóa task thì xin xác nhận trước khi
