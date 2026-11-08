@@ -56,7 +56,7 @@ powershell -NoProfile -File tools/home-copy-backup.ps1 -ProjectPath C:\Users\Adm
 node --env-file-if-exists=.env --env-file-if-exists=.env.local --import tsx tools/home-backup.ts verify D:\NihonNihonBackup\YYYY-MM-DD.json
 ```
 
-Tập lệnh dùng cùng `saveDailyBackup` như `npm run backup:daily`, rồi chép archive,
+Tập lệnh chạy `npm run backup:daily`, rồi chép archive ngày vừa tạo,
 so SHA-256 nguồn/đích và trích DB **vào thư mục tạm** để kiểm tra integrity, FK và
 bảng chính. Hash mọi thành phần archive cũng được kiểm tra. Không phục hồi vào
 DB đang dùng. Bản đích khác hash sẽ báo lỗi, không tự ghi đè; không tự xóa bản cũ
