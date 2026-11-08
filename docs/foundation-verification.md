@@ -361,3 +361,10 @@ Schema, worker dịch và database G0 không thay đổi.
 - npm run test:browser PASS7/7: common-tools, grammar, kanji, shadowing, srs, today-roadmap, vocab. Auto-discovery has no route allowlist; each script runs sequentially with a180s timeout and any failure fails the suite. Per-script logs/summary remain ignored under data/reports/browser-suite/; CI uploads these logs even after failures.
 - SRS browser-check explicitly loads Vietnamese/Japanese specimen fonts before asserting document.fonts.check; no app behavior changed. The existing app and all route walkthroughs pass. Auto-discovery regression covers new/nested checks and ignores backup filenames.
 - This dedicated test/CI PR changes only the workflow, package script, browser runner/discovery test and SRS browser test, plus this append-only audit. No schema, app behavior, G0 data or private credentials changes. Raw fullcheck/start/end logs stay ignored. Only this audit entry changes after successful checks.
+
+### 2026-11-08T22:31:39.8291032+07:00 — native microphone CI parity follow-up
+
+- Checked56cb12f751f5573c2df460df8aba71f2fd723456; start2026-11-08T22:29:39.4179650+07:00, end2026-11-08T22:31:39.8291032+07:00. Windows Node24.10.0/npm11.6.1, production Next/installed Chrome, isolated fixtures.
+- Full npm run check PASS86/86, typecheck/build/app16checks PASS; all7browser checks PASS. Shadowing keeps native fake-device recording/replay/denial assertions, uses full Chromium when no installed Chrome is specified, and emits capture diagnostics on failure.
+- First GitHub Ubuntu run passed SRS and6/7browser checks; native microphone initialization failed in default headless shell. This update tests full Chromium instead of skipping microphone assertions. Linux rerun remains required; local pass alone does not establish Linux success.
+- Logs data/reports/browser-ci-final-check.log, browser-ci-final-all.log, browser-ci-final-end.json and browser-suite/ remain ignored. Only this audit entry changes after the checked commit.
