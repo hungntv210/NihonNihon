@@ -353,3 +353,11 @@ Schema, worker dịch và database G0 không thay đổi.
 - Checked commit: ae3865cb3056390ebc8f9e88202fbbbc6e7ddc31; branch master. Full-check start 2026-11-07T19:06:55.1708048+07:00; end 2026-11-07T19:07:41.7014949+07:00.
 - npm run check PASS: typecheck PASS; tests85/85, zero failures/skips; production build PASS; test:app PASS. Windows, Node24.10.0/npm11.6.1, installed headless Chrome, disposable OpenJLPT fixtures; process/loopback access enabled.
 - Journal resolution retains all entries from both sides. Raw log stays ignored: data/reports/merge-sequence/pr12-master-ae3865c.log. Existing implementation and physical-device/deployment limitations remain unchanged.
+
+### 2026-11-08T22:24:48.8934952+07:00 — SRS font loading and complete route browser CI
+
+- Checked implementationfd55f025394531effac598e78c8ed37fa32d3fd3; start2026-11-08T22:22:47.7883572+07:00, end2026-11-08T22:24:48.8934952+07:00. Windows Node24.10.0/npm11.6.1, installed headless Chrome, production Next build, disposable fixtures and process/loopback access enabled.
+- Full npm run check PASS: typecheck PASS; tests86/86 (22prototype+64foundation/routes), zero failures/skips; production build PASS; test:app PASS16checks.
+- npm run test:browser PASS7/7: common-tools, grammar, kanji, shadowing, srs, today-roadmap, vocab. Auto-discovery has no route allowlist; each script runs sequentially with a180s timeout and any failure fails the suite. Per-script logs/summary remain ignored under data/reports/browser-suite/; CI uploads these logs even after failures.
+- SRS browser-check explicitly loads Vietnamese/Japanese specimen fonts before asserting document.fonts.check; no app behavior changed. The existing app and all route walkthroughs pass. Auto-discovery regression covers new/nested checks and ignores backup filenames.
+- This dedicated test/CI PR changes only the workflow, package script, browser runner/discovery test and SRS browser test, plus this append-only audit. No schema, app behavior, G0 data or private credentials changes. Raw fullcheck/start/end logs stay ignored. Only this audit entry changes after successful checks.
