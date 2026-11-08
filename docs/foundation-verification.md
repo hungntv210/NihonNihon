@@ -384,3 +384,16 @@ Schema, worker dịch và database G0 không thay đổi.
 - Checked commit: 179de3db5f549b616835bbff461de011ababe8e1; branch master. Full-check start 2026-11-08T23:09:28.4155906+07:00; end 2026-11-08T23:10:22.7945091+07:00.
 - npm run check PASS: typecheck PASS; tests86/86, zero failures/skips; production build PASS; test:app PASS. Windows, Node24.10.0/npm11.6.1, installed headless Chrome, disposable OpenJLPT fixtures; process/loopback access enabled.
 - Journal resolution retains all entries from both sides. Raw log stays ignored: data/reports/merge-sequence/pr14-master-179de3d.log. Existing implementation and physical-device/deployment limitations remain unchanged.
+
+### 2026-11-08T23:16:10.7533786+07:00 — Node24 action runtimes, local verification
+
+- Checked implementation4fcb17ac78c0c00ec889a2078a51c8673d28f80b; start2026-11-08T23:14:12.5055748+07:00,end2026-11-08T23:16:10.7533786+07:00. Windows Node24.10.0/npm11.6.1, production Next/installed Chrome and disposable fixtures.
+- npm run check PASS86/86,typecheck/build/app16checks PASS; npm run test:browser PASS7/7. Only three workflow references changed: checkout@v5,setup-node@v5,upload-artifact@v7. No step/condition/input changes; merged scope-always, timeout cleanup and native microphone fix remain intact.
+- Release verification: https://github.com/actions/checkout/releases/tag/v5.0.0 and https://github.com/actions/setup-node/releases/tag/v5.0.0 document Node24; latest upload major is7 (latestrelease7.0.2), https://github.com/actions/upload-artifact/releases/tag/v7.0.0 and https://raw.githubusercontent.com/actions/upload-artifact/v7/action.yml confirm default archive mode retained and runs.using node24.
+- PR14 was already merged179de3d before this instruction; changes are a narrow successor PR from master17f3e3b. GitHub rerun/deprecation-log verification pending first push. Raw local logs remain ignored at data/reports/node24-*. Only this audit entry changes after successful local checks.
+
+### 2026-11-08T23:19:41.2243912+07:00 — Node24 action runtime GitHub verification
+
+- GitHub Actions run42499109186 (job128787763582), head1ef097400db5ed93d5a7ef40a52b341246a7c00e: SUCCESS on Ubuntu24.04. npm run check and all7route browser checks passed; artifact upload and checkout/setup cleanup passed.
+- Read the completed job log and found zero Node.js20/node20 mentions or deprecation warnings. Log confirms checkout@v5, setup-node@v5 and upload-artifact@v7. Evidence: https://github.com/hungntv210/NihonNihon/actions/runs/42499109186 . Job finished2026-11-08T16:19:26.3455990Z.
+- Exact workflow comparison confirms only the three requested uses references differ from master17f3e3b; scope-always condition, timeout handling, microphone test, all other steps/inputs remain unchanged. Checked application/test tree remains4fcb17a; only append-only audit entries changed after local checks. This entry records the completed remote run; next push changes only this audit.
