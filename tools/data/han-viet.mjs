@@ -44,15 +44,16 @@ export function createMT(loaded,data,db) {
     const checksum=sha(config);
     release={release_id:`${source.source_id}:config:${checksum.slice(0,32)}`,source_id:source.source_id,version:`${config.model}:${config.prompt_version}`,checksum,artifact_url:`local://mt/${checksum}/manifest.json`,license:source.license,attribution:source.attribution,manifest_json:JSON.stringify(config)};
   }
+  // Index once per immutable import plan instead of scanning every result for every field.
+  const responsesByRequest=new Map(),cachedByRequest=new Map();
+  for(const response of data.responses)if(response.a.source.source_id===source?.source_id&&(!response.a.file.mt_config_sha256||response.a.file.mt_config_sha256===release?.checksum)){const id=response.row.request_id;if(!responsesByRequest.has(id))responsesByRequest.set(id,[]);responsesByRequest.get(id).push(response);}
+  if(release&&db)for(const row of db.prepare("SELECT context_json FROM vi_translations WHERE method='machine' AND release_id=? AND needs_refresh=0 ORDER BY created_at").all(release.release_id)){const context=JSON.parse(row.context_json);if(!cachedByRequest.has(context.request_id))cachedByRequest.set(context.request_id,context.mt_output);}
   function ask(task,input,validate,options={}) {
     input=canonicalMTInput(task,input,config);
     const found=[];
     const request_id=sha({task,input,release:release?.release_id ?? null});
-    if(release && db) {
-      const cached=db.prepare("SELECT context_json FROM vi_translations WHERE method='machine' AND release_id=? AND needs_refresh=0 AND json_extract(context_json,'$.request_id')=? ORDER BY created_at LIMIT 1").get(release.release_id,request_id);
-      if(cached) {const output=JSON.parse(cached.context_json).mt_output;try{validate(output);stats.cache_hits++;found.push({output,request_id,source,release});}catch{/* Source context changed; revalidate before reuse. */}}
-    }
-    const attempts=data.responses.filter(r=>r.row.request_id===request_id && r.a.source.source_id===source?.source_id && (!r.a.file.mt_config_sha256 || r.a.file.mt_config_sha256===sha(config))).slice(0,config?.max_attempts ?? 2);
+    if(cachedByRequest.has(request_id)){const output=cachedByRequest.get(request_id);try{validate(output);stats.cache_hits++;found.push({output,request_id,source,release});}catch{/* Source context changed; revalidate before reuse. */}}
+    const attempts=(responsesByRequest.get(request_id)??[]).slice(0,config?.max_attempts ?? 2);
     for(const attempt of attempts) {
       stats.attempts++;
       try { const output=nfc(attempt.row.output);validate(output);if(!found.some(r=>sha(r.output)===sha(output)))found.push({output,request_id,source,release}); }

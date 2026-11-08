@@ -6,6 +6,18 @@ import {fixture} from './helpers.mjs';
 import {randomSample,writeReviewCheckpoint,reviewFeedback,applyTranslationFlags} from '../../tools/data/campaign-review.mjs';
 import {prepare,runGemini,publicPlan} from '../../tools/data/mt-gemini.mjs';
 import {importCampaign} from '../../tools/data/translation-campaign.mjs';
+import {createMT} from '../../tools/data/han-viet.mjs';
+import {sha} from '../../tools/data/core.mjs';
+
+test('MT indexes cache once while preserving first-cache priority, result order and attempt caps',()=>{
+ const config={source_id:'mt:google-gemini',model:'gemini-test',prompt_version:'test',prompt_sha256:'a'.repeat(64),max_attempts:2},source={source_id:config.source_id,license:'test',attribution:'test'};
+ const input={word:'日'},release_id=`${config.source_id}:config:${sha(config).slice(0,32)}`,id=sha({task:'translate',input,release:release_id});let reads=0;
+ const db={prepare:()=>({all:()=>{reads++;return ['cached-first','cached-later'].map(text=>({context_json:JSON.stringify({request_id:id,mt_output:{text_vi:text}})}));}})};
+ const responses=['first','second','third','wrong-profile'].map(text=>({row:{request_id:id,output:{text_vi:text}},a:{source,file:{mt_config_sha256:text==='wrong-profile'?'b'.repeat(64):sha(config)}}}));
+ const engine=createMT({manifest:{mt:config,sources:[source]}},{responses},db);
+ for(let i=0;i<2;i++){const result=engine.ask('translate',input,o=>assert.ok(o.text_vi));assert.equal(result.output.text_vi,'cached-first');assert.deepEqual(result.alternatives.map(r=>r.output.text_vi),['first','second']);}
+ assert.equal(reads,1);assert.equal(engine.stats.cache_hits,2);assert.equal(engine.stats.attempts,4);
+});
 
 test('review checkpoint samples thirty unique new sentences near 500 and survives restart without duplicate files',t=>{
  const f=fixture(t),state={review_cursor:100},rows=Array.from({length:610},(_,i)=>({request_id:String(i),ja:'公開文'+i,output:{text_vi:'Câu thử '+i},model:'gemini-test'}));
