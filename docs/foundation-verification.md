@@ -368,3 +368,12 @@ Schema, worker dịch và database G0 không thay đổi.
 - Full npm run check PASS86/86, typecheck/build/app16checks PASS; all7browser checks PASS. Shadowing keeps native fake-device recording/replay/denial assertions, uses full Chromium when no installed Chrome is specified, and emits capture diagnostics on failure.
 - First GitHub Ubuntu run passed SRS and6/7browser checks; native microphone initialization failed in default headless shell. This update tests full Chromium instead of skipping microphone assertions. Linux rerun remains required; local pass alone does not establish Linux success.
 - Logs data/reports/browser-ci-final-check.log, browser-ci-final-all.log, browser-ci-final-end.json and browser-suite/ remain ignored. Only this audit entry changes after the checked commit.
+
+### 2026-11-08T23:05:53.1538508+07:00 — PR14 scope-always and timeout cleanup review fixes
+
+- Checked implementation2eeaac5a6a197723ad6ef1fb8529ec088ab83eec; start2026-11-08T23:03:47.7255818+07:00, end2026-11-08T23:05:53.1538508+07:00. Windows Node24.10.0/npm11.6.1, locked dependencies, production Next and installed Chrome, disposable data; process/loopback access enabled.
+- Full npm run check PASS86/86, typecheck/build/app16checks PASS; npm run test:browser PASS7/7. No managed browser-suite fixture directories remain after the suite.
+- Ownership step now always() && startsWith(github.head_ref, 'g1/'). Exactly the one approved assertion in tests/scope.test.ts changed; all other scope assertions retained.
+- Runner uses asynchronous child execution with Windows taskkill /T /F or a dedicated Unix process group on timeout. Each check receives a unique runner-owned fixture root; all browser-check changes only select that root, and runner cleanup validates the absolute parent before removal. App/schema/G0 unchanged.
+- Temporary detached worktree timeout proof: a fake browser-check started real Next PID16012, health endpoint was ready, then hung. With8000ms test timeout runner returned FAIL/exit1 and timedOut=true; Next PID was absent and its fixture root removed. Fake file/worktree removed without commit. Default real-check timeout remains180000ms.
+- Evidence stays ignored under data/reports/timeout-proof/, timeout-check.log, timeout-browser.log and timeout-check-end.json. Only this append-only entry changes after the checked commit.
