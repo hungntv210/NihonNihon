@@ -93,3 +93,11 @@ to master. G0 retains its own package/test command until accepted and merged.
 - Tests cover 読→đọc versus độc, accepted/flagged 南→nam and 毎→mỗi, normal importer selection plus two review reports, shared mixed-task sampling/numbering, 60-second feedback wait/resume at <=10% major and immediate stop above10%.
 - The owner's new shared learning rollout explicitly includes pending-feedback waiting (first prepared in PR #23). Learning review flags are imported normally; rejected rows remain separate. The minimum-sense gate, frozen prompts, schema and per-model ledgers remain unchanged.
 - Rollout must rotate into a fresh private directory, reuse existing3.5 quota paths, preserve sentence/manual provenance and reviews, register only the approved meaning pilot, reserve review-learning-0003 onward, and keep3.6/3.8 disabled. Runtime records and one-hour monitoring stay private.
+
+## 2026-11-09 — consecutive transient failure streak
+
+- Checked implementation `82bc4406f2fe81abe121e08854a03b8f65f6fec5`, isolated branch `codex/g0-consecutive-retries`, based on merged PR #24.
+- Full `npm test`: **102/102 PASS**, zero skips, Windows / Node24; `2026-11-09T22:26:18.4431215+07:00` → `2026-11-09T22:26:31.3049269+07:00`.
+- `complete` and `partial_output` reset `retry.failures` to0; the next transient failure starts at1. Six consecutive failures still hold that stream for the quota day. Cooldown, Pacific reset, daily_limit and provider ledger rules remain unchanged.
+- Tests cover both streams, both success statuses, persistence across restart, and the unchanged six-consecutive-failure/day-quota boundaries. The old cumulative-counter assertions were updated to the requested policy.
+- Owner separately authorized a production status-only counter correction and one launcher restart without deploying this PR. Runtime PID/config verification, old/new counter and cleanup are logged privately. No translation/backup deletion, schema change, quota reset or real provider call by tests.

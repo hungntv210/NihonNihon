@@ -15,20 +15,28 @@ test('campaign network failures cool down for 15 minutes and recover within the 
  for(const field of ['hold_day','finished_day']){
   let stream={};assert.equal(recordCampaignRetry(stream,'api_error',field,start),'cooldown');assert.equal(stream[field],undefined);assert.equal(stream.retry.cooldown_until,start+900000);
   stream=JSON.parse(JSON.stringify(stream));assert.equal(campaignRetryDelay(stream,field,start+899000),1000);assert.equal(campaignRetryDelay(stream,field,start+900000),0);
-  assert.equal(recordCampaignRetry(stream,'complete',field,start+900000),null);assert.equal(stream[field],undefined);assert.equal(stream.retry.failures,1);assert.equal(stream.retry.cooldown_until,undefined);
+  assert.equal(recordCampaignRetry(stream,'complete',field,start+900000),null);assert.equal(stream[field],undefined);assert.equal(stream.retry.failures,0);assert.equal(stream.retry.cooldown_until,undefined);
  }
 });
 
-test('campaign caps transient failures at six per stream and Pacific day without changing daily quota state',()=>{
+test('campaign caps six consecutive transient failures per stream without changing daily quota state',()=>{
  let now=Date.parse('2026-11-09T08:30:00Z');const sentences={},learning={};
  for(let i=1;i<=6;i++){
   assert.equal(campaignRetryDelay(sentences,'hold_day',now),0);const action=recordCampaignRetry(sentences,'api_error','hold_day',now);assert.equal(sentences.retry.failures,i);
   assert.equal(action,i===6?'day_hold':'cooldown');assert.equal(sentences.hold_day,i===6?'2026-11-09':undefined);now+=900000;
-  if(i<6){recordCampaignRetry(sentences,'complete','hold_day',now);assert.equal(sentences.retry.failures,i);}
  }
  assert.equal(sentences.retry.reason,'transient_retry_limit');assert.ok(campaignRetryDelay(sentences,'hold_day',now)>0);assert.equal(campaignRetryDelay(learning,'finished_day',now),0);assert.equal(learning.retry.failures,0);
  assert.equal(campaignRetryDelay(sentences,'hold_day',Date.parse('2026-11-10T08:00:00Z')),0);assert.equal(sentences.retry.failures,0);
  recordCampaignRetry(learning,'daily_limit','finished_day',now);assert.equal(learning.finished_day,'2026-11-09');assert.equal(learning.retry.reason,'daily_limit');assert.equal(learning.retry.failures,0);
+});
+
+test('complete and partial_output reset the persisted failure streak; the next error starts at one',()=>{
+ for(const field of ['hold_day','finished_day'])for(const status of ['complete','partial_output']){
+  let now=Date.parse('2026-11-09T08:30:00Z'),stream={};
+  for(let i=0;i<5;i++){recordCampaignRetry(stream,'api_error',field,now);now+=900000;}
+  stream=JSON.parse(JSON.stringify(stream));assert.equal(stream.retry.failures,5);assert.equal(recordCampaignRetry(stream,status,field,now),null);assert.equal(stream.retry.failures,0);assert.equal(stream[field],undefined);assert.equal(stream.retry.cooldown_until,undefined);
+  assert.equal(recordCampaignRetry(stream,'api_error',field,now),'cooldown');assert.equal(stream.retry.failures,1);assert.equal(stream[field],undefined);
+ }
 });
 
 test('v7 derives directly from v4 with one subject-pronoun rule and immutable earlier prompts',async()=>{

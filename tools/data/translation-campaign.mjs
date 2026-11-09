@@ -23,6 +23,7 @@ export function campaignRetryDelay(stream,holdField,now=Date.now()){
 export function recordCampaignRetry(stream,status,holdField,now=Date.now()){
  campaignRetryDelay(stream,holdField,now);const retry=stream.retry;
  if(status==='daily_limit'){stream[holdField]=retry.day;retry.reason='daily_limit';delete retry.cooldown_until;return 'day_hold';}
+ if(['complete','partial_output'].includes(status))retry.failures=0;
  if(['complete','partial_output','invalid_output'].includes(status)){delete retry.cooldown_until;delete retry.reason;return null;}
  retry.failures++;
  if(retry.failures>=6){stream[holdField]=retry.day;retry.reason='transient_retry_limit';delete retry.cooldown_until;return 'day_hold';}
