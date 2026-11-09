@@ -76,7 +76,7 @@ export function retainCampaignBackups(directory,currentFile){
 }
 export async function ensureDailyCampaignSnapshot(directory,dbPath,timestamp=Date.now(),checkDisk=assertDiskSpace){
  if(!fs.existsSync(dbPath))return {path:null,created:false};
- checkDisk('snapshot');
+ checkDisk('snapshot',{dbPath});
  const root=path.resolve(directory),backupDir=path.join(root,'backups'),index=path.join(root,'campaign-backups.json'),day=quotaDay(timestamp),daysFile=path.join(root,'quota-snapshot-days.json');
  fs.mkdirSync(backupDir,{recursive:true});need(!fs.lstatSync(backupDir).isSymbolicLink(),'Unsafe campaign backup directory');
  const days=fs.existsSync(daysFile)?JSON.parse(fs.readFileSync(daysFile,'utf8')):{};
@@ -89,7 +89,7 @@ export async function ensureDailyCampaignSnapshot(directory,dbPath,timestamp=Dat
  }
  const file=path.join(backupDir,`quota-${day}.sqlite`);
  if(fs.existsSync(file))need(fs.lstatSync(file).isFile()&&!fs.lstatSync(file).isSymbolicLink(),'Unsafe daily snapshot file');
- if(!fs.existsSync(file)){checkDisk('snapshot');const db=openDatabase(dbPath);try{await backup(db,file);}finally{db.close();}}
+ if(!fs.existsSync(file)){checkDisk('snapshot',{dbPath});const db=openDatabase(dbPath);try{await backup(db,file);}finally{db.close();}}
  const check=new DatabaseSync(file,{readOnly:true});try{need(check.prepare('PRAGMA integrity_check').get().integrity_check==='ok'&&!check.prepare('PRAGMA foreign_key_check').all().length,'Invalid daily snapshot');need(check.prepare("SELECT 1 FROM sqlite_schema WHERE name='source_releases'").get(),'Not a Nihon snapshot');}finally{check.close();}
  remember(path.basename(file));retainCampaignBackups(root,file);return {path:file,created:true,day};
 }

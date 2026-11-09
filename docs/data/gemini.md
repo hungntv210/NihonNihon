@@ -439,7 +439,8 @@ thì `campaign-backups.json` là mảng rỗng cho tới snapshot của ngày ti
 
 ### Cổng dung lượng trống
 
-Worker kiểm tra dung lượng khả dụng của C: trước mỗi snapshot/import, và kiểm
+Worker đo ổ chứa DB bằng `path.parse(path.resolve(dbPath)).root` trước mỗi
+snapshot/import (DB trên C: đo C:, DB chuyển sang D: đo D:), và kiểm
 tra lại ngay trước transaction nhập DB. Nếu còn dưới **5.000.000.000 byte**,
 job dừng với `status: disk_low`, ghi event cùng dung lượng, ngưỡng và giai đoạn
 vào log/status; không chuyển thành `blocked` hay `review_paused`. Khi phát hiện
