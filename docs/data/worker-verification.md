@@ -79,3 +79,10 @@ to master. G0 retains its own package/test command until accepted and merged.
 - Full `npm test`: **91/91 PASS**, zero skips, Windows / Node 24; `2026-11-09T17:48:41.5311314+07:00` → `2026-11-09T17:48:54.9286111+07:00`.
 - New tests verify strict numeric-glossary rejection before DB creation, manual/owner provenance through the real fixture importer, complete sentence coverage/final review,60 pending learning requests with20 Han Viet,30 distinct review items with10 Han Viet, and validated/pinned120-second timeout forwarded to Interactions.
 - Actual owner-authorized manual import and exactly two pilot batches were run from this isolated worktree; operational results stay private. Pilot output is not imported before review. No private data, credentials, schema changes, provider call by tests, or production file/translation deletion is part of this PR.
+
+## 2026-11-09 — task routing and kanji-meaning QA after pilot review
+
+- Checked implementation `3b7952a28919962bc1732e56762669db98e73955`, same PR #24 branch `codex/g0-learning-lite`.
+- Full `npm test`: **96/96 PASS**, zero skips, Windows / Node 24; `2026-11-09T21:40:48.5416474+07:00` → `2026-11-09T21:40:57.2826807+07:00`.
+- Tests cover task-specific importer routing, adapter routes, accent/case-insensitive reading collisions, minimum distinct comma-separated senses, per-row rejection with other rows retained, frozen base prompt/new variant hashes, meaning-only60-item selection/30-item review, and independent Han Viet500-item review/pending/major gates.
+- The new meaning-only pilot was limited to two logical batches and stopped for review. Neither old nor new pilot was imported into the DB. Per-row reasons, actual model/calls, candidate context, feedback and outputs stay private. No bulk Han Viet worker was started, no feedback was changed, no schema/ledger reset or production file/data deletion occurred.
