@@ -24,9 +24,9 @@ function put(db,table,row,keys,ignore=false) {
   const update=columns.filter(c=>!keys.includes(c)).map(c=>`${c}=excluded.${c}`).join(',');
   db.prepare(`INSERT INTO ${table} (${columns.join(',')}) VALUES (${columns.map(()=>'?').join(',')}) ON CONFLICT(${keys.join(',')}) DO ${ignore || !update?'NOTHING':`UPDATE SET ${update}`}`).run(...columns.map(c=>row[c]));
 }
-export async function applyPlan(db,plan,{dbPath=':memory:',backupDirectory,auditSources}={}) {
+export async function applyPlan(db,plan,{dbPath=':memory:',backupDirectory,auditSources,takeBackup=true}={}) {
   let backupPath=null;
-  if(dbPath!==':memory:' && db.prepare('SELECT count(*) n FROM content_items').get().n>0) {
+  if(takeBackup&&dbPath!==':memory:' && db.prepare('SELECT count(*) n FROM content_items').get().n>0) {
     const dir=backupDirectory || path.join(path.dirname(dbPath),'backups');fs.mkdirSync(dir,{recursive:true});
     backupPath=path.join(dir,`before-${Date.now()}-${sha(plan.runId).slice(0,8)}.sqlite`);
     await backup(db,backupPath);

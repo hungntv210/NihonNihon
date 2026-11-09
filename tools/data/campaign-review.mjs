@@ -1,9 +1,10 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import {randomInt} from 'node:crypto';
-import {DatabaseSync} from 'node:sqlite';
+import {DatabaseSync,backup} from 'node:sqlite';
 import {privateWrite,sha,need} from './core.mjs';
 import {openDatabase} from './store.mjs';
+import {quotaDay} from './mt-gemini.mjs';
 
 export function randomSample(rows,count=30,choose=randomInt){
  const unique=[...new Map(rows.map(r=>[r.ja.normalize('NFC'),r])).values()];
@@ -21,6 +22,7 @@ export function knownSourceReleases(dbPath,manifest){
 }
 export function writeReviewCheckpoint({directory,state,rows,provenance,force=false,choose}){
  const cursor=state.review_cursor??rows.length,delta=rows.length-cursor;if(delta<500&&!(force&&delta>0))return null;
+ const pending=pendingReviewAtCheckpoint({directory,state,count:rows.length,force});if(pending)return {paused:true,...pending};
  const sampleId='review-'+String((state.reviews?.length??0)+1).padStart(4,'0');
  const sample=randomSample(rows.slice(Math.max(0,rows.length-Math.max(delta,30))),30,choose).map(r=>({...r,level:provenance[r.ja]?.level??null,en:provenance[r.ja]?.english??[],vi:r.output.text_vi}));
  const record={version:1,sample_id:sampleId,from_count:cursor,to_count:rows.length,rows:sample};
@@ -29,6 +31,13 @@ export function writeReviewCheckpoint({directory,state,rows,provenance,force=fal
  const esc=v=>String(v).replaceAll('|','\\|').replaceAll('\n','<br>');
  privateWrite(path.join(directory,sampleId+'.md'),`# ${sampleId} — ${cursor} → ${rows.length}\n\nMẫu ngẫu nhiên; chưa được duyệt nghĩa. Điền severity null/ok/minor/major trong ${sampleId}.feedback.json. Worker dừng khi số major / tổng mẫu > 10%, kể cả phản hồi chưa điền hết.\n\n| Cấp | Nhật | Anh nguồn | Việt | Model |\n| --- | --- | --- | --- | --- |\n`+sample.map(r=>`| ${r.level??''} | ${esc(r.ja)} | ${esc(r.en.join(' / '))} | ${esc(r.vi)} | ${r.model} |`).join('\n')+'\n');
  (state.reviews??=[]).push({sample_id:sampleId,from_count:cursor,to_count:rows.length});state.review_cursor=rows.length;return record;
+}
+export function pendingReviewAtCheckpoint({directory,state,count,force=false}){
+ if(count-(state.review_cursor??count)<500&&!force)return null;const previous=state.reviews?.at(-1);if(!previous)return null;
+ const read=suffix=>JSON.parse(fs.readFileSync(path.join(directory,previous.sample_id+suffix),'utf8'));
+ const feedback=reviewFeedback(read('.json'),read('.feedback.json'));
+ if(feedback.pause)return {sample_id:previous.sample_id,reason:'major_errors',...feedback};
+ if(feedback.reviewed<feedback.total)return {sample_id:previous.sample_id,reason:'previous_review_incomplete',reviewed:feedback.reviewed,total:feedback.total};return null;
 }
 export function reviewFeedback(sample,feedback){
  need(feedback.version===1&&feedback.sample_id===sample.sample_id&&Array.isArray(feedback.results),'Invalid review feedback');
@@ -52,9 +61,27 @@ export function retainCampaignBackups(directory,currentFile){
  need(!fs.lstatSync(backupDir).isSymbolicLink(),'Unsafe campaign backup directory');
  need(path.dirname(path.resolve(currentFile))===backupDir,'Backup is outside campaign directory');
  const names=[...new Set([...(fs.existsSync(index)?JSON.parse(fs.readFileSync(index,'utf8')):[]),path.basename(currentFile)])];
- need(names.every(name=>/^before-\d+-[a-f0-9]{8}\.sqlite$/.test(name)),'Invalid campaign backup name');
+ need(names.every(name=>/^(?:before-\d+-[a-f0-9]{8}|quota-\d{4}-\d{2}-\d{2})\.sqlite$/.test(name)),'Invalid campaign backup name');
  const existing=names.filter(name=>fs.existsSync(path.join(backupDir,name)));
- const keep=new Set([existing[0],...existing.slice(-2)]);
- for(const name of existing)if(!keep.has(name)){const file=path.join(backupDir,name);need(fs.lstatSync(file).isFile()&&!fs.lstatSync(file).isSymbolicLink(),'Unsafe campaign backup file');fs.unlinkSync(file);}
+ const keep=new Set([existing[0],...existing.slice(-1)]);
+ for(const name of existing)if(!keep.has(name)){const file=path.join(backupDir,name),stat=fs.lstatSync(file);need(stat.isFile()&&!stat.isSymbolicLink(),'Unsafe campaign backup file');fs.unlinkSync(file);fs.appendFileSync(path.join(root,'backup-deletions.jsonl'),JSON.stringify({at:new Date().toISOString(),file,bytes:stat.size,reason:'keep_first_and_latest'})+'\n');}
  privateWrite(index,JSON.stringify(existing.filter(name=>keep.has(name)),null,2)+'\n');
+}
+export async function ensureDailyCampaignSnapshot(directory,dbPath,timestamp=Date.now()){
+ if(!fs.existsSync(dbPath))return {path:null,created:false};
+ const root=path.resolve(directory),backupDir=path.join(root,'backups'),index=path.join(root,'campaign-backups.json'),day=quotaDay(timestamp),daysFile=path.join(root,'quota-snapshot-days.json');
+ fs.mkdirSync(backupDir,{recursive:true});need(!fs.lstatSync(backupDir).isSymbolicLink(),'Unsafe campaign backup directory');
+ const days=fs.existsSync(daysFile)?JSON.parse(fs.readFileSync(daysFile,'utf8')):{};
+ const validName=name=>/^(?:before-\d+-[a-f0-9]{8}|quota-\d{4}-\d{2}-\d{2})\.sqlite$/.test(name);
+ const remember=name=>{days[day]=name;privateWrite(daysFile,JSON.stringify(days,null,2)+'\n');};
+ if(days[day]){need(validName(days[day]),'Invalid daily snapshot receipt');const file=path.join(backupDir,days[day]);need(fs.existsSync(file)&&fs.lstatSync(file).isFile()&&!fs.lstatSync(file).isSymbolicLink(),'Recorded daily snapshot is missing or unsafe; no second snapshot created');retainCampaignBackups(root,file);return {path:file,created:false,day};}
+ const registered=fs.existsSync(index)?JSON.parse(fs.readFileSync(index,'utf8')):[];
+ for(const name of [...registered].reverse()){need(/^(?:before-\d+-[a-f0-9]{8}|quota-\d{4}-\d{2}-\d{2})\.sqlite$/.test(name),'Invalid campaign backup name');const priorDay=name.startsWith('quota-')?name.slice(6,16):quotaDay(Number(/^before-(\d+)-/.exec(name)[1]));
+  if(priorDay===day&&fs.existsSync(path.join(backupDir,name))){const file=path.join(backupDir,name);need(fs.lstatSync(file).isFile()&&!fs.lstatSync(file).isSymbolicLink(),'Unsafe campaign backup file');remember(name);retainCampaignBackups(root,file);return {path:file,created:false,day};}
+ }
+ const file=path.join(backupDir,`quota-${day}.sqlite`);
+ if(fs.existsSync(file))need(fs.lstatSync(file).isFile()&&!fs.lstatSync(file).isSymbolicLink(),'Unsafe daily snapshot file');
+ if(!fs.existsSync(file)){const db=openDatabase(dbPath);try{await backup(db,file);}finally{db.close();}}
+ const check=new DatabaseSync(file,{readOnly:true});try{need(check.prepare('PRAGMA integrity_check').get().integrity_check==='ok'&&!check.prepare('PRAGMA foreign_key_check').all().length,'Invalid daily snapshot');need(check.prepare("SELECT 1 FROM sqlite_schema WHERE name='source_releases'").get(),'Not a Nihon snapshot');}finally{check.close();}
+ remember(path.basename(file));retainCampaignBackups(root,file);return {path:file,created:true,day};
 }
