@@ -416,3 +416,9 @@ Schema, worker dịch và database G0 không thay đổi.
 - Full gate: 2026-11-08T23:43:42.1075082+07:00 → 2026-11-08T23:44:48.1104131+07:00; Windows, Node24, public fixture.
 - `npm run check`: PASS — typecheck, 87/87 tests (22 prototype + 65 TypeScript), production build, test:app 16/16.
 - No installation, task registration, Tailscale changes or D: writes. Physical deployment acceptance remains pending.
+
+## 2026-11-09 — register JLPT daily ownership
+
+- Checked commit `9e3d415c041617f80d12ea252ae62a0447013b8c`, isolated branch `codex/g1-register-jlpt`.
+- Full gate `2026-11-09T22:49:41.9160815+07:00` → `2026-11-09T22:51:23.1422246+07:00`, Windows/Node24: typecheck PASS; tests **87/87** (22 prototype +65 TypeScript); build PASS; test:app PASS (16 checks).
+- `node tools/check-route-scope.mjs origin/master foundation`: PASS. Registers only `g1/jlpt-daily` and its `/jlpt` alias (the existing Today link); no feature implementation, schema, DB, auth or navigation change.
