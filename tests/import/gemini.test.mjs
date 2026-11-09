@@ -128,9 +128,18 @@ test('API failures preserve real HTTP 400/429/503 and distinguish network errors
  assert.equal(apiErrorStatus({response:{status:503}}),503);assert.equal(apiErrorStatus({code:'ECONNRESET'}),null);assert.equal(apiErrorStatus({status:null}),null);
  for(const code of [400,429,503]){
   const {options}=await setup(t),attempts=[];
-  const result=await runGemini({...options,config:{...config,max_api_attempts:1},ai:fake(async()=>{throw {response:{status:code},message:'secret-do-not-log'};}),onAttempt:a=>attempts.push(a)});
+  const result=await runGemini({...options,config:{...config,max_api_attempts:1},ai:fake(async()=>{throw {response:{status:code},message:'key=secret-do-not-log'};}),onAttempt:a=>attempts.push(a)});
   assert.equal(result.error_status,code);assert.equal(attempts[0].http_status,code);assert.equal(attempts[0].error_kind,'http');assert.ok(!JSON.stringify(attempts).includes('secret-do-not-log'));
  }
+});
+
+test('503 attempt preserves the message, redacts keys before the 300-character limit, and keeps retry waits',async t=>{
+ const {options}=await setup(t),attempts=[],pauses=[],key='test-env-gemini-secret',googleKey='AIza'+'a'.repeat(35),previous=process.env.GEMINI_API_KEY;
+ process.env.GEMINI_API_KEY=key;t.after(()=>{if(previous==null)delete process.env.GEMINI_API_KEY;else process.env.GEMINI_API_KEY=previous;});
+ let clock=Date.now();const message=`Google temporarily unavailable: ${key}; ${googleKey}; key=label-secret; `+'x'.repeat(400);
+ const result=await runGemini({...options,limit:1,ai:fake(async()=>{throw {status:503,message};}),onAttempt:a=>attempts.push(a),now:()=>clock,random:()=>0.5,sleep:async ms=>{pauses.push(ms);clock+=ms;}});
+ assert.equal(result.error_status,503);assert.equal(result.calls,3);assert.deepEqual(pauses,[32500,60000]);
+ for(const attempt of attempts){assert.equal(attempt.http_status,503);assert.equal(attempt.error_message.length,300);assert.ok(attempt.error_message.startsWith('Google temporarily unavailable: [REDACTED]'));assert.ok(![key,googleKey,'label-secret'].some(secret=>attempt.error_message.includes(secret)));}
 });
 
 test('global call cap stops before another request and audits every response',async t=>{

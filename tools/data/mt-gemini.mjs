@@ -74,6 +74,11 @@ export function apiErrorStatus(error){
  for(const value of [error?.status,error?.statusCode,error?.code,error?.response?.status,error?.cause?.status,error?.error?.code])if(value!=null&&/^\d{3}$/.test(String(value))&&Number(value)>=100&&Number(value)<=599)return Number(value);
  return null;
 }
+function apiErrorMessage(error){
+ let message=String(error?.message??'');
+ for(const key of [process.env.GEMINI_API_KEY,process.env.GOOGLE_API_KEY].filter(Boolean))message=message.replaceAll(key,'[REDACTED]');
+ return message.replace(/AIza[\w-]+/g,'[REDACTED]').replace(/((?:key|x-goog-api-key)["']?\s*[:=]\s*["']?)[^\s"'&;,}]+/gi,'$1[REDACTED]').slice(0,300);
+}
 export function settings(c){
  need(c&&typeof c.model==='string'&&/^(models\/)?gemini-[a-zA-Z0-9._-]+$/.test(c.model),'Explicit Gemini model ID required');
  for(const k of ['requests_per_minute','requests_per_day','daily_budget'])need(Number.isSafeInteger(c[k])&&c[k]>0,`Real rate limit required: ${k}`);
@@ -160,7 +165,7 @@ async function runUnlocked({manifestPath,config,requestsPath='data/requests/batc
  onAttempt({model:mt.model,call:calls,http_status:200,text,requests:batch,validation_error:validationError});
  if(validationError){invalidOutputs++;if(retry<Math.min(2,(config.max_api_attempts??3)-1)){await sleep(Math.max(1000,config.pause_after_response_ms??0));continue;}status='invalid_output';break outer;}
  results.push(...output);sent+=output.length;usage.push(response.usage??response.usageMetadata??null);saveResults();onProgress({model:mt.model,sent,calls,remaining:pending.length-sent});if(config.pause_after_response_ms)await sleep(config.pause_after_response_ms);break;
- }catch(e){const code=apiErrorStatus(e);errorStatus=code??'unknown';onAttempt({model:mt.model,call:calls,http_status:code,error_kind:code?'http':'network_or_unknown',requests:batch});if(code!==429){if([500,502,503,504].includes(code)&&retry<Math.min(config.max_api_attempts??3,3)-1){await sleep(Math.min(30000*2**retry+Math.floor(random()*5001),60000));continue;}status='api_error';break outer;}
+ }catch(e){const code=apiErrorStatus(e);errorStatus=code??'unknown';onAttempt({model:mt.model,call:calls,http_status:code,error_kind:code?'http':'network_or_unknown',error_message:apiErrorMessage(e),requests:batch});if(code!==429){if([500,502,503,504].includes(code)&&retry<Math.min(config.max_api_attempts??3,3)-1){await sleep(Math.min(30000*2**retry+Math.floor(random()*5001),60000));continue;}status='api_error';break outer;}
  const details=String(e.message??'');if(/perday|per.day|daily/i.test(details)){ledger.blockedDay=ledger.day;saveState();status='daily_limit';break outer;}
  if(retry>=(config.max_api_attempts??5)-1){status='rate_limited';break outer;}const delay=details.match(/retryDelay[^0-9]*(\d+(?:\.\d+)?)s/);await sleep(Math.max(10000*2**retry,delay?Number(delay[1])*1000:0));
  }
