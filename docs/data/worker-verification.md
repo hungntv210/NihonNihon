@@ -31,3 +31,11 @@ to master. G0 retains its own package/test command until accepted and merged.
 - Actual archive metadata, SHA-256, source deletion record and disk measurements remain private; no translation results, DB files or environment were committed.
 
 - Cold-runner follow-up: CI run `42564131082` reached all tests but the old six-second launcher readiness poll expired (75/76 passed). Commit `92f7fb65c970d7c8f061a9cc9bd8ba69f2276207` waits for the readiness file up to 30 seconds, still verifies the actual worker start timestamp and single launch, and kills the fake process tree on test failure. Full local recheck: **76/76 PASS**, `2026-11-09T11:54:33.9139876+07:00` → `2026-11-09T11:54:45.8698099+07:00`.
+
+## 2026-11-09 — selected backup archives and disk-low gate
+
+- Checked commit: `b5de39617ab39bd5e7fe19b2d38048ba4b46922a`, same PR branch `codex/g0-snapshot-archive-ci`.
+- `npm test`: **81/81 PASS**, no skips, Windows / Node 24; `2026-11-09T12:21:39.5460965+07:00` → `2026-11-09T12:21:49.6120195+07:00`.
+- Added project-bound latest/legacy backup archiving, external daily-receipt reuse, and refusal of sources outside the project. Source removal requires verified destination SHA-256 and integrity/FK first.
+- Disk tests cover the exact 5,000,000,000-byte boundary, no snapshot/import or DB mutation below threshold, a late pre-transaction check, and worker status/log/lock handling for `disk_low`.
+- Operational file inventories, hashes, receipts, real disk readings and deletion logs remain private. No fixed 19-GB target or pagefile changes are part of this update.
