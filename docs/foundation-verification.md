@@ -425,3 +425,12 @@ Schema, worker dịch và database G0 không thay đổi.
 
 - Owner-requested whitespace correction checked at `5798864763f5720a25820b2089cd54c16db5cdde`: full check PASS (87/87 tests, typecheck/build/test:app), `2026-11-09T22:56:39.1911487+07:00` → `2026-11-09T22:57:53.4657032+07:00`. Foundation scope guard PASS.
 - CI diagnosis: `pull_request:` is unfiltered, so codex/* PRs into master do trigger it. Run `42649184927` passed npm run check but failed the existing Vocab browser check at line173 (30s waiting for “Mở nghĩa”). Only the G1-specific scope step was skipped for this codex branch. No workflow or Vocab code was changed here.
+
+## 2026-11-09 — Vocab lesson browser prerequisite regression
+
+- Checked implementation `03f750cf0dd79d3804001ffcb83649af22b8f933`, isolated `codex/vocab-lesson-check` from master `215e48a`. Scope is Vocab plus this append-only entry; no app behavior/schema/workflow/G0 changes.
+- Reproduced the master timeout with diagnostics only: lesson HTTP **423**, body “Bài mới đang khóa…”, no page errors. The default2026-11-02 start date entered its second week on2026-11-09 without prior shadowing. The fixture had8 active vocab/0 initial cards and the preceding save left1 card; this was the real lesson prerequisite, not a missing word, renamed button or render exception. Screenshot/body/server output saved in gitignored data/reports/vocab-regression/before-*.
+- Fixture now isolates settings/roadmap/backup paths, starts two weeks before its local date, explicitly verifies missing-shadowing423 and accessible SRS, then supplies a valid25-minute/two-clip makeup. All existing reveal/save/next assertions remain unchanged. Lesson entry after makeup is HTTP200 with “Mở nghĩa”; screenshots/body/server diagnostics persist locally.
+- `npm run check` PASS, `2026-11-09T23:27:37.4473809+07:00` → `2026-11-09T23:28:48.6610409+07:00`: typecheck, **87/87** tests (22 prototype +65 TypeScript), production build, test:app **16/16**. Windows/Node v24.10.0, public fixture and synthetic translations only.
+- `npm run test:browser` PASS **7/7**, `2026-11-09T23:28:48.6610409+07:00` → `2026-11-09T23:29:54.6105984+07:00`; includes Vocab locked/unlocked policy regression and original reveal/save/next checks. `node tools/check-route-scope.mjs origin/master g1/vocab`: PASS. Raw logs/summary in gitignored data/reports/.
+- Owner policy: never merge a red-CI PR without separate explicit owner approval. No G0 worker or production data/backup touched; only temporary browser fixtures cleaned by tests.
