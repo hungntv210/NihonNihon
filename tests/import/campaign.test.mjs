@@ -4,11 +4,32 @@ import fs from 'node:fs';
 import path from 'node:path';
 import {fixture} from './helpers.mjs';
 import {prepare,runGemini,settings,PROMPT,PROMPT_V4,PROMPT_V5,PROMPT_V6_INITIAL,PROMPT_V6,promptFor} from '../../tools/data/mt-gemini.mjs';
-import {rotateCampaign,acceptedCampaignCache,pendingCampaignRequests,importCampaign} from '../../tools/data/translation-campaign.mjs';
+import {rotateCampaign,acceptedCampaignCache,pendingCampaignRequests,importCampaign,campaignRetryDelay,recordCampaignRetry} from '../../tools/data/translation-campaign.mjs';
 import {hash} from '../../tools/data/core.mjs';
 const config={model:'gemini-test',prompt_version:'gemini-vi-hv-4',requests_per_minute:10,requests_per_day:20,daily_budget:17,max_output_tokens:4096};
 const read=p=>JSON.parse(fs.readFileSync(p));
 const write=(p,v)=>fs.writeFileSync(p,JSON.stringify(v));
+
+test('campaign network failures cool down for 15 minutes and recover within the same quota day',()=>{
+ const start=Date.parse('2026-11-09T08:30:00Z');
+ for(const field of ['hold_day','finished_day']){
+  let stream={};assert.equal(recordCampaignRetry(stream,'api_error',field,start),'cooldown');assert.equal(stream[field],undefined);assert.equal(stream.retry.cooldown_until,start+900000);
+  stream=JSON.parse(JSON.stringify(stream));assert.equal(campaignRetryDelay(stream,field,start+899000),1000);assert.equal(campaignRetryDelay(stream,field,start+900000),0);
+  assert.equal(recordCampaignRetry(stream,'complete',field,start+900000),null);assert.equal(stream[field],undefined);assert.equal(stream.retry.failures,1);assert.equal(stream.retry.cooldown_until,undefined);
+ }
+});
+
+test('campaign caps transient failures at six per stream and Pacific day without changing daily quota state',()=>{
+ let now=Date.parse('2026-11-09T08:30:00Z');const sentences={},learning={};
+ for(let i=1;i<=6;i++){
+  assert.equal(campaignRetryDelay(sentences,'hold_day',now),0);const action=recordCampaignRetry(sentences,'api_error','hold_day',now);assert.equal(sentences.retry.failures,i);
+  assert.equal(action,i===6?'day_hold':'cooldown');assert.equal(sentences.hold_day,i===6?'2026-11-09':undefined);now+=900000;
+  if(i<6){recordCampaignRetry(sentences,'complete','hold_day',now);assert.equal(sentences.retry.failures,i);}
+ }
+ assert.equal(sentences.retry.reason,'transient_retry_limit');assert.ok(campaignRetryDelay(sentences,'hold_day',now)>0);assert.equal(campaignRetryDelay(learning,'finished_day',now),0);assert.equal(learning.retry.failures,0);
+ assert.equal(campaignRetryDelay(sentences,'hold_day',Date.parse('2026-11-10T08:00:00Z')),0);assert.equal(sentences.retry.failures,0);
+ recordCampaignRetry(learning,'daily_limit','finished_day',now);assert.equal(learning.finished_day,'2026-11-09');assert.equal(learning.retry.reason,'daily_limit');assert.equal(learning.retry.failures,0);
+});
 
 test('v7 derives directly from v4 with one subject-pronoun rule and immutable earlier prompts',async()=>{
  assert.ok(PROMPT.startsWith(PROMPT_V4));assert.ok(!PROMPT.startsWith(PROMPT_V5));assert.equal((PROMPT.match(/Subject-pronoun rule:/g)??[]).length,1);assert.match(PROMPT,/only when that subject is explicitly present in reference_en/);assert.ok(!PROMPT.includes('Do not add a subject'));assert.ok(!PROMPT.includes('Owner clarification'));

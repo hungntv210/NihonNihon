@@ -43,7 +43,7 @@ try{
    Remove-Item -LiteralPath $lockFile
    @{at=[DateTimeOffset]::Now.ToString('o');file=$lockFile;verifiedDeadPid=$lockPid;reason='stale_campaign_lock'}|ConvertTo-Json -Compress|Add-Content -LiteralPath (Join-Path $stateDirectory 'launcher-deletions.jsonl')
   }
-  $workers=@(Get-CimInstance Win32_Process|Where-Object {$_.Name -eq 'node.exe' -and $_.CommandLine -match 'translation-campaign\.mjs'})
+  $workers=@(Get-CimInstance Win32_Process|Where-Object {$_.Name -eq 'node.exe' -and $_.CommandLine -match 'translation-campaign\.mjs' -and $_.CommandLine.Contains($scriptFile) -and $_.CommandLine.Contains($configFile)})
   return $workers.Count -gt 0
  }
  if(Test-ExistingWorker){'An existing campaign worker was found; no second worker started';return}

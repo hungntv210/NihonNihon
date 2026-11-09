@@ -71,6 +71,26 @@ test('503 stops after at most three calls, with waits in the 30-60 second range'
  assert.equal(calls,3);assert.equal(result.status,'api_error');assert.equal(result.error_status,503);assert.deepEqual(pauses,[32500,60000]);
 });
 
+test('a network error without HTTP status retries and succeeds within the same Pacific day',async t=>{
+ const {options}=await setup(t),attempts=[],pauses=[];let calls=0,clock=Date.parse('2026-11-09T08:30:00Z');
+ const result=await runGemini({...options,limit:1,ai:fake(async p=>{if(++calls===1)throw Object.assign(Error('fetch failed'),{code:'ECONNRESET'});return {text:JSON.stringify(output(p))};}),onAttempt:a=>attempts.push(a),now:()=>clock,random:()=>0.5,sleep:async ms=>{pauses.push(ms);clock+=ms;}});
+ assert.equal(result.status,'complete');assert.equal(result.sent,1);assert.equal(calls,2);assert.deepEqual(pauses,[32500]);assert.equal(attempts[0].http_status,null);assert.equal(attempts[0].error_kind,'network_or_unknown');assert.equal(attempts[1].http_status,200);
+ const ledger=JSON.parse(fs.readFileSync(options.statePath)).models[config.model];assert.equal(ledger.day,'2026-11-09');assert.equal(ledger.dailyCount,2);assert.equal(ledger.blockedDay,null);
+});
+
+test('one glossary failure in 30 sentences keeps and imports the 29 valid rows',async t=>{
+ const f=fixture(t),c={...config,route:'sentences',max_api_attempts:1};
+ const source='損失は１００万ドル以上にのぼる。';f.vocab[0].examples=Array.from({length:30},(_,i)=>({ja:i?'これは公開例文その'+i+'です。':source,en:'Synthetic public example '+i}));f.write('vocab.json',f.vocab);f.grammar.length=0;f.write('grammar.json',[]);f.manifest.expected_counts.grammar=0;f.save();
+ const options={config:c,manifestPath:f.dir+'/partial-manifest.json',requestsPath:f.dir+'/partial-queue.json',resultsPath:f.dir+'/partial-results.json',statePath:f.dir+'/partial-quota.json'};
+ await prepare({manifestPath:f.manifestPath,config:c,outputManifest:options.manifestPath,requestsPath:options.requestsPath,resultsPath:options.resultsPath});
+ const attempts=[];const {assertSentenceQuality}=await import('../../tools/data/translation-gate.mjs');
+ const result=await runGemini({...options,limit:30,batchSize:30,ai:fake(async p=>({text:JSON.stringify(JSON.parse(p.contents).map(r=>({request_id:r.request_id,output:{text_vi:r.input.ja===source?'Thiệt hại lên tới hơn một triệu đô la.':'Đây là câu ví dụ công khai.'}})))})),validateOutput:(rows,requests)=>assertSentenceQuality(rows,requests,'gemini-vi-hv-7'),onAttempt:a=>attempts.push(a)});
+ assert.equal(result.calls,1);assert.equal(result.status,'partial_output');assert.equal(result.sent,29);assert.equal(result.rejected.length,1);assert.match(result.rejected[0].reason,/trở lên/);assert.equal(attempts[0].validation_error,'terminology');assert.deepEqual(attempts[0].rejected,result.rejected);
+ const saved=JSON.parse(fs.readFileSync(options.resultsPath));assert.equal(saved.length,29);assert.ok(!saved.some(r=>r.request_id===result.rejected[0].request_id));
+ const {runImport}=await import('../../tools/data/import.mjs');const report=await runImport({...f,manifestPath:options.manifestPath,takeBackup:false});assert.equal(report.db_committed,true);
+ assert.equal(f.open().prepare("SELECT COUNT(*) AS n FROM vi_translations WHERE method='machine' AND status='selected'").get().n,29);
+});
+
 test('fallback retries only unfinished contexts and records the actual model for every result',async t=>{
  const {f,options}=await setup(t);const {runChain}=await import('../../tools/data/mt-gemini-chain.mjs');const backup={...config,model:'gemini-backup',max_api_attempts:1};
  const second={config:backup,manifestPath:f.dir+'/backup-manifest.json',requestsPath:f.dir+'/backup-requests.json',resultsPath:f.dir+'/backup-results.json'};
