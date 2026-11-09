@@ -53,3 +53,11 @@ It uses a temporary database with clearly synthetic Vietnamese translations,
 verifies their source label and error reporting, and exercises search, queued
 filter, lesson navigation and mobile overflow. Screenshots/reports remain local
 under gitignored `data/reports/`.
+
+The browser fixture sets isolated settings/roadmap paths and a start date two
+weeks before its local test date. It first asserts HTTP423 for missing shadowing
+and confirms SRS remains accessible, then records a valid25-minute/two-clip
+makeup in its temporary roadmap before exercising the unchanged reveal/save/next
+assertions. This prevents the default2026-11-02 start date from silently changing
+the lesson prerequisite when the calendar advances. Diagnostic lesson screenshots,
+HTTP/body snapshots and server output are kept in `data/reports/vocab-regression/`.
