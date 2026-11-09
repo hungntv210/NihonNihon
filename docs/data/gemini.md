@@ -428,6 +428,27 @@ và ghi nhật ký từng trường được xóa, giữ nguyên kết quả đ�
 chạy đúng một worker qua launcher rồi đo số câu mới sau một giờ. Review
 checkpoint và yêu cầu chờ duyệt mẫu trước tiếp tục áp dụng.
 
+### Chờ feedback và timeout theo profile
+
+Khi checkpoint gặp `previous_review_incomplete`, worker giữ trạng thái
+`review_paused` và đọc lại feedback mỗi 60 giây; không thoát tiến trình.
+Feedback điền đủ và major không quá 10% thì tự tiếp tục, ghi `review_resumed`;
+major trên 10% vẫn dừng hẳn, kể cả feedback chưa điền hết. Không tạo mẫu kế
+tiếp trong lúc mẫu trước còn tồn. Việc chờ cũng áp dụng checkpoint cuối hàng đợi.
+
+Profile có `timeout_ms` nguyên dương, dùng cho cả Interactions và generateContent;
+không khai báo vẫn là 60000 ms. Timeout khai báo tường minh được pin trong
+manifest; các profile cũ thiếu trường này giữ hash cũ. Ví dụ learning ở
+`tools/data/config/learning-gemini.example.json`: timeout 180000 ms, batch 20;
+câu ví dụ giữ 60000 ms. Worker lấy batch learning từ profile thay vì cố định 60.
+
+Chỉ sau khi PR được duyệt/merge mới tạo config/thư mục chiến dịch mới bằng
+quy trình rotation offline, gộp timeout/batch từ ví dụ vào profile learning.
+Giữ nguyên `state_path` quota, accepted profiles, prompt, review/feedback,
+probe và các cờ ngày; không sửa manifest/kết quả cũ tại chỗ. Worker đang chạy
+trước merge tiếp tục dùng timeout 60 giây/lô 60 cho learning; chưa thể dùng
+kết quả lượt đó để kết luận timeout mới có giải quyết được lỗi hay không.
+
 ### Dọn audit có bản sao an toàn
 
 Chỉ làm khi worker đã dừng và lock/PID đã được xác minh:

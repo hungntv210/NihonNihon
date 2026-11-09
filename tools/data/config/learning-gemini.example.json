@@ -1,0 +1,18 @@
+{
+  "model": "gemini-3.6-flash",
+  "route": "learning",
+  "api": "interactions",
+  "prompt_version": "gemini-vi-hv-7",
+  "requests_per_minute": 5,
+  "requests_per_day": 20,
+  "daily_budget": 17,
+  "tokens_per_minute": 250000,
+  "min_interval_ms": 13000,
+  "max_output_tokens": 32768,
+  "thinking_level": "medium",
+  "mixed_tasks": true,
+  "max_compounds_sent": 12,
+  "max_api_attempts": 3,
+  "timeout_ms": 180000,
+  "batch_size": 20
+}

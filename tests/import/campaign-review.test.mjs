@@ -3,10 +3,23 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import {fixture} from './helpers.mjs';
-import {randomSample,writeReviewCheckpoint,reviewFeedback,applyTranslationFlags,retainCampaignBackups,knownSourceReleases,ensureDailyCampaignSnapshot,pendingReviewAtCheckpoint} from '../../tools/data/campaign-review.mjs';
+import {randomSample,writeReviewCheckpoint,reviewFeedback,applyTranslationFlags,retainCampaignBackups,knownSourceReleases,ensureDailyCampaignSnapshot,pendingReviewAtCheckpoint,waitForReview} from '../../tools/data/campaign-review.mjs';
 import {runImport} from '../../tools/data/import.mjs';
 import {prepare,runGemini,publicPlan} from '../../tools/data/mt-gemini.mjs';
 import {importCampaign} from '../../tools/data/translation-campaign.mjs';
+
+test('review wait polls every sixty seconds then resumes complete feedback at ten percent major',async t=>{
+ const f=fixture(t),state={review_cursor:0},rows=Array.from({length:1020},(_,i)=>({request_id:String(i),ja:'公開文'+i,output:{text_vi:'Câu '+i},model:'test'}));
+ writeReviewCheckpoint({directory:f.dir,state,rows:rows.slice(0,510),provenance:{}});const delays=[];
+ const ready=await waitForReview(()=>pendingReviewAtCheckpoint({directory:f.dir,state,count:1020}),{sleep:async ms=>{delays.push(ms);const file=f.dir+'/review-0001.feedback.json',feedback=JSON.parse(fs.readFileSync(file));feedback.results.forEach((r,i)=>r.severity=i<3?'major':'ok');fs.writeFileSync(file,JSON.stringify(feedback));}});
+ assert.equal(ready,true);assert.deepEqual(delays,[60000]);assert.equal(writeReviewCheckpoint({directory:f.dir,state,rows,provenance:{}}).sample_id,'review-0002');
+});
+
+test('review wait stops immediately above ten percent major instead of polling',async()=>{
+ const sample={sample_id:'x',rows:Array.from({length:30},(_,i)=>({request_id:String(i)}))},feedback={version:1,sample_id:'x',results:sample.rows.map((r,i)=>({...r,severity:i<4?'major':null,note:''}))};
+ const result=reviewFeedback(sample,feedback);assert.equal(result.pause,true);let sleeps=0;
+ assert.equal(await waitForReview(()=>({reason:'major_errors',...result}),{sleep:async()=>{sleeps++;}}),false);assert.equal(sleeps,0);
+});
 import {createMT} from '../../tools/data/han-viet.mjs';
 import {sha} from '../../tools/data/core.mjs';
 
