@@ -1,4 +1,7 @@
 import {validateResults,properNameIssues} from './mt-gemini.mjs';
+import {need} from './core.mjs';
+export const properNamesEnabled=version=>Number(/^gemini-vi-hv-(\d+)$/.exec(version??'')?.[1])>=6;
+export function assertSentenceQuality(rows,requests,version){need(!inspectBatch(JSON.stringify(rows),requests,{properNames:properNamesEnabled(version)}).items.length,'Sentence quality gate');}
 export function inspectBatch(text,requests,{properNames=false}={}){
  const report={expected:requests.length,json_invalid:0,missing:0,unexpected:0,duplicate_ids:0,empty:0,source_copy:0,japanese_left:0,length_outlier:0,non_nfc:0,proper_name:0,schema_invalid:0,items:[]};let rows;
  try{rows=JSON.parse(text);if(!Array.isArray(rows))throw Error();}catch{report.json_invalid=1;report.missing=requests.length;return report;}

@@ -3,11 +3,11 @@ import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {parseArgs} from 'node:util';
 import {runGemini,prepare,settings,quotaDay,nextPacificReset,validateResults,publicPlan,PROMPT_VERSION} from './mt-gemini.mjs';
-import {inspectBatch,summarizeGate} from './translation-gate.mjs';
+import {inspectBatch,summarizeGate,properNamesEnabled,assertSentenceQuality} from './translation-gate.mjs';
 import {stratifiedSample} from './review-sample.mjs';
 import {privateWrite,sha,hash,need} from './core.mjs';
 import {runImport} from './import.mjs';
-import {writeReviewCheckpoint,reviewFeedback,applyTranslationFlags,retainCampaignBackups,knownSourceReleases} from './campaign-review.mjs';
+import {writeReviewCheckpoint,reviewFeedback,applyTranslationFlags,ensureDailyCampaignSnapshot,knownSourceReleases,pendingReviewAtCheckpoint} from './campaign-review.mjs';
 
 const read=p=>JSON.parse(fs.readFileSync(p,'utf8'));
 const write=(p,v)=>privateWrite(p,JSON.stringify(v,null,2)+'\n');
@@ -50,7 +50,8 @@ export async function rotateCampaign({configPath,outputConfig,directory,promptVe
  need(!fs.existsSync(path.join(oldRoot,'campaign.lock')),'Stop worker and verify stale lock before rotation');
  const state=read(path.join(oldRoot,'status.json'));
  const next={...cfg,directory,accepted_profiles:[...cfg.accepted_profiles??[],...['sentences-primary','sentences-backup','learning'].map(role=>({manifestPath:path.join(cfg.directory,role+'-manifest.json')}))]};
- for(const role of ['sentence_primary','sentence_backup','learning','probe'])next[role]={...cfg[role],prompt_version:promptVersion};
+ if(next.import)next.import={...next.import,snapshotDirectory:next.import.snapshotDirectory??cfg.directory};
+ for(const role of ['sentence_primary','sentence_backup','learning','probe']){next[role]={...cfg[role],prompt_version:promptVersion};if(promptVersion!=='gemini-vi-hv-6')delete next[role].prompt_revision;}
  const {sentenceDone,learningDone}=await acceptedCampaignCache(next);fs.mkdirSync(root,{recursive:true});
  const counts={sentences:{cached:sentenceDone.size},learning:{cached:learningDone.size}};
  for(const [role,key,base]of [['sentences-primary','sentence_primary','sentence_base'],['sentences-backup','sentence_backup','sentence_base'],['learning','learning','learning_base']]){
@@ -62,12 +63,14 @@ export async function rotateCampaign({configPath,outputConfig,directory,promptVe
  }
  state.rotated_from=cfg.directory;state.prompt_version=promptVersion;delete state.status;delete state.stopping;delete state.error;
  state.sentences={...state.sentences,done:counts.sentences.cached};state.learning={...state.learning,done:counts.learning.cached};
+ for(const review of state.sentences.reviews??[]){need(/^review-\d+$/.test(review.sample_id),'Invalid review ID');for(const suffix of ['.json','.feedback.json','.md']){const file=path.join(oldRoot,review.sample_id+suffix);if(suffix!=='.md'||fs.existsSync(file))privateWrite(path.join(root,review.sample_id+suffix),fs.readFileSync(file));}}
+ const flags=path.join(oldRoot,'translation-flags.json');if(fs.existsSync(flags))privateWrite(path.join(root,'translation-flags.json'),fs.readFileSync(flags));
  write(path.join(root,'status.json'),state);write(path.join(root,'sentences-completed.json'),[...sentenceDone.values()]);write(path.join(root,'learning-completed.json'),[...learningDone.values()]);
  const report={prompt_version:promptVersion,counts,accepted_profiles:next.accepted_profiles,quota_paths:['sentence_primary','sentence_backup','learning','probe'].map(k=>next[k].state_path),holds:{sentences:state.sentences.hold_day,learning:state.learning.finished_day,probe_started:state.probe.started},accepted_contexts_queued:0};
  write(path.join(root,'rotation-report.json'),report);write(outputConfig,next);return report;
 }
 
-export async function importCampaign({baseManifest,profiles,directory,dbPath,flags=[]}){
+export async function importCampaign({baseManifest,profiles,directory,dbPath,flags=[],snapshotDirectory=directory,timestamp=Date.now()}){
  const manifest=read(baseManifest),base=path.dirname(path.resolve(baseManifest)),root=path.resolve(directory);
  // Keep the manifest beside its base: raw record keys include these relative paths.
  const configs=new Map([manifest.mt,...manifest.mt_profiles??[]].filter(Boolean).map(c=>[sha(c),c]));
@@ -82,10 +85,10 @@ export async function importCampaign({baseManifest,profiles,directory,dbPath,fla
  // Profile order preserves accepted output priority; unchanged fields keep their release.
  manifest.mt_profiles=[...new Map([...profiles.map(p=>read(p.manifestPath).mt),...configs.values()].map(c=>[sha(c),c])).values()];
  const manifestPath=path.join(base,path.basename(root)+'-import-manifest.json');need(manifestPath!==path.resolve(baseManifest),'Import would overwrite base manifest');write(manifestPath,manifest);
- const backupDirectory=path.join(root,'backups');if(fs.existsSync(backupDirectory))need(fs.lstatSync(backupDirectory).isDirectory()&&!fs.lstatSync(backupDirectory).isSymbolicLink(),'Unsafe campaign backup directory');
+ const snapshot=await ensureDailyCampaignSnapshot(snapshotDirectory,dbPath,timestamp);
  const auditSources=knownSourceReleases(dbPath,manifest)?['mt:google-gemini']:undefined;
- const report=await runImport({manifestPath,dbPath,reportPath:path.join(root,'import-report.json'),requestsPath:path.join(root,'remaining-requests.json'),backupDirectory,auditSources});
- report.review_flags_added=applyTranslationFlags(dbPath,flags);retainCampaignBackups(root,report.backup_path);return report;
+ const report=await runImport({manifestPath,dbPath,reportPath:path.join(root,'import-report.json'),requestsPath:path.join(root,'remaining-requests.json'),takeBackup:false,auditSources});
+ report.backup_path=snapshot.path;report.snapshot_created=snapshot.created;report.review_flags_added=applyTranslationFlags(dbPath,flags);write(path.join(root,'import-report.json'),report);return report;
 }
 
 export async function runCampaign(configPath){
@@ -108,10 +111,10 @@ export async function runCampaign(configPath){
  async function call(p,batch,size,maxCalls){
   write(p.requestsPath,{version:1,requests:batch});
   const result=await runGemini({...p,limit:batch.length,batchSize:size,maxCalls,validateOutput:(rows,requests)=>{
-   if(p.config.route==='sentences'){const qa=inspectBatch(JSON.stringify(rows),requests,{properNames:p.config.prompt_version==='gemini-vi-hv-6'});need(!qa.items.length,'Sentence quality gate');}
+   if(p.config.route==='sentences')assertSentenceQuality(rows,requests,p.config.prompt_version);
   },onAttempt:a=>{
    emit({event:'api_attempt',role:p.config.route,model:a.model,call:a.call,http_status:a.http_status,error_kind:a.error_kind??null,validation_error:a.validation_error??null});
-   audit.push({model:a.model,http_status:a.http_status,error_kind:a.error_kind??null,validation_error:a.validation_error??null,request_ids:a.requests.map(r=>r.request_id),qa:a.http_status===200&&p.config.route==='sentences'?inspectBatch(a.text,a.requests,{properNames:p.config.prompt_version==='gemini-vi-hv-6'}):null});
+   audit.push({model:a.model,http_status:a.http_status,error_kind:a.error_kind??null,validation_error:a.validation_error??null,request_ids:a.requests.map(r=>r.request_id),qa:a.http_status===200&&p.config.route==='sentences'?inspectBatch(a.text,a.requests,{properNames:properNamesEnabled(p.config.prompt_version)}):null});
    write(path.join(root,'audit.json'),audit);
    if(a.validation_error){write(path.join(root,'rejected-'+p.config.model+'.json'),{model:a.model,reason:a.validation_error,requests:a.requests,response:a.text});}
   }});
@@ -137,7 +140,7 @@ export async function runCampaign(configPath){
      if(result.flags.length){const flags=fs.existsSync(flagsPath)?read(flagsPath):[];write(flagsPath,[...new Map([...flags,...result.flags].map(f=>[sha(f),f])).values()]);await syncImport();}
     }
     if(result.pause){state.review_pause={sample_id:review.sample_id,major:result.major,total:result.total,major_percent:result.major_percent};state.status='review_paused';stopping=true;save();emit({event:'review_paused',...state.review_pause});return false;}
-   }delete state.review_pause;return !stopping;
+   }const pending=pendingReviewAtCheckpoint({directory:root,state:state.sentences,count:state.sentences.done});if(pending){state.review_pause=pending;state.status='review_paused';stopping=true;save();emit({event:'review_paused',...pending});return false;}delete state.review_pause;return !stopping;
   }
   const allSentences=primary.requests.filter(r=>r.task==='translate'&&r.input.field==='text');
   const allLearning=learning.requests.filter(r=>r.task==='han_viet'||r.input.field!=='text');
@@ -150,20 +153,20 @@ export async function runCampaign(configPath){
   await syncImport();if(!await checkReviews())return {...state,status:'review_paused'};
   async function sentenceLoop(){
    while(!stopping){
-    if(!await checkReviews())return;
-    const day=quotaDay(Date.now()),pending=pendingCampaignRequests(allSentences,sentenceDone,learningDone);if(!pending.length){writeReviewCheckpoint({directory:root,state:state.sentences,rows:[...sentenceDone.values()],provenance:read(cfg.sentence_provenance),force:true});state.sentences.complete=true;save();return;}
+    if(!await checkReviews()||stopping)return;
+    const day=quotaDay(Date.now()),pending=pendingCampaignRequests(allSentences,sentenceDone,learningDone);if(!pending.length){const review=writeReviewCheckpoint({directory:root,state:state.sentences,rows:[...sentenceDone.values()],provenance:read(cfg.sentence_provenance),force:true});if(review?.paused){state.review_pause=review;state.status='review_paused';stopping=true;save();return;}state.sentences.complete=true;save();return;}
     const deferred=state.sentences.deferred_day===day?new Set(state.sentences.deferred??[]):new Set();const ready=pending.filter(r=>!deferred.has(r.input.ja));
     if(state.sentences.hold_day===day||!ready.length){await sleep(Math.min(60000,nextPacificReset()-Date.now()+1000));continue;}
     const batch=ready.slice(0,30);let good=false,last;
     for(const p of [primary,backup]){
-     if(stopping||!await checkReviews())return;const byJa=new Map(p.requests.map(r=>[r.input.ja,r])),tasks=batch.map(r=>byJa.get(r.input.ja));need(tasks.every(Boolean),'Fallback source mismatch');
+     if(!await checkReviews()||stopping)return;const byJa=new Map(p.requests.map(r=>[r.input.ja,r])),tasks=batch.map(r=>byJa.get(r.input.ja));need(tasks.every(Boolean),'Fallback source mismatch');
      const result=await call(p,tasks,30,p===primary?1:3);last=result;
      for(const v of resultRows(p))if(v.request)sentenceDone.set(v.request.input.ja,{ja:v.request.input.ja,request_id:v.row.request_id,output:v.row.output,model:v.model,manifest:v.manifest});
      if(batch.every(r=>sentenceDone.has(r.input.ja))){good=true;break;}
      if(result.status!=='daily_limit')await sleep(5000);
     }
     const previousDone=state.sentences.done;state.sentences.done=sentenceDone.size;write(path.join(root,'sentences-completed.json'),[...sentenceDone.values()]);
-    if(sentenceDone.size>previousDone){await syncImport();const review=writeReviewCheckpoint({directory:root,state:state.sentences,rows:[...sentenceDone.values()],provenance:read(cfg.sentence_provenance)});if(review)emit({event:'review_ready',sample_id:review.sample_id,from_count:review.from_count,to_count:review.to_count,path:path.join(root,review.sample_id+'.md')});}
+    if(sentenceDone.size>previousDone){await syncImport();const review=writeReviewCheckpoint({directory:root,state:state.sentences,rows:[...sentenceDone.values()],provenance:read(cfg.sentence_provenance)});if(review?.paused){state.review_pause=review;state.status='review_paused';stopping=true;save();emit({event:'review_paused',...review});return;}if(review)emit({event:'review_ready',sample_id:review.sample_id,from_count:review.from_count,to_count:review.to_count,path:path.join(root,review.sample_id+'.md')});}
     if(!good){if(last.status==='invalid_output'){state.sentences.deferred_day=day;state.sentences.deferred=[...deferred,...batch.map(r=>r.input.ja)];}else state.sentences.hold_day=day;}
     state.sentences.validation_failures=audit.filter(a=>[cfg.sentence_primary.model,cfg.sentence_backup.model].includes(a.model)&&a.validation_error).length;
     state.sentences.gate=summarizeGate(audit.filter(a=>a.qa||a.model===cfg.sentence_primary.model||a.model===cfg.sentence_backup.model),sentenceDone.size);save();
@@ -171,7 +174,7 @@ export async function runCampaign(configPath){
   }
   async function learningLoop(){
    while(!stopping){
-    if(!await checkReviews())return;
+    if(!await checkReviews()||stopping)return;
     const now=Date.now();if(now<Date.parse(cfg.learning_not_before)){state.learning.waiting_for_reset=true;save();await sleep(Math.min(60000,Date.parse(cfg.learning_not_before)-now));continue;}
     state.learning.waiting_for_reset=false;const day=quotaDay(now);
     if(!state.probe.started){

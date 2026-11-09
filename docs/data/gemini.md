@@ -359,13 +359,63 @@ hết. Phản hồi chưa có không được báo thành đã duyệt hoặc 0%
 Mẫu ngẫu nhiên/QA không tự phát hiện được mọi lỗi nghĩa: ngưỡng này dựa trên
 phản hồi kiểm thử, không dùng thêm model AI để giả lập người duyệt.
 
-Mỗi lần nhập vẫn tạo snapshot trước khi ghi. Snapshot mới của campaign đặt riêng
-trong `<campaign>/backups/`: sau commit thành công giữ bản đầu và hai bản gần nhất.
+Campaign tạo snapshot trước lần nhập đầu của mỗi ngày quota Pacific. Snapshot
+đặt riêng trong vùng campaign, giữ bản đầu và bản mới nhất.
 Chỉ dọn các tên đã đăng ký trong `campaign-backups.json`; không đụng bản cũ ở
 `data/backups/`, bản before-restore, tệp lạ hoặc symlink. Như vậy nhập hàng chục
 lô không nhân DB hàng trăm MB thành hàng chục GB backup. Kết quả MT và manifest
-đã pin vẫn được giữ để tái dựng mọi lô; lỗi nhập không kích hoạt dọn snapshot.
+đã pin vẫn được giữ để tái dựng mọi lô. Chỉ dọn sau khi có snapshot hợp lệ;
+snapshot của ngày vẫn được giữ nếu lần nhập sau đó thất bại.
 Khi mọi release nguồn gốc đã có trong DB với đúng checksum, lô tiếp theo chỉ
 thêm `import_runs` cho Gemini thay vì nhân bản cùng báo cáo cho từng tệp KanjiVG.
 Nguồn thay version/checksum hoặc DB mới vẫn ghi audit đầy đủ. Mọi artifact vẫn
 được xác minh và dữ liệu vẫn được nhập trong transaction như trước.
+
+## Điều chỉnh vận hành ngày 09/11 — v7 và khôi phục sau tắt máy
+
+Các quy tắc dưới đây thay thế lịch snapshot/mẫu và prompt ở các đoạn cũ:
+
+- Campaign chỉ tạo tối đa một snapshot mỗi ngày quota Pacific, giữ bản đầu và
+  bản mới nhất. `snapshotDirectory` được giữ nguyên khi đổi phiên bản prompt;
+  snapshot/receipt có sẵn trong cùng ngày được tái dùng. Một snapshot bị hỏng
+  sẽ chặn job để xử lý, không bị ghi đè im lặng. Mọi lần dọn snapshot đã đăng ký
+  ghi vào `backup-deletions.jsonl`; tệp lạ, before-restore và backup ngoài vùng
+  campaign được giữ nguyên.
+- Tới checkpoint mới, nếu mẫu trước còn bất kỳ `severity: null`, worker dừng
+  cả hai luồng với `review_paused`/`previous_review_incomplete`. Không ghi đè mẫu
+  hay tiến cursor. Điền đủ phản hồi rồi khởi động lại; ngưỡng major >10% vẫn giữ.
+  Quy tắc này cũng áp dụng khi xuất mẫu cuối dưới 500 câu.
+- `gemini-vi-hv-7` dựng trực tiếp từ `PROMPT_V4`, có đúng một quy tắc chủ ngữ:
+  chỉ dùng đại từ khi chủ ngữ đó có tường minh trong `reference_en`. V4/v5/v6
+  cùng hash lịch sử giữ nguyên; mọi prompt số phiên bản từ v6 trở lên bật QA
+  tên riêng. Không dịch lại context đã chấp nhận.
+
+### Launcher Windows — chuẩn bị để đăng ký cùng đợt deploy
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File tools/data/start-campaign.ps1 -ProjectPath "C:\path\NihonNihon" -ConfigPath "data/private/campaign-v7-config.json" -EnvFile "C:\path\NihonNihon\.env" -NodePath "C:\Program Files\nodejs\node.exe" -NotBefore "2026-11-09T15:00:00+07:00"
+```
+
+`-Plan` chỉ in kế hoạch. Khi chạy, launcher dùng mutex theo đường dẫn DB để chặn
+hai lần gọi đồng thời, xác minh PID bằng CIM trước khi gỡ lock chết, và từ chối
+xóa lock nếu PID còn sống nhưng thuộc tiến trình khác. Nó kiểm tra worker lần
+nữa sau thời gian chờ rồi mới gọi Node bằng đường dẫn tuyệt đối; không đọc/in
+nội dung khoá. Log và `launcher-state.json` nằm trong thư mục campaign private.
+Không có thao tác đăng ký Task Scheduler trong script. Chủ dự án sẽ duyệt việc
+đăng ký cùng đợt deploy; nếu máy tắt trước giờ chờ thì chạy lại launcher sau khi
+bật máy, vì chưa có task tự khởi động nào được cài.
+
+### Dọn audit có bản sao an toàn
+
+Chỉ làm khi worker đã dừng và lock/PID đã được xác minh:
+
+```powershell
+node tools/data/compact-audit.mjs --db data/batch.sqlite --backup-directory D:/NihonNihonBackup/G0 --report data/private/maintenance-report.json
+```
+
+Script chép đầy đủ DB, so SHA-256 và integrity/FK ở bản D trước khi xoá. Chỉ
+dedupe `import_runs` nguồn `kanjivg`, giữ dòng committed đầu tiên mỗi release;
+mọi dòng bị xóa được liệt kê trong report private. Sau VACUUM, so fingerprint
+của tất cả bảng ngoài import_runs, audit nguồn khác và schema; kiểm integrity/FK
+lại. Không xóa bản dịch, thẻ, nội dung hay source release. Bản D được giữ để
+phục hồi; không ghi bản sao DB/report chi tiết vào Git.

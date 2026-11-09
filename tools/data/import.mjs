@@ -6,7 +6,7 @@ import { parseArtifacts } from './adapters.mjs';
 import { buildPlan } from './plan.mjs';
 import { openDatabase,applyPlan } from './store.mjs';
 
-export async function runImport({manifestPath,dbPath,reportPath,requestsPath,requireComplete=false,backupDirectory,auditSources}) {
+export async function runImport({manifestPath,dbPath,reportPath,requestsPath,requireComplete=false,backupDirectory,auditSources,takeBackup=true}) {
   need(manifestPath&&dbPath&&reportPath,'Usage: --manifest FILE --db FILE --report FILE [--requests FILE] [--require-complete]');
   requestsPath??=path.join(path.dirname(reportPath),'requests.json');
   const outputs=[dbPath,reportPath,requestsPath].map(p=>path.resolve(p));
@@ -21,7 +21,7 @@ export async function runImport({manifestPath,dbPath,reportPath,requestsPath,req
       privateWrite(reportPath,JSON.stringify({...plan.report,db_committed:false},null,2)+'\n');
       throw Error('Incomplete data: report/requests written, no content applied. Supply missing artifacts or MT results and rerun.');
     }
-    const {backupPath}=await applyPlan(db,plan,{dbPath,backupDirectory,auditSources});
+    const {backupPath}=await applyPlan(db,plan,{dbPath,backupDirectory,auditSources,takeBackup});
     const report={...plan.report,db_committed:true,backup_path:backupPath};
     privateWrite(reportPath,JSON.stringify(report,null,2)+'\n');
     return report;

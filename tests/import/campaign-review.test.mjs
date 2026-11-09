@@ -3,7 +3,8 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import {fixture} from './helpers.mjs';
-import {randomSample,writeReviewCheckpoint,reviewFeedback,applyTranslationFlags,retainCampaignBackups,knownSourceReleases} from '../../tools/data/campaign-review.mjs';
+import {randomSample,writeReviewCheckpoint,reviewFeedback,applyTranslationFlags,retainCampaignBackups,knownSourceReleases,ensureDailyCampaignSnapshot,pendingReviewAtCheckpoint} from '../../tools/data/campaign-review.mjs';
+import {runImport} from '../../tools/data/import.mjs';
 import {prepare,runGemini,publicPlan} from '../../tools/data/mt-gemini.mjs';
 import {importCampaign} from '../../tools/data/translation-campaign.mjs';
 import {createMT} from '../../tools/data/han-viet.mjs';
@@ -28,12 +29,31 @@ test('review checkpoint samples thirty unique new sentences near 500 and survive
  assert.equal(reviewFeedback(sample,JSON.parse(fs.readFileSync(path.join(f.dir,'review-0001.feedback.json')))).reviewed,0);
 });
 
-test('campaign retention keeps first and latest two registered snapshots without touching other backups',t=>{
+test('campaign retention keeps first and latest registered snapshots without touching other backups',t=>{
  const f=fixture(t),backupDir=path.join(f.dir,'backups');fs.mkdirSync(backupDir);fs.writeFileSync(path.join(backupDir,'before-999-aaaaaaaa.sqlite'),'unregistered');fs.writeFileSync(path.join(backupDir,'before-restore.sqlite'),'unrelated');
  for(let i=0;i<6;i++){const file=path.join(backupDir,`before-${i}-aaaaaaaa.sqlite`);fs.writeFileSync(file,'snapshot');retainCampaignBackups(f.dir,file);}
- assert.deepEqual(JSON.parse(fs.readFileSync(path.join(f.dir,'campaign-backups.json'))),['before-0-aaaaaaaa.sqlite','before-4-aaaaaaaa.sqlite','before-5-aaaaaaaa.sqlite']);
+ assert.deepEqual(JSON.parse(fs.readFileSync(path.join(f.dir,'campaign-backups.json'))),['before-0-aaaaaaaa.sqlite','before-5-aaaaaaaa.sqlite']);
  assert.equal(fs.readFileSync(path.join(backupDir,'before-999-aaaaaaaa.sqlite'),'utf8'),'unregistered');assert.equal(fs.readFileSync(path.join(backupDir,'before-restore.sqlite'),'utf8'),'unrelated');
  assert.throws(()=>retainCampaignBackups(f.dir,path.join(f.dir,'before-6-aaaaaaaa.sqlite')),/outside/);
+});
+
+test('campaign creates at most one snapshot per Pacific quota day and retains first plus latest',async t=>{
+ const f=fixture(t);await runImport(f);const directory=f.dir+'/daily',beforeReset=Date.parse('2026-11-09T07:59:00Z');
+ const first=await ensureDailyCampaignSnapshot(directory,f.dbPath,beforeReset);assert.equal(first.created,true);assert.equal(first.day,'2026-11-08');
+ for(let i=0;i<4;i++)assert.equal((await ensureDailyCampaignSnapshot(directory,f.dbPath,beforeReset+i)).created,false);
+ const next=await ensureDailyCampaignSnapshot(directory,f.dbPath,Date.parse('2026-11-09T08:00:00Z'));assert.equal(next.created,true);assert.equal(next.day,'2026-11-09');
+ const last=await ensureDailyCampaignSnapshot(directory,f.dbPath,Date.parse('2026-11-10T08:00:00Z'));assert.equal(last.created,true);
+ assert.ok(fs.existsSync(first.path));assert.ok(fs.existsSync(last.path));assert.ok(!fs.existsSync(next.path));assert.equal(fs.readdirSync(directory+'/backups').length,2);
+ await assert.rejects(()=>ensureDailyCampaignSnapshot(directory,f.dbPath,Date.parse('2026-11-09T08:00:00Z')),/no second snapshot/);
+});
+
+test('next checkpoint pauses for pending feedback, resumes after all rows reviewed, and still enforces major threshold',t=>{
+ const f=fixture(t),state={review_cursor:0},rows=Array.from({length:1020},(_,i)=>({request_id:String(i),ja:'公開文'+i,output:{text_vi:'Câu '+i},model:'test'}));
+ writeReviewCheckpoint({directory:f.dir,state,rows:rows.slice(0,510),provenance:{}});
+ const paused=writeReviewCheckpoint({directory:f.dir,state,rows,provenance:{}});assert.equal(paused.paused,true);assert.equal(paused.reason,'previous_review_incomplete');assert.equal(state.review_cursor,510);assert.ok(!fs.existsSync(f.dir+'/review-0002.json'));
+ const feedback=JSON.parse(fs.readFileSync(f.dir+'/review-0001.feedback.json'));feedback.results.forEach(r=>r.severity='ok');fs.writeFileSync(f.dir+'/review-0001.feedback.json',JSON.stringify(feedback));
+ assert.equal(pendingReviewAtCheckpoint({directory:f.dir,state,count:1020}),null);assert.equal(writeReviewCheckpoint({directory:f.dir,state,rows,provenance:{}}).sample_id,'review-0002');
+ const pending=JSON.parse(fs.readFileSync(f.dir+'/review-0002.feedback.json'));pending.results.forEach(r=>r.severity='ok');pending.results.slice(0,4).forEach(r=>r.severity='major');fs.writeFileSync(f.dir+'/review-0002.feedback.json',JSON.stringify(pending));assert.equal(pendingReviewAtCheckpoint({directory:f.dir,state,count:1530}).reason,'major_errors');
 });
 
 test('review stops only above ten percent major errors and rejects mismatched feedback IDs',()=>{
