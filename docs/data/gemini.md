@@ -259,8 +259,9 @@ Lịch đã duyệt ngày 06/11/2026:
 Khác CLI adapter chạy một lượt, worker được duyệt tự chờ reset rồi tiếp tục từ
 checkpoint. Lỗi nội dung hết retry được hoãn riêng tới ngày sau, các lô khác
 tiếp tục. Từ bản sửa ngày 09/11, lỗi dịch vụ/mạng nghỉ 15 phút rồi thử lại;
-chỉ `daily_limit` mới chờ reset ngay. Mỗi luồng có tối đa 6 lượt thất bại ở cấp
-campaign trong một ngày Pacific, kể cả khi đã restart; lượt thứ 6 đặt cờ chờ
+chỉ `daily_limit` mới chờ reset ngay. Mỗi luồng có tối đa 6 lượt thất bại liên tiếp
+ở cấp campaign trong một ngày Pacific, kể cả khi đã restart. Lô `complete` hoặc
+`partial_output` đặt counter về 0; lỗi tiếp theo bắt đầu từ 1. Lượt lỗi liên tiếp thứ 6 đặt cờ chờ
 ngày với lý do `transient_retry_limit`, không báo nhầm là hết quota. Mỗi lượt
 vẫn chịu retry/call cap của adapter và ledger cũ, gồm trần 17 call learning.
 `retry.cooldown_until` và bộ đếm được ghi trong từng luồng của `status.json`;
