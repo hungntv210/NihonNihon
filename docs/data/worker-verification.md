@@ -72,3 +72,11 @@ to master. G0 retains its own package/test command until accepted and merged.
 - Checked implementation `a1697734cd59fd3da71cdde67025cf813447ff91`, isolated branch `codex/g0-chain-partial`, based on approved PR #21 merge `21878c272765501a7339bc38e2ff589a233c9bd3`.
 - Full `npm test`: **87/87 PASS**, zero skips; Windows / Node 24, `2026-11-09T15:52:34.8128334+07:00` → `2026-11-09T15:52:45.2350787+07:00`.
 - The chain accepts `partial_output` and continues to the existing unfinished-context filter. No retry, glossary, prompt, schema, quota or campaign behavior changes. Tests use fake providers. This follow-up remains a separate PR; no production data/files deleted.
+
+## 2026-11-09 — wait for reviews and configure profile timeout
+
+- Checked implementation `47215aae3c8aac67759bfe1c7381f58da5cc73dd`, isolated branch `codex/g0-review-wait`, base PR #22 merge `101d387b3589c6c855e15553dd2723d88d36b719`.
+- Full `npm test`: **90/90 PASS**, zero skips, Windows / Node 24; `2026-11-09T17:04:25.8225799+07:00` → `2026-11-09T17:04:36.6867571+07:00`, while the real worker ran independently.
+- New tests prove 60-second feedback polling, automatic continuation with complete feedback at exactly 10% major, immediate stop above 10%, default 60-second timeout and explicit 180-second timeout for both APIs, and 20 learning items with the longer profile timeout. Historical profiles without an explicit timeout retain their settings shape/hash.
+- Normal and final checkpoints use the same wait path. Learning reads batch size from its profile; the committed example specifies 180000 ms/20 items. Prompts, review threshold, one-pending-sample rule, quota ledger and other QA gates remain unchanged.
+- This PR is not deployed. Actual config/manifest rotation and adoption of the example are pending review/merge; current production profiles remain at their old values. No production data/files deleted, no private data committed, no real provider calls in tests.

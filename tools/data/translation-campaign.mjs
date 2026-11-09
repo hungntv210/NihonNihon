@@ -7,7 +7,7 @@ import {inspectBatch,summarizeGate,properNamesEnabled,assertSentenceQuality} fro
 import {stratifiedSample} from './review-sample.mjs';
 import {privateWrite,sha,hash,need} from './core.mjs';
 import {runImport} from './import.mjs';
-import {writeReviewCheckpoint,reviewFeedback,applyTranslationFlags,ensureDailyCampaignSnapshot,knownSourceReleases,pendingReviewAtCheckpoint} from './campaign-review.mjs';
+import {writeReviewCheckpoint,reviewFeedback,applyTranslationFlags,ensureDailyCampaignSnapshot,knownSourceReleases,pendingReviewAtCheckpoint,waitForReview} from './campaign-review.mjs';
 import {assertDiskSpace} from './disk-space.mjs';
 
 const read=p=>JSON.parse(fs.readFileSync(p,'utf8'));
@@ -151,14 +151,22 @@ export async function runCampaign(configPath,{checkDisk=assertDiskSpace}={}){
   let importTail=Promise.resolve();
   const flagsPath=path.join(root,'translation-flags.json');
   const syncImport=()=>{need(cfg.import,'Continuous campaign requires an import database');const task=importTail.then(async()=>{state.import=await importCampaign({...cfg.import,directory:root,profiles,flags:fs.existsSync(flagsPath)?read(flagsPath):[],checkDisk});save();emit({event:'db_import',committed:state.import.db_committed,review_flags_added:state.import.review_flags_added});});importTail=task;return task;};
-  async function checkReviews(){
+  async function checkReviews(force=false){
+   const ready=await waitForReview(async()=>{
    for(const review of state.sentences.reviews??[]){
     const file=path.join(root,review.sample_id+'.feedback.json'),feedback=read(file),checksum=sha(feedback);let result=review.feedback;
     if(review.feedback_sha256!==checksum){result=reviewFeedback(read(path.join(root,review.sample_id+'.json')),feedback);review.feedback_sha256=checksum;review.feedback=result;
      if(result.flags.length){const flags=fs.existsSync(flagsPath)?read(flagsPath):[];write(flagsPath,[...new Map([...flags,...result.flags].map(f=>[sha(f),f])).values()]);await syncImport();}
     }
-    if(result.pause){state.review_pause={sample_id:review.sample_id,major:result.major,total:result.total,major_percent:result.major_percent};state.status='review_paused';stopping=true;save();emit({event:'review_paused',...state.review_pause});return false;}
-   }const pending=pendingReviewAtCheckpoint({directory:root,state:state.sentences,count:state.sentences.done});if(pending){state.review_pause=pending;state.status='review_paused';stopping=true;save();emit({event:'review_paused',...pending});return false;}delete state.review_pause;return !stopping;
+    if(result.pause)return {reason:'major_errors',sample_id:review.sample_id,major:result.major,total:result.total,major_percent:result.major_percent};
+   }return pendingReviewAtCheckpoint({directory:root,state:state.sentences,count:state.sentences.done,force});
+   },{sleep,stopped:()=>stopping,onPending:pending=>{const changed=sha(state.review_pause??{})!==sha(pending);state.review_pause=pending;state.status='review_paused';if(pending.reason!=='previous_review_incomplete')stopping=true;save();if(changed)emit({event:'review_paused',...pending});}});
+   if(ready){if(state.review_pause)emit({event:'review_resumed'});delete state.review_pause;if(state.status==='review_paused')delete state.status;save();}return ready;
+  }
+  async function checkpoint(force=false){
+   let review=writeReviewCheckpoint({directory:root,state:state.sentences,rows:[...sentenceDone.values()],provenance:read(cfg.sentence_provenance),force});
+   if(review?.paused){if(!await checkReviews(force))return false;review=writeReviewCheckpoint({directory:root,state:state.sentences,rows:[...sentenceDone.values()],provenance:read(cfg.sentence_provenance),force});}
+   if(review)emit({event:'review_ready',sample_id:review.sample_id,from_count:review.from_count,to_count:review.to_count,path:path.join(root,review.sample_id+'.md')});save();return true;
   }
   const allSentences=primary.requests.filter(r=>r.task==='translate'&&r.input.field==='text');
   const allLearning=learning.requests.filter(r=>r.task==='han_viet'||r.input.field!=='text');
@@ -178,7 +186,7 @@ export async function runCampaign(configPath,{checkDisk=assertDiskSpace}={}){
   async function sentenceLoop(){
    while(!stopping){
     if(!await checkReviews()||stopping)return;
-    const day=quotaDay(Date.now()),pending=pendingCampaignRequests(allSentences,sentenceDone,learningDone);if(!pending.length){const review=writeReviewCheckpoint({directory:root,state:state.sentences,rows:[...sentenceDone.values()],provenance:read(cfg.sentence_provenance),force:true});if(review?.paused){state.review_pause=review;state.status='review_paused';stopping=true;save();return;}state.sentences.complete=true;save();return;}
+    const day=quotaDay(Date.now()),pending=pendingCampaignRequests(allSentences,sentenceDone,learningDone);if(!pending.length){if(!await checkpoint(true))return;state.sentences.complete=true;save();return;}
     const deferred=state.sentences.deferred_day===day?new Set(state.sentences.deferred??[]):new Set();const ready=pending.filter(r=>!deferred.has(r.input.ja));
     const delay=campaignRetryDelay(state.sentences,'hold_day');if(delay||!ready.length){await sleep(delay||Math.min(60000,nextPacificReset()-Date.now()+1000));continue;}
     const batch=ready.slice(0,30),outcomes=[],rejectedJa=new Set();
@@ -192,7 +200,7 @@ export async function runCampaign(configPath,{checkDisk=assertDiskSpace}={}){
      if(result.status!=='daily_limit')await sleep(5000);
     }
     const previousDone=state.sentences.done;state.sentences.done=sentenceDone.size;write(path.join(root,'sentences-completed.json'),[...sentenceDone.values()]);
-    if(sentenceDone.size>previousDone){await syncImport();const review=writeReviewCheckpoint({directory:root,state:state.sentences,rows:[...sentenceDone.values()],provenance:read(cfg.sentence_provenance)});if(review?.paused){state.review_pause=review;state.status='review_paused';stopping=true;save();emit({event:'review_paused',...review});return;}if(review)emit({event:'review_ready',sample_id:review.sample_id,from_count:review.from_count,to_count:review.to_count,path:path.join(root,review.sample_id+'.md')});}
+    if(sentenceDone.size>previousDone){await syncImport();if(!await checkpoint())return;}
     const unfinished=batch.filter(r=>!sentenceDone.has(r.input.ja)&&!rejectedJa.has(r.input.ja));
     const status=!unfinished.length?'complete':outcomes.every(r=>r.status==='daily_limit')?'daily_limit':outcomes.some(r=>!['complete','partial_output','invalid_output','daily_limit'].includes(r.status))?'api_error':'invalid_output';
     if(status==='invalid_output')deferRows(state.sentences,day,unfinished.map(r=>({key:r.input.ja,request_id:r.request_id,reason:'Batch failed JSON/schema/quality validation'})));
@@ -215,8 +223,9 @@ export async function runCampaign(configPath,{checkDisk=assertDiskSpace}={}){
     const delay=campaignRetryDelay(state.learning,'finished_day',now);if(delay){await sleep(delay);continue;}
     const deferred=state.learning.deferred_day===day?new Set(state.learning.deferred??[]):new Set(),ready=pending.filter(r=>!deferred.has(context(r)));
     if(!ready.length){await sleep(Math.min(60000,nextPacificReset()-now+1000));continue;}
-    const hv=ready.filter(r=>r.task==='han_viet'),other=ready.filter(r=>r.task!=='han_viet');const batch=[...hv.slice(0,20),...other.slice(0,60-Math.min(20,hv.length))];if(batch.length<60)batch.push(...hv.slice(20,20+60-batch.length));
-    const result=await call(learning,batch,60,3);
+    const size=cfg.learning.batch_size??60;need(Number.isInteger(size)&&size>=20&&size<=60,'Learning batch_size must be 20..60');
+    const hv=ready.filter(r=>r.task==='han_viet'),other=ready.filter(r=>r.task!=='han_viet');const batch=[...hv.slice(0,20),...other.slice(0,size-Math.min(20,hv.length))];if(batch.length<size)batch.push(...hv.slice(20,20+size-batch.length));
+    const result=await call(learning,batch,size,3);
     for(const v of resultRows(learning))if(v.request)learningDone.set(context(v.request),v);
     const previousDone=state.learning.done;state.learning={...state.learning,done:learningDone.size,last_result:result};
     if(learningDone.size>previousDone)await syncImport();

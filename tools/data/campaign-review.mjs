@@ -40,6 +40,13 @@ export function pendingReviewAtCheckpoint({directory,state,count,force=false}){
  if(feedback.pause)return {sample_id:previous.sample_id,reason:'major_errors',...feedback};
  if(feedback.reviewed<feedback.total)return {sample_id:previous.sample_id,reason:'previous_review_incomplete',reviewed:feedback.reviewed,total:feedback.total};return null;
 }
+export async function waitForReview(check,{sleep=ms=>new Promise(r=>setTimeout(r,ms)),stopped=()=>false,onPending=()=>{}}={}){
+ while(!stopped()){
+  const pending=await check();if(!pending)return !stopped();onPending(pending);
+  if(pending.reason!=='previous_review_incomplete')return false;
+  await sleep(60000);
+ }return false;
+}
 export function reviewFeedback(sample,feedback){
  need(feedback.version===1&&feedback.sample_id===sample.sample_id&&Array.isArray(feedback.results),'Invalid review feedback');
  const expected=new Set(sample.rows.map(r=>r.request_id)),seen=new Set(),flags=[];let reviewed=0,major=0;
