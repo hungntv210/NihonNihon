@@ -6,6 +6,7 @@ import {privateWrite,sha,need} from './core.mjs';
 import {openDatabase} from './store.mjs';
 import {quotaDay} from './mt-gemini.mjs';
 import {assertDiskSpace} from './disk-space.mjs';
+import {renderLearningReview} from './learning-review.mjs';
 
 export function randomSample(rows,count=30,choose=randomInt){
  const unique=[...new Map(rows.map(r=>[r.ja.normalize('NFC'),r])).values()];
@@ -25,14 +26,15 @@ export function writeReviewCheckpoint({directory,state,rows,provenance,force=fal
  need(/^review-[a-z-]*$/.test(prefix),'Invalid review prefix');
  const cursor=state.review_cursor??rows.length,delta=rows.length-cursor;if(delta<500&&!(force&&delta>0))return null;
  const pending=pendingReviewAtCheckpoint({directory,state,count:rows.length,force});if(pending)return {paused:true,...pending};
- const sampleId=prefix+String((state.reviews?.length??0)+1).padStart(4,'0');
+ const number=state.next_review_number??(state.reviews?.length??0)+1;need(Number.isSafeInteger(number)&&number>0,'Invalid review number');
+ const sampleId=prefix+String(number).padStart(4,'0');
  const sample=randomSample(rows.slice(Math.max(0,rows.length-Math.max(delta,30))),30,choose).map(r=>({...r,level:provenance[r.ja]?.level??null,en:provenance[r.ja]?.english??[],vi:r.output.text_vi}));
  const record={version:1,sample_id:sampleId,from_count:cursor,to_count:rows.length,rows:sample};
  const save=(suffix,value)=>privateWrite(path.join(directory,sampleId+suffix),JSON.stringify(value,null,2)+'\n');
  save('.json',record);save('.feedback.json',{version:1,sample_id:sampleId,results:sample.map(r=>({request_id:r.request_id,severity:null,note:''}))});
  const esc=v=>String(v).replaceAll('|','\\|').replaceAll('\n','<br>');
- privateWrite(path.join(directory,sampleId+'.md'),`# ${sampleId} — ${cursor} → ${rows.length}\n\nMẫu ngẫu nhiên; chưa được duyệt nghĩa. Điền severity null/ok/minor/major trong ${sampleId}.feedback.json. Worker dừng khi số major / tổng mẫu > 10%, kể cả phản hồi chưa điền hết.\n\n| Cấp | Nhật | Anh nguồn | Việt | Model |\n| --- | --- | --- | --- | --- |\n`+sample.map(r=>`| ${r.level??''} | ${esc(r.ja)} | ${esc(r.en.join(' / '))} | ${esc(r.vi)} | ${r.model} |`).join('\n')+'\n');
- (state.reviews??=[]).push({sample_id:sampleId,from_count:cursor,to_count:rows.length});state.review_cursor=rows.length;return record;
+ privateWrite(path.join(directory,sampleId+'.md'),prefix==='review-learning-'?renderLearningReview(sampleId,sample):`# ${sampleId} — ${cursor} → ${rows.length}\n\nMẫu ngẫu nhiên; chưa được duyệt nghĩa. Điền severity null/ok/minor/major trong ${sampleId}.feedback.json. Worker dừng khi số major / tổng mẫu > 10%, kể cả phản hồi chưa điền hết.\n\n| Cấp | Nhật | Anh nguồn | Việt | Model |\n| --- | --- | --- | --- | --- |\n`+sample.map(r=>`| ${r.level??''} | ${esc(r.ja)} | ${esc(r.en.join(' / '))} | ${esc(r.vi)} | ${r.model} |`).join('\n')+'\n');
+ (state.reviews??=[]).push({sample_id:sampleId,from_count:cursor,to_count:rows.length});state.review_cursor=rows.length;state.next_review_number=number+1;return record;
 }
 export function pendingReviewAtCheckpoint({directory,state,count,force=false}){
  if(count-(state.review_cursor??count)<500&&!force)return null;const previous=state.reviews?.at(-1);if(!previous)return null;
@@ -40,6 +42,13 @@ export function pendingReviewAtCheckpoint({directory,state,count,force=false}){
  const feedback=reviewFeedback(read('.json'),read('.feedback.json'));
  if(feedback.pause)return {sample_id:previous.sample_id,reason:'major_errors',...feedback};
  if(feedback.reviewed<feedback.total)return {sample_id:previous.sample_id,reason:'previous_review_incomplete',reviewed:feedback.reviewed,total:feedback.total};return null;
+}
+export async function waitForReview(check,{sleep=ms=>new Promise(r=>setTimeout(r,ms)),stopped=()=>false,onPending=()=>{}}={}){
+ while(!stopped()){
+  const pending=await check();if(!pending)return !stopped();onPending(pending);
+  if(pending.reason!=='previous_review_incomplete')return false;
+  await sleep(60000);
+ }return false;
 }
 export function reviewFeedback(sample,feedback){
  need(feedback.version===1&&feedback.sample_id===sample.sample_id&&Array.isArray(feedback.results),'Invalid review feedback');

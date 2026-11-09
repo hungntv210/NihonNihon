@@ -55,8 +55,9 @@ This profile preserves the historical v7 base prompt and adds a pinned
 comma-separated, and never substitute a Han Viet reading for a definition.
 `kanji_meaning_qa: true` enables per-row rejection after the existing batch gates:
 
-- A whole definition equal to a candidate reading after accent/case/punctuation
-  folding is rejected as `han_viet_as_meaning`.
+- A whole definition equal to a candidate reading after NFC, lowercase and trim is reviewed. A single-sense overlap is flagged
+  and imported; it is rejected only when English has at least two senses but
+  the output has one. Tones remain significant (đọc differs from độc).
 - Fewer than `min(meanings_en.length,3)` distinct comma-separated senses is
   rejected as `too_few_meanings`. Repeating the same sense does not pad the count.
 
@@ -67,3 +68,28 @@ without the flag/variant retain their old prompt hashes and validation behavior.
 Accent folding can also flag a legitimate Vietnamese definition that coincides
 with a reading (e.g. đọc/độc); the requested strict rule is retained and these
 rows remain visible for human review. Neither pilot is automatically imported.
+
+## Owner-approved production policy
+
+The previous accent-folding collision policy is superseded: reading comparison
+uses NFC, lowercase and trim **with tones preserved**. Single-sense overlap is
+accepted with `han_viet_reading_overlap` in the normal translation-report queue;
+multi-sense English reduced to one matching reading is rejected. The separate
+minimum-sense-count gate remains. Tests import 読/南/毎, with two review reports
+for 南/毎 and no collision for đọc versus độc.
+
+`learning_review: true` in the campaign config enables one shared500-item
+checkpoint for the entire learning stream (including Han Viet and definitions).
+Samples use actual accepted insertion order, task/input/output/model provenance,
+and `review-learning-*` IDs. `next_review_number` preserves existing pilot IDs.
+Missing feedback waits/polls every60 seconds; complete feedback with major<=10%
+resumes automatically; >10% major stops. The final sample also waits for review.
+This uses the pending-review functionality first prepared in PR #23, now included
+in this PR for the explicitly authorized all-Lite rollout.
+
+Production rotation retains immutable accepted profiles, sentence reviews,
+learning reviews, original per-model ledger paths, snapshot directory and probe
+state. The approved meaning pilot may be registered once; the failed mixed
+pilot must never be registered/imported. No request for an accepted context is
+sent again. The production Lite profile uses batch30, timeout120000 and low
+thinking; other models stay disabled. Review flags do not discard translations.
