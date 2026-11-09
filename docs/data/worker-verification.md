@@ -21,3 +21,21 @@
 
 This documentation travels with the feature branch/PR; it is not pushed directly
 to master. G0 retains its own package/test command until accepted and merged.
+
+## 2026-11-09 — archive first snapshot and enable G0 PR CI
+
+- Checked commit: `9e8822982fcf5ec3bc34bd4d826b4de276cda7cc`, branch `codex/g0-snapshot-archive-ci`, based on the approved PR #17 merge into `g0/data-import`.
+- `npm test`: **76/76 PASS**, no skips, Windows / Node 24; `2026-11-09T11:50:31.7998570+07:00` → `2026-11-09T11:50:40.7904249+07:00`.
+- Added archive verification, refusal to overwrite differing files, and receipt/retention tests for a first snapshot kept outside C:. The launcher test now uses an explicit release signal so parallel machine load cannot let its first worker exit before the duplicate-launch assertion.
+- CI runs `npm ci` and `npm test` for PRs targeting `g0/data-import`, on Windows to include the launcher test. Action runtime releases checked: [checkout v5](https://github.com/actions/checkout/releases/tag/v5.0.0), [setup-node v5](https://github.com/actions/setup-node/releases/tag/v5.0.0).
+- Actual archive metadata, SHA-256, source deletion record and disk measurements remain private; no translation results, DB files or environment were committed.
+
+- Cold-runner follow-up: CI run `42564131082` reached all tests but the old six-second launcher readiness poll expired (75/76 passed). Commit `92f7fb65c970d7c8f061a9cc9bd8ba69f2276207` waits for the readiness file up to 30 seconds, still verifies the actual worker start timestamp and single launch, and kills the fake process tree on test failure. Full local recheck: **76/76 PASS**, `2026-11-09T11:54:33.9139876+07:00` → `2026-11-09T11:54:45.8698099+07:00`.
+
+## 2026-11-09 — selected backup archives and disk-low gate
+
+- Checked commit: `b5de39617ab39bd5e7fe19b2d38048ba4b46922a`, same PR branch `codex/g0-snapshot-archive-ci`.
+- `npm test`: **81/81 PASS**, no skips, Windows / Node 24; `2026-11-09T12:21:39.5460965+07:00` → `2026-11-09T12:21:49.6120195+07:00`.
+- Added project-bound latest/legacy backup archiving, external daily-receipt reuse, and refusal of sources outside the project. Source removal requires verified destination SHA-256 and integrity/FK first.
+- Disk tests cover the exact 5,000,000,000-byte boundary, no snapshot/import or DB mutation below threshold, a late pre-transaction check, and worker status/log/lock handling for `disk_low`.
+- Operational file inventories, hashes, receipts, real disk readings and deletion logs remain private. No fixed 19-GB target or pagefile changes are part of this update.

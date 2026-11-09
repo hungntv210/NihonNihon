@@ -2,18 +2,19 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
-import {spawn,execFile} from 'node:child_process';
+import {spawn,spawnSync,execFile} from 'node:child_process';
 import {promisify} from 'node:util';
 import {fixture} from './helpers.mjs';
 const run=promisify(execFile),pause=ms=>new Promise(r=>setTimeout(r,ms));
-test('Windows launcher waits until notBefore, removes only a dead lock and launches exactly one worker', {skip:process.platform!=='win32',timeout:30000},async t=>{
+test('Windows launcher waits until notBefore, removes only a dead lock and launches exactly one worker', {skip:process.platform!=='win32',timeout:90000},async t=>{
  const f=fixture(t);fs.mkdirSync(f.dir+'/tools/data',{recursive:true});fs.mkdirSync(f.dir+'/campaign');fs.writeFileSync(f.dir+'/.env','');fs.writeFileSync(f.dir+'/config.json',JSON.stringify({directory:'campaign',import:{dbPath:'batch.sqlite'}}));fs.writeFileSync(f.dir+'/campaign/campaign.lock',JSON.stringify({pid:2147483647}));
- fs.writeFileSync(f.dir+'/tools/data/translation-campaign.mjs',"import fs from 'node:fs';fs.appendFileSync('calls.jsonl',JSON.stringify({at:Date.now()})+'\\n');setTimeout(()=>{},1000);");
+ fs.writeFileSync(f.dir+'/tools/data/translation-campaign.mjs',"import fs from 'node:fs';fs.appendFileSync('calls.jsonl',JSON.stringify({at:Date.now()})+'\\n');const timer=setInterval(()=>{if(fs.existsSync('release')){clearInterval(timer);clearTimeout(limit);}},50);const limit=setTimeout(()=>clearInterval(timer),60000);");
  const notBefore=Date.now()+5000,args=['-NoProfile','-ExecutionPolicy','Bypass','-File',path.resolve('tools/data/start-campaign.ps1'),'-ProjectPath',f.dir,'-ConfigPath','config.json','-EnvFile','.env','-NodePath',process.execPath,'-NotBefore',new Date(notBefore).toISOString()];
- const first=spawn('powershell.exe',args,{windowsHide:true,stdio:['ignore','pipe','pipe']});let stderr='';first.stderr.on('data',v=>stderr+=v);const exited=new Promise(resolve=>first.once('exit',code=>resolve(code)));t.after(()=>{if(first.exitCode===null)first.kill();});
- const stateFile=f.dir+'/campaign/launcher-state.json';for(let i=0;i<60&&!fs.existsSync(stateFile)&&first.exitCode===null;i++)await pause(100);
- assert.ok(fs.existsSync(stateFile),stderr);assert.ok(!fs.existsSync(f.dir+'/calls.jsonl'));
+ const first=spawn('powershell.exe',args,{windowsHide:true,stdio:['ignore','pipe','pipe']});let stderr='';first.stderr.on('data',v=>stderr+=v);const exited=new Promise(resolve=>first.once('exit',code=>resolve(code)));t.after(()=>{if(first.exitCode===null)spawnSync('taskkill.exe',['/PID',String(first.pid),'/T','/F'],{windowsHide:true,stdio:'ignore'});});
+ const stateFile=f.dir+'/campaign/launcher-state.json',readyDeadline=Date.now()+30000;while(!fs.existsSync(stateFile)&&first.exitCode===null&&Date.now()<readyDeadline)await pause(100);
+ assert.ok(fs.existsSync(stateFile),stderr||'Launcher did not publish readiness within30s');if(Date.now()<notBefore)assert.ok(!fs.existsSync(f.dir+'/calls.jsonl'));
  const second=await run('powershell.exe',args,{windowsHide:true});assert.match(second.stdout,/Already running|existing campaign worker/);
+ fs.writeFileSync(f.dir+'/release','');
  assert.equal(await exited,0,stderr);const calls=fs.readFileSync(f.dir+'/calls.jsonl','utf8').trim().split('\n').map(line=>JSON.parse(line));assert.equal(calls.length,1);assert.ok(calls[0].at>=notBefore);
  assert.ok(!fs.existsSync(f.dir+'/campaign/campaign.lock'));assert.equal(JSON.parse(fs.readFileSync(f.dir+'/campaign/launcher-deletions.jsonl','utf8').replace(/^\uFEFF/,'').trim()).verifiedDeadPid,2147483647);
 });
