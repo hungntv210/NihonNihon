@@ -72,3 +72,10 @@ to master. G0 retains its own package/test command until accepted and merged.
 - Checked implementation `a1697734cd59fd3da71cdde67025cf813447ff91`, isolated branch `codex/g0-chain-partial`, based on approved PR #21 merge `21878c272765501a7339bc38e2ff589a233c9bd3`.
 - Full `npm test`: **87/87 PASS**, zero skips; Windows / Node 24, `2026-11-09T15:52:34.8128334+07:00` → `2026-11-09T15:52:45.2350787+07:00`.
 - The chain accepts `partial_output` and continues to the existing unfinished-context filter. No retry, glossary, prompt, schema, quota or campaign behavior changes. Tests use fake providers. This follow-up remains a separate PR; no production data/files deleted.
+
+## 2026-11-09 — owner sentence and learning-lite pilot
+
+- Checked implementation `8806838acac67412e1365bd9dcf5f2d931dd23f0`, isolated branch `codex/g0-learning-lite`, base `101d387b3589c6c855e15553dd2723d88d36b719`.
+- Full `npm test`: **91/91 PASS**, zero skips, Windows / Node 24; `2026-11-09T17:48:41.5311314+07:00` → `2026-11-09T17:48:54.9286111+07:00`.
+- New tests verify strict numeric-glossary rejection before DB creation, manual/owner provenance through the real fixture importer, complete sentence coverage/final review,60 pending learning requests with20 Han Viet,30 distinct review items with10 Han Viet, and validated/pinned120-second timeout forwarded to Interactions.
+- Actual owner-authorized manual import and exactly two pilot batches were run from this isolated worktree; operational results stay private. Pilot output is not imported before review. No private data, credentials, schema changes, provider call by tests, or production file/translation deletion is part of this PR.
