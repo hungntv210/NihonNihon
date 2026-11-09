@@ -7,6 +7,14 @@ import {randomSample,writeReviewCheckpoint,reviewFeedback,applyTranslationFlags,
 import {runImport} from '../../tools/data/import.mjs';
 import {prepare,runGemini,publicPlan} from '../../tools/data/mt-gemini.mjs';
 import {importCampaign} from '../../tools/data/translation-campaign.mjs';
+
+test('Han Viet has its own 500-item checkpoint and the same pending/major gate',t=>{
+ const f=fixture(t),state={review_cursor:0},rows=Array.from({length:1020},(_,i)=>({request_id:String(i),ja:'字'+i,output:{text_vi:'âm '+i},model:'gemini-test'}));
+ assert.equal(writeReviewCheckpoint({directory:f.dir,state,rows:rows.slice(0,499),provenance:{},prefix:'review-han-viet-'}),null);
+ const first=writeReviewCheckpoint({directory:f.dir,state,rows:rows.slice(0,510),provenance:{},prefix:'review-han-viet-'});assert.equal(first.sample_id,'review-han-viet-0001');assert.equal(first.rows.length,30);
+ const next=writeReviewCheckpoint({directory:f.dir,state,rows,provenance:{},prefix:'review-han-viet-'});assert.equal(next.reason,'previous_review_incomplete');assert.ok(!fs.existsSync(f.dir+'/review-han-viet-0002.json'));
+ const feedback=JSON.parse(fs.readFileSync(f.dir+'/review-han-viet-0001.feedback.json'));feedback.results.forEach((r,i)=>r.severity=i<4?'major':'ok');fs.writeFileSync(f.dir+'/review-han-viet-0001.feedback.json',JSON.stringify(feedback));assert.equal(pendingReviewAtCheckpoint({directory:f.dir,state,count:1020}).reason,'major_errors');
+});
 import {createMT} from '../../tools/data/han-viet.mjs';
 import {sha} from '../../tools/data/core.mjs';
 

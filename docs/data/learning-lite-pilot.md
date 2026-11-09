@@ -32,3 +32,38 @@ refuses to fabricate a30-item review or request additional batches.
 
 Glossary, JSON/schema/evidence checks, prompts, snapshot retention and review
 thresholds remain unchanged. No schema changes or new dependencies.
+
+## Revision after semantic review of pilot 0001
+
+Pilot 0001 failed semantic review for kanji definitions and must not be
+imported, even though its structural QA passed. Its files/feedback remain intact.
+
+Routes `han_viet` and `meaning` explicitly filter task/field at the adapter,
+importer request selection and campaign queue. The Han Viet Lite profile example
+uses3.5 Flash Lite; it runs no3.6/3.8 probe. A dedicated `review-han-viet-*`
+checkpoint tracks every500 newly accepted Han Viet items independently of
+sentences, with30 random rows, one outstanding sample and the same >10% major
+stop gate. This capability is not started by a pilot command.
+
+`--mode meaning` selects exactly60 pending **kanji** meaning requests in two
+logical batches, never Han Viet or vocabulary/grammar tasks. It writes a fresh
+`review-learning-0002` with30 random accepted definitions and English senses,
+then exits; no DB import and no extra batches to replace rejected rows.
+
+This profile preserves the historical v7 base prompt and adds a pinned
+`prompt_variant: lite-meaning-1`: translate every English meaning, in order,
+comma-separated, and never substitute a Han Viet reading for a definition.
+`kanji_meaning_qa: true` enables per-row rejection after the existing batch gates:
+
+- A whole definition equal to a candidate reading after accent/case/punctuation
+  folding is rejected as `han_viet_as_meaning`.
+- Fewer than `min(meanings_en.length,3)` distinct comma-separated senses is
+  rejected as `too_few_meanings`. Repeating the same sense does not pad the count.
+
+Candidates come from checksummed public-plan dictionary data and are sent as
+context only, without changing frozen input/request identities. Accepted rows
+are saved; only rejected rows are deferred with reasons. Historical profiles
+without the flag/variant retain their old prompt hashes and validation behavior.
+Accent folding can also flag a legitimate Vietnamese definition that coincides
+with a reading (e.g. đọc/độc); the requested strict rule is retained and these
+rows remain visible for human review. Neither pilot is automatically imported.

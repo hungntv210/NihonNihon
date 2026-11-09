@@ -21,10 +21,11 @@ export function knownSourceReleases(dbPath,manifest){
   return !!lookup.get(id,f.sha256);
  }));}finally{db.close();}
 }
-export function writeReviewCheckpoint({directory,state,rows,provenance,force=false,choose}){
+export function writeReviewCheckpoint({directory,state,rows,provenance,force=false,choose,prefix='review-'}){
+ need(/^review-[a-z-]*$/.test(prefix),'Invalid review prefix');
  const cursor=state.review_cursor??rows.length,delta=rows.length-cursor;if(delta<500&&!(force&&delta>0))return null;
  const pending=pendingReviewAtCheckpoint({directory,state,count:rows.length,force});if(pending)return {paused:true,...pending};
- const sampleId='review-'+String((state.reviews?.length??0)+1).padStart(4,'0');
+ const sampleId=prefix+String((state.reviews?.length??0)+1).padStart(4,'0');
  const sample=randomSample(rows.slice(Math.max(0,rows.length-Math.max(delta,30))),30,choose).map(r=>({...r,level:provenance[r.ja]?.level??null,en:provenance[r.ja]?.english??[],vi:r.output.text_vi}));
  const record={version:1,sample_id:sampleId,from_count:cursor,to_count:rows.length,rows:sample};
  const save=(suffix,value)=>privateWrite(path.join(directory,sampleId+suffix),JSON.stringify(value,null,2)+'\n');

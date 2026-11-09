@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {parseArgs} from 'node:util';
-import {runGemini,prepare,settings,quotaDay,nextPacificReset,validateResults,publicPlan,PROMPT_VERSION} from './mt-gemini.mjs';
+import {runGemini,prepare,settings,quotaDay,nextPacificReset,validateResults,publicPlan,PROMPT_VERSION,routeMatches} from './mt-gemini.mjs';
 import {inspectBatch,summarizeGate,properNamesEnabled,assertSentenceQuality} from './translation-gate.mjs';
 import {stratifiedSample} from './review-sample.mjs';
 import {privateWrite,sha,hash,need} from './core.mjs';
@@ -153,22 +153,23 @@ export async function runCampaign(configPath,{checkDisk=assertDiskSpace}={}){
   const flagsPath=path.join(root,'translation-flags.json');
   const syncImport=()=>{need(cfg.import,'Continuous campaign requires an import database');const task=importTail.then(async()=>{state.import=await importCampaign({...cfg.import,directory:root,profiles,flags:fs.existsSync(flagsPath)?read(flagsPath):[],checkDisk});save();emit({event:'db_import',committed:state.import.db_committed,review_flags_added:state.import.review_flags_added});});importTail=task;return task;};
   async function checkReviews(){
-   for(const review of state.sentences.reviews??[]){
+   for(const review of [...state.sentences.reviews??[],...state.learning.reviews??[]]){
     const file=path.join(root,review.sample_id+'.feedback.json'),feedback=read(file),checksum=sha(feedback);let result=review.feedback;
     if(review.feedback_sha256!==checksum){result=reviewFeedback(read(path.join(root,review.sample_id+'.json')),feedback);review.feedback_sha256=checksum;review.feedback=result;
      if(result.flags.length){const flags=fs.existsSync(flagsPath)?read(flagsPath):[];write(flagsPath,[...new Map([...flags,...result.flags].map(f=>[sha(f),f])).values()]);await syncImport();}
     }
     if(result.pause){state.review_pause={sample_id:review.sample_id,major:result.major,total:result.total,major_percent:result.major_percent};state.status='review_paused';stopping=true;save();emit({event:'review_paused',...state.review_pause});return false;}
-   }const pending=pendingReviewAtCheckpoint({directory:root,state:state.sentences,count:state.sentences.done});if(pending){state.review_pause=pending;state.status='review_paused';stopping=true;save();emit({event:'review_paused',...pending});return false;}delete state.review_pause;return !stopping;
+   }const pending=pendingReviewAtCheckpoint({directory:root,state:state.sentences,count:state.sentences.done})??(cfg.learning.route==='han_viet'?pendingReviewAtCheckpoint({directory:root,state:state.learning,count:state.learning.done}):null);if(pending){state.review_pause=pending;state.status='review_paused';stopping=true;save();emit({event:'review_paused',...pending});return false;}delete state.review_pause;return !stopping;
   }
   const allSentences=primary.requests.filter(r=>r.task==='translate'&&r.input.field==='text');
-  const allLearning=learning.requests.filter(r=>r.task==='han_viet'||r.input.field!=='text');
+  const allLearning=learning.requests.filter(r=>routeMatches(r,cfg.learning.route??'learning'));
   need(new Set(allSentences.map(r=>r.input.ja)).size===allSentences.length,'Sentence queue is not deduplicated');
   for(const p of [primary,backup])for(const v of resultRows(p))if(v.request)sentenceDone.set(v.request.input.ja,{ja:v.request.input.ja,request_id:v.row.request_id,output:v.row.output,model:v.model,manifest:v.manifest});
   for(const v of resultRows(learning))if(v.request)learningDone.set(context(v.request),v);
   const sentOrder=read(cfg.sentence_order).requests,rank=new Map(sentOrder.map((r,i)=>[r.input.ja,i]));allSentences.sort((a,b)=>(rank.get(a.input.ja)??1e9)-(rank.get(b.input.ja)??1e9));
   state.sentences={...state.sentences,total:allSentences.length,done:sentenceDone.size,review_cursor:state.sentences.review_cursor??sentenceDone.size};delete state.stopping;delete state.error;delete state.status;
-  state.learning={...state.learning,total:allLearning.length,done:learningDone.size,not_before:cfg.learning_not_before};save();
+  const learningCount=()=>allLearning.filter(r=>learningDone.has(context(r))).length;
+  state.learning={...state.learning,total:allLearning.length,done:learningCount(),not_before:cfg.learning_not_before};if(cfg.learning.route==='han_viet')state.learning.review_cursor??=state.learning.done;save();
   await syncImport();if(!await checkReviews())return {...state,status:'review_paused'};
   function deferRows(stream,day,rows){
    const previous=stream.deferred_day===day?stream.deferred??[]:[];
@@ -207,20 +208,28 @@ export async function runCampaign(configPath,{checkDisk=assertDiskSpace}={}){
     if(!await checkReviews()||stopping)return;
     const now=Date.now();if(now<Date.parse(cfg.learning_not_before)){state.learning.waiting_for_reset=true;save();await sleep(Math.min(60000,Date.parse(cfg.learning_not_before)-now));continue;}
     state.learning.waiting_for_reset=false;const day=quotaDay(now);
-    if(!state.probe.started){
+    if(!state.probe.started&&!['han_viet','meaning'].includes(cfg.learning.route)){
      const probe=await profile('probe38',cfg.learning_base,cfg.probe);const task=probe.requests.find(r=>r.task==='han_viet')??probe.requests.find(r=>r.input.field!=='text');
      state.probe={started:true,day,model:cfg.probe.model};save();
      state.probe.result=await call(probe,[task],20,1);save();
     }
-    const pending=pendingCampaignRequests(allLearning,sentenceDone,learningDone);if(!pending.length){state.learning.complete=true;save();return;}
+    const pending=pendingCampaignRequests(allLearning,sentenceDone,learningDone);
+    if(cfg.learning.route==='han_viet'){
+     const rows=allLearning.filter(r=>learningDone.has(context(r))).map(r=>{const v=learningDone.get(context(r));return {ja:r.input.character,request_id:v.row.request_id,output:v.row.output,model:v.model,manifest:v.manifest};});
+     const review=writeReviewCheckpoint({directory:root,state:state.learning,rows,provenance:{},force:!pending.length,prefix:'review-han-viet-'});
+     if(review?.paused){state.review_pause=review;state.status='review_paused';stopping=true;save();emit({event:'review_paused',...review});return;}
+     if(review){save();emit({event:'review_ready',role:'han_viet',sample_id:review.sample_id});}
+    }
+    if(!pending.length){state.learning.complete=true;save();return;}
     const delay=campaignRetryDelay(state.learning,'finished_day',now);if(delay){await sleep(delay);continue;}
     const deferred=state.learning.deferred_day===day?new Set(state.learning.deferred??[]):new Set(),ready=pending.filter(r=>!deferred.has(context(r)));
     if(!ready.length){await sleep(Math.min(60000,nextPacificReset()-now+1000));continue;}
-    const hv=ready.filter(r=>r.task==='han_viet'),other=ready.filter(r=>r.task!=='han_viet');const batch=[...hv.slice(0,20),...other.slice(0,60-Math.min(20,hv.length))];if(batch.length<60)batch.push(...hv.slice(20,20+60-batch.length));
-    const result=await call(learning,batch,60,3);
+    const size=cfg.learning.batch_size??60;need(Number.isInteger(size)&&size>=20&&size<=60,'Learning batch_size must be20..60');
+    const hv=ready.filter(r=>r.task==='han_viet'),other=ready.filter(r=>r.task!=='han_viet');const batch=[...hv.slice(0,20),...other.slice(0,size-Math.min(20,hv.length))];if(batch.length<size)batch.push(...hv.slice(20,20+size-batch.length));
+    const result=await call(learning,batch,size,3);
     for(const v of resultRows(learning))if(v.request)learningDone.set(context(v.request),v);
-    const previousDone=state.learning.done;state.learning={...state.learning,done:learningDone.size,last_result:result};
-    if(learningDone.size>previousDone)await syncImport();
+    const previousDone=state.learning.done;state.learning={...state.learning,done:learningCount(),last_result:result};
+    if(state.learning.done>previousDone)await syncImport();
     const byId=new Map(batch.map(r=>[r.request_id,r]));const rejects=(result.rejected??[]).map(r=>({key:context(byId.get(r.request_id)),request_id:r.request_id,model:learning.config.model,reason:r.reason}));
     if(result.status==='invalid_output')rejects.push(...batch.filter(r=>!learningDone.has(context(r))).map(r=>({key:context(r),request_id:r.request_id,model:learning.config.model,reason:'Batch failed JSON/schema/quality validation'})));
     if(rejects.length)deferRows(state.learning,day,rejects);

@@ -10,6 +10,16 @@ await prepare({manifestPath:f.manifestPath,config,outputManifest:options.manifes
 const fake=response=>({models:{generateContent:response}});
 const output=params=>JSON.parse(params.contents).map(r=>({request_id:r.request_id,output:{text_vi:'tiếng Việt'}}));
 
+test('Lite meaning prompt is independently pinned and row QA rejects only the bad kanji meaning',async t=>{
+ const f=fixture(t);f.kanji[0].meanings=['day','sun','Japan'];f.write('kanji.json',f.kanji);f.save();
+ const c={...config,route:'meaning',prompt_variant:'lite-meaning-1',kanji_meaning_qa:true,max_api_attempts:1};
+ const {promptFor,routeMatches}=await import('../../tools/data/mt-gemini.mjs');assert.notEqual(settings(c).prompt_sha256,settings(config).prompt_sha256);assert.match(promptFor(c).text,/EVERY meaning/);
+ assert.equal(routeMatches({task:'han_viet',input:{}},'meaning'),false);assert.equal(routeMatches({task:'translate',input:{field:'meaning'}},'han_viet'),false);
+ const options={config:c,manifestPath:f.dir+'/meaning-manifest.json',requestsPath:f.dir+'/meaning-queue.json',resultsPath:f.dir+'/meaning-results.json',statePath:f.dir+'/meaning-quota.json'};await prepare({manifestPath:f.manifestPath,config:c,outputManifest:options.manifestPath,requestsPath:options.requestsPath,resultsPath:options.resultsPath});
+ const attempts=[];let count=0;const result=await runGemini({...options,limit:30,batchSize:30,onAttempt:a=>attempts.push(a),ai:fake(async p=>{const rows=JSON.parse(p.contents);count=rows.length;const kanji=rows.find(r=>r.input.character);assert.ok(kanji.input.candidates.some(c=>c.reading==='nhật'));assert.equal(kanji.input.meanings_en.length,3);return {text:JSON.stringify(rows.map(r=>({request_id:r.request_id,output:{text_vi:r.input.character?'NHAT':'Nghĩa thử nghiệm'}})))};})});
+ assert.equal(result.calls,1);assert.equal(result.sent,count-1);assert.equal(result.rejected.length,1);assert.equal(result.rejected[0].gate,'kanji_meaning');assert.match(result.rejected[0].reason,/han_viet_as_meaning/);assert.match(result.rejected[0].reason,/too_few_meanings/);assert.equal(attempts[0].validation_error,'kanji_meaning');assert.equal(JSON.parse(fs.readFileSync(options.resultsPath)).length,count-1);
+});
+
 test('pilot timeout120000 is validated, pinned and forwarded to Interactions',async t=>{
  const {options}=await setup(t),c={...config,api:'interactions',timeout_ms:120000},m=JSON.parse(fs.readFileSync(options.manifestPath));m.mt=settings(c);fs.writeFileSync(options.manifestPath,JSON.stringify(m));
  const {publicPlan}=await import('../../tools/data/mt-gemini.mjs');fs.writeFileSync(options.requestsPath,JSON.stringify({version:1,requests:(await publicPlan(options.manifestPath)).requests}));
