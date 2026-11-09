@@ -47,3 +47,10 @@ to master. G0 retains its own package/test command until accepted and merged.
 - Failed API attempts carry `error_message` into the callback, worker stdout and audit. Environment keys, Google-key patterns and labelled key values are redacted before truncation to 300 characters. The new 503 test verifies the message and redaction, three calls and the unchanged 32.5/60-second waits with deterministic jitter.
 - Initial full run passed 81/82: the real campaign worker caused the launcher's existing single-worker protection to refuse the test fixture. Both production roles were verified idle on their day holds; the worker was briefly stopped for the full test, then restarted through the existing launcher. Quotas, holds, model selection and accepted translations were not edited. Operational actions and stale-lock cleanup stay in private logs.
 - Retry logic, prompt, schema and QA gates are unchanged. Tests use fake providers and no real API calls. Any learning model change requires a separate owner decision; this PR only adds diagnostics.
+
+## 2026-11-09 — database-volume disk check
+
+- Checked commit: `627d57e026efe97b2be34b4e9ec6fa26047b0380`, isolated branch `codex/g0-db-volume`.
+- `npm test`: **82/82 PASS**, no skips, Windows / Node 24; `2026-11-09T13:36:32.2207493+07:00` → `2026-11-09T13:36:40.5800647+07:00`.
+- Checks now derive the volume from the configured DB path and pass that path through startup, snapshot and pre-transaction gates. Tests cover another Windows drive and caller propagation; the 5-GB threshold and `disk_low` behavior are unchanged.
+- The launcher worktree remained clean on `g0/data-import` at approved PR #18 merge `66a919e993ee6b2d51a46a5862da2bc8ca8703df`; its post-merge suite passed 81/81. This isolated change is not deployed to that worktree before review.
