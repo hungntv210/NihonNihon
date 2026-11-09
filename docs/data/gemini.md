@@ -419,3 +419,21 @@ mọi dòng bị xóa được liệt kê trong report private. Sau VACUUM, so f
 của tất cả bảng ngoài import_runs, audit nguồn khác và schema; kiểm integrity/FK
 lại. Không xóa bản dịch, thẻ, nội dung hay source release. Bản D được giữ để
 phục hồi; không ghi bản sao DB/report chi tiết vào Git.
+
+### Lưu snapshot đầu ở ổ ngoài thư mục dự án
+
+```powershell
+node tools/data/archive-snapshot.mjs --campaign data/private/campaign-v7 --source "C:/path/campaign-v7/backups/quota-YYYY-MM-DD.sqlite" --destination D:/NihonNihonBackup/G0
+```
+
+Chỉ snapshot đầu đã đăng ký được chuyển theo lệnh này. Script chép giữ nguyên
+tên, so SHA-256 nguồn/đích và kiểm integrity/FK ở bản chép trước khi gỡ bản C:;
+đích khác hash sẽ bị từ chối, không ghi đè. Receipt `archived-snapshots.json`
+ghi đường dẫn, kích thước và hash của bản D:, cùng log `backup-deletions.jsonl`.
+Retention tính bản D là bản đầu được giữ, chỉ giữ snapshot mới nhất ở C:;
+receipt ngày quota cũ vẫn nhận diện được bản đã chuyển. Nếu bản D mất hoặc đổi
+kích thước thì job dừng thay vì tự coi bản C khác là snapshot đầu.
+
+Workflow `.github/workflows/g0-data.yml` chạy `npm ci` và `npm test` cho PR vào
+`g0/data-import`, trên Windows với Node 24 để không bỏ qua test launcher.
+Workflow chỉ có quyền đọc nội dung, không dùng secret hoặc dữ liệu private.
