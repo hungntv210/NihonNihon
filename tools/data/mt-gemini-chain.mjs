@@ -19,7 +19,7 @@ export async function runChain({profiles,limit=20,reportPath,...runtime}){
  privateWrite(p.requestsPath,JSON.stringify({version:1,requests:queue},null,2));
  const result=await runGemini({...runtime,...p,config,limit:queue.length});runs.push(result);
  const byId=new Map(requests.map(r=>[r.request_id,r]));for(const row of JSON.parse(fs.readFileSync(p.resultsPath,'utf8')))if(byId.has(row.request_id))completed.set(contextKey(byId.get(row.request_id)),{model:mt.model,request_id:row.request_id,results_path:p.resultsPath});save();
- if(!['complete','api_error','daily_limit','rate_limited','model_disabled'].includes(result.status))break;
+ if(!['complete','partial_output','api_error','daily_limit','rate_limited','model_disabled'].includes(result.status))break;
  }
  return save();
 }

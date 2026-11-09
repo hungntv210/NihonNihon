@@ -66,3 +66,9 @@ to master. G0 retains its own package/test command until accepted and merged.
 - A synthetic 30-sentence response with one numeric-glossary violation saves/imports exactly 29 machine translations as selected; the rejected row retains its request ID and strict expected-term reason. JSON/schema and other quality gates remain batch gates; prompts and schema are unchanged.
 - The Windows launcher test keeps an unrelated fake project's worker alive, verifies this does not block launch, and still proves wait-until, dead-PID lock cleanup and a single same-project/config launch. The real production worker remained running throughout this gate.
 - Tests make no real provider calls. Runtime holds/deferred flags and quota ledgers were not cleared, accepted private results were not changed, and the new worker has not been deployed. Clearing the approved quota-day flags, one launcher restart and the one-hour progress measurement are explicitly pending review/merge of this PR. No production file/data deletion was performed for this change.
+
+## 2026-11-09 — partial output in fallback chain
+
+- Checked implementation `a1697734cd59fd3da71cdde67025cf813447ff91`, isolated branch `codex/g0-chain-partial`, based on approved PR #21 merge `21878c272765501a7339bc38e2ff589a233c9bd3`.
+- Full `npm test`: **87/87 PASS**, zero skips; Windows / Node 24, `2026-11-09T15:52:34.8128334+07:00` → `2026-11-09T15:52:45.2350787+07:00`.
+- The chain accepts `partial_output` and continues to the existing unfinished-context filter. No retry, glossary, prompt, schema, quota or campaign behavior changes. Tests use fake providers. This follow-up remains a separate PR; no production data/files deleted.
