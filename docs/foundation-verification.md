@@ -422,3 +422,6 @@ Schema, worker dịch và database G0 không thay đổi.
 - Checked commit `9e3d415c041617f80d12ea252ae62a0447013b8c`, isolated branch `codex/g1-register-jlpt`.
 - Full gate `2026-11-09T22:49:41.9160815+07:00` → `2026-11-09T22:51:23.1422246+07:00`, Windows/Node24: typecheck PASS; tests **87/87** (22 prototype +65 TypeScript); build PASS; test:app PASS (16 checks).
 - `node tools/check-route-scope.mjs origin/master foundation`: PASS. Registers only `g1/jlpt-daily` and its `/jlpt` alias (the existing Today link); no feature implementation, schema, DB, auth or navigation change.
+
+- Owner-requested whitespace correction checked at `5798864763f5720a25820b2089cd54c16db5cdde`: full check PASS (87/87 tests, typecheck/build/test:app), `2026-11-09T22:56:39.1911487+07:00` → `2026-11-09T22:57:53.4657032+07:00`. Foundation scope guard PASS.
+- CI diagnosis: `pull_request:` is unfiltered, so codex/* PRs into master do trigger it. Run `42649184927` passed npm run check but failed the existing Vocab browser check at line173 (30s waiting for “Mở nghĩa”). Only the G1-specific scope step was skipped for this codex branch. No workflow or Vocab code was changed here.
