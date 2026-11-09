@@ -434,3 +434,11 @@ Schema, worker dịch và database G0 không thay đổi.
 - `npm run check` PASS, `2026-11-09T23:27:37.4473809+07:00` → `2026-11-09T23:28:48.6610409+07:00`: typecheck, **87/87** tests (22 prototype +65 TypeScript), production build, test:app **16/16**. Windows/Node v24.10.0, public fixture and synthetic translations only.
 - `npm run test:browser` PASS **7/7**, `2026-11-09T23:28:48.6610409+07:00` → `2026-11-09T23:29:54.6105984+07:00`; includes Vocab locked/unlocked policy regression and original reveal/save/next checks. `node tools/check-route-scope.mjs origin/master g1/vocab`: PASS. Raw logs/summary in gitignored data/reports/.
 - Owner policy: never merge a red-CI PR without separate explicit owner approval. No G0 worker or production data/backup touched; only temporary browser fixtures cleaned by tests.
+
+## 2026-11-09 — JLPT weekly practice feature
+
+- Checked implementation `4118fa5d2d1a01ddfee3568cac69ba8d0a762bb3`, branch `g1/jlpt-daily`, rebased onto master merge `215e48a88888a8d9496b90f5ec46fc34544eeaef` (PR #26).
+- Full gate `2026-11-09T23:10:34.6488231+07:00` → `2026-11-09T23:11:58.6807889+07:00`; Windows, Node v24.10.0/npm11.6.1, isolated public OpenJLPT fixture. `npm run check` PASS: typecheck; **95/95** tests (22 prototype +73 TypeScript, including8 route tests); production build; test:app **16/16**.
+- Route browser-check PASS on the same commit, `2026-11-09T23:12:24.7016767+07:00` → `2026-11-09T23:12:32.7908860+07:00`: authenticated alias/empty week, CSRF, desktop1440/mobile390, 10 sequential answers including final explanation, reload/resume, server grading/idempotency, wrong-answer SRS, no external API requests. Raw artifacts: gitignored data/reports/jlpt-daily/.
+- `node tools/check-route-scope.mjs origin/master g1/jlpt-daily`: PASS. Only registered route files and this appended entry; no schema/shared/workflow/G0 edits. Feature PR remains unmerged.
+- Weekly generation/independent QA tested with fixtures, not a real model or copyrighted exam content. Semantic AI QA quality and physical-phone use remain unverified; route JSON backup requires a later foundation extension, documented in the route README. No G0 worker interruption or translation/data/backup deletion.
