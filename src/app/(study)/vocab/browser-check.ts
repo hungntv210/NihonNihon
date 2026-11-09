@@ -8,18 +8,31 @@ import { DatabaseSync } from 'node:sqlite';
 import { chromium } from 'playwright';
 import { seedDemo } from '../../../../tools/seed-demo.ts';
 import { hashPassword, SESSION_COOKIE } from '../../../core/session.ts';
+import { DEFAULT_PREFERENCES } from '../../../core/preferences.ts';
 
 // Run after the production build; all additional content is synthetic test data.
 const base = path.resolve(process.env.NIHON_BROWSER_FIXTURE_ROOT || '.tmp');
 fs.mkdirSync(base, { recursive: true });
 const directory = fs.mkdtempSync(path.join(base, 'vocab-browser-')),
   file = path.join(directory, 'app.sqlite');
+const diagnostics = path.resolve('data/reports/vocab-regression');
+fs.mkdirSync(diagnostics, { recursive: true });
+const settingsFile = path.join(directory, 'settings.json'),
+  roadmapFile = path.join(directory, 'roadmap.json'),
+  today = new Intl.DateTimeFormat('en-CA', { timeZone: DEFAULT_PREFERENCES.timeZone }).format(new Date()),
+  shift = (days: number) => new Date(Date.parse(today + 'T00:00:00Z') + days * 86400000).toISOString().slice(0, 10);
+// Always test a later week: missing shadowing locks lessons until a legitimate makeup.
+fs.writeFileSync(settingsFile, JSON.stringify({ ...DEFAULT_PREFERENCES, startDate: shift(-14), examDate: shift(730) }));
+const progress = { version: 1, shadow: [], activity: [], activeTask: null, shortDays: [] };
+fs.writeFileSync(roadmapFile, JSON.stringify(progress));
 seedDemo(file);
 const db = new DatabaseSync(file),
   word = db
     .prepare("SELECT i.* FROM content_items i JOIN vocab v USING(item_id) WHERE v.word='学生'")
     .get()!,
   itemId = String(word.item_id);
+assert.equal(db.prepare('SELECT count(*) n FROM vocab JOIN content_items USING(item_id) WHERE is_active=1').get()!.n, 8);
+assert.equal(db.prepare('SELECT count(*) n FROM srs_cards').get()!.n, 0);
 const sentence = db
   .prepare(
     "SELECT s.*,i.source_hash FROM sentences s JOIN content_items i USING(item_id) WHERE s.text_ja='私は学生です。'",
@@ -60,6 +73,11 @@ const child = spawn(
       NODE_ENV: 'production',
       APP_ORIGIN: origin,
       NIHON_DB_PATH: file,
+      NIHON_DB_ROLE: 'snapshot',
+      NIHON_SETTINGS_PATH: settingsFile,
+      NIHON_ROADMAP_PATH: roadmapFile,
+      NIHON_BACKUP_DIR: path.join(directory, 'backups'),
+      NIHON_RECORDINGS_DIR: path.join(directory, 'recordings'),
       NIHON_PASSWORD_HASH: hashPassword(password),
       SESSION_SECRET: randomBytes(32).toString('hex'),
       NEXT_TELEMETRY_DISABLED: '1',
@@ -169,7 +187,24 @@ try {
   await page.goto(origin + '/vocab?saved=1');
   assert.equal(await page.locator('article.content-card').count(), 1);
   assert.ok(await page.getByRole('link', { name: '学生', exact: true }).count());
-  await page.goto(origin + '/vocab/lesson');
+  const lockedResponse = await page.goto(origin + '/vocab/lesson');
+  assert.equal(lockedResponse?.status(), 423);
+  await page.getByText('Bài mới đang khóa:', { exact: false }).waitFor();
+  await page.screenshot({ path: path.join(diagnostics, 'lesson-locked.png'), fullPage: true });
+  fs.writeFileSync(path.join(diagnostics, 'lesson-locked.json'), JSON.stringify({
+    status: lockedResponse.status(), text: await page.locator('body').innerText(), errors,
+  }, null, 2));
+  assert.equal((await page.goto(origin + '/srs'))?.status(), 200);
+  await page.getByRole('heading', { name: 'Ôn tập', exact: true }).waitFor();
+  fs.writeFileSync(roadmapFile, JSON.stringify({ ...progress, shadow: [{
+    date: today, kind: 'makeup', method: 'manual', minutes: 25, clips: ['Synthetic clip A', 'Synthetic clip B'],
+  }] }));
+  const lessonResponse = await page.goto(origin + '/vocab/lesson');
+  await page.screenshot({ path: path.join(diagnostics, 'lesson-entry.png'), fullPage: true });
+  fs.writeFileSync(path.join(diagnostics, 'lesson-entry.json'), JSON.stringify({
+    status: lessonResponse?.status(), url: page.url(), text: await page.locator('body').innerText(), errors,
+  }, null, 2));
+  assert.equal(lessonResponse?.status(), 200);
   await page.getByRole('button', { name: 'Mở nghĩa', exact: true }).waitFor();
   const firstWord = await page.locator('article h2').innerText();
   await page.getByRole('button', { name: 'Mở nghĩa', exact: true }).click();
@@ -203,6 +238,8 @@ try {
       'report persisted',
       'report Origin/auth',
       'queued filter',
+      'missing shadowing blocks lessons but preserves SRS',
+      'valid makeup unlocks lesson',
       'lesson stable after save',
       '390px no overflow',
     ],
@@ -217,6 +254,7 @@ try {
     if (child.exitCode !== null) resolve();
     else child.once('exit', () => resolve());
   });
+  fs.writeFileSync(path.join(diagnostics, 'server.log'), output);
   assert.equal(path.dirname(directory), base);
   fs.rmSync(directory, { recursive: true, force: true, maxRetries: 3, retryDelay: 100 });
 }
