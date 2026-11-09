@@ -72,7 +72,7 @@ export async function rotateCampaign({configPath,outputConfig,directory,promptVe
 }
 
 export async function importCampaign({baseManifest,profiles,directory,dbPath,flags=[],snapshotDirectory=directory,timestamp=Date.now(),checkDisk=assertDiskSpace}){
- checkDisk('import');
+ checkDisk('import',{dbPath});
  const manifest=read(baseManifest),base=path.dirname(path.resolve(baseManifest)),root=path.resolve(directory);
  // Keep the manifest beside its base: raw record keys include these relative paths.
  const configs=new Map([manifest.mt,...manifest.mt_profiles??[]].filter(Boolean).map(c=>[sha(c),c]));
@@ -89,7 +89,7 @@ export async function importCampaign({baseManifest,profiles,directory,dbPath,fla
  const manifestPath=path.join(base,path.basename(root)+'-import-manifest.json');need(manifestPath!==path.resolve(baseManifest),'Import would overwrite base manifest');write(manifestPath,manifest);
  const snapshot=await ensureDailyCampaignSnapshot(snapshotDirectory,dbPath,timestamp,checkDisk);
  const auditSources=knownSourceReleases(dbPath,manifest)?['mt:google-gemini']:undefined;
- checkDisk('import');const report=await runImport({manifestPath,dbPath,reportPath:path.join(root,'import-report.json'),requestsPath:path.join(root,'remaining-requests.json'),takeBackup:false,auditSources,beforeApply:()=>checkDisk('import')});
+ checkDisk('import',{dbPath});const report=await runImport({manifestPath,dbPath,reportPath:path.join(root,'import-report.json'),requestsPath:path.join(root,'remaining-requests.json'),takeBackup:false,auditSources,beforeApply:()=>checkDisk('import',{dbPath})});
  report.backup_path=snapshot.path;report.snapshot_created=snapshot.created;report.review_flags_added=applyTranslationFlags(dbPath,flags);write(path.join(root,'import-report.json'),report);return report;
 }
 
@@ -127,7 +127,7 @@ export async function runCampaign(configPath,{checkDisk=assertDiskSpace}={}){
  const resultRows=p=>{const byId=new Map(p.requests.map(r=>[r.request_id,r]));return read(p.resultsPath).map(row=>({row,request:byId.get(row.request_id),model:p.config.model,manifest:p.manifestPath,results:p.resultsPath}));};
  const sentenceDone=new Map(),learningDone=new Map();
  try{
-  delete state.disk_low;checkDisk('import');
+  delete state.disk_low;checkDisk('import',{dbPath:cfg.import?.dbPath});
   const acceptedProfiles=cfg.accepted_profiles??[];
   const cached=await acceptedCampaignCache(cfg);for(const [k,v]of cached.sentenceDone)sentenceDone.set(k,v);for(const [k,v]of cached.learningDone)learningDone.set(k,v);
   const primary=await profile('sentences-primary',cfg.sentence_base,cfg.sentence_primary);
