@@ -39,3 +39,11 @@ to master. G0 retains its own package/test command until accepted and merged.
 - Added project-bound latest/legacy backup archiving, external daily-receipt reuse, and refusal of sources outside the project. Source removal requires verified destination SHA-256 and integrity/FK first.
 - Disk tests cover the exact 5,000,000,000-byte boundary, no snapshot/import or DB mutation below threshold, a late pre-transaction check, and worker status/log/lock handling for `disk_low`.
 - Operational file inventories, hashes, receipts, real disk readings and deletion logs remain private. No fixed 19-GB target or pagefile changes are part of this update.
+
+## 2026-11-09 — redacted Gemini failure messages
+
+- Checked commit: `37022767a5cf15eb2863983a84a88d95417ba877`, branch `codex/g0-error-message`.
+- `npm test`: **82/82 PASS**, zero skips, Windows / Node 24; `2026-11-09T15:17:40.2360249+07:00` → `2026-11-09T15:17:58.8401699+07:00`. Gemini-only tests: **21/21 PASS**.
+- Failed API attempts carry `error_message` into the callback, worker stdout and audit. Environment keys, Google-key patterns and labelled key values are redacted before truncation to 300 characters. The new 503 test verifies the message and redaction, three calls and the unchanged 32.5/60-second waits with deterministic jitter.
+- Initial full run passed 81/82: the real campaign worker caused the launcher's existing single-worker protection to refuse the test fixture. Both production roles were verified idle on their day holds; the worker was briefly stopped for the full test, then restarted through the existing launcher. Quotas, holds, model selection and accepted translations were not edited. Operational actions and stale-lock cleanup stay in private logs.
+- Retry logic, prompt, schema and QA gates are unchanged. Tests use fake providers and no real API calls. Any learning model change requires a separate owner decision; this PR only adds diagnostics.
