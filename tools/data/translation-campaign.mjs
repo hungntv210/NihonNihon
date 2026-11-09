@@ -116,8 +116,8 @@ export async function runCampaign(configPath,{checkDisk=assertDiskSpace}={}){
   const result=await runGemini({...p,limit:batch.length,batchSize:size,maxCalls,validateOutput:(rows,requests)=>{
    if(p.config.route==='sentences')assertSentenceQuality(rows,requests,p.config.prompt_version);
   },onAttempt:a=>{
-   emit({event:'api_attempt',role:p.config.route,model:a.model,call:a.call,http_status:a.http_status,error_kind:a.error_kind??null,validation_error:a.validation_error??null});
-   audit.push({model:a.model,http_status:a.http_status,error_kind:a.error_kind??null,validation_error:a.validation_error??null,request_ids:a.requests.map(r=>r.request_id),qa:a.http_status===200&&p.config.route==='sentences'?inspectBatch(a.text,a.requests,{properNames:properNamesEnabled(p.config.prompt_version)}):null});
+   emit({event:'api_attempt',role:p.config.route,model:a.model,call:a.call,http_status:a.http_status,error_kind:a.error_kind??null,error_message:a.error_message??null,validation_error:a.validation_error??null});
+   audit.push({model:a.model,http_status:a.http_status,error_kind:a.error_kind??null,error_message:a.error_message??null,validation_error:a.validation_error??null,request_ids:a.requests.map(r=>r.request_id),qa:a.http_status===200&&p.config.route==='sentences'?inspectBatch(a.text,a.requests,{properNames:properNamesEnabled(p.config.prompt_version)}):null});
    write(path.join(root,'audit.json'),audit);
    if(a.validation_error){write(path.join(root,'rejected-'+p.config.model+'.json'),{model:a.model,reason:a.validation_error,requests:a.requests,response:a.text});}
   }});
