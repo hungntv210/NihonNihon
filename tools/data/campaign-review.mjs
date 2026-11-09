@@ -52,7 +52,7 @@ export function reviewFeedback(sample,feedback){
 export function applyTranslationFlags(dbPath,flags){
  if(!flags.length)return 0;const db=openDatabase(dbPath);let count=0;
  try{db.exec('BEGIN IMMEDIATE');for(const flag of flags){need(typeof flag.request_id==='string'&&typeof flag.reason==='string'&&flag.reason.trim(),'Invalid translation review flag');
-  const translations=db.prepare("SELECT translation_id FROM vi_translations WHERE source_id='mt:google-gemini' AND method='machine' AND source_record_key=?").all(flag.request_id);
+  const translations=db.prepare("SELECT translation_id FROM vi_translations WHERE source_id LIKE 'mt:%' AND method='machine' AND source_record_key=?").all(flag.request_id);
   need(translations.length,'Review request has not been imported');
   for(const {translation_id}of translations)count+=db.prepare("INSERT OR IGNORE INTO translation_reports (report_id,translation_id,reason,reported_at,status) VALUES (?,?,?,?,'open')").run('campaign:'+sha({translation_id,reason:flag.reason}),translation_id,flag.reason.normalize('NFC'),new Date().toISOString()).changes;
  }db.exec('COMMIT');return count;}catch(e){db.exec('ROLLBACK');throw e;}finally{db.close();}

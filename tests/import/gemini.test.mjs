@@ -10,6 +10,12 @@ await prepare({manifestPath:f.manifestPath,config,outputManifest:options.manifes
 const fake=response=>({models:{generateContent:response}});
 const output=params=>JSON.parse(params.contents).map(r=>({request_id:r.request_id,output:{text_vi:'tiếng Việt'}}));
 
+test('pilot timeout120000 is validated, pinned and forwarded to Interactions',async t=>{
+ const {options}=await setup(t),c={...config,api:'interactions',timeout_ms:120000},m=JSON.parse(fs.readFileSync(options.manifestPath));m.mt=settings(c);fs.writeFileSync(options.manifestPath,JSON.stringify(m));
+ const {publicPlan}=await import('../../tools/data/mt-gemini.mjs');fs.writeFileSync(options.requestsPath,JSON.stringify({version:1,requests:(await publicPlan(options.manifestPath)).requests}));
+ const result=await runGemini({...options,config:c,limit:1,ai:{interactions:{create:async(p,o)=>{assert.equal(o.timeout,120000);return {output_text:JSON.stringify(JSON.parse(p.input).map(r=>({request_id:r.request_id,output:{text_vi:'Nghĩa thử'}})))};}}}});assert.equal(result.sent,1);assert.equal(settings(c).config.timeoutMs,120000);assert.throws(()=>settings({...c,timeout_ms:0}),/timeout_ms/);
+});
+
 test('Gemini pilot sends at most 20 verified public requests, normalizes NFC, pins output, resumes',async t=>{
 const {f,options}=await setup(t);let count=0;
 const queue=JSON.parse(fs.readFileSync(options.requestsPath));queue.requests.push({request_id:'private',task:'translate',input:{item_id:'user-media:sentence:secret',ja:'private subtitle'}});fs.writeFileSync(options.requestsPath,JSON.stringify(queue));

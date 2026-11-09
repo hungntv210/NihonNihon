@@ -94,7 +94,8 @@ export async function importCampaign({baseManifest,profiles,directory,dbPath,fla
  for(const f of source.files)if(f.format==='mt-results')f.mt_config_sha256??=sha(manifest.mt);
  for(const p of profiles){const m=read(p.manifestPath),c=m.mt;configs.set(sha(c),c);const file=m.sources.find(s=>s.source_id===c.source_id).files.find(f=>f.format==='mt-results');
   const local=path.resolve(path.dirname(p.manifestPath),file.path);need(hash(fs.readFileSync(local))===file.sha256,'Campaign result checksum mismatch');
-  source.files.push({...file,path:path.relative(base,local),mt_config_sha256:sha(c)});
+  let target=manifest.sources.find(s=>s.source_id===c.source_id);if(!target){target={...m.sources.find(s=>s.source_id===c.source_id),files:[]};manifest.sources.push(target);}
+  target.files.push({...file,path:path.relative(base,local),mt_config_sha256:sha(c)});
  }
  // The approved campaign covers every public N2–N5 record, not just the pilot cohort.
  manifest.cohort={};manifest.mt=read(profiles.find(p=>read(p.manifestPath).mt.config.route==='learning')?.manifestPath??profiles[0].manifestPath).mt;
