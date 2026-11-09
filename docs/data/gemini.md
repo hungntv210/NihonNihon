@@ -88,7 +88,8 @@ Interactions dùng response_format `{type:"text", mime_type:"application/json",
 schema:...}`, generation_config.thinking_level và output_text; store=false,
 maxRetries=0. GenerateContent vẫn hỗ trợ responseJsonSchema/thinkingConfig.
 Cả hai đường kiểm tra Ajv/membership/NFC trước khi ghi; JSON hỏng retry tối đa
-hai lần sau lần đầu, mỗi lần đều tính quota. 5xx tạm thời retry hữu hạn; lỗi khác
+hai lần sau lần đầu, mỗi lần đều tính quota. 5xx và lỗi mạng không có mã HTTP
+retry hữu hạn theo cùng backoff; lỗi khác
 trả api_error và mã HTTP, không in raw error hoặc request/headers chứa khoá.
 
 Mỗi model dùng manifest/queue/results riêng để giữ đúng release và request_id.
@@ -257,10 +258,22 @@ Lịch đã duyệt ngày 06/11/2026:
 
 Khác CLI adapter chạy một lượt, worker được duyệt tự chờ reset rồi tiếp tục từ
 checkpoint. Lỗi nội dung hết retry được hoãn riêng tới ngày sau, các lô khác
-tiếp tục. Nếu cả hai model câu lỗi dịch vụ, hoặc 3.6 hết quota/lỗi dịch vụ,
-luồng tương ứng chờ reset. `status.json` ghi tiến độ và trạng thái chờ, `audit.json`
+tiếp tục. Từ bản sửa ngày 09/11, lỗi dịch vụ/mạng nghỉ 15 phút rồi thử lại;
+chỉ `daily_limit` mới chờ reset ngay. Mỗi luồng có tối đa 6 lượt thất bại ở cấp
+campaign trong một ngày Pacific, kể cả khi đã restart; lượt thứ 6 đặt cờ chờ
+ngày với lý do `transient_retry_limit`, không báo nhầm là hết quota. Mỗi lượt
+vẫn chịu retry/call cap của adapter và ledger cũ, gồm trần 17 call learning.
+`retry.cooldown_until` và bộ đếm được ghi trong từng luồng của `status.json`;
+không dùng bộ đếm lỗi của luồng này để khóa luồng kia. `audit.json`
 ghi số call, HTTP status, loại lỗi validation và request IDs. Response bị từ chối
 được giữ riêng trong thư mục private để chẩn đoán, không nhập vào database.
+
+Thuật ngữ được kiểm từng dòng sau khi cả response đã qua JSON/schema và các
+cổng QA khác: lô 30 có một dòng sai thuật ngữ thì lưu/nhập 29 dòng đạt, trả
+`partial_output`, và chỉ đưa dòng sai vào deferred/rejected với request ID,
+model, ngày và lý do. Fallback không gửi lại các dòng đã nhận hoặc đã hoãn.
+Không thay đổi luật glossary, ngưỡng QA hoặc việc từ chối cả response khi lỗi
+JSON/schema/cổng chất lượng khác; không dịch lại context đã chấp nhận.
 
 Cổng câu kiểm tra output trước khi lưu; không nhận dòng còn chữ Nhật, sao chép
 câu gốc hoặc lệch độ dài. Báo cáo giữ lỗi của các lần thử riêng với QA kết quả
@@ -324,7 +337,8 @@ Worker stdout ghi từng `api_attempt` với model, `http_status`, loại lỗi 
 validation, cùng `error_status` trong kết quả lô. Khi khởi động, nó cũng ghi lại
 mã HTTP đã lưu của learning/probe, không gọi model lại để lấy mã lỗi. HTTP 429,
 400, 503 được giữ riêng; lỗi mạng không có HTTP ghi null/unknown, không đoán.
-Không ghi nguyên lỗi từ SDK vì có thể chứa thông tin nhạy cảm. Retry 503 vẫn
+`error_message` chỉ giữ tối đa 300 ký tự sau khi che khóa, chuyển tiếp vào
+stdout/audit; không ghi headers hoặc nguyên lỗi từ SDK. Retry 503/lỗi không mã HTTP
 tối đa ba lần, chờ 30–60 giây; 3.8 lỗi probe không tự trở thành fallback.
 
 ## Quy trình được duyệt sau lô v6 ngày 08/11
@@ -401,9 +415,18 @@ hai lần gọi đồng thời, xác minh PID bằng CIM trước khi gỡ lock 
 xóa lock nếu PID còn sống nhưng thuộc tiến trình khác. Nó kiểm tra worker lần
 nữa sau thời gian chờ rồi mới gọi Node bằng đường dẫn tuyệt đối; không đọc/in
 nội dung khoá. Log và `launcher-state.json` nằm trong thư mục campaign private.
+Kiểm tra worker chỉ khớp đường dẫn script của ProjectPath và config tuyệt đối;
+worker của dự án/config khác không chặn launcher hoặc bài test độc lập.
 Không có thao tác đăng ký Task Scheduler trong script. Chủ dự án sẽ duyệt việc
 đăng ký cùng đợt deploy; nếu máy tắt trước giờ chờ thì chạy lại launcher sau khi
 bật máy, vì chưa có task tự khởi động nào được cài.
+
+Sau khi PR sửa worker được duyệt và merge mới được xóa các cờ hold/deferred
+của ngày `2026-11-09` theo quyết định chủ dự án. Trước đó giữ nguyên dữ liệu
+và worker hiện tại. Khi triển khai, dừng/xác minh đúng PID, lưu bản status cũ
+và ghi nhật ký từng trường được xóa, giữ nguyên kết quả đã nhận cùng ledger;
+chạy đúng một worker qua launcher rồi đo số câu mới sau một giờ. Review
+checkpoint và yêu cầu chờ duyệt mẫu trước tiếp tục áp dụng.
 
 ### Dọn audit có bản sao an toàn
 

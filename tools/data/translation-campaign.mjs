@@ -15,6 +15,20 @@ const write=(p,v)=>privateWrite(p,JSON.stringify(v,null,2)+'\n');
 const sleep=ms=>new Promise(resolve=>setTimeout(resolve,ms));
 const context=r=>sha({task:r.task,input:r.input});
 
+export function campaignRetryDelay(stream,holdField,now=Date.now()){
+ const day=quotaDay(now);if(stream.retry?.day!==day)stream.retry={day,failures:0};
+ if(stream[holdField]===day)return Math.min(60000,nextPacificReset(now)-now+1000);
+ return Math.min(60000,Math.max(0,(stream.retry.cooldown_until??0)-now));
+}
+export function recordCampaignRetry(stream,status,holdField,now=Date.now()){
+ campaignRetryDelay(stream,holdField,now);const retry=stream.retry;
+ if(status==='daily_limit'){stream[holdField]=retry.day;retry.reason='daily_limit';delete retry.cooldown_until;return 'day_hold';}
+ if(['complete','partial_output','invalid_output'].includes(status)){delete retry.cooldown_until;delete retry.reason;return null;}
+ retry.failures++;
+ if(retry.failures>=6){stream[holdField]=retry.day;retry.reason='transient_retry_limit';delete retry.cooldown_until;return 'day_hold';}
+ retry.cooldown_until=now+15*60000;retry.reason=status;return 'cooldown';
+}
+
 // Accepted files retain their original request IDs, prompt and model releases.
 export async function acceptedProfileRows(profiles){
  const rows=[];
@@ -116,10 +130,10 @@ export async function runCampaign(configPath,{checkDisk=assertDiskSpace}={}){
   const result=await runGemini({...p,limit:batch.length,batchSize:size,maxCalls,validateOutput:(rows,requests)=>{
    if(p.config.route==='sentences')assertSentenceQuality(rows,requests,p.config.prompt_version);
   },onAttempt:a=>{
-   emit({event:'api_attempt',role:p.config.route,model:a.model,call:a.call,http_status:a.http_status,error_kind:a.error_kind??null,error_message:a.error_message??null,validation_error:a.validation_error??null});
-   audit.push({model:a.model,http_status:a.http_status,error_kind:a.error_kind??null,error_message:a.error_message??null,validation_error:a.validation_error??null,request_ids:a.requests.map(r=>r.request_id),qa:a.http_status===200&&p.config.route==='sentences'?inspectBatch(a.text,a.requests,{properNames:properNamesEnabled(p.config.prompt_version)}):null});
+   emit({event:'api_attempt',role:p.config.route,model:a.model,call:a.call,http_status:a.http_status,error_kind:a.error_kind??null,error_message:a.error_message??null,validation_error:a.validation_error??null,rejected:a.rejected??[]});
+   audit.push({model:a.model,http_status:a.http_status,error_kind:a.error_kind??null,error_message:a.error_message??null,validation_error:a.validation_error??null,rejected:a.rejected??[],request_ids:a.requests.map(r=>r.request_id),qa:a.http_status===200&&p.config.route==='sentences'?inspectBatch(a.text,a.requests,{properNames:properNamesEnabled(p.config.prompt_version)}):null});
    write(path.join(root,'audit.json'),audit);
-   if(a.validation_error){write(path.join(root,'rejected-'+p.config.model+'.json'),{model:a.model,reason:a.validation_error,requests:a.requests,response:a.text});}
+   if(a.validation_error){write(path.join(root,'rejected-'+p.config.model+'.json'),{model:a.model,reason:a.validation_error,rejected:a.rejected??[],requests:a.requests,response:a.text});}
   }});
   emit({role:p.config.route,model:p.config.model,sent:result.sent,calls:result.calls,status:result.status,error_status:result.error_status});
   return result;
@@ -155,23 +169,34 @@ export async function runCampaign(configPath,{checkDisk=assertDiskSpace}={}){
   state.sentences={...state.sentences,total:allSentences.length,done:sentenceDone.size,review_cursor:state.sentences.review_cursor??sentenceDone.size};delete state.stopping;delete state.error;delete state.status;
   state.learning={...state.learning,total:allLearning.length,done:learningDone.size,not_before:cfg.learning_not_before};save();
   await syncImport();if(!await checkReviews())return {...state,status:'review_paused'};
+  function deferRows(stream,day,rows){
+   const previous=stream.deferred_day===day?stream.deferred??[]:[];
+   stream.deferred_day=day;stream.deferred=[...new Set([...previous,...rows.map(r=>r.key)])];
+   (stream.rejected??=[]).push(...rows.map(r=>({day,...r})));save();
+  }
+  function retryStream(role,status,holdField){const event=recordCampaignRetry(state[role],status,holdField);if(event)emit({event,role,...state[role].retry});save();}
   async function sentenceLoop(){
    while(!stopping){
     if(!await checkReviews()||stopping)return;
     const day=quotaDay(Date.now()),pending=pendingCampaignRequests(allSentences,sentenceDone,learningDone);if(!pending.length){const review=writeReviewCheckpoint({directory:root,state:state.sentences,rows:[...sentenceDone.values()],provenance:read(cfg.sentence_provenance),force:true});if(review?.paused){state.review_pause=review;state.status='review_paused';stopping=true;save();return;}state.sentences.complete=true;save();return;}
     const deferred=state.sentences.deferred_day===day?new Set(state.sentences.deferred??[]):new Set();const ready=pending.filter(r=>!deferred.has(r.input.ja));
-    if(state.sentences.hold_day===day||!ready.length){await sleep(Math.min(60000,nextPacificReset()-Date.now()+1000));continue;}
-    const batch=ready.slice(0,30);let good=false,last;
+    const delay=campaignRetryDelay(state.sentences,'hold_day');if(delay||!ready.length){await sleep(delay||Math.min(60000,nextPacificReset()-Date.now()+1000));continue;}
+    const batch=ready.slice(0,30),outcomes=[],rejectedJa=new Set();
     for(const p of [primary,backup]){
-     if(!await checkReviews()||stopping)return;const byJa=new Map(p.requests.map(r=>[r.input.ja,r])),tasks=batch.map(r=>byJa.get(r.input.ja));need(tasks.every(Boolean),'Fallback source mismatch');
-     const result=await call(p,tasks,30,p===primary?1:3);last=result;
+     if(!await checkReviews()||stopping)return;const byJa=new Map(p.requests.map(r=>[r.input.ja,r])),tasks=batch.filter(r=>!sentenceDone.has(r.input.ja)&&!rejectedJa.has(r.input.ja)).map(r=>byJa.get(r.input.ja));need(tasks.every(Boolean),'Fallback source mismatch');if(!tasks.length)break;
+     const result=await call(p,tasks,30,p===primary?1:3);outcomes.push(result);
      for(const v of resultRows(p))if(v.request)sentenceDone.set(v.request.input.ja,{ja:v.request.input.ja,request_id:v.row.request_id,output:v.row.output,model:v.model,manifest:v.manifest});
-     if(batch.every(r=>sentenceDone.has(r.input.ja))){good=true;break;}
+     const byId=new Map(tasks.map(r=>[r.request_id,r]));const rejects=(result.rejected??[]).map(r=>({key:byId.get(r.request_id).input.ja,request_id:r.request_id,model:p.config.model,reason:r.reason}));
+     if(rejects.length){deferRows(state.sentences,day,rejects);for(const r of rejects)rejectedJa.add(r.key);}
+     if(batch.every(r=>sentenceDone.has(r.input.ja)||rejectedJa.has(r.input.ja)))break;
      if(result.status!=='daily_limit')await sleep(5000);
     }
     const previousDone=state.sentences.done;state.sentences.done=sentenceDone.size;write(path.join(root,'sentences-completed.json'),[...sentenceDone.values()]);
     if(sentenceDone.size>previousDone){await syncImport();const review=writeReviewCheckpoint({directory:root,state:state.sentences,rows:[...sentenceDone.values()],provenance:read(cfg.sentence_provenance)});if(review?.paused){state.review_pause=review;state.status='review_paused';stopping=true;save();emit({event:'review_paused',...review});return;}if(review)emit({event:'review_ready',sample_id:review.sample_id,from_count:review.from_count,to_count:review.to_count,path:path.join(root,review.sample_id+'.md')});}
-    if(!good){if(last.status==='invalid_output'){state.sentences.deferred_day=day;state.sentences.deferred=[...deferred,...batch.map(r=>r.input.ja)];}else state.sentences.hold_day=day;}
+    const unfinished=batch.filter(r=>!sentenceDone.has(r.input.ja)&&!rejectedJa.has(r.input.ja));
+    const status=!unfinished.length?'complete':outcomes.every(r=>r.status==='daily_limit')?'daily_limit':outcomes.some(r=>!['complete','partial_output','invalid_output','daily_limit'].includes(r.status))?'api_error':'invalid_output';
+    if(status==='invalid_output')deferRows(state.sentences,day,unfinished.map(r=>({key:r.input.ja,request_id:r.request_id,reason:'Batch failed JSON/schema/quality validation'})));
+    retryStream('sentences',status,'hold_day');
     state.sentences.validation_failures=audit.filter(a=>[cfg.sentence_primary.model,cfg.sentence_backup.model].includes(a.model)&&a.validation_error).length;
     state.sentences.gate=summarizeGate(audit.filter(a=>a.qa||a.model===cfg.sentence_primary.model||a.model===cfg.sentence_backup.model),sentenceDone.size);save();
    }
@@ -187,16 +212,18 @@ export async function runCampaign(configPath,{checkDisk=assertDiskSpace}={}){
      state.probe.result=await call(probe,[task],20,1);save();
     }
     const pending=pendingCampaignRequests(allLearning,sentenceDone,learningDone);if(!pending.length){state.learning.complete=true;save();return;}
-    if(state.learning.finished_day===day){await sleep(Math.min(60000,nextPacificReset()-now+1000));continue;}
+    const delay=campaignRetryDelay(state.learning,'finished_day',now);if(delay){await sleep(delay);continue;}
     const deferred=state.learning.deferred_day===day?new Set(state.learning.deferred??[]):new Set(),ready=pending.filter(r=>!deferred.has(context(r)));
-    if(!ready.length){state.learning.finished_day=day;save();continue;}
+    if(!ready.length){await sleep(Math.min(60000,nextPacificReset()-now+1000));continue;}
     const hv=ready.filter(r=>r.task==='han_viet'),other=ready.filter(r=>r.task!=='han_viet');const batch=[...hv.slice(0,20),...other.slice(0,60-Math.min(20,hv.length))];if(batch.length<60)batch.push(...hv.slice(20,20+60-batch.length));
     const result=await call(learning,batch,60,3);
     for(const v of resultRows(learning))if(v.request)learningDone.set(context(v.request),v);
     const previousDone=state.learning.done;state.learning={...state.learning,done:learningDone.size,last_result:result};
     if(learningDone.size>previousDone)await syncImport();
-    if(result.status==='invalid_output'){state.learning.deferred_day=day;state.learning.deferred=[...deferred,...batch.map(context)];}
-    else if(result.status!=='complete')state.learning.finished_day=day;
+    const byId=new Map(batch.map(r=>[r.request_id,r]));const rejects=(result.rejected??[]).map(r=>({key:context(byId.get(r.request_id)),request_id:r.request_id,model:learning.config.model,reason:r.reason}));
+    if(result.status==='invalid_output')rejects.push(...batch.filter(r=>!learningDone.has(context(r))).map(r=>({key:context(r),request_id:r.request_id,model:learning.config.model,reason:'Batch failed JSON/schema/quality validation'})));
+    if(rejects.length)deferRows(state.learning,day,rejects);
+    retryStream('learning',result.status,'finished_day');
     write(path.join(root,'learning-completed.json'),[...learningDone.values()]);save();
    }
   }

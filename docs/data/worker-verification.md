@@ -56,3 +56,13 @@ to master. G0 retains its own package/test command until accepted and merged.
 - The launcher worktree remained clean on `g0/data-import` at approved PR #18 merge `66a919e993ee6b2d51a46a5862da2bc8ca8703df`; its post-merge suite passed 81/81. This isolated change is not deployed to that worktree before review.
 
 - PR #20 updated after merging #19: conflict resolution kept both verification sections. Checked merge `8cd48ac4d50c715917318f5890fa24c64410bba7`; full `npm test` at `2026-11-09T15:32:14.1916427+07:00` → `2026-11-09T15:32:23.3289938+07:00`: **82/83 PASS**, one launcher test blocked by the live worker's known cross-project detection bug. Production was left running; the requested launcher fix travels in the next worker-recovery PR. CI must pass the complete suite before this approved PR is merged.
+
+## 2026-11-09 — campaign cooldown, per-row terminology and scoped launcher
+
+- Base includes PR #19 merge `4170758cef8c45db86b643fe4e1620580151f75d` and PR #20 merge `56fc77479c5161a1be5e0c147ac7b942574ab010`, both made with merge commits. PR #20's resolved base passed CI run `42586781287` before merging; both verification histories were retained.
+- Checked implementation: `77a43d8aea2227c965211552ea6fbee082570eff`, isolated branch `codex/g0-worker-recovery`.
+- Full `npm test`: **87/87 PASS**, no skips, Windows / Node 24; `2026-11-09T15:42:22.3346081+07:00` → `2026-11-09T15:42:32.2483548+07:00`.
+- Tests cover no-HTTP network retry then success on the same Pacific date, durable 15-minute cooldown, six cumulative campaign failures per stream/day (success does not reset the day's counter), independent streams, next-day reset, and immediate `daily_limit` day holds. Existing ledger budgets and internal call caps still apply.
+- A synthetic 30-sentence response with one numeric-glossary violation saves/imports exactly 29 machine translations as selected; the rejected row retains its request ID and strict expected-term reason. JSON/schema and other quality gates remain batch gates; prompts and schema are unchanged.
+- The Windows launcher test keeps an unrelated fake project's worker alive, verifies this does not block launch, and still proves wait-until, dead-PID lock cleanup and a single same-project/config launch. The real production worker remained running throughout this gate.
+- Tests make no real provider calls. Runtime holds/deferred flags and quota ledgers were not cleared, accepted private results were not changed, and the new worker has not been deployed. Clearing the approved quota-day flags, one launcher restart and the one-hour progress measurement are explicitly pending review/merge of this PR. No production file/data deletion was performed for this change.

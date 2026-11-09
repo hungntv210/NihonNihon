@@ -6,7 +6,10 @@ import {spawn,spawnSync,execFile} from 'node:child_process';
 import {promisify} from 'node:util';
 import {fixture} from './helpers.mjs';
 const run=promisify(execFile),pause=ms=>new Promise(r=>setTimeout(r,ms));
-test('Windows launcher waits until notBefore, removes only a dead lock and launches exactly one worker', {skip:process.platform!=='win32',timeout:90000},async t=>{
+test('Windows launcher ignores other projects, waits until notBefore, removes only a dead lock and launches exactly one worker', {skip:process.platform!=='win32',timeout:90000},async t=>{
+ const other=fixture(t);fs.writeFileSync(other.dir+'/translation-campaign.mjs','setTimeout(()=>{},60000);');fs.writeFileSync(other.dir+'/config.json','{}');
+ const unrelated=spawn(process.execPath,[other.dir+'/translation-campaign.mjs','--config',other.dir+'/config.json'],{windowsHide:true,stdio:'ignore'});assert.ok(unrelated.pid);
+ t.after(()=>{if(unrelated.exitCode===null)spawnSync('taskkill.exe',['/PID',String(unrelated.pid),'/T','/F'],{windowsHide:true,stdio:'ignore'});});
  const f=fixture(t);fs.mkdirSync(f.dir+'/tools/data',{recursive:true});fs.mkdirSync(f.dir+'/campaign');fs.writeFileSync(f.dir+'/.env','');fs.writeFileSync(f.dir+'/config.json',JSON.stringify({directory:'campaign',import:{dbPath:'batch.sqlite'}}));fs.writeFileSync(f.dir+'/campaign/campaign.lock',JSON.stringify({pid:2147483647}));
  fs.writeFileSync(f.dir+'/tools/data/translation-campaign.mjs',"import fs from 'node:fs';fs.appendFileSync('calls.jsonl',JSON.stringify({at:Date.now()})+'\\n');const timer=setInterval(()=>{if(fs.existsSync('release')){clearInterval(timer);clearTimeout(limit);}},50);const limit=setTimeout(()=>clearInterval(timer),60000);");
  const notBefore=Date.now()+5000,args=['-NoProfile','-ExecutionPolicy','Bypass','-File',path.resolve('tools/data/start-campaign.ps1'),'-ProjectPath',f.dir,'-ConfigPath','config.json','-EnvFile','.env','-NodePath',process.execPath,'-NotBefore',new Date(notBefore).toISOString()];
@@ -15,6 +18,6 @@ test('Windows launcher waits until notBefore, removes only a dead lock and launc
  assert.ok(fs.existsSync(stateFile),stderr||'Launcher did not publish readiness within30s');if(Date.now()<notBefore)assert.ok(!fs.existsSync(f.dir+'/calls.jsonl'));
  const second=await run('powershell.exe',args,{windowsHide:true});assert.match(second.stdout,/Already running|existing campaign worker/);
  fs.writeFileSync(f.dir+'/release','');
- assert.equal(await exited,0,stderr);const calls=fs.readFileSync(f.dir+'/calls.jsonl','utf8').trim().split('\n').map(line=>JSON.parse(line));assert.equal(calls.length,1);assert.ok(calls[0].at>=notBefore);
+ assert.equal(await exited,0,stderr);assert.equal(unrelated.exitCode,null);const calls=fs.readFileSync(f.dir+'/calls.jsonl','utf8').trim().split('\n').map(line=>JSON.parse(line));assert.equal(calls.length,1);assert.ok(calls[0].at>=notBefore);
  assert.ok(!fs.existsSync(f.dir+'/campaign/campaign.lock'));assert.equal(JSON.parse(fs.readFileSync(f.dir+'/campaign/launcher-deletions.jsonl','utf8').replace(/^\uFEFF/,'').trim()).verifiedDeadPid,2147483647);
 });

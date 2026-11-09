@@ -64,8 +64,8 @@ export function properNameIssues(source,vi){
 export function validateTerminology(results,requests){
  for(const row of results){const r=requests.find(r=>r.request_id===row.request_id);if(r.task!=='translate')continue;
  const ja=r.input.ja??r.input.word??'',vi=row.output.text_vi.toLowerCase();
- for(const {expected}of glossaryRequirements(ja))need(vi.includes(expected),'Glossary contract failed');
- for(const {expected}of numericGlossaryRequirements(r.input))need(vi.includes(expected),'Numeric glossary contract failed');
+ for(const {expected}of glossaryRequirements(ja))need(vi.includes(expected),`Glossary contract failed: expected "${expected}"`);
+ for(const {expected}of numericGlossaryRequirements(r.input))need(vi.includes(expected),`Numeric glossary contract failed: expected "${expected}"`);
  if(ja.includes('風邪'))need(!vi.includes('cúm'),'風邪 must not become influenza');
  if(/伺います|伺いました/.test(ja))need(/xin|thưa|kính|ngài|quý/.test(vi),'Humble register lost');
  }
@@ -144,7 +144,7 @@ async function runUnlocked({manifestPath,config,requestsPath='data/requests/batc
  const saveResults=()=>{privateWrite(resultsPath,JSON.stringify(results,null,2));resultFile.sha256=hash(fs.readFileSync(resultsPath));privateWrite(manifestPath,JSON.stringify(manifest,null,2));};
  saveResults(); // Repair a hash after an interrupted results/manifest pair of writes.
  ai??=new GoogleGenAI({});
- let sent=0,status='complete',invalidOutputs=0,calls=0,errorStatus=null;const usage=[];
+ let sent=0,status='complete',invalidOutputs=0,calls=0,errorStatus=null;const usage=[],rejected=[];
  outer:for(const task of config.mixed_tasks?['mixed']:['translate','han_viet']){const items=task==='mixed'?pending:pending.filter(r=>r.task===task);for(let i=0;i<items.length;i+=batchSize){const batch=items.slice(i,i+batchSize),contents=JSON.stringify(batch.map(({request_id,task,input})=>({request_id,task,input:task==='han_viet'&&config.max_compounds_sent?{...input,compounds:input.compounds.slice(0,config.max_compounds_sent)}:input,...(mt.config.publicEnglishGlosses&&input.field==='text'?{reference_en:publicData.englishGlosses.get(input.ja.normalize('NFC'))??[]}:{} )}))),schema=resultSchema(task);
  if(task==='mixed'){schema.items.anyOf.forEach((branch,i)=>branch.properties.request_id={...string,enum:batch.filter(r=>r.task===['translate','han_viet'][i]).map(r=>r.request_id)});schema.items.anyOf=schema.items.anyOf.filter(branch=>branch.properties.request_id.enum.length);if(schema.items.anyOf.length===1)schema.items=schema.items.anyOf[0];}
  for(let retry=0;;retry++){
@@ -161,17 +161,19 @@ async function runUnlocked({manifestPath,config,requestsPath='data/requests/batc
  if(config.api==='interactions'){
  response=await ai.interactions.create({model:mt.model,input:contents,system_instruction:prompt,store:false,generation_config:{temperature:0,max_output_tokens:mt.config.maxOutputTokens,...(config.thinking_level?{thinking_level:config.thinking_level}:{})},response_format:{type:'text',mime_type:'application/json',schema}},{maxRetries:0,timeout:60000});text=response.output_text;
  }else{response=await ai.models.generateContent({model:mt.model,contents,config:{temperature:0,maxOutputTokens:mt.config.maxOutputTokens,responseMimeType:'application/json',systemInstruction:prompt,responseJsonSchema:schema,...(config.thinking_level?{thinkingConfig:{thinkingLevel:config.thinking_level.toUpperCase()}}:{}),httpOptions:{retryOptions:{attempts:1},timeout:60000}}});text=response.text;}
- let output,validationError=null;try{validationError='json';output=nfc(JSON.parse(text));validationError='schema_or_evidence';validateResults(output,JSON.parse(contents));validationError='terminology';validateTerminology(output,batch);validationError='quality_gate';validateOutput(output,batch);validationError=null;}catch{}
- onAttempt({model:mt.model,call:calls,http_status:200,text,requests:batch,validation_error:validationError});
+ let output,validationError=null;try{validationError='json';output=nfc(JSON.parse(text));validationError='schema_or_evidence';validateResults(output,JSON.parse(contents));validationError='quality_gate';validateOutput(output,batch);validationError=null;}catch{}
+ const accepted=[],rowRejections=[];
+ if(!validationError)for(const row of output){try{validateTerminology([row],batch);accepted.push(row);}catch(e){rowRejections.push({request_id:row.request_id,reason:e.message,output:row.output});}}
+ onAttempt({model:mt.model,call:calls,http_status:200,text,requests:batch,validation_error:validationError??(rowRejections.length?'terminology':null),rejected:rowRejections});
  if(validationError){invalidOutputs++;if(retry<Math.min(2,(config.max_api_attempts??3)-1)){await sleep(Math.max(1000,config.pause_after_response_ms??0));continue;}status='invalid_output';break outer;}
- results.push(...output);sent+=output.length;usage.push(response.usage??response.usageMetadata??null);saveResults();onProgress({model:mt.model,sent,calls,remaining:pending.length-sent});if(config.pause_after_response_ms)await sleep(config.pause_after_response_ms);break;
- }catch(e){const code=apiErrorStatus(e);errorStatus=code??'unknown';onAttempt({model:mt.model,call:calls,http_status:code,error_kind:code?'http':'network_or_unknown',error_message:apiErrorMessage(e),requests:batch});if(code!==429){if([500,502,503,504].includes(code)&&retry<Math.min(config.max_api_attempts??3,3)-1){await sleep(Math.min(30000*2**retry+Math.floor(random()*5001),60000));continue;}status='api_error';break outer;}
+ results.push(...accepted);sent+=accepted.length;rejected.push(...rowRejections);if(rowRejections.length){invalidOutputs++;status='partial_output';}usage.push(response.usage??response.usageMetadata??null);saveResults();onProgress({model:mt.model,sent,calls,remaining:pending.length-sent});if(config.pause_after_response_ms)await sleep(config.pause_after_response_ms);break;
+ }catch(e){const code=apiErrorStatus(e);errorStatus=code??'unknown';onAttempt({model:mt.model,call:calls,http_status:code,error_kind:code?'http':'network_or_unknown',error_message:apiErrorMessage(e),requests:batch});if(code!==429){if((code==null||[500,502,503,504].includes(code))&&retry<Math.min(config.max_api_attempts??3,3)-1){await sleep(Math.min(30000*2**retry+Math.floor(random()*5001),60000));continue;}status='api_error';break outer;}
  const details=String(e.message??'');if(/perday|per.day|daily/i.test(details)){ledger.blockedDay=ledger.day;saveState();status='daily_limit';break outer;}
  if(retry>=(config.max_api_attempts??5)-1){status='rate_limited';break outer;}const delay=details.match(/retryDelay[^0-9]*(\d+(?:\.\d+)?)s/);await sleep(Math.max(10000*2**retry,delay?Number(delay[1])*1000:0));
  }
  }
  }}
- return {status,model:mt.model,api:config.api??'generateContent',calls,error_status:errorStatus,invalid_outputs:invalidOutputs,usage,sent,already_completed:done.size,blocked_private_or_unverified:queue.requests.length-safe.length,remaining:safe.filter(r=>routeMatches(r,config.route)&&!results.some(o=>o.request_id===r.request_id)).length};
+ return {status,model:mt.model,api:config.api??'generateContent',calls,error_status:errorStatus,invalid_outputs:invalidOutputs,rejected,usage,sent,already_completed:done.size,blocked_private_or_unverified:queue.requests.length-safe.length,remaining:safe.filter(r=>routeMatches(r,config.route)&&!results.some(o=>o.request_id===r.request_id)).length};
 }
 export async function runGemini(options){
  const statePath=options.statePath??options.config?.state_path??'data/mt-results/quota.json';
