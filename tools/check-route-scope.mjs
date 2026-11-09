@@ -6,6 +6,7 @@ const ownership = new Map(
   ['srs', 'vocab', 'kanji', 'grammar', 'today-roadmap', 'shadowing', 'common-tools']
     .map(name => [name, [`src/app/(study)/${name}/`]]),
 );
+ownership.set('jlpt-daily', ['src/app/(study)/jlpt-daily/', 'src/app/(study)/jlpt/']);
 ownership.set('foundation', ['src/app/(study)/settings/', 'public/fonts/']);
 if (!base || !branch) {
   console.error('Usage: node tools/check-route-scope.mjs BASE <g1/BRANCH|ROUTE>');
