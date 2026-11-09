@@ -426,13 +426,27 @@ phục hồi; không ghi bản sao DB/report chi tiết vào Git.
 node tools/data/archive-snapshot.mjs --campaign data/private/campaign-v7 --source "C:/path/campaign-v7/backups/quota-YYYY-MM-DD.sqlite" --destination D:/NihonNihonBackup/G0
 ```
 
-Chỉ snapshot đầu đã đăng ký được chuyển theo lệnh này. Script chép giữ nguyên
+Lệnh chỉ nhận snapshot đã đăng ký trong campaign hoặc backup ở `data/backups/`
+của dự án hiện tại; nguồn ngoài dự án bị từ chối. Script chép giữ nguyên
 tên, so SHA-256 nguồn/đích và kiểm integrity/FK ở bản chép trước khi gỡ bản C:;
 đích khác hash sẽ bị từ chối, không ghi đè. Receipt `archived-snapshots.json`
 ghi đường dẫn, kích thước và hash của bản D:, cùng log `backup-deletions.jsonl`.
 Retention tính bản D là bản đầu được giữ, chỉ giữ snapshot mới nhất ở C:;
 receipt ngày quota cũ vẫn nhận diện được bản đã chuyển. Nếu bản D mất hoặc đổi
 kích thước thì job dừng thay vì tự coi bản C khác là snapshot đầu.
+Snapshot mới nhất và các backup cũ cũng có receipt riêng; chuyển hết snapshot C:
+thì `campaign-backups.json` là mảng rỗng cho tới snapshot của ngày tiếp theo.
+
+### Cổng dung lượng trống
+
+Worker kiểm tra dung lượng khả dụng của C: trước mỗi snapshot/import, và kiểm
+tra lại ngay trước transaction nhập DB. Nếu còn dưới **5.000.000.000 byte**,
+job dừng với `status: disk_low`, ghi event cùng dung lượng, ngưỡng và giai đoạn
+vào log/status; không chuyển thành `blocked` hay `review_paused`. Khi phát hiện
+thấp ngay từ đầu, không tạo file snapshot hoặc ghi DB. Lỗi không đọc được dung
+lượng cũng chặn thao tác. Giải phóng dung lượng rồi chạy lại launcher; dữ liệu
+đã dịch vẫn được tái dùng. Không thay đổi pagefile hoặc yêu cầu mức trống cố định
+19 GB; Windows tiếp tục tự quản pagefile.
 
 Workflow `.github/workflows/g0-data.yml` chạy `npm ci` và `npm test` cho PR vào
 `g0/data-import`, trên Windows với Node 24 để không bỏ qua test launcher.

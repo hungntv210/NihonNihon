@@ -8,6 +8,7 @@ import {stratifiedSample} from './review-sample.mjs';
 import {privateWrite,sha,hash,need} from './core.mjs';
 import {runImport} from './import.mjs';
 import {writeReviewCheckpoint,reviewFeedback,applyTranslationFlags,ensureDailyCampaignSnapshot,knownSourceReleases,pendingReviewAtCheckpoint} from './campaign-review.mjs';
+import {assertDiskSpace} from './disk-space.mjs';
 
 const read=p=>JSON.parse(fs.readFileSync(p,'utf8'));
 const write=(p,v)=>privateWrite(p,JSON.stringify(v,null,2)+'\n');
@@ -70,7 +71,8 @@ export async function rotateCampaign({configPath,outputConfig,directory,promptVe
  write(path.join(root,'rotation-report.json'),report);write(outputConfig,next);return report;
 }
 
-export async function importCampaign({baseManifest,profiles,directory,dbPath,flags=[],snapshotDirectory=directory,timestamp=Date.now()}){
+export async function importCampaign({baseManifest,profiles,directory,dbPath,flags=[],snapshotDirectory=directory,timestamp=Date.now(),checkDisk=assertDiskSpace}){
+ checkDisk('import');
  const manifest=read(baseManifest),base=path.dirname(path.resolve(baseManifest)),root=path.resolve(directory);
  // Keep the manifest beside its base: raw record keys include these relative paths.
  const configs=new Map([manifest.mt,...manifest.mt_profiles??[]].filter(Boolean).map(c=>[sha(c),c]));
@@ -85,13 +87,13 @@ export async function importCampaign({baseManifest,profiles,directory,dbPath,fla
  // Profile order preserves accepted output priority; unchanged fields keep their release.
  manifest.mt_profiles=[...new Map([...profiles.map(p=>read(p.manifestPath).mt),...configs.values()].map(c=>[sha(c),c])).values()];
  const manifestPath=path.join(base,path.basename(root)+'-import-manifest.json');need(manifestPath!==path.resolve(baseManifest),'Import would overwrite base manifest');write(manifestPath,manifest);
- const snapshot=await ensureDailyCampaignSnapshot(snapshotDirectory,dbPath,timestamp);
+ const snapshot=await ensureDailyCampaignSnapshot(snapshotDirectory,dbPath,timestamp,checkDisk);
  const auditSources=knownSourceReleases(dbPath,manifest)?['mt:google-gemini']:undefined;
- const report=await runImport({manifestPath,dbPath,reportPath:path.join(root,'import-report.json'),requestsPath:path.join(root,'remaining-requests.json'),takeBackup:false,auditSources});
+ checkDisk('import');const report=await runImport({manifestPath,dbPath,reportPath:path.join(root,'import-report.json'),requestsPath:path.join(root,'remaining-requests.json'),takeBackup:false,auditSources,beforeApply:()=>checkDisk('import')});
  report.backup_path=snapshot.path;report.snapshot_created=snapshot.created;report.review_flags_added=applyTranslationFlags(dbPath,flags);write(path.join(root,'import-report.json'),report);return report;
 }
 
-export async function runCampaign(configPath){
+export async function runCampaign(configPath,{checkDisk=assertDiskSpace}={}){
  const cfg=read(configPath),root=path.resolve(cfg.directory);fs.mkdirSync(root,{recursive:true});
  const lock=path.join(root,'campaign.lock'),fd=fs.openSync(lock,'wx',0o600);
  const statusPath=path.join(root,'status.json'),state=fs.existsSync(statusPath)?read(statusPath):{started_at:new Date().toISOString(),sentences:{},learning:{},probe:{}};
@@ -100,6 +102,7 @@ export async function runCampaign(configPath){
  fs.writeFileSync(fd,JSON.stringify({pid:process.pid,started_at:state.started_at}));
  const stop=()=>{stopping=true;state.stopping=true;save();};process.once('SIGINT',stop);process.once('SIGTERM',stop);
  const emit=value=>console.log(JSON.stringify(value));
+ const pauseForDisk=error=>{if(error.code!=='disk_low')return false;stopping=true;state.status='disk_low';state.disk_low={stage:error.stage,volume:error.volume,free_bytes:error.free_bytes,min_free_bytes:error.min_free_bytes};delete state.error;save();emit({event:'disk_low',...state.disk_low});return true;};
  for(const [role,entry]of [['learning',state.learning.last_result],['probe',state.probe.result]])if(entry)emit({event:'checkpoint_result',role,model:entry.model??state.probe.model,status:entry.status,error_status:entry.error_status??null});
  async function profile(role,base,config){
   const prefix=path.join(root,role),p={config,manifestPath:prefix+'-manifest.json',requestsPath:prefix+'-requests.json',resultsPath:prefix+'-results.json'};
@@ -124,6 +127,7 @@ export async function runCampaign(configPath){
  const resultRows=p=>{const byId=new Map(p.requests.map(r=>[r.request_id,r]));return read(p.resultsPath).map(row=>({row,request:byId.get(row.request_id),model:p.config.model,manifest:p.manifestPath,results:p.resultsPath}));};
  const sentenceDone=new Map(),learningDone=new Map();
  try{
+  delete state.disk_low;checkDisk('import');
   const acceptedProfiles=cfg.accepted_profiles??[];
   const cached=await acceptedCampaignCache(cfg);for(const [k,v]of cached.sentenceDone)sentenceDone.set(k,v);for(const [k,v]of cached.learningDone)learningDone.set(k,v);
   const primary=await profile('sentences-primary',cfg.sentence_base,cfg.sentence_primary);
@@ -132,7 +136,7 @@ export async function runCampaign(configPath){
   const profiles=[...acceptedProfiles,primary,backup,learning];
   let importTail=Promise.resolve();
   const flagsPath=path.join(root,'translation-flags.json');
-  const syncImport=()=>{need(cfg.import,'Continuous campaign requires an import database');const task=importTail.then(async()=>{state.import=await importCampaign({...cfg.import,directory:root,profiles,flags:fs.existsSync(flagsPath)?read(flagsPath):[]});save();emit({event:'db_import',committed:state.import.db_committed,review_flags_added:state.import.review_flags_added});});importTail=task;return task;};
+  const syncImport=()=>{need(cfg.import,'Continuous campaign requires an import database');const task=importTail.then(async()=>{state.import=await importCampaign({...cfg.import,directory:root,profiles,flags:fs.existsSync(flagsPath)?read(flagsPath):[],checkDisk});save();emit({event:'db_import',committed:state.import.db_committed,review_flags_added:state.import.review_flags_added});});importTail=task;return task;};
   async function checkReviews(){
    for(const review of state.sentences.reviews??[]){
     const file=path.join(root,review.sample_id+'.feedback.json'),feedback=read(file),checksum=sha(feedback);let result=review.feedback;
@@ -196,9 +200,9 @@ export async function runCampaign(configPath){
     write(path.join(root,'learning-completed.json'),[...learningDone.values()]);save();
    }
   }
-  const fail=error=>{stopping=true;state.error='Job failed; no raw API error logged';save();throw error;};
+  const fail=error=>{if(!pauseForDisk(error)){stopping=true;state.error='Job failed; no raw API error logged';save();}throw error;};
   const outcomes=await Promise.allSettled([sentenceLoop().catch(fail),learningLoop().catch(fail)]);
-  if(outcomes.some(r=>r.status==='rejected')){state.status='blocked';save();return state;}
+  if(outcomes.some(r=>r.status==='rejected')){state.status=state.disk_low?'disk_low':'blocked';save();return state;}
   if(stopping){state.status=state.review_pause?'review_paused':'stopped';save();return state;}
   need(state.sentences.complete&&state.learning.complete,'Campaign not complete');
   const storedQA=inspectBatch(JSON.stringify(allSentences.map(r=>({request_id:r.request_id,output:sentenceDone.get(r.input.ja).output}))),allSentences);
@@ -208,9 +212,9 @@ export async function runCampaign(configPath){
   const hv=[...learningDone.values()].filter(v=>v.request.task==='han_viet'&&!v.legacy).slice(0,10);need(hv.length===10,'Need ten AI fallback examples');write(path.join(root,'review-10-han-viet.json'),hv);
   const esc=s=>String(s).replaceAll('|','\\|').replaceAll('\n','<br>');
   privateWrite(path.join(root,'review.md'),'# Translation campaign review\n\n| Level | Japanese | English | Vietnamese | Model | QA |\n| --- | --- | --- | --- | --- | --- |\n'+sample.map(r=>`| ${r.level} | ${esc(r.ja)} | ${esc(r.en)} | ${esc(r.vi)} | ${r.model} | Không phát hiện cờ |`).join('\n')+'\n\n## 10 ai_fallback\n\n| Kanji | Reading | Compound | Meaning | Evidence | Model |\n| --- | --- | --- | --- | --- | --- |\n'+hv.map(v=>`| ${v.request.input.character} | ${esc(v.row.output.text_vi)} | ${esc(v.row.output.compound.word)} | ${esc(v.row.output.meaning)} | ${esc(v.row.output.reason)} | ${v.model} |`).join('\n'));
-  if(cfg.import){const probePath=path.join(root,'probe38-manifest.json');if(fs.existsSync(probePath))profiles.push({manifestPath:probePath});state.import=await importCampaign({...cfg.import,directory:root,profiles});save();}
+  if(cfg.import){const probePath=path.join(root,'probe38-manifest.json');if(fs.existsSync(probePath))profiles.push({manifestPath:probePath});state.import=await importCampaign({...cfg.import,directory:root,profiles,checkDisk});save();}
   state.status='complete';save();emit({complete:true,sentences:sentenceDone.size,learning:learningDone.size,review:path.join(root,'review.md')});return state;
- }finally{process.removeListener('SIGINT',stop);process.removeListener('SIGTERM',stop);fs.closeSync(fd);fs.unlinkSync(lock);}
+ }catch(error){if(pauseForDisk(error))return state;throw error;}finally{process.removeListener('SIGINT',stop);process.removeListener('SIGTERM',stop);fs.closeSync(fd);fs.unlinkSync(lock);}
 }
 if(process.argv[1]&&path.resolve(process.argv[1])===fileURLToPath(import.meta.url)){
  try{const {values:a}=parseArgs({options:{config:{type:'string'}}});need(a.config,'--config FILE required');const result=await runCampaign(a.config);if(result.status==='blocked')process.exitCode=1;}catch{console.error('Campaign stopped; checkpoint retained; no raw API error logged');process.exitCode=1;}

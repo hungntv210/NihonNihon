@@ -5,6 +5,7 @@ import {DatabaseSync,backup} from 'node:sqlite';
 import {privateWrite,sha,need} from './core.mjs';
 import {openDatabase} from './store.mjs';
 import {quotaDay} from './mt-gemini.mjs';
+import {assertDiskSpace} from './disk-space.mjs';
 
 export function randomSample(rows,count=30,choose=randomInt){
  const unique=[...new Map(rows.map(r=>[r.ja.normalize('NFC'),r])).values()];
@@ -56,9 +57,9 @@ export function applyTranslationFlags(dbPath,flags){
   for(const {translation_id}of translations)count+=db.prepare("INSERT OR IGNORE INTO translation_reports (report_id,translation_id,reason,reported_at,status) VALUES (?,?,?,?,'open')").run('campaign:'+sha({translation_id,reason:flag.reason}),translation_id,flag.reason.normalize('NFC'),new Date().toISOString()).changes;
  }db.exec('COMMIT');return count;}catch(e){db.exec('ROLLBACK');throw e;}finally{db.close();}
 }
-function archivedFirstSnapshot(root){
+function archivedSnapshot(root,name){
  const file=path.join(root,'archived-snapshots.json');if(!fs.existsSync(file))return null;
- const archives=JSON.parse(fs.readFileSync(file,'utf8')),first=archives.filter(a=>a.role==='first');need(first.length<=1,'Multiple first-snapshot archives');if(!first.length)return null;
+ const archives=JSON.parse(fs.readFileSync(file,'utf8')),first=archives.filter(a=>name?a.source===path.join(root,'backups',name):a.role==='first');need(first.length<=1,'Multiple snapshot archives');if(!first.length)return null;
  const entry=first[0];need(path.isAbsolute(entry.destination)&&path.dirname(entry.source)===path.join(root,'backups')&&/^[a-f0-9]{64}$/.test(entry.sha256),'Invalid archived snapshot receipt');
  need(fs.existsSync(entry.destination),'Archived first snapshot is missing');const stat=fs.lstatSync(entry.destination);need(stat.isFile()&&!stat.isSymbolicLink()&&stat.size===entry.bytes,'Archived first snapshot changed');return entry;
 }
@@ -69,25 +70,26 @@ export function retainCampaignBackups(directory,currentFile){
  const names=[...new Set([...(fs.existsSync(index)?JSON.parse(fs.readFileSync(index,'utf8')):[]),path.basename(currentFile)])];
  need(names.every(name=>/^(?:before-\d+-[a-f0-9]{8}|quota-\d{4}-\d{2}-\d{2})\.sqlite$/.test(name)),'Invalid campaign backup name');
  const existing=names.filter(name=>fs.existsSync(path.join(backupDir,name)));
- const archived=archivedFirstSnapshot(root),keep=new Set([...(archived?[]:[existing[0]]),...existing.slice(-1)]);
+ const archived=archivedSnapshot(root),keep=new Set([...(archived?[]:[existing[0]]),...existing.slice(-1)]);
  for(const name of existing)if(!keep.has(name)){const file=path.join(backupDir,name),stat=fs.lstatSync(file);need(stat.isFile()&&!stat.isSymbolicLink(),'Unsafe campaign backup file');fs.unlinkSync(file);fs.appendFileSync(path.join(root,'backup-deletions.jsonl'),JSON.stringify({at:new Date().toISOString(),file,bytes:stat.size,reason:'keep_first_and_latest'})+'\n');}
  privateWrite(index,JSON.stringify(existing.filter(name=>keep.has(name)),null,2)+'\n');
 }
-export async function ensureDailyCampaignSnapshot(directory,dbPath,timestamp=Date.now()){
+export async function ensureDailyCampaignSnapshot(directory,dbPath,timestamp=Date.now(),checkDisk=assertDiskSpace){
  if(!fs.existsSync(dbPath))return {path:null,created:false};
+ checkDisk('snapshot');
  const root=path.resolve(directory),backupDir=path.join(root,'backups'),index=path.join(root,'campaign-backups.json'),day=quotaDay(timestamp),daysFile=path.join(root,'quota-snapshot-days.json');
  fs.mkdirSync(backupDir,{recursive:true});need(!fs.lstatSync(backupDir).isSymbolicLink(),'Unsafe campaign backup directory');
  const days=fs.existsSync(daysFile)?JSON.parse(fs.readFileSync(daysFile,'utf8')):{};
  const validName=name=>/^(?:before-\d+-[a-f0-9]{8}|quota-\d{4}-\d{2}-\d{2})\.sqlite$/.test(name);
  const remember=name=>{days[day]=name;privateWrite(daysFile,JSON.stringify(days,null,2)+'\n');};
- if(days[day]){need(validName(days[day]),'Invalid daily snapshot receipt');const file=path.join(backupDir,days[day]);if(!fs.existsSync(file)){const archived=archivedFirstSnapshot(root);if(archived&&path.basename(archived.source)===days[day])return {path:archived.destination,created:false,day};}need(fs.existsSync(file)&&fs.lstatSync(file).isFile()&&!fs.lstatSync(file).isSymbolicLink(),'Recorded daily snapshot is missing or unsafe; no second snapshot created');retainCampaignBackups(root,file);return {path:file,created:false,day};}
+ if(days[day]){need(validName(days[day]),'Invalid daily snapshot receipt');const file=path.join(backupDir,days[day]);if(!fs.existsSync(file)){const archived=archivedSnapshot(root,days[day]);if(archived)return {path:archived.destination,created:false,day};}need(fs.existsSync(file)&&fs.lstatSync(file).isFile()&&!fs.lstatSync(file).isSymbolicLink(),'Recorded daily snapshot is missing or unsafe; no second snapshot created');retainCampaignBackups(root,file);return {path:file,created:false,day};}
  const registered=fs.existsSync(index)?JSON.parse(fs.readFileSync(index,'utf8')):[];
  for(const name of [...registered].reverse()){need(/^(?:before-\d+-[a-f0-9]{8}|quota-\d{4}-\d{2}-\d{2})\.sqlite$/.test(name),'Invalid campaign backup name');const priorDay=name.startsWith('quota-')?name.slice(6,16):quotaDay(Number(/^before-(\d+)-/.exec(name)[1]));
   if(priorDay===day&&fs.existsSync(path.join(backupDir,name))){const file=path.join(backupDir,name);need(fs.lstatSync(file).isFile()&&!fs.lstatSync(file).isSymbolicLink(),'Unsafe campaign backup file');remember(name);retainCampaignBackups(root,file);return {path:file,created:false,day};}
  }
  const file=path.join(backupDir,`quota-${day}.sqlite`);
  if(fs.existsSync(file))need(fs.lstatSync(file).isFile()&&!fs.lstatSync(file).isSymbolicLink(),'Unsafe daily snapshot file');
- if(!fs.existsSync(file)){const db=openDatabase(dbPath);try{await backup(db,file);}finally{db.close();}}
+ if(!fs.existsSync(file)){checkDisk('snapshot');const db=openDatabase(dbPath);try{await backup(db,file);}finally{db.close();}}
  const check=new DatabaseSync(file,{readOnly:true});try{need(check.prepare('PRAGMA integrity_check').get().integrity_check==='ok'&&!check.prepare('PRAGMA foreign_key_check').all().length,'Invalid daily snapshot');need(check.prepare("SELECT 1 FROM sqlite_schema WHERE name='source_releases'").get(),'Not a Nihon snapshot');}finally{check.close();}
  remember(path.basename(file));retainCampaignBackups(root,file);return {path:file,created:true,day};
 }
