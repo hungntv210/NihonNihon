@@ -1,0 +1,17 @@
+{
+  "model": "gemini-3.5-flash-lite",
+  "route": "han_viet",
+  "api": "interactions",
+  "prompt_version": "gemini-vi-hv-7",
+  "requests_per_minute": 15,
+  "requests_per_day": 500,
+  "daily_budget": 450,
+  "tokens_per_minute": 250000,
+  "min_interval_ms": 5000,
+  "max_output_tokens": 16384,
+  "thinking_level": "low",
+  "max_compounds_sent": 12,
+  "max_api_attempts": 3,
+  "timeout_ms": 120000,
+  "batch_size": 30
+}

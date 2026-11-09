@@ -2,12 +2,12 @@ import fs from 'node:fs';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {parseArgs} from 'node:util';
-import {runGemini,prepare,settings,quotaDay,nextPacificReset,validateResults,publicPlan,PROMPT_VERSION} from './mt-gemini.mjs';
+import {runGemini,prepare,settings,quotaDay,nextPacificReset,validateResults,publicPlan,PROMPT_VERSION,routeMatches} from './mt-gemini.mjs';
 import {inspectBatch,summarizeGate,properNamesEnabled,assertSentenceQuality} from './translation-gate.mjs';
 import {stratifiedSample} from './review-sample.mjs';
 import {privateWrite,sha,hash,need} from './core.mjs';
 import {runImport} from './import.mjs';
-import {writeReviewCheckpoint,reviewFeedback,applyTranslationFlags,ensureDailyCampaignSnapshot,knownSourceReleases,pendingReviewAtCheckpoint} from './campaign-review.mjs';
+import {writeReviewCheckpoint,reviewFeedback,applyTranslationFlags,ensureDailyCampaignSnapshot,knownSourceReleases,pendingReviewAtCheckpoint,waitForReview} from './campaign-review.mjs';
 import {assertDiskSpace} from './disk-space.mjs';
 
 const read=p=>JSON.parse(fs.readFileSync(p,'utf8'));
@@ -72,13 +72,13 @@ export async function rotateCampaign({configPath,outputConfig,directory,promptVe
  for(const [role,key,base]of [['sentences-primary','sentence_primary','sentence_base'],['sentences-backup','sentence_backup','sentence_base'],['learning','learning','learning_base']]){
   const prefix=path.join(root,role),p={config:next[key],manifestPath:prefix+'-manifest.json',requestsPath:prefix+'-requests.json',resultsPath:prefix+'-results.json'};
   await prepare({config:p.config,manifestPath:next[base],outputManifest:p.manifestPath,requestsPath:p.requestsPath,resultsPath:p.resultsPath});
-  const full=read(p.requestsPath).requests.filter(r=>p.config.route==='sentences'?r.task==='translate'&&r.input.field==='text':r.task==='han_viet'||r.input.field!=='text');
+  const full=read(p.requestsPath).requests.filter(r=>routeMatches(r,p.config.route));
   const pending=pendingCampaignRequests(full,sentenceDone,learningDone);write(p.requestsPath,{version:1,requests:pending});
-  const c=counts[p.config.route];c.total=full.length;c.pending=pending.length;need(c.total-c.pending===c.cached,'Accepted cache is outside campaign source plan');
+  const c=counts[role==='learning'?'learning':'sentences'];c.total=full.length;c.pending=pending.length;if(['han_viet','meaning'].includes(p.config.route))c.cached=c.total-c.pending;else need(c.total-c.pending===c.cached,'Accepted cache is outside campaign source plan');
  }
  state.rotated_from=cfg.directory;state.prompt_version=promptVersion;delete state.status;delete state.stopping;delete state.error;
  state.sentences={...state.sentences,done:counts.sentences.cached};state.learning={...state.learning,done:counts.learning.cached};
- for(const review of state.sentences.reviews??[]){need(/^review-\d+$/.test(review.sample_id),'Invalid review ID');for(const suffix of ['.json','.feedback.json','.md']){const file=path.join(oldRoot,review.sample_id+suffix);if(suffix!=='.md'||fs.existsSync(file))privateWrite(path.join(root,review.sample_id+suffix),fs.readFileSync(file));}}
+ for(const review of [...state.sentences.reviews??[],...state.learning.reviews??[]]){need(/^review-(?:learning-|han-viet-)?\d+$/.test(review.sample_id),'Invalid review ID');for(const suffix of ['.json','.feedback.json','.md']){const file=path.join(oldRoot,review.sample_id+suffix);if(suffix!=='.md'||fs.existsSync(file))privateWrite(path.join(root,review.sample_id+suffix),fs.readFileSync(file));}}
  const flags=path.join(oldRoot,'translation-flags.json');if(fs.existsSync(flags))privateWrite(path.join(root,'translation-flags.json'),fs.readFileSync(flags));
  write(path.join(root,'status.json'),state);write(path.join(root,'sentences-completed.json'),[...sentenceDone.values()]);write(path.join(root,'learning-completed.json'),[...learningDone.values()]);
  const report={prompt_version:promptVersion,counts,accepted_profiles:next.accepted_profiles,quota_paths:['sentence_primary','sentence_backup','learning','probe'].map(k=>next[k].state_path),holds:{sentences:state.sentences.hold_day,learning:state.learning.finished_day,probe_started:state.probe.started},accepted_contexts_queued:0};
@@ -94,7 +94,8 @@ export async function importCampaign({baseManifest,profiles,directory,dbPath,fla
  for(const f of source.files)if(f.format==='mt-results')f.mt_config_sha256??=sha(manifest.mt);
  for(const p of profiles){const m=read(p.manifestPath),c=m.mt;configs.set(sha(c),c);const file=m.sources.find(s=>s.source_id===c.source_id).files.find(f=>f.format==='mt-results');
   const local=path.resolve(path.dirname(p.manifestPath),file.path);need(hash(fs.readFileSync(local))===file.sha256,'Campaign result checksum mismatch');
-  source.files.push({...file,path:path.relative(base,local),mt_config_sha256:sha(c)});
+  let target=manifest.sources.find(s=>s.source_id===c.source_id);if(!target){target={...m.sources.find(s=>s.source_id===c.source_id),files:[]};manifest.sources.push(target);}
+  target.files.push({...file,path:path.relative(base,local),mt_config_sha256:sha(c)});
  }
  // The approved campaign covers every public N2–N5 record, not just the pilot cohort.
  manifest.cohort={};manifest.mt=read(profiles.find(p=>read(p.manifestPath).mt.config.route==='learning')?.manifestPath??profiles[0].manifestPath).mt;
@@ -130,10 +131,10 @@ export async function runCampaign(configPath,{checkDisk=assertDiskSpace}={}){
   const result=await runGemini({...p,limit:batch.length,batchSize:size,maxCalls,validateOutput:(rows,requests)=>{
    if(p.config.route==='sentences')assertSentenceQuality(rows,requests,p.config.prompt_version);
   },onAttempt:a=>{
-   emit({event:'api_attempt',role:p.config.route,model:a.model,call:a.call,http_status:a.http_status,error_kind:a.error_kind??null,error_message:a.error_message??null,validation_error:a.validation_error??null,rejected:a.rejected??[]});
-   audit.push({model:a.model,http_status:a.http_status,error_kind:a.error_kind??null,error_message:a.error_message??null,validation_error:a.validation_error??null,rejected:a.rejected??[],request_ids:a.requests.map(r=>r.request_id),qa:a.http_status===200&&p.config.route==='sentences'?inspectBatch(a.text,a.requests,{properNames:properNamesEnabled(p.config.prompt_version)}):null});
+   emit({event:'api_attempt',role:p.config.route,model:a.model,call:a.call,http_status:a.http_status,error_kind:a.error_kind??null,error_message:a.error_message??null,validation_error:a.validation_error??null,rejected:a.rejected??[],flagged:a.flagged??[]});
+   audit.push({model:a.model,http_status:a.http_status,error_kind:a.error_kind??null,error_message:a.error_message??null,validation_error:a.validation_error??null,rejected:a.rejected??[],flagged:a.flagged??[],request_ids:a.requests.map(r=>r.request_id),qa:a.http_status===200&&p.config.route==='sentences'?inspectBatch(a.text,a.requests,{properNames:properNamesEnabled(p.config.prompt_version)}):null});
    write(path.join(root,'audit.json'),audit);
-   if(a.validation_error){write(path.join(root,'rejected-'+p.config.model+'.json'),{model:a.model,reason:a.validation_error,rejected:a.rejected??[],requests:a.requests,response:a.text});}
+   if(a.validation_error){write(path.join(root,'rejected-'+p.config.model+'.json'),{model:a.model,reason:a.validation_error,rejected:a.rejected??[],flagged:a.flagged??[],requests:a.requests,response:a.text});}
   }});
   emit({role:p.config.route,model:p.config.model,sent:result.sent,calls:result.calls,status:result.status,error_status:result.error_status});
   return result;
@@ -150,24 +151,34 @@ export async function runCampaign(configPath,{checkDisk=assertDiskSpace}={}){
   const profiles=[...acceptedProfiles,primary,backup,learning];
   let importTail=Promise.resolve();
   const flagsPath=path.join(root,'translation-flags.json');
+  const reviewLearning=cfg.learning_review===true||cfg.learning.route==='han_viet';
   const syncImport=()=>{need(cfg.import,'Continuous campaign requires an import database');const task=importTail.then(async()=>{state.import=await importCampaign({...cfg.import,directory:root,profiles,flags:fs.existsSync(flagsPath)?read(flagsPath):[],checkDisk});save();emit({event:'db_import',committed:state.import.db_committed,review_flags_added:state.import.review_flags_added});});importTail=task;return task;};
-  async function checkReviews(){
-   for(const review of state.sentences.reviews??[]){
+  async function checkReviews(forceSentences=false,forceLearning=false){
+   const ready=await waitForReview(async()=>{
+   for(const review of [...state.sentences.reviews??[],...state.learning.reviews??[]]){
     const file=path.join(root,review.sample_id+'.feedback.json'),feedback=read(file),checksum=sha(feedback);let result=review.feedback;
     if(review.feedback_sha256!==checksum){result=reviewFeedback(read(path.join(root,review.sample_id+'.json')),feedback);review.feedback_sha256=checksum;review.feedback=result;
      if(result.flags.length){const flags=fs.existsSync(flagsPath)?read(flagsPath):[];write(flagsPath,[...new Map([...flags,...result.flags].map(f=>[sha(f),f])).values()]);await syncImport();}
     }
-    if(result.pause){state.review_pause={sample_id:review.sample_id,major:result.major,total:result.total,major_percent:result.major_percent};state.status='review_paused';stopping=true;save();emit({event:'review_paused',...state.review_pause});return false;}
-   }const pending=pendingReviewAtCheckpoint({directory:root,state:state.sentences,count:state.sentences.done});if(pending){state.review_pause=pending;state.status='review_paused';stopping=true;save();emit({event:'review_paused',...pending});return false;}delete state.review_pause;return !stopping;
+    if(result.pause)return {reason:'major_errors',sample_id:review.sample_id,major:result.major,total:result.total,major_percent:result.major_percent};
+   }return pendingReviewAtCheckpoint({directory:root,state:state.sentences,count:state.sentences.done,force:forceSentences})??(reviewLearning?pendingReviewAtCheckpoint({directory:root,state:state.learning,count:state.learning.done,force:forceLearning}):null);
+   },{sleep,stopped:()=>stopping,onPending:pending=>{const changed=sha(state.review_pause??{})!==sha(pending);state.review_pause=pending;state.status='review_paused';if(pending.reason!=='previous_review_incomplete')stopping=true;save();if(changed)emit({event:'review_paused',...pending});}});
+   if(ready){if(state.review_pause)emit({event:'review_resumed'});delete state.review_pause;if(state.status==='review_paused')delete state.status;save();}return ready;
+  }
+  async function sentenceCheckpoint(force=false){
+   let review=writeReviewCheckpoint({directory:root,state:state.sentences,rows:[...sentenceDone.values()],provenance:read(cfg.sentence_provenance),force});
+   if(review?.paused){if(!await checkReviews(force))return false;review=writeReviewCheckpoint({directory:root,state:state.sentences,rows:[...sentenceDone.values()],provenance:read(cfg.sentence_provenance),force});}
+   if(review)emit({event:'review_ready',sample_id:review.sample_id});save();return true;
   }
   const allSentences=primary.requests.filter(r=>r.task==='translate'&&r.input.field==='text');
-  const allLearning=learning.requests.filter(r=>r.task==='han_viet'||r.input.field!=='text');
+  const allLearning=learning.requests.filter(r=>routeMatches(r,cfg.learning.route??'learning'));
   need(new Set(allSentences.map(r=>r.input.ja)).size===allSentences.length,'Sentence queue is not deduplicated');
   for(const p of [primary,backup])for(const v of resultRows(p))if(v.request)sentenceDone.set(v.request.input.ja,{ja:v.request.input.ja,request_id:v.row.request_id,output:v.row.output,model:v.model,manifest:v.manifest});
   for(const v of resultRows(learning))if(v.request)learningDone.set(context(v.request),v);
   const sentOrder=read(cfg.sentence_order).requests,rank=new Map(sentOrder.map((r,i)=>[r.input.ja,i]));allSentences.sort((a,b)=>(rank.get(a.input.ja)??1e9)-(rank.get(b.input.ja)??1e9));
   state.sentences={...state.sentences,total:allSentences.length,done:sentenceDone.size,review_cursor:state.sentences.review_cursor??sentenceDone.size};delete state.stopping;delete state.error;delete state.status;
-  state.learning={...state.learning,total:allLearning.length,done:learningDone.size,not_before:cfg.learning_not_before};save();
+  const learningCount=()=>allLearning.filter(r=>learningDone.has(context(r))).length;
+  state.learning={...state.learning,total:allLearning.length,done:learningCount(),not_before:cfg.learning_not_before};if(reviewLearning)state.learning.review_cursor??=state.learning.done;save();
   await syncImport();if(!await checkReviews())return {...state,status:'review_paused'};
   function deferRows(stream,day,rows){
    const previous=stream.deferred_day===day?stream.deferred??[]:[];
@@ -178,7 +189,7 @@ export async function runCampaign(configPath,{checkDisk=assertDiskSpace}={}){
   async function sentenceLoop(){
    while(!stopping){
     if(!await checkReviews()||stopping)return;
-    const day=quotaDay(Date.now()),pending=pendingCampaignRequests(allSentences,sentenceDone,learningDone);if(!pending.length){const review=writeReviewCheckpoint({directory:root,state:state.sentences,rows:[...sentenceDone.values()],provenance:read(cfg.sentence_provenance),force:true});if(review?.paused){state.review_pause=review;state.status='review_paused';stopping=true;save();return;}state.sentences.complete=true;save();return;}
+    const day=quotaDay(Date.now()),pending=pendingCampaignRequests(allSentences,sentenceDone,learningDone);if(!pending.length){if(!await sentenceCheckpoint(true))return;state.sentences.complete=true;save();return;}
     const deferred=state.sentences.deferred_day===day?new Set(state.sentences.deferred??[]):new Set();const ready=pending.filter(r=>!deferred.has(r.input.ja));
     const delay=campaignRetryDelay(state.sentences,'hold_day');if(delay||!ready.length){await sleep(delay||Math.min(60000,nextPacificReset()-Date.now()+1000));continue;}
     const batch=ready.slice(0,30),outcomes=[],rejectedJa=new Set();
@@ -192,7 +203,7 @@ export async function runCampaign(configPath,{checkDisk=assertDiskSpace}={}){
      if(result.status!=='daily_limit')await sleep(5000);
     }
     const previousDone=state.sentences.done;state.sentences.done=sentenceDone.size;write(path.join(root,'sentences-completed.json'),[...sentenceDone.values()]);
-    if(sentenceDone.size>previousDone){await syncImport();const review=writeReviewCheckpoint({directory:root,state:state.sentences,rows:[...sentenceDone.values()],provenance:read(cfg.sentence_provenance)});if(review?.paused){state.review_pause=review;state.status='review_paused';stopping=true;save();emit({event:'review_paused',...review});return;}if(review)emit({event:'review_ready',sample_id:review.sample_id,from_count:review.from_count,to_count:review.to_count,path:path.join(root,review.sample_id+'.md')});}
+    if(sentenceDone.size>previousDone){await syncImport();if(!await sentenceCheckpoint())return;}
     const unfinished=batch.filter(r=>!sentenceDone.has(r.input.ja)&&!rejectedJa.has(r.input.ja));
     const status=!unfinished.length?'complete':outcomes.every(r=>r.status==='daily_limit')?'daily_limit':outcomes.some(r=>!['complete','partial_output','invalid_output','daily_limit'].includes(r.status))?'api_error':'invalid_output';
     if(status==='invalid_output')deferRows(state.sentences,day,unfinished.map(r=>({key:r.input.ja,request_id:r.request_id,reason:'Batch failed JSON/schema/quality validation'})));
@@ -206,20 +217,32 @@ export async function runCampaign(configPath,{checkDisk=assertDiskSpace}={}){
     if(!await checkReviews()||stopping)return;
     const now=Date.now();if(now<Date.parse(cfg.learning_not_before)){state.learning.waiting_for_reset=true;save();await sleep(Math.min(60000,Date.parse(cfg.learning_not_before)-now));continue;}
     state.learning.waiting_for_reset=false;const day=quotaDay(now);
-    if(!state.probe.started){
+    if(!cfg.disable_probe&&!state.probe.started&&!['han_viet','meaning'].includes(cfg.learning.route)){
      const probe=await profile('probe38',cfg.learning_base,cfg.probe);const task=probe.requests.find(r=>r.task==='han_viet')??probe.requests.find(r=>r.input.field!=='text');
      state.probe={started:true,day,model:cfg.probe.model};save();
      state.probe.result=await call(probe,[task],20,1);save();
     }
-    const pending=pendingCampaignRequests(allLearning,sentenceDone,learningDone);if(!pending.length){state.learning.complete=true;save();return;}
+    const pending=pendingCampaignRequests(allLearning,sentenceDone,learningDone);
+    if(reviewLearning){
+     const allowed=new Set(allLearning.map(context));const rows=[...learningDone].filter(([key])=>allowed.has(key)).map(([key,v])=>{const request=v.request;return {ja:key,request_id:v.row.request_id,request,output:v.row.output,model:v.model,manifest:v.manifest,qa_flags:(state.learning.flagged??[]).filter(f=>f.request_id===v.row.request_id).map(f=>f.reason)};});
+     const prefix=cfg.learning_review===true?'review-learning-':'review-han-viet-';let review=writeReviewCheckpoint({directory:root,state:state.learning,rows,provenance:{},force:!pending.length,prefix});
+     if(review?.paused){if(!await checkReviews(false,!pending.length))return;review=writeReviewCheckpoint({directory:root,state:state.learning,rows,provenance:{},force:!pending.length,prefix});}
+     if(review){save();emit({event:'review_ready',role:'han_viet',sample_id:review.sample_id});}
+    }
+    if(!pending.length){if(reviewLearning&&!await checkReviews(false,true))return;state.learning.complete=true;save();return;}
     const delay=campaignRetryDelay(state.learning,'finished_day',now);if(delay){await sleep(delay);continue;}
     const deferred=state.learning.deferred_day===day?new Set(state.learning.deferred??[]):new Set(),ready=pending.filter(r=>!deferred.has(context(r)));
     if(!ready.length){await sleep(Math.min(60000,nextPacificReset()-now+1000));continue;}
-    const hv=ready.filter(r=>r.task==='han_viet'),other=ready.filter(r=>r.task!=='han_viet');const batch=[...hv.slice(0,20),...other.slice(0,60-Math.min(20,hv.length))];if(batch.length<60)batch.push(...hv.slice(20,20+60-batch.length));
-    const result=await call(learning,batch,60,3);
+    const size=cfg.learning.batch_size??60;need(Number.isInteger(size)&&size>=20&&size<=60,'Learning batch_size must be20..60');
+    const hv=ready.filter(r=>r.task==='han_viet'),other=ready.filter(r=>r.task!=='han_viet');const batch=[...hv.slice(0,20),...other.slice(0,size-Math.min(20,hv.length))];if(batch.length<size)batch.push(...hv.slice(20,20+size-batch.length));
+    const result=await call(learning,batch,size,3);
+    if(result.flagged?.length){
+     const flagged=result.flagged.map(f=>({...f,model:learning.config.model}));(state.learning.flagged??=[]).push(...flagged);
+     const flags=fs.existsSync(flagsPath)?read(flagsPath):[];write(flagsPath,[...new Map([...flags,...flagged.map(({request_id,reason})=>({request_id,reason}))].map(f=>[sha(f),f])).values()]);
+    }
     for(const v of resultRows(learning))if(v.request)learningDone.set(context(v.request),v);
-    const previousDone=state.learning.done;state.learning={...state.learning,done:learningDone.size,last_result:result};
-    if(learningDone.size>previousDone)await syncImport();
+    const previousDone=state.learning.done;state.learning={...state.learning,done:learningCount(),last_result:result};
+    if(state.learning.done>previousDone)await syncImport();
     const byId=new Map(batch.map(r=>[r.request_id,r]));const rejects=(result.rejected??[]).map(r=>({key:context(byId.get(r.request_id)),request_id:r.request_id,model:learning.config.model,reason:r.reason}));
     if(result.status==='invalid_output')rejects.push(...batch.filter(r=>!learningDone.has(context(r))).map(r=>({key:context(r),request_id:r.request_id,model:learning.config.model,reason:'Batch failed JSON/schema/quality validation'})));
     if(rejects.length)deferRows(state.learning,day,rejects);

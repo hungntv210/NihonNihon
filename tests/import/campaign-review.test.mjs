@@ -3,10 +3,22 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import {fixture} from './helpers.mjs';
-import {randomSample,writeReviewCheckpoint,reviewFeedback,applyTranslationFlags,retainCampaignBackups,knownSourceReleases,ensureDailyCampaignSnapshot,pendingReviewAtCheckpoint} from '../../tools/data/campaign-review.mjs';
+import {randomSample,writeReviewCheckpoint,reviewFeedback,applyTranslationFlags,retainCampaignBackups,knownSourceReleases,ensureDailyCampaignSnapshot,pendingReviewAtCheckpoint,waitForReview} from '../../tools/data/campaign-review.mjs';
 import {runImport} from '../../tools/data/import.mjs';
 import {prepare,runGemini,publicPlan} from '../../tools/data/mt-gemini.mjs';
 import {importCampaign} from '../../tools/data/translation-campaign.mjs';
+test('shared learning checkpoint mixes tasks and reserves pilot numbering without overwriting feedback',t=>{
+ const f=fixture(t),state={review_cursor:0,next_review_number:3},rows=Array.from({length:510},(_,i)=>({ja:String(i),request_id:String(i),request:{task:i%2?'han_viet':'translate',input:{character:'字'+i,field:i%2?'han_viet':'meaning',meanings_en:['test']}},output:{text_vi:'nghĩa '+i},model:'gemini-test'}));
+ const sample=writeReviewCheckpoint({directory:f.dir,state,rows,provenance:{},prefix:'review-learning-',choose:n=>n-1});assert.equal(sample.sample_id,'review-learning-0003');assert.equal(sample.rows.length,30);assert.equal(new Set(sample.rows.map(r=>r.request.task)).size,2);assert.equal(state.next_review_number,4);assert.match(fs.readFileSync(f.dir+'/review-learning-0003.md','utf8'),/Anh nguồn/);
+});
+
+test('Han Viet has its own 500-item checkpoint and the same pending/major gate',t=>{
+ const f=fixture(t),state={review_cursor:0},rows=Array.from({length:1020},(_,i)=>({request_id:String(i),ja:'字'+i,output:{text_vi:'âm '+i},model:'gemini-test'}));
+ assert.equal(writeReviewCheckpoint({directory:f.dir,state,rows:rows.slice(0,499),provenance:{},prefix:'review-han-viet-'}),null);
+ const first=writeReviewCheckpoint({directory:f.dir,state,rows:rows.slice(0,510),provenance:{},prefix:'review-han-viet-'});assert.equal(first.sample_id,'review-han-viet-0001');assert.equal(first.rows.length,30);
+ const next=writeReviewCheckpoint({directory:f.dir,state,rows,provenance:{},prefix:'review-han-viet-'});assert.equal(next.reason,'previous_review_incomplete');assert.ok(!fs.existsSync(f.dir+'/review-han-viet-0002.json'));
+ const feedback=JSON.parse(fs.readFileSync(f.dir+'/review-han-viet-0001.feedback.json'));feedback.results.forEach((r,i)=>r.severity=i<4?'major':'ok');fs.writeFileSync(f.dir+'/review-han-viet-0001.feedback.json',JSON.stringify(feedback));assert.equal(pendingReviewAtCheckpoint({directory:f.dir,state,count:1020}).reason,'major_errors');
+});
 import {createMT} from '../../tools/data/han-viet.mjs';
 import {sha} from '../../tools/data/core.mjs';
 
@@ -79,4 +91,17 @@ test('accepted batches import immediately, keep selected translations and add id
  await importCampaign(options);assert.equal(db.prepare("SELECT count(*) n FROM translation_reports").get().n,1);assert.equal(db.prepare("SELECT translation_id FROM vi_translations WHERE field='text' AND status='selected'").get().translation_id,selected.translation_id);
  assert.equal(db.prepare("SELECT count(*) n FROM import_runs WHERE source_id NOT LIKE 'mt:%'").get().n,rawRuns,'unchanged raw releases are not audited thousands of times per batch');
  const schema=db.prepare("SELECT sql FROM sqlite_schema WHERE name='vi_translations'").get().sql;assert.ok(!schema.includes('severity'));
+});
+
+test('review wait polls every sixty seconds then resumes complete feedback at ten percent major',async t=>{
+ const f=fixture(t),state={review_cursor:0},rows=Array.from({length:1020},(_,i)=>({request_id:String(i),ja:'公開文'+i,output:{text_vi:'Câu '+i},model:'test'}));
+ writeReviewCheckpoint({directory:f.dir,state,rows:rows.slice(0,510),provenance:{}});const delays=[];
+ const ready=await waitForReview(()=>pendingReviewAtCheckpoint({directory:f.dir,state,count:1020}),{sleep:async ms=>{delays.push(ms);const file=f.dir+'/review-0001.feedback.json',feedback=JSON.parse(fs.readFileSync(file));feedback.results.forEach((r,i)=>r.severity=i<3?'major':'ok');fs.writeFileSync(file,JSON.stringify(feedback));}});
+ assert.equal(ready,true);assert.deepEqual(delays,[60000]);assert.equal(writeReviewCheckpoint({directory:f.dir,state,rows,provenance:{}}).sample_id,'review-0002');
+});
+
+test('review wait stops immediately above ten percent major instead of polling',async()=>{
+ const sample={sample_id:'x',rows:Array.from({length:30},(_,i)=>({request_id:String(i)}))},feedback={version:1,sample_id:'x',results:sample.rows.map((r,i)=>({...r,severity:i<4?'major':null,note:''}))};
+ const result=reviewFeedback(sample,feedback);assert.equal(result.pause,true);let sleeps=0;
+ assert.equal(await waitForReview(()=>({reason:'major_errors',...result}),{sleep:async()=>{sleeps++;}}),false);assert.equal(sleeps,0);
 });

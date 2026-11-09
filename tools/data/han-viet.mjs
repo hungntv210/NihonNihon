@@ -29,7 +29,11 @@ export function createMT(loaded,data,db) {
       ask(task,input,validate,options={}){const found=[],seen=new Set();
         for(const engine of engines){const r=engine.ask(task,input,validate);if(r)for(const v of [r,...r.alternatives??[]]){const key=sha({release:v.release.release_id,request:v.request_id,output:v.output});if(!seen.has(key)){seen.add(key);found.push(v);}}}
         if(found.length)return {...found[0],alternatives:found.slice(1)};
-        if(options.allowRequest!==false){const route=task==='translate'&&input.field==='text'?'sentences':'learning',index=configs.findIndex(c=>c.config?.route===route&&!configs.some(other=>other.source_id===c.source_id&&other.config?.route===route&&other.config?.supersedes_prompt_versions?.includes(c.prompt_version))),engine=engines[index<0?0:index];const id=sha({task,input:canonicalMTInput(task,input,configs[index<0?0:index]),release:engine.release?.release_id??null});requests.set(id,engine.requests.get(id));}return null;
+        if(options.allowRequest!==false){
+          const specific=task==='han_viet'?'han_viet':input.field==='text'?'sentences':input.field==='meaning'?'meaning':'learning';let index=-1;
+          for(const route of [specific,...(['han_viet','meaning'].includes(specific)?['learning']:[])]){index=configs.findIndex(c=>c.config?.route===route&&!configs.some(other=>other.source_id===c.source_id&&other.config?.route===route&&other.config?.supersedes_prompt_versions?.includes(c.prompt_version)));if(index>=0)break;}
+          const engine=engines[index<0?0:index],id=sha({task,input:canonicalMTInput(task,input,configs[index<0?0:index]),release:engine.release?.release_id??null});requests.set(id,engine.requests.get(id));
+        }return null;
       }};
   }
   const requests=new Map(), stats={cache_hits:0,invalid_outputs:0,attempts:0};
