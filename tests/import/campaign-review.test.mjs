@@ -105,4 +105,3 @@ test('review wait stops immediately above ten percent major instead of polling',
  const result=reviewFeedback(sample,feedback);assert.equal(result.pause,true);let sleeps=0;
  assert.equal(await waitForReview(()=>({reason:'major_errors',...result}),{sleep:async()=>{sleeps++;}}),false);assert.equal(sleeps,0);
 });
-

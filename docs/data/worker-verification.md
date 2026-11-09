@@ -86,3 +86,10 @@ to master. G0 retains its own package/test command until accepted and merged.
 - Full `npm test`: **96/96 PASS**, zero skips, Windows / Node 24; `2026-11-09T21:40:48.5416474+07:00` → `2026-11-09T21:40:57.2826807+07:00`.
 - Tests cover task-specific importer routing, adapter routes, accent/case-insensitive reading collisions, minimum distinct comma-separated senses, per-row rejection with other rows retained, frozen base prompt/new variant hashes, meaning-only60-item selection/30-item review, and independent Han Viet500-item review/pending/major gates.
 - The new meaning-only pilot was limited to two logical batches and stopped for review. Neither old nor new pilot was imported into the DB. Per-row reasons, actual model/calls, candidate context, feedback and outputs stay private. No bulk Han Viet worker was started, no feedback was changed, no schema/ledger reset or production file/data deletion occurred.
+
+## 2026-11-09 — tone-aware flags and shared production review
+
+- Checked implementation `4ba9ccd634273e47b2e4ab802dafd370e2efbdce`, same PR #24 branch. Full `npm test`: **101/101 PASS**, zero skips, Windows / Node 24; `2026-11-09T22:05:10.6911547+07:00` → `2026-11-09T22:05:21.1982641+07:00`.
+- Tests cover 読→đọc versus độc, accepted/flagged 南→nam and 毎→mỗi, normal importer selection plus two review reports, shared mixed-task sampling/numbering, 60-second feedback wait/resume at <=10% major and immediate stop above10%.
+- The owner's new shared learning rollout explicitly includes pending-feedback waiting (first prepared in PR #23). Learning review flags are imported normally; rejected rows remain separate. The minimum-sense gate, frozen prompts, schema and per-model ledgers remain unchanged.
+- Rollout must rotate into a fresh private directory, reuse existing3.5 quota paths, preserve sentence/manual provenance and reviews, register only the approved meaning pilot, reserve review-learning-0003 onward, and keep3.6/3.8 disabled. Runtime records and one-hour monitoring stay private.
