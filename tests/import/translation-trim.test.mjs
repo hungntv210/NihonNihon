@@ -24,6 +24,8 @@ test('replay preserves pre-trim history after reviewed replacement without a nat
  db.prepare('UPDATE vi_translations SET translation_id=?,text_vi=? WHERE translation_id=?').run('legacy-padded',' '+old.text_vi+' ',old.translation_id);
  await assert.rejects(()=>runImport(f),/Selected legacy whitespace requires a provenance correction/);
  assert.equal(db.prepare("SELECT status FROM vi_translations WHERE translation_id='legacy-padded'").get().status,'selected');
+ db.prepare("UPDATE vi_translations SET status='candidate' WHERE translation_id='legacy-padded'").run();
+ await assert.rejects(()=>runImport(f),/Selected legacy whitespace requires a provenance correction/);
  f.write('legacy-repair.json',{reviewer:'tester',reason:'Approved whitespace cleanup',rows:[{item_id:old.item_id,field:'text',text_vi:old.text_vi,expected_translation_id:'legacy-padded',reason:'Trim without rewriting history'}]});
  await runCorrectionImport({dbPath:f.dbPath,correctionsPath:f.dir+'/legacy-repair.json',reportPath:f.dir+'/legacy-report.json'});
  const before=db.prepare('SELECT * FROM vi_translations ORDER BY translation_id').all();await runImport(f);await runImport(f);assert.deepEqual(db.prepare('SELECT * FROM vi_translations ORDER BY translation_id').all(),before);

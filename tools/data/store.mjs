@@ -61,7 +61,7 @@ export async function applyPlan(db,plan,{dbPath=':memory:',backupDirectory,audit
       const legacy=db.prepare('SELECT translation_id,text_vi,status FROM vi_translations WHERE item_id=? AND field=? AND source_id=? AND release_id=? AND source_record_key=? AND base_content_hash=?').get(row.item_id,row.field,row.source_id,row.release_id,row.source_record_key,row.base_content_hash);
       if(legacy&&legacy.translation_id!==row.translation_id&&legacy.text_vi!==row.text_vi&&legacy.text_vi.normalize('NFC').trim()===row.text_vi){
         // Preserve immutable pre-trim history; selected legacy text needs a reviewed replacement.
-        need(legacy.status!=='selected','Selected legacy whitespace requires a provenance correction');
+        need(legacy.status!=='selected'&&previous&&!previous.needs_refresh&&previous.base_content_hash===row.base_content_hash,'Selected legacy whitespace requires a provenance correction');
         continue;
       }
       const correction=JSON.parse(row.context_json).owner_correction===true;
