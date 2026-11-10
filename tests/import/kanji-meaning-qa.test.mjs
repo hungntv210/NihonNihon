@@ -9,10 +9,16 @@ test('meaning QA preserves tones and requires min(English meanings,3) distinct c
  for(const [character,reading]of [['自','tự'],['京','kinh'],['方','phương'],['会','hội'],['発','phát'],['立','lập'],['場','trường']])assert.ok(kanjiMeaningIssues({text_vi:reading.toUpperCase().normalize('NFD')},{character,field:'meaning',meanings_en:['one','two']},[{reading}]).includes('han_viet_as_meaning'));
  const input={character:'自',field:'meaning',meanings_en:['oneself','self','own','personal']};
  assert.match(kanjiMeaningIssues({text_vi:'bản thân'},input,[]).join(';'),/expected >=3, got 1/);
- assert.match(kanjiMeaningIssues({text_vi:'bản thân, BẢN THÂN, ban than'},input,[]).join(';'),/got 1/);
+ assert.match(kanjiMeaningIssues({text_vi:'bản thân, BẢN THÂN, ban than'},input,[]).join(';'),/got 2/);
  assert.deepEqual(kanjiMeaningIssues({text_vi:'bản thân, chính mình, của riêng'},input,[{reading:'tự'}]),[]);
  assert.deepEqual(kanjiMeaningIssues({text_vi:'cha'},{character:'父',field:'meaning',meanings_en:['father']},[{reading:'phụ'}]),[]);
  assert.deepEqual(kanjiMeaningIssues({text_vi:'tự'},{character:'自',field:'han_viet',meanings_en:['self']},[{reading:'tự'}]),[]);
+});
+test('meaning sense counts retain Vietnamese tones and normalize NFC/case/trim',()=>{
+ const input={character:'各',field:'meaning',meanings_en:['each','every']};
+ assert.deepEqual(kanjiMeaningIssues({text_vi:'mỗi, mọi'},input,[]),[]);
+ assert.deepEqual(kanjiMeaningIssues({text_vi:' MỖI , mọi '},input,[]),[]);
+ assert.match(kanjiMeaningIssues({text_vi:'mỗi, MỖI'},input,[]).join(';'),/got 1/);
 });
 test('読 reading độc does not flag đọc; 南 nam and 毎 mỗi are imported with review flags',()=>{
  const check=(character,text_vi,reading,en)=>kanjiMeaningAssessment({text_vi},{character,field:'meaning',meanings_en:en},[{reading}]);

@@ -9,6 +9,14 @@ const options={config,manifestPath:f.dir+'/gemini.json',requestsPath:f.dir+'/gem
 await prepare({manifestPath:f.manifestPath,config,outputManifest:options.manifestPath,requestsPath:options.requestsPath,resultsPath:options.resultsPath});return {f,options};}
 const fake=response=>({models:{generateContent:response}});
 const output=params=>JSON.parse(params.contents).map(r=>({request_id:r.request_id,output:{text_vi:'tiếng Việt'}}));
+test('compound-only mode asks for a meaning and derives all fixed Han Viet fields locally',async t=>{
+ const f=fixture(t);f.write('hv.json',[['日','nhật viết','','',[],{}]]);f.save();const {sha}=await import('../../tools/data/core.mjs');
+ const fixed=[{item_id:'openjlpt:kanji:U+65E5',reading:'nhật',output:{text_vi:'nhật',candidate_id:'old',compound:{word:'日本',reading:'にほん'},meaning:'Japan',reason:'fixture',evidence_origin:'model-generated',references:[]}}];
+ const c={...config,route:'han_viet',prompt_variant:'compound-meaning-1',compound_meaning_only:true,fixed_han_viet_sha256:sha(fixed)},p={config:c,manifestPath:f.dir+'/compound-manifest.json',requestsPath:f.dir+'/compound-requests.json',resultsPath:f.dir+'/compound-results.json',statePath:f.dir+'/compound-quota.json'};
+ await prepare({manifestPath:f.manifestPath,config:c,outputManifest:p.manifestPath,requestsPath:p.requestsPath,resultsPath:p.resultsPath});
+ const result=await runGemini({...p,fixedHanViet:new Map(fixed.map(v=>[v.item_id,v])),batchSize:10,limit:10,ai:fake(async params=>{const requests=JSON.parse(params.contents);assert.equal(requests.length,1);assert.equal(requests[0].task,'translate');assert.equal(requests[0].input.ja,'日本');assert.equal(params.config.responseJsonSchema.items.properties.output.required.length,1);return {text:JSON.stringify(requests.map(r=>({request_id:r.request_id,output:{text_vi:'Nhật Bản'}})))};})});
+ assert.equal(result.sent,1);const row=JSON.parse(fs.readFileSync(p.resultsPath))[0];assert.equal(row.output.text_vi,'nhật');assert.equal(row.output.meaning,'Nhật Bản');assert.deepEqual(row.output.compound,fixed[0].output.compound);
+});
 test('recovery adapter accepts batch ten and preserves normal output validation',async t=>{
  const {options}=await setup(t),sizes=[];
  const result=await runGemini({...options,limit:25,batchSize:10,sleep:async()=>{},ai:fake(async params=>{sizes.push(JSON.parse(params.contents).length);return {text:JSON.stringify(output(params))};})});
