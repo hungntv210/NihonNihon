@@ -25,7 +25,7 @@ export function hardQuestionIssues(q:Draft,source:Source,catalog:Source[]):strin
   fail(!q.stem.normalize('NFKC').includes(q.choices[q.correct]?.normalize('NFKC')??''),'READING_ANSWER_LEAK');
  }
  if(q.type==='spelling'){
-  fail(source.reading&&kana.test(source.reading)&&q.stem.includes(`【${source.reading}】`)&&!/\p{Script=Han}/u.test(q.stem),'SPELLING_MARKED_KANA');
+  fail(source.reading&&kana.test(source.reading)&&q.stem.includes(`【${source.reading}】`)&&!/[^\p{Script=Hiragana}\p{Script=Katakana}\p{P}\p{S}\p{N}\sー]/u.test(q.stem),'SPELLING_MARKED_KANA');
   fail(q.choices.every(c=>/\p{Script=Han}/u.test(c)),'SPELLING_KANJI_CHOICES');
   fail(q.choices.every((c,i)=>i===q.correct||catalog.some(s=>plainJapanese(s.title)===c&&spellingNeighbor(source,s))),'SPELLING_NEAR_DISTRACTORS');
  }
