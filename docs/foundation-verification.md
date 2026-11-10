@@ -460,3 +460,8 @@ Schema, worker dịch và database G0 không thay đổi.
 - All `npm run test:browser`: 2026-11-10T21:54:12.3922904+07:00 → 2026-11-10T21:55:35.9774325+07:00, 8/8 routes PASS; shadowing 17/17 checks with synthetic video only. Scope guard `node tools/check-route-scope.mjs origin/master shadowing` PASS (12 changed route files; verification log append-only).
 - Private local operator evidence, excluded from Git: clip import 6 segments / quick_check ok / FK0; positive import + overlap rejection + SHA mismatch rejection 3/3 PASS, rejected inputs leave app DB unchanged. Local real MP4 decode/playback and authenticated206 verified; official kana/speakers preserved. GPU word-timing proposals and SRT are pending tester review. No private clip/script/recording/DB/result committed; no Frozen data/schema changes.
 - Physical phone, Tailscale deployment and timing approval remain pending. Recording tests use a fake microphone; this route keeps takes only in browser memory until downloaded.
+
+## 2026-11-10 — verification environment correction (shadowing)
+
+- Correction to the preceding entry: installed npm is **11.6.1**, not 11.6.0. No implementation changes.
+- Rechecked head `f4ee53c372b7addfb4cbbfb643ebec83083f290c` before this documentation push: `npm run check` 2026-11-10T21:59:56.3853323+07:00 → 2026-11-10T22:01:36.2321541+07:00, typecheck PASS, prototype22/22 + app/unit76/76 PASS, build PASS, test:app16 checks PASS. Browser8/8 and shadowing17/17 results above apply to the unchanged implementation. Route scope guard PASS; this entry is append-only.
