@@ -7,7 +7,8 @@ const kana=/^[\p{Script=Hiragana}\p{Script=Katakana}ー]+$/u;
 const word=/^[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}ー]+$/u;
 const kanaStyle=(s:string)=>/^[\p{Script=Hiragana}ー]+$/u.test(s)?'hiragana':/^[\p{Script=Katakana}ー]+$/u.test(s)?'katakana':'mixed';
 const part=(tag:string)=>tag==='vi'||tag==='vt'?null:/^v(?:[1-5]|[a-z])/.test(tag)?'verb':/^n(?:$|-)/.test(tag)?'noun':tag==='adj-i'?'i-adjective':tag==='adj-na'?'na-adjective':tag==='adv'?'adverb':tag==='pn'?'pronoun':tag==='num'?'number':tag==='int'?'interjection':tag==='conj'?'conjunction':null;
-export function samePartOfSpeech(a:Source,b:Source){if(a.kind!==b.kind)return false;if(a.kind==='kanji')return true;const classes=new Set(a.pos.map(part).filter(Boolean));return b.pos.some(p=>classes.has(part(p))&&part(p)!==null);}
+// Fix the target's first lexical POS so four options cannot mix noun/adverb senses.
+export function samePartOfSpeech(a:Source,b:Source){if(a.kind!==b.kind)return false;if(a.kind==='kanji')return true;const main=a.pos.map(part).find(Boolean);return !!main&&b.pos.some(p=>part(p)===main);}
 const moras=(s:string)=>toHiragana(s).match(/[\p{Script=Hiragana}ー][ゃゅょぁぃぅぇぉ]?/gu)??[];
 const soundKey=(s:string)=>{const roman=toRomaji(s);return roman[0]+roman.slice(-1);};
 export function readingNeighbor(reading:string,choice:string){

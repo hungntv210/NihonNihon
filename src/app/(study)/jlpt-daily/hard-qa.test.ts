@@ -29,6 +29,8 @@ test('synonym and spelling distractors enforce dictionary POS, Japanese word scr
  assert.ok(hardQuestionIssues({...q,choices:['今年','月曜日です。','火曜日','木曜日']},year,catalog).includes('SYNONYM_POS_AND_SCRIPT'));
  assert.ok(hardQuestionIssues(q,year,catalog.map(s=>s.title==='火曜日'?{...s,level:'N4' as const}:s)).includes('SYNONYM_POS_AND_SCRIPT'));
  assert.equal(spellingNeighbor(weekdays[0],{...weekdays[1],pos:['v5r']}),false);
+ assert.equal(samePartOfSpeech({...year,pos:['n','adv']},{...year,id:'openjlpt:vocab:adverb',pos:['adv']}),false);
+ assert.equal(samePartOfSpeech({...year,pos:['n','adv']},weekdays[0]),true);
 });
 test('UNLEARNED_KANJI allows 私 only when present in the approved content catalog',()=>{
  const q={...base('context'),stem:'私の（　　）です。',choices:['今年','月曜日','火曜日','木曜日']};

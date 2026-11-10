@@ -133,7 +133,9 @@ từ đích, không được xem là một từ mới đã học. Các ví dụ 
 qua bộ lọc cho ことし; タクシー/ノート/き không qua. Đây là bộ lọc gần âm có quy tắc,
 vẫn cần QA ngữ nghĩa và tester để xác nhận độ hợp lý. Nhiễu spelling cũng kiểm
 từ loại; synonym phải là từ Nhật trần trong catalog cùng cấp và từ loại (danh từ,
-động từ, tính từい/な, trạng từ...), không chấp nhận một câu làm lựa chọn.
+động từ, tính từい/な, trạng từ...), không chấp nhận một câu làm lựa chọn. Dùng
+từ loại từ vựng chính của mục đích (bỏ cờ vt/vi) làm loại chung cho cả bốn lựa
+chọn, tránh trộn các nghĩa danh từ/trạng từ khi từ đích mang nhiều nhãn POS.
 
 Đối chiếu Frozen ngày 2026-11-10: 私 không có trong tuần1–2. Mục từ N5 私
 (わたくし) ở tuần10, mục kanji N4 ở tuần22. Không thêm ngoại lệ cứng vào
