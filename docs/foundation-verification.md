@@ -465,3 +465,12 @@ Schema, worker dịch và database G0 không thay đổi.
 
 - Correction to the preceding entry: installed npm is **11.6.1**, not 11.6.0. No implementation changes.
 - Rechecked head `f4ee53c372b7addfb4cbbfb643ebec83083f290c` before this documentation push: `npm run check` 2026-11-10T21:59:56.3853323+07:00 → 2026-11-10T22:01:36.2321541+07:00, typecheck PASS, prototype22/22 + app/unit76/76 PASS, build PASS, test:app16 checks PASS. Browser8/8 and shadowing17/17 results above apply to the unchanged implementation. Route scope guard PASS; this entry is append-only.
+
+## 2026-11-10 — explicit private clip bounds and long-gap skipping (PR32)
+
+- Checked implementation `82168dec10ac9264a9a1f1f915e9556f48fda7ae` on codex/shadowing-erin, Windows/Node24.10.0/npm11.6.1.
+- `npm run check` 2026-11-10T22:30:56.4178409+07:00 → 2026-11-10T22:32:34.9069046+07:00: typecheck PASS, prototype22/22 + app/unit78/78 PASS, build PASS, test:app16/16 PASS.
+- `npm run test:browser` 2026-11-10T22:33:17.4743317+07:00 → 2026-11-10T22:35:35.4184095+07:00: 8/8 routes PASS, shadowing18/18 PASS (explicit start/end clamping and >3s gap skip included). Scope `origin/master shadowing` PASS (13 route files, append-only verification).
+- Private manifests require clip_start_ms/clip_end_ms, safe10–60s range within source, and every sentence within clip bounds. Whole playback uses margins and skips only gaps >3s; sentence repeats keep original boundaries. Private Erin revision55.6–90.5s imported through G0 importer into separate app DB; original six segment JSON SHA unchanged. Real local file playback proves54→55.6/91→90.5 clamping and65→77.24 gap skip. No media/source/Frozen/schema change or private data commit.
+- Synthetic browser fixture uses2×public WebM TimecodeScale,0.5–17.5s bounds and6s gap; source decode8.94705s becomes17.894101s. Initial18±.1s assertion failed due codec duration, replaced with exact2×decoded-source assertion (<.001s) plus physical duration covering clip end. Bounds/gap assertions unchanged. No new binary, codec dependency or Erin in CI.
+- Six sentence timings and phone microphone acceptance remain pending owner/tester listening. No service/task registration or media upload.
