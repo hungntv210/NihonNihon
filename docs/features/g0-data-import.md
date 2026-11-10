@@ -7,6 +7,15 @@
 
 Tài liệu này đọc riêng được: mọi quyết định cần cho nhánh đều nằm ở đây.
 
+## Nghiệm thu lại 10/11/2026 — vẫn Draft
+
+Đã chạy đủ 11 bước trên dữ liệu N2–N5: **10 đạt**, còn bước đối chiếu số nét có
+6 chênh lệch OpenJLPT/KanjiVG chưa xử lý. Không chuyển Frozen. Đủ nghĩa Việt cho
+toàn bộ từ, kanji và các trường ngữ pháp; sửa tester đi qua importer có provenance,
+trim NFC mọi field, giữ nguyên dữ liệu nguồn và lịch sử. Bộ kiểm thử cuối: 124/124.
+Xem [phạm vi và kết luận](../data/coverage-repair.md); báo cáo chi tiết giữ riêng tư.
+Ba clip thật, font trên điện thoại và shadowing vẫn **pending nghiệm thu G1**.
+
 ## Mốc code 0.1 — chờ chạy 11 bước nghiệm thu
 
 Đã merge `g0/data-spec` (Draft 0.2 + HV-1.2) và có importer Node 24/SQLite trong

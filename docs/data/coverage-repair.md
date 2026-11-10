@@ -56,3 +56,16 @@ Acceptance compares the real database with its pinned artifacts. Record any new
 failure rather than silently treating it as an accepted exception. Media, physical
 phone fonts and shadowing remain pending G1; no claim of full sentence tokenization
 is made by the data-only acceptance.
+
+## Acceptance rerun — 10 November 2026
+
+All eleven steps ran; ten passed. G0 stays **Draft** because six OpenJLPT stroke
+counts disagree with the standard KanjiVG path counts. Every kanji has paths, but
+the disagreements have not been accepted as waivers or resolved. Keep the pinned
+source values and the private diagnostic report; do not silently mark Frozen.
+
+Two full imports and a forced transaction rollback passed on a private database
+copy with an SRS card/review canary. Production remained unchanged during acceptance.
+The final guard also verifies that replaying pre-trim history requires a current,
+fresh selected replacement; its four real legacy rows satisfy that prerequisite.
+The final code passed 124 tests. Media and physical-device checks remain pending G1.
