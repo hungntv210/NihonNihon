@@ -35,6 +35,12 @@ export async function applyPlan(db,plan,{dbPath=':memory:',backupDirectory,audit
   try {
     for(const row of plan.sources.values())put(db,'data_sources',row,['source_id']);
     for(const row of plan.releases.values())put(db,'source_releases',row,['release_id'],true);
+    for(const patch of plan.glyphOverrides??[]){
+      const current=db.prepare('SELECT i.source_hash,i.field_sources,k.strokes FROM content_items i JOIN kanji k USING(item_id) WHERE item_id=?').get(patch.item_id);
+      need(current?.source_hash===patch.base_content_hash&&current.field_sources===patch.expected_field_sources&&current.strokes===patch.expected_strokes,'Glyph waiver target changed');
+      db.prepare('UPDATE kanji SET strokes=? WHERE item_id=?').run(patch.strokes,patch.item_id);
+      db.prepare('UPDATE content_items SET field_sources=? WHERE item_id=?').run(patch.field_sources,patch.item_id);
+    }
     // Immutable releases are reused; their retrieval time is not rewritten on reruns.
     for(const row of plan.items.values()) {
       put(db,'content_items',row,['item_id']);

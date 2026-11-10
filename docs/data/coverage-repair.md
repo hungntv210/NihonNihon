@@ -57,7 +57,7 @@ failure rather than silently treating it as an accepted exception. Media, physic
 phone fonts and shadowing remain pending G1; no claim of full sentence tokenization
 is made by the data-only acceptance.
 
-## Acceptance rerun — 10 November 2026
+## Initial acceptance rerun — 10 November 2026
 
 All eleven steps ran; ten passed. G0 stays **Draft** because six OpenJLPT stroke
 counts disagree with the standard KanjiVG path counts. Every kanji has paths, but
@@ -69,3 +69,17 @@ copy with an SRS card/review canary. Production remained unchanged during accept
 The final guard also verifies that replaying pre-trim history requires a current,
 fresh selected replacement; its four real legacy rows satisfy that prerequisite.
 The final code passed 124 tests. Media and physical-device checks remain pending G1.
+
+## Tester-approved glyph variants
+
+The tester accepted the six count disagreements as `glyph_variant_jouyou2010`.
+`runGlyphVariantImport` applies the KanjiVG count shown by the existing paths;
+`content_items.field_sources.stroke_override` retains the original OpenJLPT count,
+source hash, KanjiVG release/checksum, waiver, reviewer and manual decision release.
+It never edits upstream files, source hashes, meanings, translations or SRS.
+
+A normal reimport preserves the approved override only while its OpenJLPT hash,
+original count and KanjiVG paths/release still match. Changed inputs fail validation
+and require renewed review. The metadata and effective count commit together;
+failure rolls both back. Media/physical-device checks remain pending G1. The
+data-only Frozen transition requires the full acceptance rerun and current CI green.

@@ -6,6 +6,7 @@ import { parseArtifacts } from './adapters.mjs';
 import { buildPlan } from './plan.mjs';
 import { openDatabase,applyPlan } from './store.mjs';
 export {runCorrectionImport} from './owner-corrections.mjs';
+export {runGlyphVariantImport} from './glyph-variant-waivers.mjs';
 
 export async function runImport({manifestPath,dbPath,reportPath,requestsPath,requireComplete=false,backupDirectory,auditSources,takeBackup=true,beforeApply=()=>{},translationScope}) {
   need(manifestPath&&dbPath&&reportPath,'Usage: --manifest FILE --db FILE --report FILE [--requests FILE] [--require-complete]');
