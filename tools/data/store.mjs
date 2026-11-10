@@ -58,6 +58,12 @@ export async function applyPlan(db,plan,{dbPath=':memory:',backupDirectory,audit
       const row={...original};
       const previous=db.prepare("SELECT * FROM vi_translations WHERE item_id=? AND field=? AND status='selected'").get(row.item_id,row.field);
       const same=db.prepare('SELECT * FROM vi_translations WHERE translation_id=?').get(row.translation_id);
+      const legacy=db.prepare('SELECT translation_id,text_vi,status FROM vi_translations WHERE item_id=? AND field=? AND source_id=? AND release_id=? AND source_record_key=? AND base_content_hash=?').get(row.item_id,row.field,row.source_id,row.release_id,row.source_record_key,row.base_content_hash);
+      if(legacy&&legacy.translation_id!==row.translation_id&&legacy.text_vi!==row.text_vi&&legacy.text_vi.normalize('NFC').trim()===row.text_vi){
+        // Preserve immutable pre-trim history; selected legacy text needs a reviewed replacement.
+        need(legacy.status!=='selected','Selected legacy whitespace requires a provenance correction');
+        continue;
+      }
       const correction=JSON.parse(row.context_json).owner_correction===true;
       if(correction){const reviewer=JSON.parse(db.prepare('SELECT manifest_json FROM source_releases WHERE release_id=?').get(row.release_id).manifest_json).reviewer;need(row.source_id==='mt:manual'&&['owner','tester'].includes(reviewer)&&JSON.parse(row.context_json).reviewer===reviewer&&(!previous||previous.translation_id===row.translation_id||previous.translation_id===JSON.parse(row.context_json).supersedes_translation_id),'Reviewed correction selection changed');}
       if(same) {

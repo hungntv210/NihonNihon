@@ -40,6 +40,10 @@ Both normal and reviewed importers normalize NFC and trim the outer whitespace o
 field, including sentence `text`; whitespace inside a translation is preserved.
 Previously stored text is immutable: corrections create a provenance-bearing
 replacement, retain the old row and record the superseded translation ID.
+Replaying a pre-trim artifact reuses its immutable historical natural key after
+the selected value has been repaired. A still-selected padded legacy value is
+rejected with an explicit request for a provenance correction; it is never silently
+rewritten or allowed to collide with the new normalized ID.
 
 The final vocabulary sample was reviewed (one major in thirty, below the existing
 pause threshold) and the tester checked all sixty-two entries. Nine explicit word

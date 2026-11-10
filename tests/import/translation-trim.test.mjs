@@ -18,6 +18,16 @@ test('reviewed sentence whitespace repair uses the provenance importer and prese
  await runCorrectionImport({dbPath:f.dbPath,correctionsPath:f.dir+'/sentence-trim.json',reportPath:f.dir+'/sentence-trim-report.json'});
  const selected=db.prepare("SELECT * FROM vi_translations WHERE item_id=? AND field='text' AND status='selected'").get(old.item_id);assert.equal(selected.text_vi,old.text_vi);assert.equal(selected.source_id,'mt:manual');assert.equal(JSON.parse(selected.context_json).reviewer,'tester');assert.equal(db.prepare('SELECT text_vi FROM vi_translations WHERE translation_id=?').get(old.translation_id).text_vi,old.text_vi);
 });
+test('replay preserves pre-trim history after reviewed replacement without a natural-key collision',async t=>{
+ const f=fixture(t);await runImport(f);f.answerRequests();await runImport(f);const db=f.open(),old=db.prepare("SELECT * FROM vi_translations WHERE field='text' AND status='selected'").get();
+ // A database written before trim was introduced has a different ID and padded text.
+ db.prepare('UPDATE vi_translations SET translation_id=?,text_vi=? WHERE translation_id=?').run('legacy-padded',' '+old.text_vi+' ',old.translation_id);
+ await assert.rejects(()=>runImport(f),/Selected legacy whitespace requires a provenance correction/);
+ assert.equal(db.prepare("SELECT status FROM vi_translations WHERE translation_id='legacy-padded'").get().status,'selected');
+ f.write('legacy-repair.json',{reviewer:'tester',reason:'Approved whitespace cleanup',rows:[{item_id:old.item_id,field:'text',text_vi:old.text_vi,expected_translation_id:'legacy-padded',reason:'Trim without rewriting history'}]});
+ await runCorrectionImport({dbPath:f.dbPath,correctionsPath:f.dir+'/legacy-repair.json',reportPath:f.dir+'/legacy-report.json'});
+ const before=db.prepare('SELECT * FROM vi_translations ORDER BY translation_id').all();await runImport(f);await runImport(f);assert.deepEqual(db.prepare('SELECT * FROM vi_translations ORDER BY translation_id').all(),before);
+});
 test('tester correction trims meaning and Han-Viet before IDs and candidate checks, preserving old text',async t=>{
  const f=fixture(t);await runImport(f);f.answerRequests();await runImport(f);const db=f.open(),selected=db.prepare("SELECT * FROM vi_translations WHERE item_id='openjlpt:kanji:U+65E5' AND status='selected'").all();
  assert.equal(selected.length,2);const original=selected.map(r=>({...r})),input={reviewer:'tester',reason:'Whitespace correction',rows:selected.map(r=>({item_id:r.item_id,field:r.field,text_vi:' \n'+(r.field==='han_viet'?r.text_vi:'nghĩa đã duyệt').normalize('NFD')+'\t ',expected_translation_id:r.translation_id,reason:'Tester supplied value'}))};
