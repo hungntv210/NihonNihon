@@ -6,7 +6,7 @@ import {sourceCatalog} from './catalog.ts';import {openContentDatabase} from '..
 import {GENERATE_PROMPT,VERIFY_PROMPT,questionSchema,auditSchema,type Provider} from './generation.ts';
 import {validateDrafts,validateDayDrafts,validateAudit,requireValue,questionTypes,hash,type Source,type Question,type Audit,type Draft,validateQuestion} from './model.ts';
 
-import {plainJapanese,spellingNeighbor} from './hard-qa.ts';
+import {plainJapanese,spellingNeighbor,readingDistractors,samePartOfSpeech} from './hard-qa.ts';
 
 export const DRAFT_MODE='draft_roadmap' as const;
 export function roadmapDraftCatalog(db:DatabaseSync,startDate='2026-11-02'){
@@ -15,12 +15,12 @@ export function roadmapDraftCatalog(db:DatabaseSync,startDate='2026-11-02'){
 }
 const generationPrompt=GENERATE_PROMPT.replace('Produce exactly7 days times10 questions, day0..6/position0..9,','Produce ONLY the supplied slots. Preserve each supplied day/position/type.').replaceAll('learned','roadmap-approved draft')+' Supplied targetId/choices/correct are source-grounded recommendations; reproduce them and write the original stem/explanation. Never conjugate the answer to hide a mismatch: design a gap accepting its dictionary form. Use only bare Japanese answerTitle values, and kana for story context except marked reading target. For grammar gaps choose a sentence accepting the exact supplied surface. Repair only requested positions. For synonym, ask for the word matching a simple kana definition. NO silent corrections will be made to your answer key or options.';
 const verificationPrompt=VERIFY_PROMPT.replaceAll('learned','roadmap-approved draft')+' This is mode=draft_roadmap, NOT evidence of SRS learning. The legacy learnedOnly field means strictly within the supplied roadmap-approved catalog. Never claim actual review history.';
-export const draftPromptHashes={generate:hash({prompt:generationPrompt,planning:'hard-qa-source-options-v2'}),verify:hash(verificationPrompt)};
+export const draftPromptHashes={generate:hash({prompt:generationPrompt,planning:'hard-qa-source-options-v3'}),verify:hash(verificationPrompt)};
 const schemaFor=(schema:typeof questionSchema|typeof auditSchema,count:number)=>({...schema,minItems:count,maxItems:count});
 function draftSchema(count:number,_knownKanji:string[],_catalog:Source[]){return schemaFor(questionSchema,count);}
 export function draftSlots(day:number,catalog:Source[]){return Array.from({length:10},(_,position)=>{
  const type=questionTypes[(day*10+position)%questionTypes.length],grammar=['grammar','order','paragraph'].includes(type);
- const choicesFor=(s:Source)=>[...new Set(catalog.filter(o=>o.id!==s.id&&o.level===s.level&&(type==='spelling'?spellingNeighbor(s,o):o.kind===s.kind&&(grammar||o.pos[0]===s.pos[0]))).map(o=>type==='reading'?o.reading:plainJapanese(o.title)).filter((v):v is string=>!!v&&v!==(type==='reading'?s.reading:plainJapanese(s.title))&&!/[\p{Script=Latin}〜～~()（）]/u.test(v)))];
+ const choicesFor=(s:Source)=>type==='reading'?readingDistractors(s,catalog):[...new Set(catalog.filter(o=>o.id!==s.id&&o.level===s.level&&(type==='spelling'?spellingNeighbor(s,o):o.kind===s.kind&&(grammar||samePartOfSpeech(s,o)))).map(o=>plainJapanese(o.title)).filter(v=>!!v&&v!==plainJapanese(s.title)&&!/[\p{Script=Latin}〜～~()（）]/u.test(v)))];
  const pool=catalog.filter(s=>(grammar?s.kind==='grammar':s.kind==='vocab'&&(type!=='reading'&&type!=='spelling'||/\p{Script=Han}/u.test(s.title)))&&choicesFor(s).length>=3);
  requireValue(pool.length>0,'INSUFFICIENT_DRAFT_OPTIONS');const source=pool[(day*10+position)%pool.length],answer=type==='reading'?source.reading:plainJapanese(source.title),options=choicesFor(source).sort((a,b)=>hash(day+':'+position+a).localeCompare(hash(day+':'+position+b))).slice(0,3);
  requireValue(answer,'INSUFFICIENT_DRAFT_OPTIONS');const correct=(day+position)%4;options.splice(correct,0,answer);return {day,position,type,targetId:source.id,...(type==='order'?{}:{choices:options,correct})};
@@ -65,7 +65,7 @@ export async function generateRoadmapDraft({snapshotPath,receiptPath,week,direct
  const checksum=createHash('sha256');for await(const bytes of fs.createReadStream(snapshotPath))checksum.update(bytes);requireValue(checksum.digest('hex')===receipt.sha256,'SNAPSHOT_HASH_CHANGED');
  requireValue((fs.statSync(snapshotPath).mode&0o222)===0,'SNAPSHOT_MUST_BE_READ_ONLY');fs.mkdirSync(directory,{recursive:true});
  const db=openContentDatabase(snapshotPath);let catalog:Source[];try{catalog=roadmapDraftCatalog(db);requireValue(catalog.some(s=>s.kind==='vocab')&&catalog.some(s=>s.kind==='grammar'),'EMPTY_ROADMAP_DRAFT_CATALOG');}finally{db.close();}
- const metadata={mode:DRAFT_MODE,week,level:'N5',roadmapWeeks:[1,2],learningEvidence:'roadmap_only_not_srs',answerEvidence:'hard-qa-source-options-v2 before independent semantic QA',snapshotSha256:receipt.sha256,model,verifierModel:model,promptHashes:draftPromptHashes,sourceHashes:Object.fromEntries(catalog.map(s=>[s.id,s.hash])),appPublished:false};
+ const metadata={mode:DRAFT_MODE,week,level:'N5',roadmapWeeks:[1,2],learningEvidence:'roadmap_only_not_srs',answerEvidence:'hard-qa-source-options-v3 before independent semantic QA',snapshotSha256:receipt.sha256,model,verifierModel:model,promptHashes:draftPromptHashes,sourceHashes:Object.fromEntries(catalog.map(s=>[s.id,s.hash])),appPublished:false};
  const write=(name:string,value:unknown)=>fs.writeFileSync(path.join(directory,name),JSON.stringify(value,null,2)+'\n',{mode:0o600});if(fs.existsSync(path.join(directory,'metadata.json')))requireValue(hash(JSON.parse(fs.readFileSync(path.join(directory,'metadata.json'),'utf8')))===hash(metadata),'DRAFT_RESUME_CONTEXT_CHANGED');write('metadata.json',metadata);
  const all:Question[]=[],audits:Audit[]=[];let rejects=0;
  for(let day=0;day<7;day++){const file=path.join(directory,`draft-day-${day+1}.json`),result=fs.existsSync(file)?JSON.parse(fs.readFileSync(file,'utf8')):await generateDraftDay({week,day,catalog,history:all},provider);

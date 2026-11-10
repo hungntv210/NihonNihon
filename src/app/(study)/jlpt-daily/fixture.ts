@@ -6,7 +6,7 @@ import { enqueueCard } from '../../../core/review.ts';
 import { learnedCatalog } from './catalog.ts';
 import { hash,questionTypes,type Draft,type Source,type Audit } from './model.ts';
 import { generateWeek } from './generation.ts';
-import {plainJapanese,orderedSentence} from './hard-qa.ts';
+import {plainJapanese,orderedSentence,readingDistractors,samePartOfSpeech} from './hard-qa.ts';
 
 export function fixtureCatalog(file:string){
  seedDemo(file);
@@ -26,15 +26,15 @@ export function fixtureCatalog(file:string){
  }finally{db.close();}
 }
 export function fixtureDrafts(catalog:Source[],suffix=''):Draft[]{
- const vocab=catalog.find(s=>s.kind==='vocab'&&s.reading)!,grammar=catalog.find(s=>s.kind==='grammar')!,spelling=catalog.find(s=>s.title==='月曜日')!;
+ const vocab=catalog.find(s=>s.kind==='vocab'&&s.reading)!,grammar=catalog.find(s=>s.kind==='grammar')!,spelling=catalog.find(s=>s.title==='月曜日')!,synonym=catalog.find(s=>s.kind==='vocab'&&s.pos.includes('n'))!;
  return Array.from({length:70},(_,i)=>{
-  const type=questionTypes[i%8],gram=['grammar','order','paragraph'].includes(type),target=gram?grammar:type==='spelling'?spelling:vocab;
+  const type=questionTypes[i%8],gram=['grammar','order','paragraph'].includes(type),target=gram?grammar:type==='spelling'?spelling:type==='synonym'?synonym:vocab;
   const correct=type==='reading'?target.reading!:plainJapanese(target.title);
   const q:Draft={day:Math.floor(i/10),position:i%10,type,targetId:target.id,
    stem:`${i+1}${suffix}：${type==='reading'?`【${target.title}】のよみかたはどれですか。`:type==='spelling'?`【${target.reading}】のかんじはどれですか。`:type==='order'?'これは ＿ ★ ＿ ＿ です。':type==='paragraph'?'【ほんぶん】あさ、こうえんをあるきました。そこにはおおきなきがありました。しずかだったので、ながくやすみました。【とい】かっこにあうことばはどれですか。（　　）':'かっこにあうものをえらんでください。（　　）'}`,
-   choices:type==='order'?['きのう','ほんを','みた','ひと']:type==='spelling'?['月曜日','火曜日','木曜日','金曜日']: [correct,...['たなか','さくら','みどり','あかい'].filter(s=>s!==correct).slice(0,3)],correct:0,
+   choices:type==='order'?['きのう','ほんを','みた','ひと']:type==='spelling'?['月曜日','火曜日','木曜日','金曜日']:type==='reading'?[correct,...readingDistractors(target,catalog).slice(0,3)]:type==='synonym'?[correct,...catalog.filter(s=>s.id!==target.id&&s.level===target.level&&samePartOfSpeech(target,s)).map(s=>plainJapanese(s.title)).slice(0,3)]:[correct,...['たなか','さくら','みどり','あかい'].filter(s=>s!==correct).slice(0,3)],correct:0,
    explanation:'Đây là lời giải thích trong fixture kiểm thử, không phải nội dung luyện thật.',order:type==='order'?[1,0,2,3]:[],starSlot:type==='order'?1:0};
-  if(type==='order')q.explanation=`Thứ tự: 2→1→3→4. ★=1. Câu: ${orderedSentence(q)} Đây là fixture kiểm thử.`;return q;
+  if(type==='order')q.explanation=`Thứ tự: 2→1→3→4. ★=1. Câu: 「${orderedSentence(q)}」 Đây là fixture kiểm thử.`;return q;
  });
 }
 export const fixtureAudit=(drafts:Draft[]):Audit[]=>drafts.map((q,index)=>({index,possibleAnswers:[q.correct],sameType:true,plausible:true,levelMatch:true,learnedOnly:true,original:true,explanationCorrect:true}));

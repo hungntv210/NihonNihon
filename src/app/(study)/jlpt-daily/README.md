@@ -113,7 +113,10 @@ spelling có 【kana】, stem không có kanji, nhiễu cùng cấp có bằng c
 Không chứng minh được thì loại. Các lựa chọn không có Latin/chú giải/〜, đủ bốn
 và khác nhau. Order có đúng bốn ô tách bằng khoảng trắng, không lặp từ trong phần
 stem cố định (Intl.Segmenter), key và lời giải khớp thứ tự, ★ và câu hoàn chỉnh.
-Lời giải order dùng `Thứ tự: 2→1→3→4. ★=1. Câu: ...` để kiểm được bằng máy.
+Lời giải order dùng `Thứ tự: 2→1→3→4. ★=1. Câu: 「...」` để kiểm được bằng máy.
+Chỉ một trường Câu; so sánh NFC và bỏ khoảng trắng, giữ nguyên mọi chữ/dấu câu.
+Câu ghép từ stem và đúng bốn mảnh theo permutation phải bằng toàn bộ trường đó;
+thêm/thiếu/lặp một từ hoặc chỉ chứa câu đúng như một substring đều bị loại.
 Paragraph có 【ほんぶん】 ít nhất ba câu/40 chữ Nhật rồi 【とい】; các dạng điền
 từ/mẫu có chỗ trống. Các cổng cũ về nguồn/cấp/kanji/trùng câu vẫn áp dụng.
 
@@ -122,3 +125,17 @@ cổng cứng, giữ nguyên câu đạt, chỉ gửi các vị trí bị loại
 Câu lỗi cứng không được gửi sang QA Gemini; API503 được trả ra một lần để caller
 lưu checkpoint và dừng, không tự lặp request. Mẫu có câu pending/rejected không
 được coi là bank đạt QA hoặc được xuất bản vào app.
+
+Nhiễu reading cùng kiểu kana (hiragana/katakana), gần âm theo khoảng cách mora
+có trọng số (âm ん/っ và cùng phụ âm/nguyên âm), tối đa hai đơn vị; nhiễu từ điển
+phải cùng cấp/từ loại. Sai cách đọc dẫn xuất từ từ đích (như ことしい) mang cấp của
+từ đích, không được xem là một từ mới đã học. Các ví dụ こんねん/きょねん/ことしい
+qua bộ lọc cho ことし; タクシー/ノート/き không qua. Đây là bộ lọc gần âm có quy tắc,
+vẫn cần QA ngữ nghĩa và tester để xác nhận độ hợp lý. Nhiễu spelling cũng kiểm
+từ loại; synonym phải là từ Nhật trần trong catalog cùng cấp và từ loại (danh từ,
+động từ, tính từい/な, trạng từ...), không chấp nhận một câu làm lựa chọn.
+
+Đối chiếu Frozen ngày 2026-11-10: 私 không có trong tuần1–2. Mục từ N5 私
+(わたくし) ở tuần10, mục kanji N4 ở tuần22. Không thêm ngoại lệ cứng vào
+UNLEARNED_KANJI; dùng わたし trong nháp tuần1–2. Test xác nhận 私 bị loại khi
+vắng và tự được cho phép khi xuất hiện trong catalog nội dung đã duyệt.
