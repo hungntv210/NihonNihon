@@ -83,7 +83,11 @@ snapshot. Use source `user-media`, `usage_scope=private_only`, `origin.kind=file
 the file's SHA-256, attribution and license. Every revision keeps its original
 immutable clip manifest; each segment may additionally store `kana` and `speaker`.
 Keep IDs stable across timing revisions. Timings must be integer milliseconds,
-ordered, non-overlapping, end > start, and within the original file duration.
+ordered, non-overlapping, end > start, and within the explicit clip range.
+The manifest must include `clip_start_ms` and `clip_end_ms` in source-file time;
+the range must span 10–60 seconds and stay within `duration_ms`. Every sentence
+must stay within it. Changing clip bounds creates an import revision and does
+not require moving approved/proposed sentence boundaries.
 Use absolute file paths or paths relative to the clips JSON. Keep the media,
 manifest, scripts, SRTs, comparison reports and databases outside git and public/.
 
@@ -102,3 +106,13 @@ then run `npm start -- --port 3000` and open `http://localhost:3000/shadowing`.
 The real private clip is intentionally absent from CI: `private-fixture.ts` uses
 the public synthetic WebM and six invented captions to verify the same DB/media
 path, ranges, kana/speakers, sentence highlighting, speed and separate recordings.
+The private fixture doubles the public WebM TimecodeScale to 18 seconds without
+new codecs/dependencies. It has a 6-second inter-sentence gap, explicit 0.5–17.5s
+clip bounds, and browser assertions for skip, start clamp and end stop. The demo
+retains its labeled 9-second behavior; the 10–60s validator applies to private clips.
+
+Whole-clip playback begins/ends at the manifest bounds, with seeks clamped to
+that range. Gaps longer than three seconds between sentences are skipped entirely;
+shorter gaps and lead/trailing margins stay. Sentence repeats still use the original
+sentence boundaries. Erin's proposed bounds are 55.6–90.5s; its six original timing
+proposals are unchanged and remain pending the owner's listening approval.

@@ -118,10 +118,17 @@ try {
   await page.getByRole('button',{name:/Clip riêng tổng hợp/}).click();
   await page.waitForFunction(()=>document.querySelector('video')!.readyState>=2);
   assert.equal(await page.getByLabel('Phụ đề',{exact:true}).inputValue(),'kana');assert.match(await page.getByLabel('Phụ đề mẫu',{exact:true}).innerText(),/先生.*あ。/s);checks++;
-  await page.getByRole('button',{name:/Câu 2.*1.5–3.0s/}).click();await page.getByLabel('Tốc độ',{exact:true}).selectOption('1');await page.getByLabel('Lặp đoạn',{exact:true}).selectOption('1');await page.getByRole('button',{name:'Nghe lại đoạn',exact:true}).click();
+  assert.ok(await page.locator('video').evaluate(m=>Math.abs((m as HTMLVideoElement).duration-18)<0.1));
+  await page.getByRole('button',{name:'Phát cả clip',exact:true}).click();
+  await page.locator('video').evaluate(m=>{(m as HTMLVideoElement).currentTime=4.1;});
+  await page.waitForFunction(()=>document.querySelector('video')!.currentTime>=10&&document.querySelector('video')!.currentTime<11);
+  await page.locator('video').evaluate(m=>{(m as HTMLVideoElement).currentTime=17.8;});
+  await page.waitForFunction(()=>document.querySelector('video')!.paused&&Math.abs(document.querySelector('video')!.currentTime-17.5)<0.05);
+  await page.locator('video').evaluate(m=>{(m as HTMLVideoElement).currentTime=0;});await page.waitForFunction(()=>Math.abs(document.querySelector('video')!.currentTime-0.5)<0.05);checks++;
+  await page.getByRole('button',{name:/Câu 2.*2.5–4.0s/}).click();await page.getByLabel('Tốc độ',{exact:true}).selectOption('1');await page.getByLabel('Lặp đoạn',{exact:true}).selectOption('1');await page.getByRole('button',{name:'Nghe lại đoạn',exact:true}).click();
   await page.waitForFunction(()=>Boolean(document.querySelector('[aria-current="true"][data-active="true"]')));await page.getByText(/Đã phát 1 lượt/).waitFor();assert.ok(await page.locator('video').evaluate(m=>(m as HTMLVideoElement).paused));checks++;
   await page.getByLabel('Tốc độ',{exact:true}).selectOption('0.75');assert.equal(await page.locator('video').evaluate(m=>(m as HTMLVideoElement).playbackRate),0.75);
-  for(const index of [0,1]){await page.getByRole('button',{name:new RegExp(`Câu ${index+1}.*${index?'1.5–3.0':'0.0–1.5'}s`)}).click();await page.getByRole('button',{name:`Ghi âm câu ${index+1}`,exact:true}).click();await page.getByRole('button',{name:'Dừng ghi âm',exact:true}).waitFor();await page.waitForTimeout(450);await page.getByRole('button',{name:'Dừng ghi âm',exact:true}).click();await page.getByRole('link',{name:'Tải bản ghi',exact:true}).waitFor();}
+  for(const index of [0,1]){await page.getByRole('button',{name:new RegExp(`Câu ${index+1}.*${index?'2.5–4.0':'1.0–2.5'}s`)}).click();await page.getByRole('button',{name:`Ghi âm câu ${index+1}`,exact:true}).click();await page.getByRole('button',{name:'Dừng ghi âm',exact:true}).waitFor();await page.waitForTimeout(450);await page.getByRole('button',{name:'Dừng ghi âm',exact:true}).click();await page.getByRole('link',{name:'Tải bản ghi',exact:true}).waitFor();}
   await page.getByText(/Đã ghi 2\/6 câu/).waitFor();checks++;
   // React unmount while recording must release the actual microphone track.
   await page.getByRole('button', { name: 'Ghi âm câu 2' }).click(); await page.getByRole('button', { name: 'Dừng ghi âm' }).waitFor();
@@ -137,3 +144,4 @@ try {
   await new Promise<void>(resolve => { if (child.exitCode !== null) resolve(); else child.once('exit', () => resolve()); });
   assert.equal(path.dirname(directory), base); fs.rmSync(directory, { recursive: true, force: true, maxRetries: 3, retryDelay: 100 });
 }
+

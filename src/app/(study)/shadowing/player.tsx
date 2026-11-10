@@ -1,7 +1,7 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
 import { segmentAtIn, shouldRepeat } from './demo.ts';
-import {syntheticClip,type Clip} from './clip-model.ts';
+import {syntheticClip,playbackTime,type Clip} from './clip-model.ts';
 import styles from './shadowing.module.css';
 
 type Take = { url: string; segment: number; seconds: number; extension: string };
@@ -13,10 +13,10 @@ export function ShadowingPlayer({clip=syntheticClip}:{clip?:Clip}) {
   const disposed = useRef(false);
   const takeUrls = useRef(new Map<number,string>());
   const timeout = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const session = useRef({ selected: 0, limit: 1, count: 0, active: false });
+  const session = useRef({ selected: 0, limit: 1, count: 0, active: false,whole:false });
   const [selected, setSelected] = useState(0);
   const [playing, setPlaying] = useState(false);
-  const [time, setTime] = useState(clip.segments[0].start);
+  const [time, setTime] = useState(clip.start);
   const [speed, setSpeed] = useState(0.75);
   const [limit, setLimit] = useState(1);
   const [count, setCount] = useState(0);
@@ -43,13 +43,13 @@ export function ShadowingPlayer({clip=syntheticClip}:{clip?:Clip}) {
   }, []);
 
   function stopPlayback() {
-    session.current.active = false;
+    session.current.active = false;session.current.whole=false;
     video.current?.pause();
     replay.current?.pause();
   }
   function choose(index: number) {
     stopPlayback();
-    session.current = { selected: index, limit, count: 0, active: false };
+    session.current = { selected: index, limit, count: 0, active: false,whole:false };
     setSelected(index); setCount(0);
     if (video.current) video.current.currentTime = clip.segments[index].start;
     setTime(clip.segments[index].start);
@@ -58,9 +58,9 @@ export function ShadowingPlayer({clip=syntheticClip}:{clip?:Clip}) {
     const media = video.current;
     if (!media) return;
     replay.current?.pause();
-    session.current = { selected, limit: whole ? 1 : limit, count: 0, active: !whole };
+    session.current = { selected, limit: whole ? 1 : limit, count: 0, active: !whole,whole };
     setCount(0);
-    media.currentTime = whole ? clip.segments[0].start : clip.segments[selected].start;
+    media.currentTime = whole ? clip.start : clip.segments[selected].start;
     media.playbackRate = speed;
     media.preservesPitch = true;
     try { await media.play(); setStatus(whole ? 'Đang phát toàn clip.' : 'Đang phát đoạn đã chọn.'); }
@@ -69,9 +69,9 @@ export function ShadowingPlayer({clip=syntheticClip}:{clip?:Clip}) {
   function updateTime() {
     const media = video.current;
     if (!media) return;
-    setTime(media.currentTime);
     const loop = session.current;
-    if(!loop.active){if(media.currentTime>=clip.segments.at(-1)!.end-0.02)media.pause();return;}
+    const bounded=playbackTime(media.currentTime,clip,loop.whole);if(media.currentTime!==bounded)media.currentTime=bounded;setTime(bounded);
+    if(!loop.active){if(bounded>=clip.end-0.02){if(media.currentTime!==clip.end)media.currentTime=clip.end;media.pause();loop.whole=false;}return;}
     if (media.currentTime < clip.segments[loop.selected].end - 0.04) return;
     loop.count += 1; setCount(loop.count);
     if (shouldRepeat(loop.count, loop.limit)) {
@@ -127,13 +127,13 @@ export function ShadowingPlayer({clip=syntheticClip}:{clip?:Clip}) {
     const url=takeUrls.current.get(selected);if(url)URL.revokeObjectURL(url);takeUrls.current.delete(selected);
     setTakes(values=>{const next={...values};delete next[selected];return next;});setStatus('Đã xóa bản ghi của câu này.');
   }
-  const active = segmentAtIn(time,clip.segments),caption=clip.segments[active>=0?active:selected],clipStart=clip.segments[0].start,clipEnd=clip.segments.at(-1)!.end;
+  const active = segmentAtIn(time,clip.segments),caption=clip.segments[active>=0?active:selected],clipStart=clip.start,clipEnd=clip.end;
   return <div className={styles.root}>
     <aside className={styles.notice}>{clip.isDemo?<><strong>Bản thử tương tác · không phải tư liệu luyện nói</strong><p>Video tổng hợp 9 giây với tiếng bíp. Câu Nhật / Việt tự soạn chỉ để thử phụ đề; không khớp lời nói. Không tính buổi học hoặc tiến độ.</p></>:<><strong>Tư liệu riêng · {clip.level} · {clip.topic}</strong><p>{clip.attribution}</p><p>Phụ đề từ script chính thức; mốc thời gian chờ tester duyệt. Không gửi video hoặc bản ghi lên dịch vụ AI.</p></>}</aside>
     <div className={styles.columns}>
       <section className={styles.card} aria-label={clip.isDemo?'Trình phát clip thử':'Trình phát clip riêng'}>
         <div className={styles.header}><h2>{clip.title}</h2><span>{clip.isDemo?'DEMO':clip.level} · {(clipEnd-clipStart).toFixed(1)} giây</span></div>
-        <video ref={video} className={styles.video} src={clip.mediaUrl} playsInline preload="auto" onLoadedMetadata={()=>{if(video.current)video.current.currentTime=clipStart;}} onTimeUpdate={updateTime} onEnded={updateTime} onPlay={() => setPlaying(true)} onPause={() => setPlaying(false)} onError={() => setStatus('Không tải được clip. Kiểm tra tệp trên máy chủ rồi tải lại trang.')} aria-label={clip.isDemo?'Video tổng hợp chỉ có tiếng bíp':clip.title} />
+        <video ref={video} className={styles.video} src={clip.mediaUrl} playsInline preload="auto" onLoadedMetadata={()=>{if(video.current)video.current.currentTime=clipStart;}} onSeeking={updateTime} onTimeUpdate={updateTime} onEnded={updateTime} onPlay={() => setPlaying(true)} onPause={() => setPlaying(false)} onError={() => setStatus('Không tải được clip. Kiểm tra tệp trên máy chủ rồi tải lại trang.')} aria-label={clip.isDemo?'Video tổng hợp chỉ có tiếng bíp':clip.title} />
         <div className={styles.captions} aria-label="Phụ đề mẫu">
           {caption.speaker&&subtitles!=='off'&&<small lang="ja">{caption.speaker}</small>}
           {(subtitles === 'both' || subtitles === 'ja') && <p lang="ja">{caption.ja}</p>}
