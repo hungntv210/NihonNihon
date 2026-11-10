@@ -7,16 +7,18 @@
 
 Tài liệu này đọc riêng được: mọi quyết định cần cho nhánh đều nằm ở đây.
 
-## Nghiệm thu lại 10/11/2026 — vẫn Draft
+## Nghiệm thu 10/11/2026 — Frozen nền dữ liệu G0
 
-Đã chạy đủ 11 bước trên dữ liệu N2–N5: **10 đạt**, còn bước đối chiếu số nét có
-6 chênh lệch OpenJLPT/KanjiVG chưa xử lý. Không chuyển Frozen. Đủ nghĩa Việt cho
-toàn bộ từ, kanji và các trường ngữ pháp; sửa tester đi qua importer có provenance,
-trim NFC mọi field, giữ nguyên dữ liệu nguồn và lịch sử. Bộ kiểm thử cuối: 124/124.
-Xem [phạm vi và kết luận](../data/coverage-repair.md); báo cáo chi tiết giữ riêng tư.
+Đủ **11/11 bước PASS**, CI xanh, **127/127 kiểm thử local**. Sáu chênh lệch số nét
+được tester duyệt với waiver `glyph_variant_jouyou2010`: dùng số nét KanjiVG đang
+vẽ, giữ số OpenJLPT gốc/hash/release/reviewer trong context. Đủ nghĩa Việt cho
+toàn bộ từ, kanji và các trường ngữ pháp; sửa tester qua importer có provenance,
+trim NFC mọi field, giữ nguồn/lịch sử/SRS. Hai full reimport và rollback trên bản sao đạt.
+Xem [phạm vi và kết luận](../data/coverage-repair.md#frozen-g0-data-foundation);
+báo cáo chi tiết, checksum và database giữ riêng tư. Sau Frozen, sửa text phải qua importer.
 Ba clip thật, font trên điện thoại và shadowing vẫn **pending nghiệm thu G1**.
 
-## Mốc code 0.1 — chờ chạy 11 bước nghiệm thu
+## Mốc code 0.1 — lịch sử trước nghiệm thu
 
 Đã merge `g0/data-spec` (Draft 0.2 + HV-1.2) và có importer Node 24/SQLite trong
 `tools/data/`. [Hướng dẫn chạy, manifest và adapter](../data/importer.md).

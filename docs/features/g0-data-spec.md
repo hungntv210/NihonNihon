@@ -7,7 +7,14 @@
 
 Tài liệu này đọc riêng được: mọi quyết định cần cho nhánh đều nằm ở đây.
 
-## Mốc triển khai hiện tại — bản nháp 05/11/2026
+## Trạng thái chốt — Frozen nền dữ liệu 10/11/2026
+
+Nền dữ liệu N2–N5 đạt 11/11 nghiệm thu và CI xanh; 127/127 kiểm thử local.
+[Phạm vi Frozen và các waiver](../data/coverage-repair.md#frozen-g0-data-foundation).
+Giữ nguyên cấu trúc SQL; sau chốt mọi sửa text qua importer có provenance.
+Ba clip thật, font trên điện thoại thật và shadowing vẫn pending G1.
+
+## Mốc triển khai ban đầu — bản nháp 05/11/2026
 
 Theo yêu cầu hiện tại: **hoàn thành khi có đủ 5 phần tài liệu và có bản nháp schema**.
 Mốc này đã đạt tại [đặc tả 5 phần](../data/data-source-spec.md) và
