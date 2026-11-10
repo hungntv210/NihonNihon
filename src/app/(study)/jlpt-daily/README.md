@@ -94,8 +94,9 @@ node --env-file=.env --import tsx 'src/app/(study)/jlpt-daily/draft-roadmap.ts' 
 
 Dùng model/hạn mức/timeout khai báo trong config như generator hiện có; ledger
 Pacific dùng chung `data/private/jlpt-quota.json`. Sinh riêng từng ngày 10 câu;
-source/options được lập cố định từ catalog, AI viết stem/lời giải, request kiểm
-định độc lập xác nhận tất cả cổng cũ. Chỉ thay vị trí bị SEMANTIC_QA_REJECTED,
+source/options được gợi ý từ catalog với `answerTitle` dạng Nhật trần; không tự
+sửa options/key do AI trả về. Cổng cứng kiểm từng dòng trước request kiểm định
+độc lập. Chỉ thay vị trí bị cổng cứng hoặc SEMANTIC_QA_REJECTED loại,
 tối đa hai vòng, giữ nguyên câu đạt. Còn lỗi thì lưu ngày bị loại và dừng. Nếu API
 lỗi giữa ngày thì không nhận ngày đó; ngày trước đã qua QA được giữ để chạy tiếp.
 Metadata/prompt/schema-policy và hash nguồn thay đổi thì từ chối resume khác ngữ cảnh.
@@ -105,3 +106,19 @@ bank nháp 70 câu và mẫu 30 câu khi xong. Feedback để trống chờ test
 bank và report không đưa vào Git; không ghi bất kỳ câu nào vào DB/bank của app.
 HTTP lỗi giữ status/message đã che API key để phân biệt 400/429/503. Nội dung thật
 vẫn cần tester duyệt; QA bằng model không bảo đảm mọi câu có chất lượng sư phạm.
+
+Cổng cứng (`hard-qa.ts`) yêu cầu reading có 【kanji】 và không lộ đáp án kana;
+spelling có 【kana】, stem không có kanji, nhiễu cùng cấp có bằng chứng gần âm
+(edit distance) hoặc gần hình (kanji chỉ khác một chữ/nhóm hình gần đã khai báo).
+Không chứng minh được thì loại. Các lựa chọn không có Latin/chú giải/〜, đủ bốn
+và khác nhau. Order có đúng bốn ô tách bằng khoảng trắng, không lặp từ trong phần
+stem cố định (Intl.Segmenter), key và lời giải khớp thứ tự, ★ và câu hoàn chỉnh.
+Lời giải order dùng `Thứ tự: 2→1→3→4. ★=1. Câu: ...` để kiểm được bằng máy.
+Paragraph có 【ほんぶん】 ít nhất ba câu/40 chữ Nhật rồi 【とい】; các dạng điền
+từ/mẫu có chỗ trống. Các cổng cũ về nguồn/cấp/kanji/trùng câu vẫn áp dụng.
+
+`generateDraftDay` nhận seed câu + audit cũ và callback checkpoint: kiểm lại bằng
+cổng cứng, giữ nguyên câu đạt, chỉ gửi các vị trí bị loại để sửa tối đa hai vòng.
+Câu lỗi cứng không được gửi sang QA Gemini; API503 được trả ra một lần để caller
+lưu checkpoint và dừng, không tự lặp request. Mẫu có câu pending/rejected không
+được coi là bank đạt QA hoặc được xuất bản vào app.
