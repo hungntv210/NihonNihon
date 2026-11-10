@@ -451,3 +451,12 @@ Schema, worker dịch và database G0 không thay đổi.
 - Fresh `npm run check`: **PASS**, `2026-11-09T23:39:01.3365349+07:00` → `2026-11-09T23:40:20.3606676+07:00`, Windows/Node v24.10.0: typecheck; **95/95** tests (22 prototype +73 TypeScript); production build; test:app **16/16**.
 - Fresh `npm run test:browser`: **8/8 PASS**, `2026-11-09T23:40:20.3606676+07:00` → `2026-11-09T23:41:40.3108619+07:00`, including JLPT and Vocab locked/unlocked/reveal/save/next checks. Scope guard `origin/master g1/jlpt-daily`: PASS; only registered JLPT routes and appended audit entries differ from master. Logs: gitignored data/reports/jlpt-daily/rebase-* and data/reports/browser-suite/.
 - PR #27 remains unmerged for tester. Fixtures only; no real AI call, G0 worker/process/config/data operation, production data or backup deletion, or task/service change.
+
+## 2026-11-10 — private shadowing media and sentence recordings
+
+- Checked implementation: `85c0aaa673185b34c1f060e41f79ef9b25d37c44` (`codex/shadowing-erin`), based on `origin/master` `0b43073c1fc051968af27d0ced44989d7674078a`.
+- Windows, Node 24.10.0, npm 11.6.0, installed Chrome with fake microphone for browser fixtures.
+- Full `npm run check`: 2026-11-10T21:52:15.0984057+07:00 → 2026-11-10T21:53:40.9692519+07:00. Typecheck PASS; prototype 22/22 and app/unit 76/76 PASS (including 6 shadowing tests); production build PASS; test:app PASS (16 checks).
+- All `npm run test:browser`: 2026-11-10T21:54:12.3922904+07:00 → 2026-11-10T21:55:35.9774325+07:00, 8/8 routes PASS; shadowing 17/17 checks with synthetic video only. Scope guard `node tools/check-route-scope.mjs origin/master shadowing` PASS (12 changed route files; verification log append-only).
+- Private local operator evidence, excluded from Git: clip import 6 segments / quick_check ok / FK0; positive import + overlap rejection + SHA mismatch rejection 3/3 PASS, rejected inputs leave app DB unchanged. Local real MP4 decode/playback and authenticated206 verified; official kana/speakers preserved. GPU word-timing proposals and SRT are pending tester review. No private clip/script/recording/DB/result committed; no Frozen data/schema changes.
+- Physical phone, Tailscale deployment and timing approval remain pending. Recording tests use a fake microphone; this route keeps takes only in browser memory until downloaded.
