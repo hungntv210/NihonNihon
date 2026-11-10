@@ -86,19 +86,19 @@ data-only Frozen transition requires the full acceptance rerun and current CI gr
 
 ## Frozen G0 data foundation
 
-Chốt ngày10/11/2026 sau **11/11 PASS**, **127/127 local** và CI run42776038315
-SUCCESS trên headfa0726a. Retry job129691967930 của run42772810363 cũng SUCCESS;
-giữ nguyên launcher readiness30s, không sửa launcher hay nới test.
+Chốt ngày 10/11/2026 sau **11/11 PASS**, **127/127 local** và CI run `42776038315`
+SUCCESS trên head `fa0726a`. Retry job `129691967930` của run `42772810363` cũng
+SUCCESS; giữ nguyên launcher readiness 30 giây, không sửa launcher hay nới test.
 
-Phạm vi N2–N5: 4741 từ,1038 kanji,403 ngữ pháp,9465 hàng câu/9464 câu Nhật NFC
-duy nhất,18081 bản dịch selected. Nghĩa Việt đủ, không stale/NFC lỗi/khoảng trắng
-ngoài selected; quick_check ok/FK0. Hai full reimport và forced rollback giữ nguyên
+Phạm vi N2–N5: 4.741 từ, 1.038 kanji, 403 ngữ pháp, 9.465 hàng câu/9.464 câu Nhật NFC
+duy nhất, 18.081 bản dịch selected. Nghĩa Việt đủ, không stale/NFC lỗi/khoảng trắng
+ngoài selected; quick_check ok/FK 0. Hai full reimport và forced rollback giữ nguyên
 selected và SRS canary trên bản sao; không ghi dữ liệu production khi nghiệm thu.
 
-Giữ rõ ngoại lệ và provenance:15 tester waivers học liệu,6 glyph_variant_jouyou2010,
-và 畑 không có âm Hán Việt gốc. Âm chính hợp lệ1037/1038 (99.90366088631984% thô),
-không bỏ ngoại lệ khỏi mẫu số hoặc bịa âm. Các method thực tế:613 single,43 CVDICT,
-275 AI và106 quyết định đã sửa/duyệt. Báo cáo đầy đủ/hash DB/snapshot/release và
+Giữ rõ ngoại lệ và provenance: 15 tester waivers học liệu, 6 `glyph_variant_jouyou2010`,
+và 畑 không có âm Hán Việt gốc. Âm chính hợp lệ 1037/1038 (99.90366088631984% thô),
+không bỏ ngoại lệ khỏi mẫu số hoặc bịa âm. Các method thực tế: 613 single, 43 CVDICT,
+275 AI và 106 quyết định đã sửa/duyệt. Báo cáo đầy đủ/hash DB/snapshot/release và
 context nằm trong data/private, không commit dữ liệu riêng tư.
 
 **Pending G1:** ba clip Erin/phim cá nhân/YouTube, font trên điện thoại thật và

@@ -86,7 +86,8 @@ Thứ tự làm: tải dữ liệu thật → nháp phần 1–3 → batch thử
 
 - [x] Đủ 5 phần, mỗi bảng có khoá và quan hệ rõ ràng (Draft 0.2)
 - [ ] Mỗi nguồn ghi đủ giấy phép, phiên bản, cách ghi công
-- [ ] Schema đã được sửa theo kết quả batch thử và được chốt
+- [x] Schema được đối chiếu batch thật và chốt cho nền dữ liệu; giữ cấu trúc SQL,
+  ghi rõ waiver/ngoại lệ và các phần pending G1.
 
 ## Câu hỏi còn mở
 
