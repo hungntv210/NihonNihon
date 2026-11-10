@@ -40,7 +40,7 @@ export async function applyPlan(db,plan,{dbPath=':memory:',backupDirectory,audit
       put(db,'content_items',row,['item_id']);
       db.prepare('UPDATE vi_translations SET needs_refresh=1 WHERE item_id=? AND base_content_hash<>?').run(row.item_id,row.source_hash);
       // Revalidate kanji decisions each run, including decisions now left unresolved.
-      if(row.kind==='kanji')db.prepare("UPDATE vi_translations SET status='needs_review',needs_refresh=1 WHERE item_id=? AND field='han_viet' AND status='selected'").run(row.item_id);
+      if(row.kind==='kanji')db.prepare("UPDATE vi_translations SET status='needs_review',needs_refresh=1 WHERE item_id=? AND field='han_viet' AND status='selected' AND coalesce(json_extract(context_json,'$.owner_correction'),0)=0").run(row.item_id);
     }
     for(const [table,parents,column] of [
       ['item_sentences',[...plan.rows.vocab,...plan.rows.grammar].map(r=>r.row.item_id),'item_id'],
@@ -58,16 +58,19 @@ export async function applyPlan(db,plan,{dbPath=':memory:',backupDirectory,audit
       const row={...original};
       const previous=db.prepare("SELECT * FROM vi_translations WHERE item_id=? AND field=? AND status='selected'").get(row.item_id,row.field);
       const same=db.prepare('SELECT * FROM vi_translations WHERE translation_id=?').get(row.translation_id);
+      const correction=JSON.parse(row.context_json).owner_correction===true;
+      if(correction)need(row.source_id==='mt:manual'&&JSON.parse(db.prepare('SELECT manifest_json FROM source_releases WHERE release_id=?').get(row.release_id).manifest_json).reviewer==='owner'&&(!previous||previous.translation_id===row.translation_id||previous.translation_id===JSON.parse(row.context_json).supersedes_translation_id),'Owner correction selection changed');
       if(same) {
         need(same.text_vi===row.text_vi && same.base_content_hash===row.base_content_hash,'Translation ID collision');
         if(row.status!=='selected')continue;
       }
+      if(previous&&previous.translation_id!==row.translation_id&&JSON.parse(previous.context_json).owner_correction&&!correction)row.status='candidate';
       if(row.status==='selected' && previous && previous.translation_id!==row.translation_id) {
         const dictionaryUpdate=row.method==='dictionary' && previous.method==='dictionary' && row.source_id===previous.source_id && row.release_id!==previous.release_id && row.match_method===previous.match_method && ['word','jmdict_form'].includes(row.match_method);
         const newConfig=JSON.parse(db.prepare('SELECT manifest_json FROM source_releases WHERE release_id=?').get(row.release_id).manifest_json);
         const oldConfig=JSON.parse(db.prepare('SELECT manifest_json FROM source_releases WHERE release_id=?').get(previous.release_id).manifest_json);
         const promptUpgrade=row.method==='machine'&&previous.method==='machine'&&row.source_id===previous.source_id&&newConfig.config?.supersedes_prompt_versions?.includes(oldConfig.prompt_version);
-        if(row.field!=='han_viet' && !previous.needs_refresh && !dictionaryUpdate && !promptUpgrade)row.status='candidate';
+        if(row.field!=='han_viet' && !previous.needs_refresh && !dictionaryUpdate && !promptUpgrade && !correction)row.status='candidate';
         else db.prepare("UPDATE vi_translations SET status='needs_review',needs_refresh=1 WHERE translation_id=?").run(previous.translation_id);
       }
       put(db,'vi_translations',row,['translation_id'],true);
