@@ -1,8 +1,12 @@
 # Đặc tả nguồn dữ liệu Nihon Nihon
 
-Trạng thái: **Draft 0.2**, ngày 05/11/2026, nhánh `g0/data-spec`.
-Mốc hiện tại hoàn thành khi đủ 5 phần và có schema nháp. Chưa phải migration production;
-chỉ chốt schema sau báo cáo batch của `g0/data-import`. Không viết importer trong nhánh này.
+Trạng thái: **Frozen 0.2 — nền dữ liệu G0**, ngày 10/11/2026, sau nghiệm thu
+N2–N5 **11/11 PASS** và CI xanh. Phạm vi chốt: câu, bản dịch, Hán Việt, nghĩa
+từ/kanji/ngữ pháp và dữ liệu nét. Ba clip thật, font trên điện thoại thật và
+shadowing **pending nghiệm thu G1**, không được đánh PASS.
+Xem [bằng chứng, waiver và phạm vi Frozen](coverage-repair.md#frozen-g0-data-foundation).
+Tệp SQL giữ tên `schema.draft.sql` để tương thích công cụ; không đổi cấu trúc schema.
+Sau Frozen, mọi sửa text phải qua importer có provenance. Báo cáo/DB/raw vẫn riêng tư.
 
 Đầu ra: [SQL nháp](schema.draft.sql), [bằng chứng khảo sát](source-audit.json),
 [kiểm tra schema](../../tests/data/schema.test.cjs). SQL là hợp đồng trung lập ORM;
@@ -337,4 +341,4 @@ Mốc yêu cầu lần này:
 - [x] Có đủ 5 phần ở tài liệu này, phân biệt số đo thật và việc chưa làm.
 - [x] Có SQL nháp với PK/FK, bảng data_sources, dịch độc lập và identity SRS.
 - [x] Có kiểm tra tạo schema, ràng buộc và bảo toàn bản dịch/SRS trong transaction mẫu.
-- [ ] Batch import thật và chốt Frozen (mốc sau, không gán đã hoàn thành ở bản nháp).
+- [x] Nghiệm thu nền dữ liệu N2–N5 11/11 và Frozen; media/thiết bị/shadowing pending G1.

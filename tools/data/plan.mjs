@@ -5,6 +5,7 @@ import { randomUUID } from 'node:crypto';
 import { sha,hash,stable,need,now,itemId,keyFor,nonempty } from './core.mjs';
 import { jmdictForms } from './adapters.mjs';
 import { RULE,createMT,selectHanViet,compoundEvidence,readingGroups,canonical } from './han-viet.mjs';
+import {glyphStrokeOverride} from './glyph-variant-waivers.mjs';
 
 const src=a=>({source_id:a.source.source_id,release_id:a.release_id});
 const kana=s=>s.replace(/[ァ-ヶ]/g,c=>String.fromCodePoint(c.codePointAt(0)-0x60));
@@ -27,7 +28,7 @@ export function buildPlan(loaded,data,db) {
     return plan.items.get(id);
   }
   function translation(id,field,value,reference,method,match,key,context={},selected=true) {
-    need(nonempty(value),'Empty Vietnamese translation'); const text_vi=value.normalize('NFC');
+    need(nonempty(value),'Empty Vietnamese translation'); const text_vi=value.normalize('NFC').trim();
     const item=plan.items.get(id); need(item,'Translation refers to missing item');
     const base_content_hash=item.source_hash;
     const translation_id='tr:'+sha({id,field,text_vi,...reference,key,base_content_hash,decision:field==='han_viet'?context:null});
@@ -83,7 +84,9 @@ export function buildPlan(loaded,data,db) {
       }
       if(!matched)machine(id,'meaning',{word:r.word,reading:r.reading,meanings_en:r.meanings,pos:r.pos || [],examples:r.examples || [],reason:data.ambiguous.has(r.word)?'ambiguous_headword':'dictionary_unresolved'});
     } else if(kind==='kanji') {
-      add('kanji',{item_id:id,character:r.character,level:r.level,strokes:r.strokes,grade:r.grade,frequency_rank:r.freq,radical:r.radical,radical_number:r.radical_number,onyomi:stable(r.onyomi),kunyomi:stable(r.kunyomi),nanori:stable(r.nanori || []),meanings_en:stable(r.meanings),supplementary:r.supplementary?1:0},['item_id']);
+      const override=glyphStrokeOverride(db,{item_id:id,source_hash:plan.items.get(id).source_hash,character:r.character,original_strokes:r.strokes,paths:loaded.artifacts.some(a=>a.file.format==='kanjivg')?data.strokes.filter(p=>p.character===r.character&&p.variant==='').map(p=>({no:p.no,release_id:p.a.release_id})):undefined});
+      if(override)plan.items.get(id).field_sources=stable({...JSON.parse(plan.items.get(id).field_sources),stroke_override:override});
+      add('kanji',{item_id:id,character:r.character,level:r.level,strokes:override?.kanjivg_strokes??r.strokes,grade:r.grade,frequency_rank:r.freq,radical:r.radical,radical_number:r.radical_number,onyomi:stable(r.onyomi),kunyomi:stable(r.kunyomi),nanori:stable(r.nanori || []),meanings_en:stable(r.meanings),supplementary:r.supplementary?1:0},['item_id']);
       machine(id,'meaning',{character:r.character,meanings_en:r.meanings});
     } else {
       add('grammar',{item_id:id,pattern:r.pattern,reading:r.reading ?? null,romaji:r.romaji,level:r.level,meaning_en:r.meaning,formation_en:r.formation,notes_en:r.notes ?? null,tags:stable(r.tags)},['item_id']);
@@ -169,7 +172,7 @@ export function buildPlan(loaded,data,db) {
     hv.unihan_status_counts[result.unihanStatus]=(hv.unihan_status_counts[result.unihanStatus] || 0)+1;
     if(result.chosen){hv.primary_selected++;hv.selection_method_counts[result.method]++;if(result.method==='cvdict_compound')hv.cvdict_evidence_counts[result.context.evidence.rule]++;}
     else missing.han_viet.push(id);
-    const expected=data.kanji.get(id).row.strokes, paths=pathGroups.get(id+':') || [];
+    const expected=plan.rows.kanji.find(r=>r.row.item_id===id).row.strokes, paths=pathGroups.get(id+':') || [];
     if(!paths.length || (expected!=null && paths.length!==expected))missing.strokes.push(id);
   }
   hv.primary_coverage=hv.kanji_total?hv.primary_selected/hv.kanji_total*100:0;

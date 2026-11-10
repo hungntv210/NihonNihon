@@ -1,5 +1,6 @@
 import {compoundAssessment,dictionaryGlosses} from './learning-quality.mjs';
 import {kanjiMeaningAssessment} from './kanji-meaning-qa.mjs';
+import {applyWaivers} from './tester-waivers.mjs';
 // Short Vietnamese forms explicitly reviewed by the tester; English still needs review.
 export const reviewedVietnameseShort=text=>String(text).normalize('NFC').toLowerCase().trim().split(/[\s,，;]+/u).every(word=>['ba','tay','tre','tai','nghe','vai','mua','xe','nhanh','mau','nam','hoa'].includes(word));
 export function auditLearning(db,dictionary=new Map()){
@@ -14,5 +15,5 @@ export function auditLearning(db,dictionary=new Map()){
   for(const flag of check.flags)result.push({kanji:r.character,item_id:r.item_id,field:r.field,translation_id:r.translation_id,current:r.text_vi,proposed:flag.proposed??null,reason:flag.reason??flag,severity:'flag'});
   if(r.field==='meaning'&&!/[\u00c0-\u024f\u1e00-\u1eff]/u.test(r.text_vi)&&!reviewedVietnameseShort(r.text_vi))result.push({kanji:r.character,item_id:r.item_id,field:r.field,translation_id:r.translation_id,current:r.text_vi,proposed:null,reason:'meaning_language_review_required',severity:'flag'});
  }
- return result;
+ return applyWaivers(db,result);
 }

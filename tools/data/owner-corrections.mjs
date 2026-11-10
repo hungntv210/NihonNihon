@@ -17,8 +17,9 @@ export async function runCorrectionImport({dbPath,correctionsPath,reportPath,bac
   let compoundResults,compoundConfig,compoundRelease;
   if(input.compound_profile_manifest){const manifest=JSON.parse(fs.readFileSync(input.compound_profile_manifest)),mt=manifest.mt,file=manifest.sources.find(s=>s.source_id===mt.source_id)?.files.find(f=>f.format==='mt-results');need(mt.source_id==='mt:google-gemini'&&mt.model==='gemini-3.5-flash-lite'&&file,'Invalid compound provider profile');const resultsPath=path.resolve(path.dirname(input.compound_profile_manifest),file.path);need(hash(fs.readFileSync(resultsPath))===file.sha256,'Compound result checksum mismatch');compoundResults=new Map(JSON.parse(fs.readFileSync(resultsPath)).map(row=>[row.request_id,row.output]));compoundConfig=mt;compoundRelease=mt.source_id+':config:'+sha(mt).slice(0,32);plan.releases.set(compoundRelease,{release_id:compoundRelease,source_id:mt.source_id,version:mt.model+':'+mt.prompt_version,checksum:sha(mt),artifact_url:'local://mt/'+sha(mt),retrieved_at:startedAt,license:'Google Gemini API terms',attribution:'Google Gemini',manifest_json:JSON.stringify(mt)});}
   const seen=new Set();
-  for(const patch of input.rows){
-   need(patch.item_id&&['han_viet','meaning','formation','notes'].includes(patch.field)&&patch.text_vi?.trim()&&patch.reason&&Object.hasOwn(patch,'expected_translation_id'),'Invalid correction');
+  for(const rawPatch of input.rows){
+   const patch={...rawPatch,text_vi:typeof rawPatch.text_vi==='string'?rawPatch.text_vi.normalize('NFC').trim():rawPatch.text_vi};
+   need(patch.item_id&&['han_viet','meaning','formation','notes','text'].includes(patch.field)&&patch.text_vi?.trim()&&patch.reason&&Object.hasOwn(patch,'expected_translation_id'),'Invalid correction');
    const key=patch.item_id+':'+patch.field;need(!seen.has(key),'Duplicate correction');seen.add(key);
    const item=db.prepare('SELECT source_hash,is_active FROM content_items WHERE item_id=?').get(patch.item_id);need(item?.is_active,'Correction item missing');
    const selected=db.prepare("SELECT * FROM vi_translations WHERE item_id=? AND field=? AND status='selected'").get(patch.item_id,patch.field);
