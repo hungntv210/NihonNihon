@@ -7,10 +7,12 @@ import { randomBytes } from 'node:crypto';
 import { chromium } from 'playwright';
 import { seedDemo } from '../../../../tools/seed-demo.ts';
 import { hashPassword } from '../../../core/session.ts';
+import {seedPrivateClipFixture} from './private-fixture.ts';
 
 const base = path.resolve(process.env.NIHON_BROWSER_FIXTURE_ROOT || '.tmp'); fs.mkdirSync(base, { recursive: true });
 const directory = fs.mkdtempSync(path.join(base, 'shadowing-'));
 const dbPath = path.join(directory, 'demo.sqlite'); seedDemo(dbPath);
+const privateFixture=seedPrivateClipFixture(dbPath,directory);
 const port = await new Promise<number>(resolve => {
   const server = createServer(); server.listen(0, '127.0.0.1', () => { const address = server.address(); assert.ok(address && typeof address !== 'string'); server.close(() => resolve(address.port)); });
 });
@@ -109,6 +111,18 @@ try {
   assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
   fs.mkdirSync('data/reports', { recursive: true }); await page.screenshot({ path: 'data/reports/shadowing-mobile.png', fullPage: true });
   await page.setViewportSize({ width: 1440, height: 1080 }); await page.screenshot({ path: 'data/reports/shadowing-desktop.png', fullPage: true }); checks++;
+  console.log('shadowing: synthetic private clip, kana, speaker and authenticated byte range');
+  const clipUrl='/shadowing/media?clip='+encodeURIComponent(privateFixture.id);
+  assert.equal((await fetch(origin+clipUrl,{redirect:'manual'})).status,307);
+  const privateBytes=await context.request.get(origin+clipUrl,{headers:{range:'bytes=0-31'}});assert.equal(privateBytes.status(),206);assert.equal((await privateBytes.body()).length,32);assert.equal((await context.request.get(origin+clipUrl,{headers:{range:'bytes=999999999-'}})).status(),416);checks++;
+  await page.getByRole('button',{name:/Clip riêng tổng hợp/}).click();
+  await page.waitForFunction(()=>document.querySelector('video')!.readyState>=2);
+  assert.equal(await page.getByLabel('Phụ đề',{exact:true}).inputValue(),'kana');assert.match(await page.getByLabel('Phụ đề mẫu',{exact:true}).innerText(),/先生.*あ。/s);checks++;
+  await page.getByRole('button',{name:/Câu 2.*1.5–3.0s/}).click();await page.getByLabel('Tốc độ',{exact:true}).selectOption('1');await page.getByLabel('Lặp đoạn',{exact:true}).selectOption('1');await page.getByRole('button',{name:'Nghe lại đoạn',exact:true}).click();
+  await page.waitForFunction(()=>Boolean(document.querySelector('[aria-current="true"][data-active="true"]')));await page.getByText(/Đã phát 1 lượt/).waitFor();assert.ok(await page.locator('video').evaluate(m=>(m as HTMLVideoElement).paused));checks++;
+  await page.getByLabel('Tốc độ',{exact:true}).selectOption('0.75');assert.equal(await page.locator('video').evaluate(m=>(m as HTMLVideoElement).playbackRate),0.75);
+  for(const index of [0,1]){await page.getByRole('button',{name:new RegExp(`Câu ${index+1}.*${index?'1.5–3.0':'0.0–1.5'}s`)}).click();await page.getByRole('button',{name:`Ghi âm câu ${index+1}`,exact:true}).click();await page.getByRole('button',{name:'Dừng ghi âm',exact:true}).waitFor();await page.waitForTimeout(450);await page.getByRole('button',{name:'Dừng ghi âm',exact:true}).click();await page.getByRole('link',{name:'Tải bản ghi',exact:true}).waitFor();}
+  await page.getByText(/Đã ghi 2\/6 câu/).waitFor();checks++;
   // React unmount while recording must release the actual microphone track.
   await page.getByRole('button', { name: 'Ghi âm câu 2' }).click(); await page.getByRole('button', { name: 'Dừng ghi âm' }).waitFor();
   await page.getByRole('link', { name: 'Hôm nay', exact: true }).first().click();
@@ -116,7 +130,7 @@ try {
   await page.waitForFunction(() => (window as typeof window & { shadowTracks: MediaStreamTrack[] }).shadowTracks.every(track => track.readyState === 'ended'));
   assert.ok(await page.evaluate(() => (window as typeof window & { shadowTracks: MediaStreamTrack[] }).shadowTracks.every(track => track.readyState === 'ended'))); checks++;
   assert.deepEqual(errors, []); assert.deepEqual(outside, []); checks++;
-  const result = { status: 'PASS', passed: checks, total: checks, media: 'public synthetic canvas + tones only', microphone: 'native MediaRecorder with Chrome fake device; real hardware not verified', noExternalRequests: true };
+  const result = { status: 'PASS', passed: checks, total: checks, media: 'public synthetic canvas + tones only; six private-fixture kana/speakers, no Erin in CI', microphone: 'native MediaRecorder with Chrome fake device; real hardware not verified', noExternalRequests: true };
   fs.writeFileSync('data/reports/shadowing-check.json', JSON.stringify(result, null, 2)); console.log(JSON.stringify(result));
 } finally {
   await browser?.close(); child.kill();

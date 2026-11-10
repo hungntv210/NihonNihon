@@ -1,9 +1,9 @@
-# Shadowing · interaction demo
+# Shadowing · private clips and interaction demo
 
-Open `/shadowing` after signing in. This route deliberately ships **one public,
+Open `/shadowing` after signing in. The route ships **one public,
 synthetic 9-second canvas video with three quiet tones, no Japanese speech**.
 The Japanese/Vietnamese sentences are original test captions, not transcriptions
-or learning content. The UI labels this throughout. No TTS, AI, media API,
+or learning content. The UI labels this throughout. No TTS, remote AI,
 copyrighted clip, personal recording or private data is committed.
 
 Implemented: full clip playback; choose one of three timed segments; 1/3/5/infinite
@@ -14,7 +14,7 @@ Playing the original pauses replay; recording pauses both. Microphone tracks sto
 on completion, errors and React unmount. Replaced/deleted/unmounted blob URLs are
 revoked. Permission denial, unsupported APIs and playback errors show feedback.
 
-Recordings live **only in browser memory**. A new take replaces the previous take;
+Recordings live **only in browser memory, separately for each sentence**. A new take replaces the previous take for that sentence;
 leaving/reloading the route loses it. Download before leaving if needed. Nothing
 is uploaded or synced. No recording storage endpoint or database schema change.
 Demo activity never writes valid shadowing sessions, progress, weekly quotas or
@@ -26,13 +26,12 @@ From the repository root, Node 24+, existing dependencies:
 
 ```powershell
 npm run check
-node ../ci-scope-g1/tools/check-route-scope.mjs origin/master g1/shadowing
+node tools/check-route-scope.mjs origin/master shadowing
+npm run test:browser
 node --import tsx 'src/app/(study)/shadowing/browser-check.ts'
 ```
 
-The temporary sibling scope guard contains the expanded route registry; do not
-copy its shared files into this feature branch. Once that registry merges, use
-the repository's own guard. Commit implementation first, run the full gates on
+Use the repository's authoritative scope registry. Commit implementation first, run the full gates on
 that commit, then append the exact SHA and results to the verification log.
 
 The browser check starts an isolated production server and demo database, checks
@@ -67,11 +66,39 @@ already includes its configured private recordings directory; this route's
 in-memory takes are not in that archive. Downloaded takes need a private backup
 if the owner chooses to retain them. Neither downloads nor archives go in git.
 
-Next acceptance requires three owner-provided/legal sources: one Erin clip, one
-personal file and one YouTube clip. No sources were supplied for this demo. Keep
+Acceptance requires three owner-provided/legal sources: one Erin clip, one
+personal file and one YouTube clip. This change supports the first local-file clip. Keep
 private media on the authenticated home server, outside git. YouTube is **embed
 URL + start/end times only, never download/extract audio**. Source onboarding,
-private server media/recording persistence, clip editing, Whisper, TTS, word lookup,
+private recording persistence, clip editing, TTS, word lookup,
 SRS integration, A–B editing, pause-to-speak, keyboard shortcuts, pitch/scoring and
 the four-condition valid-session counter are deferred. They need separate scoped
 work and real media; do not report this demo as three real clips or completed study.
+
+## Private file onboarding
+
+Import into the app's own `demo.sqlite`, using the G0 importer described in
+`docs/data/importer.md` section 4 on `g0/data-import`. Do not write to the Frozen
+snapshot. Use source `user-media`, `usage_scope=private_only`, `origin.kind=file`,
+the file's SHA-256, attribution and license. Every revision keeps its original
+immutable clip manifest; each segment may additionally store `kana` and `speaker`.
+Keep IDs stable across timing revisions. Timings must be integer milliseconds,
+ordered, non-overlapping, end > start, and within the original file duration.
+Use absolute file paths or paths relative to the clips JSON. Keep the media,
+manifest, scripts, SRTs, comparison reports and databases outside git and public/.
+
+The authenticated page lists imported active private clips beside the demo.
+The server reads metadata only; client props never contain filesystem paths.
+The media handler validates the file SHA-256 before serving authenticated ranges;
+an optional `NIHON_SHADOWING_MEDIA_ROOT` confines files to a chosen local directory.
+Wrong hashes, missing files and non-clip IDs cannot be served. Nothing is copied
+to public/ or sent to remote AI. Playback is bounded to the six selected sentences,
+while byte ranges refer to the original file. Kana and speaker labels come from
+the official script. Missing Vietnamese captions show an explicit empty state.
+Sentence timing proposals remain pending tester review.
+
+Set `NIHON_DB_PATH` to the private app `demo.sqlite`, reuse normal login settings,
+then run `npm start -- --port 3000` and open `http://localhost:3000/shadowing`.
+The real private clip is intentionally absent from CI: `private-fixture.ts` uses
+the public synthetic WebM and six invented captions to verify the same DB/media
+path, ranges, kana/speakers, sentence highlighting, speed and separate recordings.
