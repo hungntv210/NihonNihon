@@ -51,6 +51,7 @@ try {
   await page.getByText('Bản thử tương tác · không phải tư liệu luyện nói', { exact: true }).waitFor();
   await page.waitForFunction(() => document.querySelector('video')!.readyState >= 2);
   assert.ok(await page.locator('video').evaluate(media => (media as HTMLVideoElement).duration >= 8.9 && (media as HTMLVideoElement).duration <= 9.1)); checks++;
+  const demoDuration=await page.locator('video').evaluate(media=>(media as HTMLVideoElement).duration);
   console.log('shadowing: native clip playback and loops');
   await page.getByLabel('Tốc độ', { exact: true }).selectOption('1.25');
   await page.getByRole('button', { name: 'Phát cả clip', exact: true }).click();
@@ -118,7 +119,8 @@ try {
   await page.getByRole('button',{name:/Clip riêng tổng hợp/}).click();
   await page.waitForFunction(()=>document.querySelector('video')!.readyState>=2);
   assert.equal(await page.getByLabel('Phụ đề',{exact:true}).inputValue(),'kana');assert.match(await page.getByLabel('Phụ đề mẫu',{exact:true}).innerText(),/先生.*あ。/s);checks++;
-  assert.ok(await page.locator('video').evaluate(m=>Math.abs((m as HTMLVideoElement).duration-18)<0.1));
+  const privateDuration=await page.locator('video').evaluate(m=>(m as HTMLVideoElement).duration);
+  assert.ok(Math.abs(privateDuration-2*demoDuration)<0.001);assert.ok(privateDuration>=privateFixture.metadata.clip_end_ms/1000);
   await page.getByRole('button',{name:'Phát cả clip',exact:true}).click();
   await page.locator('video').evaluate(m=>{(m as HTMLVideoElement).currentTime=4.1;});
   await page.waitForFunction(()=>document.querySelector('video')!.currentTime>=10&&document.querySelector('video')!.currentTime<11);
