@@ -32,3 +32,23 @@ clips, phone font checks and shadowing remain pending G1, never data PASS.
 After a bounded repair, report the first successful imported batch and finish the
 chat. Freeze only after tester approval and the complete acceptance rerun. Later
 text changes must use the importer with provenance.
+
+## Reviewed corrections and whitespace
+
+Both normal and reviewed importers normalize NFC and trim the outer whitespace of
+`text_vi` before generating translation IDs. This applies to every translation
+field, including sentence `text`; whitespace inside a translation is preserved.
+Previously stored text is immutable: corrections create a provenance-bearing
+replacement, retain the old row and record the superseded translation ID.
+
+The final vocabulary sample was reviewed (one major in thirty, below the existing
+pause threshold) and the tester checked all sixty-two entries. Nine explicit word
+corrections and three additional whitespace-only sentence corrections were imported
+with `source_id=mt:manual`, `model=manual`, `reviewer=tester`; no Gemini call.
+The two upstream gloss errors are recorded as private `source_note` exceptions,
+without changing OpenJLPT `meanings_en`.
+
+Acceptance compares the real database with its pinned artifacts. Record any new
+failure rather than silently treating it as an accepted exception. Media, physical
+phone fonts and shadowing remain pending G1; no claim of full sentence tokenization
+is made by the data-only acceptance.

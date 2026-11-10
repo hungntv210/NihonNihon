@@ -27,7 +27,7 @@ export function buildPlan(loaded,data,db) {
     return plan.items.get(id);
   }
   function translation(id,field,value,reference,method,match,key,context={},selected=true) {
-    need(nonempty(value),'Empty Vietnamese translation'); const text_vi=value.normalize('NFC');
+    need(nonempty(value),'Empty Vietnamese translation'); const text_vi=value.normalize('NFC').trim();
     const item=plan.items.get(id); need(item,'Translation refers to missing item');
     const base_content_hash=item.source_hash;
     const translation_id='tr:'+sha({id,field,text_vi,...reference,key,base_content_hash,decision:field==='han_viet'?context:null});
