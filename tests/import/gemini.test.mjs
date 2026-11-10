@@ -9,6 +9,11 @@ const options={config,manifestPath:f.dir+'/gemini.json',requestsPath:f.dir+'/gem
 await prepare({manifestPath:f.manifestPath,config,outputManifest:options.manifestPath,requestsPath:options.requestsPath,resultsPath:options.resultsPath});return {f,options};}
 const fake=response=>({models:{generateContent:response}});
 const output=params=>JSON.parse(params.contents).map(r=>({request_id:r.request_id,output:{text_vi:'tiếng Việt'}}));
+test('recovery adapter accepts batch ten and preserves normal output validation',async t=>{
+ const {options}=await setup(t),sizes=[];
+ const result=await runGemini({...options,limit:25,batchSize:10,sleep:async()=>{},ai:fake(async params=>{sizes.push(JSON.parse(params.contents).length);return {text:JSON.stringify(output(params))};})});
+ assert.equal(result.sent,25);assert.deepEqual(sizes,[10,10,5]);
+});
 test('tone-aware QA keeps 読/南/毎 and imports overlap flags as review reports',async t=>{
  const f=fixture(t),chars=[['読','độc','read','đọc'],['南','nam','south','nam'],['毎','mỗi','every','mỗi']];f.kanji.splice(0,1,...chars.map(([character,,en])=>({...f.kanji[0],character,meanings:[en]})));f.write('kanji.json',f.kanji);f.write('hv.json',chars.map(([character,reading])=>[character,reading,'','',[],{}]));f.manifest.expected_counts.kanji=3;f.save();
  const c={...config,route:'meaning',prompt_variant:'lite-meaning-1',kanji_meaning_qa:true,max_api_attempts:1},p={config:c,manifestPath:f.dir+'/tone.json',requestsPath:f.dir+'/tone-queue.json',resultsPath:f.dir+'/tone-results.json',statePath:f.dir+'/tone-ledger.json'};await prepare({manifestPath:f.manifestPath,config:c,outputManifest:p.manifestPath,requestsPath:p.requestsPath,resultsPath:p.resultsPath});

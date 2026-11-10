@@ -45,6 +45,9 @@ export async function acceptedProfileRows(profiles){
 export function pendingCampaignRequests(requests,sentenceDone,learningDone){
  return requests.filter(r=>r.task==='translate'&&r.input.field==='text'?!sentenceDone.has(r.input.ja.normalize('NFC')):!learningDone.has(context(r)));
 }
+export function manualLearningTerminal(pending,manual=[]){
+ const keys=new Set(manual.map(r=>r.context_key));return pending.length>0&&pending.every(r=>keys.has(context(r)));
+}
 
 export async function acceptedCampaignCache(cfg){
  const sentenceDone=new Map(),learningDone=new Map(),acceptedProfiles=cfg.accepted_profiles??[];
@@ -224,6 +227,7 @@ export async function runCampaign(configPath,{checkDisk=assertDiskSpace}={}){
      state.probe.result=await call(probe,[task],20,1);save();
     }
     const pending=pendingCampaignRequests(allLearning,sentenceDone,learningDone);
+    if(manualLearningTerminal(pending,state.learning.manual_review)){state.learning.awaiting_manual_review=true;stopping=true;save();return;}
     if(reviewLearning){
      const allowed=new Set(allLearning.map(context));const rows=[...learningDone].filter(([key])=>allowed.has(key)).map(([key,v])=>{const request=v.request;return {ja:key,request_id:v.row.request_id,request,output:v.row.output,model:v.model,manifest:v.manifest,qa_flags:(state.learning.flagged??[]).filter(f=>f.request_id===v.row.request_id).map(f=>f.reason)};});
      const prefix=cfg.learning_review===true?'review-learning-':'review-han-viet-';let review=writeReviewCheckpoint({directory:root,state:state.learning,rows,provenance:{},force:!pending.length,prefix});
@@ -232,7 +236,7 @@ export async function runCampaign(configPath,{checkDisk=assertDiskSpace}={}){
     }
     if(!pending.length){if(reviewLearning&&!await checkReviews(false,true))return;state.learning.complete=true;save();return;}
     const delay=campaignRetryDelay(state.learning,'finished_day',now);if(delay){await sleep(delay);continue;}
-    const deferred=state.learning.deferred_day===day?new Set(state.learning.deferred??[]):new Set(),ready=pending.filter(r=>!deferred.has(context(r)));
+    const deferred=state.learning.deferred_day===day?new Set(state.learning.deferred??[]):new Set(),manual=new Set((state.learning.manual_review??[]).map(r=>r.context_key)),ready=pending.filter(r=>!deferred.has(context(r))&&!manual.has(context(r)));
     if(!ready.length){await sleep(Math.min(60000,nextPacificReset()-now+1000));continue;}
     const size=cfg.learning.batch_size??60;need(Number.isInteger(size)&&size>=20&&size<=60,'Learning batch_size must be20..60');
     const hv=ready.filter(r=>r.task==='han_viet'),other=ready.filter(r=>r.task!=='han_viet');const batch=[...hv.slice(0,20),...other.slice(0,size-Math.min(20,hv.length))];if(batch.length<size)batch.push(...hv.slice(20,20+size-batch.length));
