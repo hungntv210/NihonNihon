@@ -79,3 +79,29 @@ Browser-check dùng DB demo/khóa ngẫu nhiên/thư mục tạm riêng, tạo b
 giả, kiểm desktop 1440 và mobile 390, CSRF/auth, lưu/chấm 10 câu, reload, SRS và
 không có request ngoài app. Dọn fixture/server khi xong; ảnh/log ở data/reports/.
 Thiết bị điện thoại thật và chất lượng bank AI thật chưa được kiểm trong PR này.
+
+## Nháp tuần đầu từ Frozen (chỉ theo duyệt riêng của chủ dự án)
+
+`draft-roadmap.ts` là công cụ offline riêng, không gọi từ trang học và không dùng
+`publishBank`. Nó kiểm SHA-256/receipt/read-only của snapshot Frozen, giới hạn N5
+đúng tuần 1–2 từ allocator Today/87-week roadmap, ghi `mode=draft_roadmap` cùng
+`learningEvidence=roadmap_only_not_srs`. Không giả lịch sử ôn, không thay cổng đã học
+của `generate-week.ts`. Chỉ các trường OpenJLPT công khai được gửi Gemini.
+
+```powershell
+node --env-file=.env --import tsx 'src/app/(study)/jlpt-daily/draft-roadmap.ts' --snapshot 'D:/path/frozen.sqlite' --receipt 'D:/path/frozen.sqlite.json' --week 2026-11-16 --config data/private/config.json --output data/private/first-week
+```
+
+Dùng model/hạn mức/timeout khai báo trong config như generator hiện có; ledger
+Pacific dùng chung `data/private/jlpt-quota.json`. Sinh riêng từng ngày 10 câu;
+source/options được lập cố định từ catalog, AI viết stem/lời giải, request kiểm
+định độc lập xác nhận tất cả cổng cũ. Chỉ thay vị trí bị SEMANTIC_QA_REJECTED,
+tối đa hai vòng, giữ nguyên câu đạt. Còn lỗi thì lưu ngày bị loại và dừng. Nếu API
+lỗi giữa ngày thì không nhận ngày đó; ngày trước đã qua QA được giữ để chạy tiếp.
+Metadata/prompt/schema-policy và hash nguồn thay đổi thì từ chối resume khác ngữ cảnh.
+
+Đầu ra nằm trong data/private: metadata, draft-day-N, status, mẫu 10 câu ngày đầu,
+bank nháp 70 câu và mẫu 30 câu khi xong. Feedback để trống chờ tester. Receipt,
+bank và report không đưa vào Git; không ghi bất kỳ câu nào vào DB/bank của app.
+HTTP lỗi giữ status/message đã che API key để phân biệt 400/429/503. Nội dung thật
+vẫn cần tester duyệt; QA bằng model không bảo đảm mọi câu có chất lượng sư phạm.
