@@ -521,3 +521,9 @@ Schema, worker dịch và database G0 không thay đổi.
 - `npm run test:browser` 2026-11-10T22:23:27.9155513+07:00 → 2026-11-10T22:25:38.5477698+07:00: 8/8 routes PASS. Scope `origin/master jlpt-daily` PASS (12 route files, append-only log).
 - Private10-question repair: hard gate rejected8 original rows;2 kept unchanged. Exactly8 rejected slots regenerated. Four regenerated rows failed hard QA and never reached Gemini QA; other4 pending independent QA when the verify call returned HTTP503 UNAVAILABLE/high demand. Stopped immediately (2 real requests total: generate + failed verify), no repeated503 calls, no publication/app DB writes. Review0002 explicitly labels rejected/pending rows. Old review status marked superseded, original raw outputs preserved. Frozen snapshot unchanged; only public OpenJLPT payloads sent.
 - Model QA is still required after the deterministic gate and tester review is still pending. No auto-correction of raw options/order keys; no gate relaxation or schema changes.
+
+## 2026-11-10 — kana-only spelling stem edge case (PR33)
+
+- Checked implementation `49ad2f77a974e1956098c0f8160cac7a05518995`, Windows/Node24.10.0/npm11.6.1. Spelling stems now reject every non-kana letter (including Latin instruction text), while allowing punctuation/numbers. Added a Latin-stem negative case to the spelling test; no further API calls.
+- `npm run check` 2026-11-10T22:35:19.1404139+07:00 → 2026-11-10T22:37:09.5407599+07:00: typecheck PASS; prototype22/22 + app/unit84/84 PASS; build PASS; test:app16/16 PASS.
+- `npm run test:browser` 2026-11-10T22:38:00.2467378+07:00 → 2026-11-10T22:39:42.6420863+07:00: 8/8 routes PASS. Scope `origin/master jlpt-daily` PASS (12 route files plus append-only audit). Private repair/review0002 remains2 retained +4 hard-rejected +4 awaiting Gemini QA after503; zero publication. Previous head e66aceb had CI runs42845189270/42845266564 SUCCESS; final-head CI must be checked separately after this push.
