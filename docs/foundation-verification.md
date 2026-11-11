@@ -451,3 +451,26 @@ Schema, worker dịch và database G0 không thay đổi.
 - Fresh `npm run check`: **PASS**, `2026-11-09T23:39:01.3365349+07:00` → `2026-11-09T23:40:20.3606676+07:00`, Windows/Node v24.10.0: typecheck; **95/95** tests (22 prototype +73 TypeScript); production build; test:app **16/16**.
 - Fresh `npm run test:browser`: **8/8 PASS**, `2026-11-09T23:40:20.3606676+07:00` → `2026-11-09T23:41:40.3108619+07:00`, including JLPT and Vocab locked/unlocked/reveal/save/next checks. Scope guard `origin/master g1/jlpt-daily`: PASS; only registered JLPT routes and appended audit entries differ from master. Logs: gitignored data/reports/jlpt-daily/rebase-* and data/reports/browser-suite/.
 - PR #27 remains unmerged for tester. Fixtures only; no real AI call, G0 worker/process/config/data operation, production data or backup deletion, or task/service change.
+
+## 2026-11-10 — private shadowing media and sentence recordings
+
+- Checked implementation: `85c0aaa673185b34c1f060e41f79ef9b25d37c44` (`codex/shadowing-erin`), based on `origin/master` `0b43073c1fc051968af27d0ced44989d7674078a`.
+- Windows, Node 24.10.0, npm 11.6.0, installed Chrome with fake microphone for browser fixtures.
+- Full `npm run check`: 2026-11-10T21:52:15.0984057+07:00 → 2026-11-10T21:53:40.9692519+07:00. Typecheck PASS; prototype 22/22 and app/unit 76/76 PASS (including 6 shadowing tests); production build PASS; test:app PASS (16 checks).
+- All `npm run test:browser`: 2026-11-10T21:54:12.3922904+07:00 → 2026-11-10T21:55:35.9774325+07:00, 8/8 routes PASS; shadowing 17/17 checks with synthetic video only. Scope guard `node tools/check-route-scope.mjs origin/master shadowing` PASS (12 changed route files; verification log append-only).
+- Private local operator evidence, excluded from Git: clip import 6 segments / quick_check ok / FK0; positive import + overlap rejection + SHA mismatch rejection 3/3 PASS, rejected inputs leave app DB unchanged. Local real MP4 decode/playback and authenticated206 verified; official kana/speakers preserved. GPU word-timing proposals and SRT are pending tester review. No private clip/script/recording/DB/result committed; no Frozen data/schema changes.
+- Physical phone, Tailscale deployment and timing approval remain pending. Recording tests use a fake microphone; this route keeps takes only in browser memory until downloaded.
+
+## 2026-11-10 — verification environment correction (shadowing)
+
+- Correction to the preceding entry: installed npm is **11.6.1**, not 11.6.0. No implementation changes.
+- Rechecked head `f4ee53c372b7addfb4cbbfb643ebec83083f290c` before this documentation push: `npm run check` 2026-11-10T21:59:56.3853323+07:00 → 2026-11-10T22:01:36.2321541+07:00, typecheck PASS, prototype22/22 + app/unit76/76 PASS, build PASS, test:app16 checks PASS. Browser8/8 and shadowing17/17 results above apply to the unchanged implementation. Route scope guard PASS; this entry is append-only.
+
+## 2026-11-10 — explicit private clip bounds and long-gap skipping (PR32)
+
+- Checked implementation `82168dec10ac9264a9a1f1f915e9556f48fda7ae` on codex/shadowing-erin, Windows/Node24.10.0/npm11.6.1.
+- `npm run check` 2026-11-10T22:30:56.4178409+07:00 → 2026-11-10T22:32:34.9069046+07:00: typecheck PASS, prototype22/22 + app/unit78/78 PASS, build PASS, test:app16/16 PASS.
+- `npm run test:browser` 2026-11-10T22:33:17.4743317+07:00 → 2026-11-10T22:35:35.4184095+07:00: 8/8 routes PASS, shadowing18/18 PASS (explicit start/end clamping and >3s gap skip included). Scope `origin/master shadowing` PASS (13 route files, append-only verification).
+- Private manifests require clip_start_ms/clip_end_ms, safe10–60s range within source, and every sentence within clip bounds. Whole playback uses margins and skips only gaps >3s; sentence repeats keep original boundaries. Private Erin revision55.6–90.5s imported through G0 importer into separate app DB; original six segment JSON SHA unchanged. Real local file playback proves54→55.6/91→90.5 clamping and65→77.24 gap skip. No media/source/Frozen/schema change or private data commit.
+- Synthetic browser fixture uses2×public WebM TimecodeScale,0.5–17.5s bounds and6s gap; source decode8.94705s becomes17.894101s. Initial18±.1s assertion failed due codec duration, replaced with exact2×decoded-source assertion (<.001s) plus physical duration covering clip end. Bounds/gap assertions unchanged. No new binary, codec dependency or Erin in CI.
+- Six sentence timings and phone microphone acceptance remain pending owner/tester listening. No service/task registration or media upload.

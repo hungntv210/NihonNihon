@@ -8,9 +8,10 @@ export const demo = {
   ],
 } as const;
 
-export function segmentAt(time: number) {
-  return demo.segments.findIndex((segment) => time >= segment.start && time < segment.end);
+export function segmentAtIn(time: number,segments:readonly {start:number;end:number}[]) {
+  return segments.findIndex((segment) => time >= segment.start && time < segment.end);
 }
+export const segmentAt=(time:number)=>segmentAtIn(time,demo.segments);
 
 export function shouldRepeat(completed: number, limit: number) {
   return limit === 0 || completed < limit;
