@@ -20,6 +20,22 @@ is uploaded or synced. No recording storage endpoint or database schema change.
 Demo activity never writes valid shadowing sessions, progress, weekly quotas or
 roadmap unlocks. This does not satisfy the full v1 specification yet.
 
+## Optional private YouTube clip
+
+Put the channel metadata and manual captions in the gitignored
+`data/private/youtube-clip.json` (or set `NIHON_YOUTUBE_CLIP_PATH`).
+The server reads this file at request time; when absent, it omits the YouTube clip.
+The same validated metadata format carries video ID, attribution, license,
+clip bounds and timed JA/kana/VI segments. Never commit channel captions,
+caption review tables or private metadata. Tests use original synthetic captions.
+
+The embed and IFrame API load only after **Mở trình phát YouTube**.
+The iframe sets `referrerpolicy="strict-origin-when-cross-origin"` before
+navigation, allowing an origin-only cross-site Referer while retaining the
+site's existing header. YouTube error153 denotes a missing Referer/client identity:
+https://developers.google.com/youtube/iframe_api_reference#onError
+No video/audio is downloaded. Live playback and phone acceptance need owner review.
+
 ## Verification
 
 From the repository root, Node 24+, existing dependencies:
@@ -67,8 +83,9 @@ in-memory takes are not in that archive. Downloaded takes need a private backup
 if the owner chooses to retain them. Neither downloads nor archives go in git.
 
 Acceptance requires three owner-provided/legal sources: one Erin clip, one
-personal file and one YouTube clip. This change supports the first local-file clip. Keep
-private media on the authenticated home server, outside git. YouTube is **embed
+personal file and one YouTube clip. The base branch supports Erin; this change adds
+the first YouTube clip, while the separate personal file is still missing. Keep private
+media on the authenticated home server, outside git. YouTube is **embed
 URL + start/end times only, never download/extract audio**. Source onboarding,
 private recording persistence, clip editing, TTS, word lookup,
 SRS integration, A–B editing, pause-to-speak, keyboard shortcuts, pitch/scoring and

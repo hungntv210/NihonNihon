@@ -7,18 +7,20 @@ import { randomBytes } from 'node:crypto';
 import { chromium } from 'playwright';
 import { seedDemo } from '../../../../tools/seed-demo.ts';
 import { hashPassword } from '../../../core/session.ts';
+import {youtubeFixture} from './youtube-fixture.ts';
 import {seedPrivateClipFixture} from './private-fixture.ts';
 
 const base = path.resolve(process.env.NIHON_BROWSER_FIXTURE_ROOT || '.tmp'); fs.mkdirSync(base, { recursive: true });
 const directory = fs.mkdtempSync(path.join(base, 'shadowing-'));
 const dbPath = path.join(directory, 'demo.sqlite'); seedDemo(dbPath);
 const privateFixture=seedPrivateClipFixture(dbPath,directory);
+const youtubeFile=path.join(directory,'youtube.json');fs.writeFileSync(youtubeFile,JSON.stringify(youtubeFixture));
 const port = await new Promise<number>(resolve => {
   const server = createServer(); server.listen(0, '127.0.0.1', () => { const address = server.address(); assert.ok(address && typeof address !== 'string'); server.close(() => resolve(address.port)); });
 });
 const origin = `http://127.0.0.1:${port}`, password = randomBytes(24).toString('hex');
 const child = spawn(process.execPath, ['node_modules/next/dist/bin/next', 'start', '--hostname', '127.0.0.1', '--port', String(port)], {
-  env: { ...process.env, APP_ORIGIN: origin, NIHON_DB_PATH: dbPath, NIHON_DB_ROLE: 'snapshot', NIHON_PASSWORD_HASH: hashPassword(password), SESSION_SECRET: randomBytes(32).toString('hex'), NIHON_SETTINGS_PATH: path.join(directory, 'settings.json'), NIHON_ROADMAP_PATH: path.join(directory, 'roadmap.json'), NIHON_RECORDINGS_DIR: path.join(directory, 'recordings'), NIHON_BACKUP_DIR: path.join(directory, 'backups'), NODE_ENV: 'production', NEXT_TELEMETRY_DISABLED: '1' }, stdio: ['ignore', 'pipe', 'pipe'], windowsHide: true,
+  env: { ...process.env, APP_ORIGIN: origin, NIHON_DB_PATH: dbPath, NIHON_YOUTUBE_CLIP_PATH: youtubeFile, NIHON_DB_ROLE: 'snapshot', NIHON_PASSWORD_HASH: hashPassword(password), SESSION_SECRET: randomBytes(32).toString('hex'), NIHON_SETTINGS_PATH: path.join(directory, 'settings.json'), NIHON_ROADMAP_PATH: path.join(directory, 'roadmap.json'), NIHON_RECORDINGS_DIR: path.join(directory, 'recordings'), NIHON_BACKUP_DIR: path.join(directory, 'backups'), NODE_ENV: 'production', NEXT_TELEMETRY_DISABLED: '1' }, stdio: ['ignore', 'pipe', 'pipe'], windowsHide: true,
 });
 let log = ''; child.stdout.on('data', data => log += data); child.stderr.on('data', data => log += data);
 const chrome = process.env.CHROME_PATH ?? (process.platform === 'win32' ? 'C:/Program Files/Google/Chrome/Application/chrome.exe' : undefined);
@@ -48,6 +50,17 @@ try {
   page.on('request', request => { if (!request.url().startsWith(origin) && !request.url().startsWith('blob:')) outside.push(request.url()); });
   await page.goto(origin + '/shadowing');
   await page.getByRole('heading', { name: 'Shadowing', exact: true }).waitFor();
+  let embedReferer='';await page.route('https://www.youtube-nocookie.com/embed/**',route=>{embedReferer=route.request().headers()['referer'];return route.fulfill({contentType:'text/html',body:'<!doctype html><title>Synthetic player</title>'});});
+  await page.route('https://www.youtube.com/iframe_api',route=>route.fulfill({contentType:'application/javascript',body:`window.YT={Player:function(element,options){let time=0,playing=false;const frame=element;const player={destroy(){frame.remove()},getCurrentTime(){if(playing)time+=.25;return time},pauseVideo(){playing=false;options.events.onStateChange({data:2})},playVideo(){playing=true;options.events.onStateChange({data:1})},seekTo(value){time=value},setPlaybackRate(){}};setTimeout(()=>options.events.onReady(),0);return player}};window.onYouTubeIframeAPIReady();`}));
+  await page.getByRole('button',{name:/YouTube tổng hợp/}).click();
+  await page.getByText('Original synthetic fixture · Original synthetic fixture',{exact:true}).waitFor();
+  assert.equal(await page.locator('iframe[src*="youtube"]').count(),0);assert.equal(outside.length,0);
+  assert.match(await page.getByLabel('Phụ đề mẫu',{exact:true}).innerText(),/あいう。/);checks++;
+  const embedded=page.waitForResponse(r=>r.url().startsWith('https://www.youtube-nocookie.com/embed/'));await page.getByRole('button',{name:'Mở trình phát YouTube',exact:true}).click();await embedded;await page.getByText('Trình phát YouTube đã sẵn sàng. Chọn câu hoặc phát cả clip.',{exact:true}).waitFor();
+  assert.equal(await page.locator('iframe').count(),1);assert.equal(await page.locator('iframe').getAttribute('referrerpolicy'),'strict-origin-when-cross-origin');assert.equal(embedReferer,origin+'/');
+  assert.equal(outside.length,2);assert.ok(outside.includes('https://www.youtube.com/iframe_api'));assert.ok(outside.some(url=>url.startsWith('https://www.youtube-nocookie.com/embed/testVideo01?')));outside.length=0;
+  await page.getByRole('button',{name:'Nghe lại đoạn',exact:true}).click();await page.getByText(/Đã phát 1 lượt/).waitFor();assert.equal(await page.locator('[aria-current="true"][data-active="true"]').count(),0);checks++;
+  await page.getByLabel('Kho clip').getByRole('button').first().click();
   await page.getByText('Bản thử tương tác · không phải tư liệu luyện nói', { exact: true }).waitFor();
   await page.waitForFunction(() => document.querySelector('video')!.readyState >= 2);
   assert.ok(await page.locator('video').evaluate(media => (media as HTMLVideoElement).duration >= 8.9 && (media as HTMLVideoElement).duration <= 9.1)); checks++;
@@ -138,6 +151,7 @@ try {
   await page.waitForURL(origin + '/today-roadmap');
   await page.waitForFunction(() => (window as typeof window & { shadowTracks: MediaStreamTrack[] }).shadowTracks.every(track => track.readyState === 'ended'));
   assert.ok(await page.evaluate(() => (window as typeof window & { shadowTracks: MediaStreamTrack[] }).shadowTracks.every(track => track.readyState === 'ended'))); checks++;
+  fs.rmSync(youtubeFile);await page.goto(origin+'/shadowing');assert.equal(await page.getByRole('button',{name:/YouTube tổng hợp/}).count(),0);await page.getByRole('heading',{name:'Shadowing',exact:true}).waitFor();checks++;
   assert.deepEqual(errors, []); assert.deepEqual(outside, []); checks++;
   const result = { status: 'PASS', passed: checks, total: checks, media: 'public synthetic canvas + tones only; six private-fixture kana/speakers, no Erin in CI', microphone: 'native MediaRecorder with Chrome fake device; real hardware not verified', noExternalRequests: true };
   fs.writeFileSync('data/reports/shadowing-check.json', JSON.stringify(result, null, 2)); console.log(JSON.stringify(result));
