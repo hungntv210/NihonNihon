@@ -40,6 +40,7 @@ try {
   const login = await context.request.post(origin + '/api/session', { headers: { origin }, form: { password }, maxRedirects: 0 });
   assert.equal(login.status(), 303);
   const partial = await context.request.get(origin + '/shadowing/media', { headers: { range: 'bytes=0-31' } });
+  assert.equal(partial.headers()['content-length'],'32');assert.equal(partial.headers()['transfer-encoding'],undefined);
   assert.equal(partial.status(), 206); assert.equal((await partial.body()).length, 32); assert.match(partial.headers()['content-range'], /^bytes 0-31\//);
   assert.equal((await context.request.get(origin + '/shadowing/media', { headers: { range: 'bytes=999999999-' } })).status(), 416); checks++;
   const page = await context.newPage(), errors: string[] = [], outside: string[] = [];
@@ -115,7 +116,7 @@ try {
   console.log('shadowing: synthetic private clip, kana, speaker and authenticated byte range');
   const clipUrl='/shadowing/media?clip='+encodeURIComponent(privateFixture.id);
   assert.equal((await fetch(origin+clipUrl,{redirect:'manual'})).status,307);
-  const privateBytes=await context.request.get(origin+clipUrl,{headers:{range:'bytes=0-31'}});assert.equal(privateBytes.status(),206);assert.equal((await privateBytes.body()).length,32);assert.equal((await context.request.get(origin+clipUrl,{headers:{range:'bytes=999999999-'}})).status(),416);checks++;
+  const privateBytes=await context.request.get(origin+clipUrl,{headers:{range:'bytes=0-31'}});assert.equal(privateBytes.status(),206);assert.equal((await privateBytes.body()).length,32);assert.equal(privateBytes.headers()['content-length'],'32');assert.equal(privateBytes.headers()['transfer-encoding'],undefined);for(const range of ['bytes=0-1','bytes=0-']){const r=await context.request.get(origin+clipUrl,{headers:{range}});assert.equal(r.status(),206);assert.equal(Number(r.headers()['content-length']),(await r.body()).length);assert.match(r.headers()['content-range'],/^bytes 0-/);assert.equal(r.headers()['transfer-encoding'],undefined);}const full=await context.request.get(origin+clipUrl);assert.equal(full.status(),200);assert.equal(Number(full.headers()['content-length']),(await full.body()).length);assert.equal((await context.request.get(origin+clipUrl,{headers:{range:'bytes=999999999-'}})).status(),416);checks++;
   await page.getByRole('button',{name:/Clip riêng tổng hợp/}).click();
   await page.waitForFunction(()=>document.querySelector('video')!.readyState>=2);
   assert.equal(await page.getByLabel('Phụ đề',{exact:true}).inputValue(),'kana');assert.match(await page.getByLabel('Phụ đề mẫu',{exact:true}).innerText(),/先生.*あ。/s);checks++;
