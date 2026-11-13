@@ -90,3 +90,9 @@ Kiểm tra D còn đủ dung lượng; backup task thất bại phải được 
 
 Các bước trên chưa được thực thi chỉ bằng việc merge nhánh này. CI/local tests
 chỉ chứng minh kiểm tra archive trên fixture, không chứng minh máy đã deploy.
+
+## Dừng app và cập nhật an toàn
+
+Launcher home-run.ps1 tự đưa PowerShell vào Windows Job Object với KILL_ON_JOB_CLOSE trước khi tạo node. Khi Task Scheduler kết thúc launcher, Windows cũng kết thúc node con; không dựa vào finally hay handler SIGTERM để dọn tiến trình khi bị force-stop. Handle job không được truyền cho node. Không đóng handle thủ công trước exit để giữ mã thoát node.
+
+Khi cập nhật: Stop-ScheduledTask NihonNihon-App, xác nhận task đã Ready và cổng3000 không còn listener, rồi mới checkout/build và schtasks /Run /TN NihonNihon-App. Nếu launcher cũ để lại node mồ côi, không kill mọi node.exe: xác minh PID/CWD/command line của app; nếu không đủ quyền thì chủ dự án dừng đúng app bằng Administrator một lần. Sau đó launcher mới sẽ quản lý vòng đời bằng Job Object. Không coi task Ready là bằng chứng cổng đã trống.
