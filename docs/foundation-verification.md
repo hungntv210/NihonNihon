@@ -570,3 +570,11 @@ Schema, worker dịch và database G0 không thay đổi.
 - Full check PASS: typecheck, prototype22/22, unit117/117, build, app16/16. JLPT browser-check and route scope guard PASS.
 - Fixture tests cover seven-day-first scheduling, retained partial checkpoint, repair of only missing positions, explicit forbidden/allowed kanji and exact spelling rule, five-repair bound with hard rejects still excluded. Semantic payload labels each local audit index explicitly.
 - hard-qa.ts, model.ts and retry/quota provider are byte-unchanged from master. No manual question/answer correction or app publication. Private generation started from5 retained questions; aggregate results/rejection reasons stay private and final PR summary will state actual totals.
+
+### 2026-11-14 — strict draft QA and independent model audit
+
+- Checked b558c025c61ebde142e907221c1376e91e582dff, Windows/Node24/D: worktree. Start 11/14/2026 23:27:19; end 11/14/2026 23:28:37.
+- Full check PASS: typecheck, prototype22/22, unit120/120, build, app16/16; JLPT browser and route scope guard PASS.
+- Tests reject conflicting answer ordinals (digits/fullwidth/written), misplaced order markers, verbatim key leaks and unattested word surfaces. Local Intl.Segmenter/dictionary checks fail closed; valid inflections without evidence may be rejected and are not silently whitelisted.
+- Independent solving hides key/explanation, requires naturalness/factual correctness and a matching independently chosen answer; separate explanation audit follows. Fixture proves verifier differs from actual generator even after fallback. Existing hard/semantic/quota gates retained.
+- Authorized private re-audit of54:46 hard rejects,8 independently accepted by3.1 Flash Lite before any new generation. Overlapping hard flags:14 answer-number,27 misplaced-order,24 unattested-word,4 key-leak. Generation continues privately with old per-slot repair counters; no app publication, question text or private dictionaries in this PR.
