@@ -1,5 +1,5 @@
 import fs from 'node:fs';import path from 'node:path';import {createHash} from 'node:crypto';
-import {parseArgs} from 'node:util';import {fileURLToPath} from 'node:url';import {geminiProvider} from './generate-week.ts';
+import {parseArgs} from 'node:util';import {fileURLToPath} from 'node:url';import {draftProvider} from './draft-provider.ts';
 import type {DatabaseSync} from 'node:sqlite';
 import {allocateRoadmap} from '../today-roadmap/model.ts';import {roadmapData} from '../today-roadmap/repository.ts';
 import {sourceCatalog} from './catalog.ts';import {openContentDatabase} from '../../../core/content.ts';
@@ -25,14 +25,14 @@ export function draftSlots(day:number,catalog:Source[]){return Array.from({lengt
  requireValue(pool.length>0,'INSUFFICIENT_DRAFT_OPTIONS');const source=pool[(day*10+position)%pool.length],answer=type==='reading'?source.reading:plainJapanese(source.title),options=choicesFor(source).sort((a,b)=>hash(day+':'+position+a).localeCompare(hash(day+':'+position+b))).slice(0,3);
  requireValue(answer,'INSUFFICIENT_DRAFT_OPTIONS');const correct=(day+position)%4;options.splice(correct,0,answer);return {day,position,type,targetId:source.id,...(type==='order'?{}:{choices:options,correct})};
  });}
-type DaySeed={questions:Draft[];audit:Audit[]};
+export type DaySeed={questions:Draft[];audit:Audit[]};
 export async function generateDraftDay({week,day,catalog,history=[],seed,onCheckpoint=()=>{}}:{week:string;day:number;catalog:Source[];history?:Question[];seed?:DaySeed;onCheckpoint?:(value:unknown)=>void},provider:Provider){
  const slots=draftSlots(day,catalog),knownKanji=[...new Set(catalog.flatMap(s=>[...s.title,...s.reading??'']).filter(c=>/\p{Script=Han}/u.test(c)))];
  const publicCatalog=catalog.map(s=>({...s,answerTitle:plainJapanese(s.title)}));
  const accepted=new Map<number,Question>(),audits=new Map<number,Audit>(),raws=new Map<number,Draft>(),reasons=new Map<number,string>();
- const rejectedAttempts:{round:number;positions:number[]}[]=[],hardRejected:{round:number;position:number;reason:string}[]=[];
+ const rejectedAttempts:{round:number;positions:number[]}[]=[],hardRejected:{round:number;position:number;reason:string}[]=[],semanticRejected:{round:number;position:number;reason:string}[]=[];
  let repairs=0;
- const checkpoint=()=>onCheckpoint({mode:DRAFT_MODE,day,questions:[...accepted.values()].sort((a,b)=>a.position-b.position),audit:[...audits.entries()].sort(([a],[b])=>a-b).map(([,a],index)=>({...a,index})),rejected:[...reasons].map(([position,reason])=>({position,reason,raw:raws.get(position)})),repairs});
+ const checkpoint=()=>onCheckpoint({mode:DRAFT_MODE,day,questions:[...accepted.values()].sort((a,b)=>a.position-b.position),audit:[...audits.entries()].sort(([a],[b])=>a-b).map(([position,a])=>({...a,index:position})),rejected:[...reasons].map(([position,reason])=>({position,reason,raw:raws.get(position)})),hardRejected,semanticRejected,repairs});
  async function assess(rows:unknown,expected:number[],round:number,priorAudit?:Audit[]){
   requireValue(Array.isArray(rows)&&rows.length===expected.length&&new Set(rows.map((q:Draft)=>q.position)).size===expected.length&&rows.every((q:Draft)=>expected.includes(q.position)),'REPAIR_CHANGED_ACCEPTED_SLOT');
   const pending:Question[]=[];
@@ -45,36 +45,53 @@ export async function generateDraftDay({week,day,catalog,history=[],seed,onCheck
   checkpoint();
   if(pending.length){const checked=await provider('verify',verificationPrompt,{mode:DRAFT_MODE,level:'N5',catalog:publicCatalog,questions:pending},schemaFor(auditSchema,pending.length));
    requireValue(Array.isArray(checked)&&checked.length===pending.length,'INCOMPLETE_SEMANTIC_QA');const seen=new Set<number>();
-   for(const a of checked as Audit[]){requireValue(Number.isInteger(a.index)&&a.index>=0&&a.index<pending.length&&!seen.has(a.index),'INVALID_QA_INDEX');seen.add(a.index);const q=pending[a.index];try{validateAudit([{...a,index:0}],[q]);accepted.set(q.position,q);audits.set(q.position,a);reasons.delete(q.position);}catch{reasons.set(q.position,'SEMANTIC_QA_REJECTED');}}
+   for(const a of checked as Audit[]){requireValue(Number.isInteger(a.index)&&a.index>=0&&a.index<pending.length&&!seen.has(a.index),'INVALID_QA_INDEX');seen.add(a.index);const q=pending[a.index];try{validateAudit([{...a,index:0}],[q]);accepted.set(q.position,q);audits.set(q.position,a);reasons.delete(q.position);}catch{reasons.set(q.position,'SEMANTIC_QA_REJECTED');semanticRejected.push({round,position:q.position,reason:'SEMANTIC_QA_REJECTED'});}}
   }
   checkpoint();
  }
  const payload=(positions:number[])=>({mode:DRAFT_MODE,week,day,level:'N5',roadmapWeeks:[1,2],knownKanji,slots:slots.filter(s=>positions.includes(s.position)),repairPositions:positions,catalog:publicCatalog,rejectionReasons:Object.fromEntries(reasons),history:[...history,...accepted.values()].map(q=>q.stem)});
  const positions=slots.map(s=>s.position);
- if(seed)await assess(seed.questions,positions,0,seed.audit);
+ if(seed){requireValue(seed.questions.length<=10,'INVALID_DRAFT_SEED');await assess(seed.questions,seed.questions.map(q=>q.position),0,seed.audit);}
  else await assess(await provider('generate',generationPrompt,payload(positions),schemaFor(questionSchema,10)),positions,0);
  while(accepted.size<10&&repairs<2){const bad=positions.filter(p=>!accepted.has(p));rejectedAttempts.push({round:repairs,positions:bad});const next=await provider('generate',generationPrompt,payload(bad),schemaFor(questionSchema,bad.length));repairs++;await assess(next,bad,repairs);}
  const rejectedPositions=positions.filter(p=>!accepted.has(p));if(rejectedPositions.length)rejectedAttempts.push({round:repairs,positions:rejectedPositions});
  const questions=[...accepted.values()].sort((a,b)=>a.position-b.position),audit=questions.map((q,index)=>({...audits.get(q.position)!,index}));
  if(!rejectedPositions.length){validateDayDrafts(questions,catalog,week,'N5',day,history);validateAudit(audit,questions);}
- return {mode:DRAFT_MODE,day,questions,audit,repairs,rejectedAttempts,hardRejected,rejectedPositions,rejected:[...reasons].map(([position,reason])=>({position,reason,raw:raws.get(position)})),accepted:rejectedPositions.length===0};
+ return {mode:DRAFT_MODE,day,questions,audit,repairs,rejectedAttempts,hardRejected,semanticRejected,rejectedPositions,rejected:[...reasons].map(([position,reason])=>({position,reason,raw:raws.get(position)})),accepted:rejectedPositions.length===0};
 }
 
-export async function generateRoadmapDraft({snapshotPath,receiptPath,week,directory,model,provider,onDay=()=>{}}:{snapshotPath:string;receiptPath:string;week:string;directory:string;model:string;provider:Provider;onDay?:(value:unknown)=>void}){
+export async function generateRoadmapDraft({snapshotPath,receiptPath,week,directory,model,provider,initialSeed,modelChain,onDay=()=>{}}:{snapshotPath:string;receiptPath:string;week:string;directory:string;model:string;provider:Provider;initialSeed?:DaySeed;modelChain?:string[];onDay?:(value:unknown)=>void}){
  const receipt=JSON.parse(fs.readFileSync(receiptPath,'utf8'));requireValue(receipt.read_only===true&&path.resolve(receipt.path)===path.resolve(snapshotPath),'FROZEN_SNAPSHOT_RECEIPT_REQUIRED');
  const checksum=createHash('sha256');for await(const bytes of fs.createReadStream(snapshotPath))checksum.update(bytes);requireValue(checksum.digest('hex')===receipt.sha256,'SNAPSHOT_HASH_CHANGED');
  requireValue((fs.statSync(snapshotPath).mode&0o222)===0,'SNAPSHOT_MUST_BE_READ_ONLY');fs.mkdirSync(directory,{recursive:true});
  const db=openContentDatabase(snapshotPath);let catalog:Source[];try{catalog=roadmapDraftCatalog(db);requireValue(catalog.some(s=>s.kind==='vocab')&&catalog.some(s=>s.kind==='grammar'),'EMPTY_ROADMAP_DRAFT_CATALOG');}finally{db.close();}
- const metadata={mode:DRAFT_MODE,week,level:'N5',roadmapWeeks:[1,2],learningEvidence:'roadmap_only_not_srs',answerEvidence:'hard-qa-source-options-v3 before independent semantic QA',snapshotSha256:receipt.sha256,model,verifierModel:model,promptHashes:draftPromptHashes,sourceHashes:Object.fromEntries(catalog.map(s=>[s.id,s.hash])),appPublished:false};
+ const metadata={mode:DRAFT_MODE,week,level:'N5',roadmapWeeks:[1,2],learningEvidence:'roadmap_only_not_srs',answerEvidence:'hard-qa-source-options-v3 before independent semantic QA',snapshotSha256:receipt.sha256,model,verifierModel:model,...(modelChain?{modelIsPlan:true,modelChain,actualModelEvidence:'provider-attempts.jsonl; question-provenance.json'}:{}),promptHashes:draftPromptHashes,sourceHashes:Object.fromEntries(catalog.map(s=>[s.id,s.hash])),appPublished:false};
  const write=(name:string,value:unknown)=>fs.writeFileSync(path.join(directory,name),JSON.stringify(value,null,2)+'\n',{mode:0o600});if(fs.existsSync(path.join(directory,'metadata.json')))requireValue(hash(JSON.parse(fs.readFileSync(path.join(directory,'metadata.json'),'utf8')))===hash(metadata),'DRAFT_RESUME_CONTEXT_CHANGED');write('metadata.json',metadata);
  const all:Question[]=[],audits:Audit[]=[];let rejects=0;
- for(let day=0;day<7;day++){const file=path.join(directory,`draft-day-${day+1}.json`),result=fs.existsSync(file)?JSON.parse(fs.readFileSync(file,'utf8')):await generateDraftDay({week,day,catalog,history:all},provider);
-  write(`draft-day-${day+1}.json`,result);rejects+=result.rejectedAttempts.reduce((n:number,r:{positions:number[]})=>n+r.positions.length,0);if(!result.accepted){write('status.json',{...metadata,status:'needs_tester_review',completedDays:day,semanticRejectedAcrossAttempts:rejects,rejectedPositions:result.rejectedPositions});return {completed:false,completedDays:day};}
+ for(let day=0;day<7;day++){
+  const file=path.join(directory,`draft-day-${day+1}.json`),checkpointFile=path.join(directory,`checkpoint-day-${day+1}.json`);
+  const saved=fs.existsSync(file)?JSON.parse(fs.readFileSync(file,'utf8')):undefined;
+  let checkpoint=fs.existsSync(checkpointFile)?JSON.parse(fs.readFileSync(checkpointFile,'utf8')):undefined;
+  const seed:DaySeed|undefined=checkpoint??(saved?{questions:saved.questions,audit:saved.audit.map((a:Audit)=>({...a,index:saved.questions[a.index].position}))}:day===0?initialSeed:undefined);
+  let result;
+  try{result=saved?.accepted?saved:await generateDraftDay({week,day,catalog,history:all,seed,onCheckpoint:value=>{checkpoint=value;write(`checkpoint-day-${day+1}.json`,value);}},provider);}
+  catch(e){const error=e instanceof Error?e.message:'DRAFT_FAILED';const questions=all.length+(checkpoint?.questions.length??seed?.questions.length??0);write('status.json',{...metadata,status:/DAILY_BUDGET_REACHED|AI_HTTP_429:/.test(error)?'quota_stopped':'api_stopped',completedDays:day,questions,error});throw e;}
+  write(`draft-day-${day+1}.json`,result);rejects+=result.semanticRejected?.length??0;if(!result.accepted){write('status.json',{...metadata,status:'needs_tester_review',completedDays:day,questions:all.length+result.questions.length,semanticRejectedAcrossAttempts:rejects,rejectedPositions:result.rejectedPositions,rejected:result.rejected});return {completed:false,completedDays:day,questions:all.length+result.questions.length};}
   validateDayDrafts(result.questions,catalog,week,'N5',day,all);validateAudit(result.audit,result.questions);all.push(...result.questions);audits.push(...result.audit.map((a:Audit)=>({...a,index:a.index+day*10})));write('status.json',{...metadata,status:'running',completedDays:day+1,questions:all.length,semanticRejectedAcrossAttempts:rejects});
   if(day===0){const sample={...metadata,questions:all.slice(0,10)};write('review-first-day.json',sample);fs.writeFileSync(path.join(directory,'review-first-day.md'),'# JLPT draft_roadmap — chưa đưa vào app\n\n|Ngày|Nhật|Lựa chọn|Đáp án|Giải thích|\n|---|---|---|---|---|\n'+sample.questions.map(q=>`|${q.date}|${q.stem.replaceAll('|','/')}|${q.choices.join(' / ')}|${q.correct+1}|${q.explanation.replaceAll('|','/')}|`).join('\n'));}onDay({completedDays:day+1,questions:all.length});
  }
  validateDrafts(all,catalog,week,'N5');validateAudit(audits,all);write('draft-week.json',{...metadata,questions:all,audit:audits});const sample=[...all].sort((a,b)=>hash(week+a.id+'review').localeCompare(hash(week+b.id+'review'))).slice(0,30);write('review-sample.json',{...metadata,questions:sample});fs.writeFileSync(path.join(directory,'review-sample.md'),'# JLPT draft_roadmap — 30 câu, chờ tester, chưa đưa vào app\n\nModel: '+model+'\n\n|Ngày|Nhật|Lựa chọn|Đáp án|Giải thích|\n|---|---|---|---|---|\n'+sample.map(q=>`|${q.date}|${q.stem.replaceAll('|','/')}|${q.choices.join(' / ')}|${q.correct+1}|${q.explanation.replaceAll('|','/')}|`).join('\n'));write('review.feedback.json',{mode:DRAFT_MODE,results:all.map(q=>({id:q.id,severity:null,note:''}))});write('status.json',{...metadata,status:'awaiting_tester_review',completedDays:7,questions:70,semanticRejectedAcrossAttempts:rejects});return {completed:true,questions:70};
 }
 if(process.argv[1]&&path.resolve(process.argv[1])===fileURLToPath(import.meta.url)){
- try{const {values:v}=parseArgs({options:Object.fromEntries(['snapshot','receipt','week','config','output'].map(k=>[k,{type:'string' as const}]))});requireValue(v.snapshot&&v.receipt&&v.week&&v.config&&v.output,'--snapshot --receipt --week --config --output required');const privateRoot=path.resolve('data/private'),relative=path.relative(privateRoot,path.resolve(v.output));requireValue(relative&&!relative.startsWith('..')&&!path.isAbsolute(relative),'OUTPUT_MUST_BE_PRIVATE');const config=JSON.parse(fs.readFileSync(v.config,'utf8'));console.log(JSON.stringify(await generateRoadmapDraft({snapshotPath:v.snapshot,receiptPath:v.receipt,week:v.week,directory:v.output,model:config.model,provider:geminiProvider(config,path.join(privateRoot,'jlpt-quota.json'),process.env.GEMINI_API_KEY??''),onDay:value=>console.log(JSON.stringify(value))})));}catch(e){console.error(e instanceof Error?e.message:'DRAFT_FAILED');process.exitCode=1;}
+ try{const {values:v}=parseArgs({options:Object.fromEntries(['snapshot','receipt','week','config','output','seed'].map(k=>[k,{type:'string' as const}]))});requireValue(v.snapshot&&v.receipt&&v.week&&v.config&&v.output,'--snapshot --receipt --week --config --output required');const privateRoot=path.resolve('data/private'),relative=path.relative(privateRoot,path.resolve(v.output));requireValue(relative&&!relative.startsWith('..')&&!path.isAbsolute(relative),'OUTPUT_MUST_BE_PRIVATE');
+  const config=JSON.parse(fs.readFileSync(v.config,'utf8')),profiles=[config,...config.fallbacks??[]];fs.mkdirSync(v.output,{recursive:true});
+  const provenanceFile=path.join(v.output,'question-provenance.json'),provenance:Record<string,unknown>=fs.existsSync(provenanceFile)?JSON.parse(fs.readFileSync(provenanceFile,'utf8')):{};
+  let initialSeed:DaySeed|undefined;
+  if(v.seed){const seed=JSON.parse(fs.readFileSync(v.seed,'utf8')),receipt=JSON.parse(fs.readFileSync(v.receipt,'utf8'));requireValue(seed.mode===DRAFT_MODE&&seed.week===v.week&&seed.snapshotSha256===receipt.sha256&&hash(seed.promptHashes)===hash(draftPromptHashes),'DRAFT_SEED_CONTEXT_CHANGED');initialSeed={questions:seed.questions,audit:seed.audit};for(const q of seed.questions)provenance[`${q.day}:${q.position}`]={retained:true,model:seed.model,questionHash:hash(q)};}
+  const provider=draftProvider(profiles,config.ledgerFile??path.join(privateRoot,'jlpt-quota.json'),process.env.GEMINI_API_KEY??'',{onAttempt:(event,payload,output)=>{
+   fs.appendFileSync(path.join(v.output!,'provider-attempts.jsonl'),JSON.stringify(event)+'\n',{mode:0o600});console.log(JSON.stringify(event));
+   if(event.status==='ok'){fs.writeFileSync(path.join(v.output!,`response-${Date.now()}-${event.phase}.json`),JSON.stringify({event,payload,output},null,2)+'\n',{mode:0o600});const rows=event.phase==='generate'?output:(payload as {questions:Draft[]}).questions;for(const q of rows as Draft[]){const slot=`${q.day}:${q.position}`;provenance[slot]={...(provenance[slot]??{}),[event.phase+'Model']:event.model,[event.phase+'Hash']:hash(q)};}fs.writeFileSync(provenanceFile,JSON.stringify(provenance,null,2)+'\n',{mode:0o600});}
+  }});
+  console.log(JSON.stringify(await generateRoadmapDraft({snapshotPath:v.snapshot,receiptPath:v.receipt,week:v.week,directory:v.output,model:config.model,modelChain:profiles.map(p=>p.model),initialSeed,provider,onDay:value=>console.log(JSON.stringify(value))})));
+ }catch(e){console.error(e instanceof Error?e.message:'DRAFT_FAILED');process.exitCode=1;}
 }

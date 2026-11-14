@@ -141,3 +141,24 @@ chọn, tránh trộn các nghĩa danh từ/trạng từ khi từ đích mang nh
 (わたくし) ở tuần10, mục kanji N4 ở tuần22. Không thêm ngoại lệ cứng vào
 UNLEARNED_KANJI; dùng わたし trong nháp tuần1–2. Test xác nhận 私 bị loại khi
 vắng và tự được cho phép khi xuất hiện trong catalog nội dung đã duyệt.
+
+### Tiếp tục nháp và model dự phòng
+
+CLI nháp đọc `fallbacks` (mảng cấu hình đầy đủ như cấu hình chính) và `ledgerFile`
+tuỳ chọn từ config riêng. Chỉ HTTP503 được thử tối đa3 lần/model, nghỉ30 rồi60giây,
+sau đó chuyển model kế tiếp và giữ model đó cho những lượt còn lại. HTTP429 hoặc
+hết dailyBudget dừng ngay, không dùng fallback để vượt quota. Mọi lần gọi đều ghi
+ledger Pacific. Không retry lỗi QA/schema để coi như thành công.
+
+`--seed` nhận JSON riêng có mode,week,snapshotSha256,promptHashes,model,questions,
+audit; audit của seed/checkpoint dùng index là position gốc (kể cả seed thưa).
+Hash ngữ cảnh phải khớp; câu seed vẫn qua cổng cứng/audit hiện hành. Checkpoint
+theo ngày giữ câu đạt khi API dừng, resume chỉ sinh vị trí thiếu. Hai vòng sửa/ngày
+vẫn giữ nguyên; còn câu lỗi thì lưu lý do và dừng, không bịa đủ70.
+
+`status.json` báo cả số câu đạt của ngày dở dang khi dừng API/quota/QA.
+`provider-attempts.jsonl` và `question-provenance.json` ghi model thật theo lần
+generate/verify; trường model trong metadata là kế hoạch, không khẳng định mọi câu
+đều do model chính. Các file này và toàn bộ câu nháp chỉ ở data/private; không
+publishBank, không ghi DB app. CLI chạy thủ công một tiến trình, không chạy song
+song trên cùng thư mục output/ledger.
