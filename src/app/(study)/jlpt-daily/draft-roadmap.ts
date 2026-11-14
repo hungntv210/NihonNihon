@@ -49,7 +49,7 @@ export async function generateDraftDay({week,day,catalog,history=[],seed,repairL
    pending.push(q);reasons.delete(raw.position);
   }catch(e){const reason=e instanceof Error?e.message:'INVALID_QUESTION';reasons.set(raw.position,reason);hardRejected.push({round,position:raw.position,reason});}}
   checkpoint();
-  if(pending.length){const checked=await provider('verify',verificationPrompt,{mode:DRAFT_MODE,level:'N5',catalog:publicCatalog,questions:pending},schemaFor(auditSchema,pending.length));
+  if(pending.length){const checked=await provider('verify',verificationPrompt,{mode:DRAFT_MODE,level:'N5',catalog:publicCatalog,questions:pending.map((q,index)=>({...q,index}))},schemaFor(auditSchema,pending.length));
    requireValue(Array.isArray(checked)&&checked.length===pending.length,'INCOMPLETE_SEMANTIC_QA');const seen=new Set<number>();
    for(const a of checked as Audit[]){requireValue(Number.isInteger(a.index)&&a.index>=0&&a.index<pending.length&&!seen.has(a.index),'INVALID_QA_INDEX');seen.add(a.index);const q=pending[a.index];try{validateAudit([{...a,index:0}],[q]);accepted.set(q.position,q);audits.set(q.position,a);reasons.delete(q.position);}catch{reasons.set(q.position,'SEMANTIC_QA_REJECTED');semanticRejected.push({round,position:q.position,reason:'SEMANTIC_QA_REJECTED'});}}
   }
