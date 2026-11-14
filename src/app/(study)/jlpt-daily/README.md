@@ -175,3 +175,17 @@ Repair payloads include the actual forbidden kanji, the permitted-kanji list and
 exact spelling marker/whole-stem script rule read from hard-qa.ts. Questions/options
 are never automatically rewritten. The earlier two-round/day stop description is
 superseded for the CLI; the day helper's default remains two for existing callers.
+
+Strict draft QA: draft CLI rejects inconsistent answer-number references, misplaced
+order explanations, verbatim correct-choice leakage and unattested segmented words.
+Word boundaries use Intl.Segmenter; allowed surfaces come only from existing OpenJLPT
+vocab/grammar catalog entries/readings in the pinned local snapshot. Inflections or
+boundaries without evidence fail closed; no fabricated root/suffix whitelist is added.
+This may reject valid Japanese and needs tester review, rather than automatic bypass.
+This local lexical evidence does not expand the roadmap/kanji gate and is not sent to AI.
+
+Independent verification uses another actual model, including after generation fallback.
+First solve hides stored correct/explanation; answer, naturalness and factual correctness
+must match. A separate audit checks the original explanation against that solve. Missing,
+malformed or contradictory evidence rejects the row. Existing drafts must be re-audited,
+not grandfathered by old flags; results are private and never published automatically.
