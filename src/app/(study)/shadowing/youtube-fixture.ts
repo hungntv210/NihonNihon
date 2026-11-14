@@ -1,0 +1,2 @@
+// Original test captions only; no channel subtitles or media.
+export const youtubeFixture={id:'youtube:synthetic',title:'YouTube tổng hợp',level:'N5',topic:'Thử thao tác',duration_ms:20000,clip_start_ms:1000,clip_end_ms:16000,origin:{kind:'youtube',video_id:'testVideo01',attribution:'Original synthetic fixture',license:'Original synthetic fixture'},subtitle_sources:{ja:'YouTube ja manual',vi:'YouTube vi manual'},segments:['あいう。','かきく。','さしす。'].map((ja,i)=>({id:'youtube-synthetic-'+i,ja,kana:ja,vi:'Âm thử '+(i+1)+'.',start_ms:1000+i*4000,end_ms:4000+i*4000}))};

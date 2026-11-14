@@ -1,12 +1,17 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
-import { segmentAtIn } from './demo.ts';
+import { segmentAtIn, shouldRepeat } from './demo.ts';
 import {syntheticClip,updatePlayback,SEEK_TOLERANCE,type Clip} from './clip-model.ts';
 import styles from './shadowing.module.css';
 
 type Take = { url: string; segment: number; seconds: number; extension: string };
+type YoutubePlayer={destroy():void;getCurrentTime():number;pauseVideo():void;playVideo():void;seekTo(seconds:number,allowSeekAhead:boolean):void;setPlaybackRate(rate:number):void};
+declare global{interface Window{YT?:{Player:new(element:HTMLElement,options:unknown)=>YoutubePlayer};onYouTubeIframeAPIReady?:()=>void}}
 export function ShadowingPlayer({clip=syntheticClip}:{clip?:Clip}) {
   const video = useRef<HTMLVideoElement>(null);
+  const youtubeHost=useRef<HTMLDivElement>(null);
+  const youtube=useRef<YoutubePlayer|null>(null);
+  const youtubeTimer=useRef<ReturnType<typeof setInterval>|null>(null);
   const replay = useRef<HTMLAudioElement>(null);
   const recorder = useRef<MediaRecorder | null>(null);
   const stream = useRef<MediaStream | null>(null);
@@ -27,6 +32,7 @@ export function ShadowingPlayer({clip=syntheticClip}:{clip?:Clip}) {
   const [takes, setTakes] = useState<Record<number,Take>>({});
   const take=takes[selected]??null;
   const [supported, setSupported] = useState(false);
+  const [youtubeLoaded,setYoutubeLoaded]=useState(false);
   const pending = useRef(false);
 
   useEffect(() => {
@@ -42,9 +48,35 @@ export function ShadowingPlayer({clip=syntheticClip}:{clip?:Clip}) {
     };
   }, []);
 
+  useEffect(()=>{
+    if(!youtubeLoaded||!clip.youtubeId||!youtubeHost.current)return;
+    let cancelled=false;
+    const stopTimer=()=>{if(youtubeTimer.current){clearInterval(youtubeTimer.current);youtubeTimer.current=null;}};
+    const tick=()=>{
+      const player=youtube.current;if(!player)return;
+      const current=player.getCurrentTime(),loop=session.current;setTime(current);
+      if(loop.whole&&current>=clip.end-.08){player.pauseVideo();player.seekTo(clip.end,true);loop.whole=false;setTime(clip.end);return;}
+      if(!loop.active||current<clip.segments[loop.selected].end-.08)return;
+      loop.count+=1;setCount(loop.count);
+      if(shouldRepeat(loop.count,loop.limit)){player.seekTo(clip.segments[loop.selected].start,true);player.playVideo();}
+      else{loop.active=false;player.pauseVideo();setStatus('Đã nghe xong đoạn. Bạn có thể ghi âm nói thử.');}
+    };
+    const create=()=>{
+      if(cancelled||!window.YT?.Player||!youtubeHost.current)return;
+      // Set policy before navigation: YouTube error153 means the Referer is missing.
+      const frame=document.createElement('iframe');frame.title=clip.title;frame.referrerPolicy='strict-origin-when-cross-origin';frame.allow='autoplay; encrypted-media; fullscreen';
+      frame.src='https://www.youtube-nocookie.com/embed/'+clip.youtubeId+'?'+new URLSearchParams({enablejsapi:'1',start:String(Math.floor(clip.start)),end:String(Math.ceil(clip.end)),playsinline:'1',rel:'0',origin:location.origin});
+      youtubeHost.current.replaceChildren(frame);
+      youtube.current=new window.YT.Player(frame,{events:{onReady:()=>setStatus('Trình phát YouTube đã sẵn sàng. Chọn câu hoặc phát cả clip.'),onStateChange:(event:{data:number})=>{setPlaying(event.data===1);stopTimer();if(event.data===1)youtubeTimer.current=setInterval(tick,100);}}});
+    };
+    if(window.YT?.Player)create();else{window.onYouTubeIframeAPIReady=create;if(!document.querySelector('script[data-nihon-youtube]')){const script=document.createElement('script');script.src='https://www.youtube.com/iframe_api';script.dataset.nihonYoutube='true';document.head.append(script);}}
+    return()=>{cancelled=true;stopTimer();youtube.current?.destroy();youtube.current=null;if(window.onYouTubeIframeAPIReady===create)delete window.onYouTubeIframeAPIReady;};
+  },[clip,youtubeLoaded]);
+
   function stopPlayback() {
     session.current.active = false;session.current.whole=false;
     video.current?.pause();
+    youtube.current?.pauseVideo();
     replay.current?.pause();
   }
   function choose(index: number) {
@@ -52,9 +84,15 @@ export function ShadowingPlayer({clip=syntheticClip}:{clip?:Clip}) {
     session.current = { selected: index, limit, count: 0, active: false,whole:false,entered:false };
     setSelected(index); setCount(0);
     if (video.current) video.current.currentTime = clip.segments[index].start;
+    youtube.current?.seekTo(clip.segments[index].start,true);
     setTime(clip.segments[index].start);
   }
   async function play(whole = false) {
+    if(clip.youtubeId){
+      const player=youtube.current;if(!player){setStatus('Bấm “Mở trình phát YouTube” trước.');return;}
+      replay.current?.pause();session.current={selected,limit:whole?1:limit,count:0,active:!whole,whole,entered:false};setCount(0);
+      player.seekTo(whole?clip.start:clip.segments[selected].start,true);player.setPlaybackRate(speed);player.playVideo();setStatus(whole?'Đang phát toàn clip.':'Đang phát đoạn đã chọn.');return;
+    }
     const media = video.current;
     if (!media) return;
     replay.current?.pause();
@@ -120,11 +158,11 @@ export function ShadowingPlayer({clip=syntheticClip}:{clip?:Clip}) {
   }
   const active = segmentAtIn(time,clip.segments),caption=clip.segments[active>=0?active:selected],clipStart=clip.start,clipEnd=clip.end;
   return <div className={styles.root}>
-    <aside className={styles.notice}>{clip.isDemo?<><strong>Bản thử tương tác · không phải tư liệu luyện nói</strong><p>Video tổng hợp 9 giây với tiếng bíp. Câu Nhật / Việt tự soạn chỉ để thử phụ đề; không khớp lời nói. Không tính buổi học hoặc tiến độ.</p></>:<><strong>Tư liệu riêng · {clip.level} · {clip.topic}</strong><p>{clip.attribution}</p><p>Phụ đề từ script chính thức; mốc thời gian chờ tester duyệt. Không gửi video hoặc bản ghi lên dịch vụ AI.</p></>}</aside>
+    <aside className={styles.notice}>{clip.isDemo?<><strong>Bản thử tương tác · không phải tư liệu luyện nói</strong><p>Video tổng hợp 9 giây với tiếng bíp. Câu Nhật / Việt tự soạn chỉ để thử phụ đề; không khớp lời nói. Không tính buổi học hoặc tiến độ.</p></>:clip.youtubeId?<><strong>YouTube · {clip.level} · {clip.topic}</strong><p>{clip.attribution} · {clip.license}</p><p>Câu Nhật và mốc từ phụ đề ja manual; tiếng Việt từ phụ đề vi manual. Chỉ nhúng video sau khi bạn bấm, không tải video/audio và không dùng Whisper.</p></>:<><strong>Tư liệu riêng · {clip.level} · {clip.topic}</strong><p>{clip.attribution}</p><p>Phụ đề từ script chính thức; mốc thời gian chờ tester duyệt. Không gửi video hoặc bản ghi lên dịch vụ AI.</p></>}</aside>
     <div className={styles.columns}>
-      <section className={styles.card} aria-label={clip.isDemo?'Trình phát clip thử':'Trình phát clip riêng'}>
+      <section className={styles.card} aria-label={clip.isDemo?'Trình phát clip thử':clip.youtubeId?'Trình phát clip YouTube':'Trình phát clip riêng'}>
         <div className={styles.header}><h2>{clip.title}</h2><span>{clip.isDemo?'DEMO':clip.level} · {(clipEnd-clipStart).toFixed(1)} giây</span></div>
-        <video ref={video} className={styles.video} src={clip.mediaUrl} playsInline preload="auto" onLoadedMetadata={()=>{const media=video.current;if(media&&!media.seeking&&(media.currentTime<clipStart-SEEK_TOLERANCE||media.currentTime>clipEnd+SEEK_TOLERANCE))media.currentTime=clipStart;}} onSeeking={updateTime} onSeeked={updateTime} onTimeUpdate={updateTime} onEnded={updateTime} onPlay={() => setPlaying(true)} onPause={() => setPlaying(false)} onError={() => setStatus('Không tải được clip. Kiểm tra tệp trên máy chủ rồi tải lại trang.')} aria-label={clip.isDemo?'Video tổng hợp chỉ có tiếng bíp':clip.title} />
+        {clip.youtubeId?(youtubeLoaded?<div className={styles.youtubeFrame}><div ref={youtubeHost} aria-label={clip.title}/></div>:<div className={styles.youtubeGate}><p>Video chưa được nhúng. Khi mở, YouTube sẽ nhận yêu cầu phát.</p><button className="button primary" onClick={()=>setYoutubeLoaded(true)}>Mở trình phát YouTube</button></div>):<video ref={video} className={styles.video} src={clip.mediaUrl??undefined} playsInline preload="auto" onLoadedMetadata={()=>{const media=video.current;if(media&&!media.seeking&&(media.currentTime<clipStart-SEEK_TOLERANCE||media.currentTime>clipEnd+SEEK_TOLERANCE))media.currentTime=clipStart;}} onSeeking={updateTime} onSeeked={updateTime} onTimeUpdate={updateTime} onEnded={updateTime} onPlay={() => setPlaying(true)} onPause={() => setPlaying(false)} onError={() => setStatus('Không tải được clip. Kiểm tra tệp trên máy chủ rồi tải lại trang.')} aria-label={clip.isDemo?'Video tổng hợp chỉ có tiếng bíp':clip.title} />}
         <div className={styles.captions} aria-label="Phụ đề mẫu">
           {caption.speaker&&subtitles!=='off'&&<small lang="ja">{caption.speaker}</small>}
           {(subtitles === 'both' || subtitles === 'ja') && <p lang="ja">{caption.ja}</p>}
@@ -134,12 +172,12 @@ export function ShadowingPlayer({clip=syntheticClip}:{clip?:Clip}) {
         </div>
         <p className={styles.progress}>{Math.max(0,time-clipStart).toFixed(1)} / {(clipEnd-clipStart).toFixed(1)} giây · Câu {selected + 1} · Đã phát {count} lượt</p>
         <div className={styles.actions}>
-          <button className="button primary" onClick={() => void play()} disabled={recording || requesting}>Nghe lại đoạn</button>
-          <button className="button" onClick={() => void play(true)} disabled={recording || requesting}>Phát cả clip</button>
+          <button className="button primary" onClick={() => void play()} disabled={recording || requesting || Boolean(clip.youtubeId&&!youtubeLoaded)}>Nghe lại đoạn</button>
+          <button className="button" onClick={() => void play(true)} disabled={recording || requesting || Boolean(clip.youtubeId&&!youtubeLoaded)}>Phát cả clip</button>
           <button className="button" onClick={stopPlayback} disabled={!playing}>Tạm dừng</button>
         </div>
         <div className={styles.options}>
-          <label>Tốc độ<select aria-label="Tốc độ" value={speed} onChange={(event) => { const value = Number(event.target.value); setSpeed(value); if (video.current) video.current.playbackRate = value; }}>{[0.5, 0.75, 1, 1.25].map((value) => <option key={value} value={value}>{value}×</option>)}</select></label>
+          <label>Tốc độ<select aria-label="Tốc độ" value={speed} onChange={(event) => { const value = Number(event.target.value); setSpeed(value); if (video.current) video.current.playbackRate = value; youtube.current?.setPlaybackRate(value); }}>{[0.5, 0.75, 1, 1.25].map((value) => <option key={value} value={value}>{value}×</option>)}</select></label>
           <label>Lặp đoạn<select aria-label="Lặp đoạn" value={limit} onChange={(event) => { const value = Number(event.target.value); setLimit(value); session.current.limit = value; }}>{[1, 3, 5, 0].map((value) => <option key={value} value={value}>{value || '∞'} lần</option>)}</select></label>
           <label>Phụ đề<select aria-label="Phụ đề" value={subtitles} onChange={(event) => setSubtitles(event.target.value)}><option value="both">Nhật + Việt</option><option value="ja">Tiếng Nhật</option><option value="kana">Kana</option><option value="vi">Tiếng Việt</option><option value="off">Ẩn</option></select></label>
         </div>
