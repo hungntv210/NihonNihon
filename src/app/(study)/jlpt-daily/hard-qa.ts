@@ -2,6 +2,19 @@ import type {Draft,Source} from './model.ts';
 import {toHiragana,toRomaji} from 'wanakana';
 
 export const plainJapanese=(s:string)=>s.normalize('NFC').split(/\s*[\/／]\s*/u)[0].replace(/[（(][^）)]*[）)]/gu,'').replace(/[〜～~]/gu,'').trim();
+export function strictDraftIssues(q:Draft,lexicon:ReadonlySet<string>){
+ const issues:string[]=[];
+ const explanation=q.explanation.normalize('NFKC');
+ const mentioned=[...explanation.matchAll(/(?:đáp án|lựa chọn|phương án|câu trả lời|答え|正解|選択肢)\s*(?:đúng\s*)?(?:là\s*|số\s*|thứ\s*|[:：#]\s*)*(\d+|nhất|một|hai|ba|bốn)/giu)];
+ const numbers:Record<string,number>={nhất:1,một:1,hai:2,ba:3,bốn:4};
+ if(mentioned.some(m=>(numbers[m[1].toLowerCase()]??Number(m[1]))!==q.correct+1))issues.push('EXPLANATION_ANSWER_NUMBER');
+ if(q.type!=='order'&&/Thứ tự|★/iu.test(q.explanation))issues.push('ORDER_EXPLANATION_ON_OTHER_TYPE');
+ if(['reading','spelling','context','synonym','usage'].includes(q.type)&&q.stem.normalize('NFKC').includes(q.choices[q.correct].normalize('NFKC')))issues.push('CORRECT_CHOICE_IN_STEM');
+ const segmenter=new Intl.Segmenter('ja',{granularity:'word'});
+ const unknown=[...segmenter.segment(q.stem+' '+q.choices[q.correct])].filter(s=>s.isWordLike&&!/^[\p{N}]+$/u.test(s.segment)&&!lexicon.has(s.segment.normalize('NFC'))).map(s=>s.segment);
+ if(unknown.length)issues.push('UNATTESTED_WORD:'+[...new Set(unknown)].join('/'));
+ return issues;
+}
 const exactSentence=(s:string)=>s.normalize('NFC').replace(/\s+/gu,'');
 const kana=/^[\p{Script=Hiragana}\p{Script=Katakana}ー]+$/u;
 const word=/^[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}ー]+$/u;

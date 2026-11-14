@@ -1,12 +1,12 @@
 import fs from 'node:fs';import path from 'node:path';import {createHash} from 'node:crypto';
-import {parseArgs} from 'node:util';import {fileURLToPath} from 'node:url';import {draftProvider} from './draft-provider.ts';
+import {parseArgs} from 'node:util';import {fileURLToPath} from 'node:url';import {reviewIndependently,independentProvider,independentPayload,independentPrompt,independentSchema,validateIndependent} from './independent-qa.ts';
 import type {DatabaseSync} from 'node:sqlite';
 import {allocateRoadmap} from '../today-roadmap/model.ts';import {roadmapData} from '../today-roadmap/repository.ts';
 import {sourceCatalog} from './catalog.ts';import {openContentDatabase} from '../../../core/content.ts';
 import {GENERATE_PROMPT,VERIFY_PROMPT,questionSchema,auditSchema,type Provider} from './generation.ts';
 import {validateDrafts,validateDayDrafts,validateAudit,requireValue,questionTypes,hash,type Source,type Question,type Audit,type Draft,validateQuestion} from './model.ts';
 
-import {plainJapanese,spellingNeighbor,readingDistractors,samePartOfSpeech} from './hard-qa.ts';
+import {strictDraftIssues,plainJapanese,spellingNeighbor,readingDistractors,samePartOfSpeech} from './hard-qa.ts';
 
 export const DRAFT_MODE='draft_roadmap' as const;
 export function roadmapDraftCatalog(db:DatabaseSync,startDate='2026-11-02'){
@@ -15,7 +15,7 @@ export function roadmapDraftCatalog(db:DatabaseSync,startDate='2026-11-02'){
 }
 const generationPrompt=GENERATE_PROMPT.replace('Produce exactly7 days times10 questions, day0..6/position0..9,','Produce ONLY the supplied slots. Preserve each supplied day/position/type.').replaceAll('learned','roadmap-approved draft')+' Supplied targetId/choices/correct are source-grounded recommendations; reproduce them and write the original stem/explanation. Never conjugate the answer to hide a mismatch: design a gap accepting its dictionary form. Use only bare Japanese answerTitle values, and kana for story context except marked reading target. For grammar gaps choose a sentence accepting the exact supplied surface. Repair only requested positions. For synonym, ask for the word matching a simple kana definition. NO silent corrections will be made to your answer key or options.';
 const verificationPrompt=VERIFY_PROMPT.replaceAll('learned','roadmap-approved draft')+' This is mode=draft_roadmap, NOT evidence of SRS learning. The legacy learnedOnly field means strictly within the supplied roadmap-approved catalog. Never claim actual review history.';
-export const draftPromptHashes={generate:hash({prompt:generationPrompt,planning:'hard-qa-source-options-v3'}),verify:hash(verificationPrompt)};
+export const draftPromptHashes={generate:hash({prompt:generationPrompt,planning:'strict-independent-lexicon-v4'}),verify:hash(independentPrompt)};
 const schemaFor=(schema:typeof questionSchema|typeof auditSchema,count:number)=>({...schema,minItems:count,maxItems:count});
 function draftSchema(count:number,_knownKanji:string[],_catalog:Source[]){return schemaFor(questionSchema,count);}
 export function draftSlots(day:number,catalog:Source[]){return Array.from({length:10},(_,position)=>{
@@ -32,7 +32,7 @@ export function repairEvidence(raw:Draft|undefined,catalog:Source[],reason:strin
 }
 export const draftPassOrder=()=>Array.from({length:6},(_,pass)=>Array.from({length:7},(_,day)=>({pass,day}))).flat();
 export type DaySeed={questions:Draft[];audit:Audit[];rejected?:{position:number;reason:string;raw?:Draft}[];repairCounts?:Record<number,number>};
-export async function generateDraftDay({week,day,catalog,history=[],seed,repairLimit=2,onCheckpoint=()=>{}}:{week:string;day:number;catalog:Source[];history?:Question[];seed?:DaySeed;repairLimit?:number;onCheckpoint?:(value:unknown)=>void},provider:Provider){
+export async function generateDraftDay({week,day,catalog,history=[],seed,lexicon,repairLimit=2,onCheckpoint=()=>{}}:{week:string;day:number;catalog:Source[];history?:Question[];seed?:DaySeed;lexicon?:ReadonlySet<string>;repairLimit?:number;onCheckpoint?:(value:unknown)=>void},provider:Provider){
  const slots=draftSlots(day,catalog),knownKanji=[...new Set(catalog.flatMap(s=>[...s.title,...s.reading??'']).filter(c=>/\p{Script=Han}/u.test(c)))];
  const publicCatalog=catalog.map(s=>({...s,answerTitle:plainJapanese(s.title)}));
  const accepted=new Map<number,Question>(),audits=new Map<number,Audit>(),raws=new Map<number,Draft>(),reasons=new Map<number,string>();
@@ -44,14 +44,14 @@ export async function generateDraftDay({week,day,catalog,history=[],seed,repairL
   const pending:Question[]=[];
   for(const raw of rows as Draft[]){raws.set(raw.position,raw);try{
    requireValue(raw.day===day&&raw.type===slots[raw.position].type,'SLOT_TYPE_MISMATCH');
-   const q=validateQuestion(raw,catalog,week,'N5',[...history,...accepted.values(),...pending]);
-   if(priorAudit){const old=priorAudit.find(a=>a.index===raw.position);if(old){try{validateAudit([{...old,index:0}],[q]);accepted.set(q.position,q);audits.set(q.position,old);reasons.delete(q.position);continue;}catch{ /* recheck a previous semantic reject */ }}}
+   const q=validateQuestion(raw,catalog,week,'N5',[...history,...accepted.values(),...pending]);if(lexicon){const issues=strictDraftIssues(q,lexicon);requireValue(!issues.length,'STRICT_QA_'+issues.join(','));}
+   if(priorAudit){const old=priorAudit.find(a=>a.index===raw.position);if(old){try{(lexicon?validateIndependent:validateAudit)([{...old,index:0}],[q]);accepted.set(q.position,q);audits.set(q.position,old);reasons.delete(q.position);continue;}catch{ /* recheck a previous semantic reject */ }}}
    pending.push(q);reasons.delete(raw.position);
   }catch(e){const reason=e instanceof Error?e.message:'INVALID_QUESTION';reasons.set(raw.position,reason);hardRejected.push({round,position:raw.position,reason});}}
   checkpoint();
-  if(pending.length){const checked=await provider('verify',verificationPrompt,{mode:DRAFT_MODE,level:'N5',catalog:publicCatalog,questions:pending.map((q,index)=>({...q,index}))},schemaFor(auditSchema,pending.length));
+  if(pending.length){const checked=lexicon?await reviewIndependently(provider,pending,publicCatalog):await provider('verify',lexicon?independentPrompt:verificationPrompt,{mode:DRAFT_MODE,level:'N5',catalog:publicCatalog,questions:lexicon?independentPayload(pending):pending.map((q,index)=>({...q,index}))},lexicon?{...independentSchema,minItems:pending.length,maxItems:pending.length}:schemaFor(auditSchema,pending.length));
    requireValue(Array.isArray(checked)&&checked.length===pending.length,'INCOMPLETE_SEMANTIC_QA');const seen=new Set<number>();
-   for(const a of checked as Audit[]){requireValue(Number.isInteger(a.index)&&a.index>=0&&a.index<pending.length&&!seen.has(a.index),'INVALID_QA_INDEX');seen.add(a.index);const q=pending[a.index];try{validateAudit([{...a,index:0}],[q]);accepted.set(q.position,q);audits.set(q.position,a);reasons.delete(q.position);}catch{reasons.set(q.position,'SEMANTIC_QA_REJECTED');semanticRejected.push({round,position:q.position,reason:'SEMANTIC_QA_REJECTED'});}}
+   for(const a of checked as Audit[]){requireValue(Number.isInteger(a.index)&&a.index>=0&&a.index<pending.length&&!seen.has(a.index),'INVALID_QA_INDEX');seen.add(a.index);const q=pending[a.index];try{(lexicon?validateIndependent:validateAudit)([{...a,index:0}],[q]);accepted.set(q.position,q);audits.set(q.position,a);reasons.delete(q.position);}catch{reasons.set(q.position,'SEMANTIC_QA_REJECTED');semanticRejected.push({round,position:q.position,reason:'SEMANTIC_QA_REJECTED'});}}
   }
   checkpoint();
  }
@@ -70,7 +70,7 @@ export async function generateRoadmapDraft({snapshotPath,receiptPath,week,direct
  const receipt=JSON.parse(fs.readFileSync(receiptPath,'utf8'));requireValue(receipt.read_only===true&&path.resolve(receipt.path)===path.resolve(snapshotPath),'FROZEN_SNAPSHOT_RECEIPT_REQUIRED');
  const checksum=createHash('sha256');for await(const bytes of fs.createReadStream(snapshotPath))checksum.update(bytes);requireValue(checksum.digest('hex')===receipt.sha256,'SNAPSHOT_HASH_CHANGED');
  requireValue((fs.statSync(snapshotPath).mode&0o222)===0,'SNAPSHOT_MUST_BE_READ_ONLY');fs.mkdirSync(directory,{recursive:true});
- const db=openContentDatabase(snapshotPath);let catalog:Source[];try{catalog=roadmapDraftCatalog(db);requireValue(catalog.some(s=>s.kind==='vocab')&&catalog.some(s=>s.kind==='grammar'),'EMPTY_ROADMAP_DRAFT_CATALOG');}finally{db.close();}
+ const db=openContentDatabase(snapshotPath);let catalog:Source[];let lexicon:Set<string>;try{lexicon=new Set(sourceCatalog(db).filter(s=>s.kind!=="kanji").flatMap(s=>[plainJapanese(s.title),s.reading??""]).filter(Boolean));catalog=roadmapDraftCatalog(db);requireValue(catalog.some(s=>s.kind==='vocab')&&catalog.some(s=>s.kind==='grammar'),'EMPTY_ROADMAP_DRAFT_CATALOG');}finally{db.close();}
  const metadata={mode:DRAFT_MODE,week,level:'N5',roadmapWeeks:[1,2],learningEvidence:'roadmap_only_not_srs',answerEvidence:'hard-qa-source-options-v3 before independent semantic QA',snapshotSha256:receipt.sha256,model,verifierModel:model,...(modelChain?{modelIsPlan:true,modelChain,actualModelEvidence:'provider-attempts.jsonl; question-provenance.json'}:{}),promptHashes:draftPromptHashes,sourceHashes:Object.fromEntries(catalog.map(s=>[s.id,s.hash])),appPublished:false};
  const write=(name:string,value:unknown)=>fs.writeFileSync(path.join(directory,name),JSON.stringify(value,null,2)+'\n',{mode:0o600});if(fs.existsSync(path.join(directory,'metadata.json')))requireValue(hash(JSON.parse(fs.readFileSync(path.join(directory,'metadata.json'),'utf8')))===hash(metadata),'DRAFT_RESUME_CONTEXT_CHANGED');write('metadata.json',metadata);
  const all:Question[]=[],audits:Audit[]=[];let rejects=0;const days=new Map<number,any>();for(let d=0;d<7;d++){const f=path.join(directory,`draft-day-${d+1}.json`);if(fs.existsSync(f))days.set(d,JSON.parse(fs.readFileSync(f,"utf8")));}
@@ -81,7 +81,7 @@ export async function generateRoadmapDraft({snapshotPath,receiptPath,week,direct
   let checkpoint=fs.existsSync(checkpointFile)?JSON.parse(fs.readFileSync(checkpointFile,'utf8')):undefined;
   const seed:DaySeed|undefined=checkpoint??(saved?{questions:saved.questions,rejected:saved.rejected,repairCounts:saved.repairCounts,audit:saved.audit.map((a:Audit)=>({...a,index:saved.questions[a.index].position}))}:day===0?initialSeed:undefined);
   let result;
-  try{result=saved?.accepted?saved:await generateDraftDay({week,day,catalog,history:all,seed,repairLimit:pass===0?0:1,onCheckpoint:value=>{checkpoint=value;write(`checkpoint-day-${day+1}.json`,value);}},provider);}
+  try{result=saved?.accepted?saved:await generateDraftDay({week,day,catalog,history:all,seed,lexicon,repairLimit:pass===0?0:1,onCheckpoint:value=>{checkpoint=value;write(`checkpoint-day-${day+1}.json`,value);}},provider);}
   catch(e){const error=e instanceof Error?e.message:'DRAFT_FAILED';const questions=all.length+(checkpoint?.questions.length??seed?.questions.length??0);write('status.json',{...metadata,status:/DAILY_BUDGET_REACHED|AI_HTTP_429:/.test(error)?'quota_stopped':'api_stopped',completedDays:day,questions,error});throw e;}
   days.set(day,result);write(`draft-day-${day+1}.json`,{...result,status:result.accepted?'complete':'partial'});rejects+=result.semanticRejected?.length??0;
   all.push(...result.questions);all.sort((a,b)=>a.day-b.day||a.position-b.position);
@@ -100,7 +100,7 @@ if(process.argv[1]&&path.resolve(process.argv[1])===fileURLToPath(import.meta.ur
   const provenanceFile=path.join(v.output,'question-provenance.json'),provenance:Record<string,unknown>=fs.existsSync(provenanceFile)?JSON.parse(fs.readFileSync(provenanceFile,'utf8')):{};
   let initialSeed:DaySeed|undefined;
   if(v.seed){const seed=JSON.parse(fs.readFileSync(v.seed,'utf8')),receipt=JSON.parse(fs.readFileSync(v.receipt,'utf8'));requireValue(seed.mode===DRAFT_MODE&&seed.week===v.week&&seed.snapshotSha256===receipt.sha256&&hash(seed.promptHashes)===hash(draftPromptHashes),'DRAFT_SEED_CONTEXT_CHANGED');initialSeed={questions:seed.questions,audit:seed.audit,rejected:seed.rejected,repairCounts:seed.repairCounts};for(const q of seed.questions)provenance[`${q.day}:${q.position}`]={retained:true,model:seed.model,questionHash:hash(q)};}
-  const provider=draftProvider(profiles,config.ledgerFile??path.join(privateRoot,'jlpt-quota.json'),process.env.GEMINI_API_KEY??'',{onAttempt:(event,payload,output)=>{
+  const provider=independentProvider(profiles,config.ledgerFile??path.join(privateRoot,'jlpt-quota.json'),process.env.GEMINI_API_KEY??'',{onAttempt:(event,payload,output)=>{
    fs.appendFileSync(path.join(v.output!,'provider-attempts.jsonl'),JSON.stringify(event)+'\n',{mode:0o600});console.log(JSON.stringify(event));
    if(event.status==='ok'){fs.writeFileSync(path.join(v.output!,`response-${Date.now()}-${event.phase}.json`),JSON.stringify({event,payload,output},null,2)+'\n',{mode:0o600});const rows=event.phase==='generate'?output:(payload as {questions:Draft[]}).questions;for(const q of rows as Draft[]){const slot=`${q.day}:${q.position}`;provenance[slot]={...(provenance[slot]??{}),[event.phase+'Model']:event.model,[event.phase+'Hash']:hash(q)};}fs.writeFileSync(provenanceFile,JSON.stringify(provenance,null,2)+'\n',{mode:0o600});}
   }});
