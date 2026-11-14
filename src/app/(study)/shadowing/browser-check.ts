@@ -40,6 +40,7 @@ try {
   const login = await context.request.post(origin + '/api/session', { headers: { origin }, form: { password }, maxRedirects: 0 });
   assert.equal(login.status(), 303);
   const partial = await context.request.get(origin + '/shadowing/media', { headers: { range: 'bytes=0-31' } });
+  assert.equal(partial.headers()['content-length'],'32');assert.equal(partial.headers()['transfer-encoding'],undefined);
   assert.equal(partial.status(), 206); assert.equal((await partial.body()).length, 32); assert.match(partial.headers()['content-range'], /^bytes 0-31\//);
   assert.equal((await context.request.get(origin + '/shadowing/media', { headers: { range: 'bytes=999999999-' } })).status(), 416); checks++;
   const page = await context.newPage(), errors: string[] = [], outside: string[] = [];
@@ -115,7 +116,7 @@ try {
   console.log('shadowing: synthetic private clip, kana, speaker and authenticated byte range');
   const clipUrl='/shadowing/media?clip='+encodeURIComponent(privateFixture.id);
   assert.equal((await fetch(origin+clipUrl,{redirect:'manual'})).status,307);
-  const privateBytes=await context.request.get(origin+clipUrl,{headers:{range:'bytes=0-31'}});assert.equal(privateBytes.status(),206);assert.equal((await privateBytes.body()).length,32);assert.equal((await context.request.get(origin+clipUrl,{headers:{range:'bytes=999999999-'}})).status(),416);checks++;
+  const privateBytes=await context.request.get(origin+clipUrl,{headers:{range:'bytes=0-31'}});assert.equal(privateBytes.status(),206);assert.equal((await privateBytes.body()).length,32);assert.equal(privateBytes.headers()['content-length'],'32');assert.equal(privateBytes.headers()['transfer-encoding'],undefined);for(const range of ['bytes=0-1','bytes=0-']){const r=await context.request.get(origin+clipUrl,{headers:{range}});assert.equal(r.status(),206);assert.equal(Number(r.headers()['content-length']),(await r.body()).length);assert.match(r.headers()['content-range'],/^bytes 0-/);assert.equal(r.headers()['transfer-encoding'],undefined);}const full=await context.request.get(origin+clipUrl);assert.equal(full.status(),200);assert.equal(Number(full.headers()['content-length']),(await full.body()).length);assert.equal((await context.request.get(origin+clipUrl,{headers:{range:'bytes=999999999-'}})).status(),416);checks++;
   await page.getByRole('button',{name:/Clip riêng tổng hợp/}).click();
   await page.waitForFunction(()=>document.querySelector('video')!.readyState>=2);
   assert.equal(await page.getByLabel('Phụ đề',{exact:true}).inputValue(),'kana');assert.match(await page.getByLabel('Phụ đề mẫu',{exact:true}).innerText(),/先生.*あ。/s);checks++;
@@ -138,6 +139,16 @@ try {
   await page.waitForURL(origin + '/today-roadmap');
   await page.waitForFunction(() => (window as typeof window & { shadowTracks: MediaStreamTrack[] }).shadowTracks.every(track => track.readyState === 'ended'));
   assert.ok(await page.evaluate(() => (window as typeof window & { shadowTracks: MediaStreamTrack[] }).shadowTracks.every(track => track.readyState === 'ended'))); checks++;
+  // Original synthetic fixture + controllable Safari-like media, no private footage.
+  await page.goto(origin+'/shadowing');await page.getByRole('button',{name:/Clip riêng tổng hợp/}).click();
+  await page.locator('video').evaluate(media=>{const v=media as HTMLVideoElement;v.pause();const fake={time:16,pending:0,seeking:false,paused:true,writes:0,gesture:false};Object.defineProperties(v,{currentTime:{configurable:true,get:()=>fake.time,set:(n:number)=>{fake.writes++;if(fake.writes>15)throw Error('seek loop');fake.pending=n;fake.seeking=true;v.dispatchEvent(new Event('seeking'));v.dispatchEvent(new Event('timeupdate'));}},seeking:{configurable:true,get:()=>fake.seeking},paused:{configurable:true,get:()=>fake.paused}});v.play=()=>{fake.gesture=navigator.userActivation.isActive;fake.paused=false;v.dispatchEvent(new Event('play'));v.dispatchEvent(new Event('timeupdate'));return Promise.resolve();};v.pause=()=>{fake.paused=true;v.dispatchEvent(new Event('pause'));};Object.assign(window,{safariMedia:fake});});
+  await page.getByRole('button',{name:'Phát cả clip',exact:true}).click();
+  await page.evaluate(()=>{const f=(window as any).safariMedia,v=document.querySelector('video')!;if(!f.gesture||f.writes!==1)throw Error('play lost user gesture or sought during seeking');f.time=f.pending-.142;f.seeking=false;v.dispatchEvent(new Event('seeked'));for(let i=0;i<10;i++)v.dispatchEvent(new Event('timeupdate'));if(f.writes!==1||f.paused)throw Error('keyframe seek feedback loop');f.time=17.51;v.dispatchEvent(new Event('timeupdate'));if(!f.paused)throw Error('whole clip failed to stop');});checks++;
+  await page.getByRole('button',{name:/Câu 1.*1.0–2.5s/}).click();
+  await page.evaluate(()=>{const f=(window as any).safariMedia,v=document.querySelector('video')!;const writes=f.writes;v.dispatchEvent(new Event('loadedmetadata'));if(f.writes!==writes)throw Error('metadata overwrote pending sentence');f.time=f.pending-.142;f.seeking=false;v.dispatchEvent(new Event('seeked'));v.dispatchEvent(new Event('loadedmetadata'));if(f.writes!==writes)throw Error('metadata overwrote selected sentence');});
+  await page.getByRole('button',{name:'Nghe lại đoạn',exact:true}).click();
+  await page.evaluate(()=>{const f=(window as any).safariMedia,v=document.querySelector('video')!;f.time=16;for(let i=0;i<5;i++)v.dispatchEvent(new Event('timeupdate'));});await page.getByText(/Đã phát 0 lượt/).waitFor();
+  await page.evaluate(()=>{const f=(window as any).safariMedia,v=document.querySelector('video')!;f.time=f.pending-.142;f.seeking=false;v.dispatchEvent(new Event('seeked'));f.time=1.2;v.dispatchEvent(new Event('timeupdate'));f.time=2.48;v.dispatchEvent(new Event('timeupdate'));});await page.getByText(/Đã phát 1 lượt/).waitFor();assert.equal(await page.locator('video').evaluate(v=>(v as HTMLVideoElement).paused),true);checks++;
   assert.deepEqual(errors, []); assert.deepEqual(outside, []); checks++;
   const result = { status: 'PASS', passed: checks, total: checks, media: 'public synthetic canvas + tones only; six private-fixture kana/speakers, no Erin in CI', microphone: 'native MediaRecorder with Chrome fake device; real hardware not verified', noExternalRequests: true };
   fs.writeFileSync('data/reports/shadowing-check.json', JSON.stringify(result, null, 2)); console.log(JSON.stringify(result));

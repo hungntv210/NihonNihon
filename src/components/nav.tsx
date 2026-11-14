@@ -31,7 +31,7 @@ export function NavIcon({ name }: { name: string }) {
   );
 }
 export function Navigation() {
-  const current = usePathname();
+  const current = usePathname() ?? '';
   return (
     <nav className="navigation" aria-label="Học tập">
       {links.map(([href, label, icon]) => (

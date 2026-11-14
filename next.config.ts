@@ -1,6 +1,7 @@
 import type { NextConfig } from 'next';
 const config: NextConfig = {
   poweredByHeader: false,
+  async rewrites() { return [{source:'/shadowing/media',destination:'/api/shadowing-media'}]; },
   async headers() {
     return [
       {
