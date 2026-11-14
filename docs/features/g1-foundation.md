@@ -27,14 +27,15 @@ SRS, Từ vựng, Kanji và Ngữ pháp trong thư mục tuyến tương ứng; 
 
 ## Chức năng
 
-- [ ] Next.js (React) + Tailwind; SQLite qua `node:sqlite` của Node 24 như G0; FTS5 cho bước tìm kiếm sau
-- [ ] Dựng token giao diện mới theo `docs/interface-redesign.md`; không mang các token cũ của prototype sang.
-- [ ] **Đăng nhập:** một tài khoản, mật khẩu hoặc passkey; mọi trang yêu cầu đăng nhập; `robots` chặn công cụ tìm kiếm
-- [ ] **Triển khai:** VPS nhỏ hoặc máy nhà + Tailscale (không mở cổng ra Internet khi dùng Tailscale)
+- [x] Next.js (React) + Tailwind; SQLite qua `node:sqlite` của Node 24 như G0 (tests/content.test.ts, tools/test-app.ts).
+- [ ] FTS5 cho bước tìm kiếm sau.
+- [x] Dựng token giao diện mới theo `docs/interface-redesign.md`; không mang các token cũ của prototype sang.
+- [x] **Đăng nhập:** một tài khoản, mật khẩu hoặc passkey; mọi trang yêu cầu đăng nhập; `robots` chặn công cụ tìm kiếm
+- [x] **Triển khai:** VPS nhỏ hoặc máy nhà + Tailscale (không mở cổng ra Internet khi dùng Tailscale)
 - [ ] **PWA:** cài lên màn hình điện thoại; service worker cache để ôn SRS, xem thẻ, đọc bài đã tải khi offline; đồng bộ khi có mạng
 - [ ] **Sao lưu:** tự động sao lưu database và bản ghi âm mỗi ngày; nút tải về một file
 - [ ] **Cài đặt:** giờ học, ngày shadowing, số thẻ mới/ngày, mức ghi nhớ FSRS, furigana mặc định, giọng TTS, sáng/tối
-- [ ] Trang **Nguồn dữ liệu** ghi công theo giấy phép
+- [x] Trang **Nguồn dữ liệu** ghi công theo giấy phép
 
 ## Dữ liệu
 
@@ -62,11 +63,11 @@ SRS, Từ vựng, Kanji và Ngữ pháp trong thư mục tuyến tương ứng; 
 
 ## Tiêu chí hoàn thành
 
-- [ ] Đăng nhập được trên điện thoại qua Tailscale hoặc VPS; không đăng nhập thì không xem được trang nào
+- [x] Đăng nhập được trên điện thoại qua Tailscale hoặc VPS; không đăng nhập thì không xem được trang nào
 - [ ] Cài PWA lên màn hình Android và iOS
 - [ ] Tắt mạng vẫn mở được app và các trang đã cache
 - [ ] Bộ chữ thử Ộ Ệ Ờ Ữ Ỹ Đ 働 返 直 骨 hiển thị đúng trên Chrome Android, Safari iOS
-- [ ] Khôi phục được từ file sao lưu
+- [x] Khôi phục được từ file sao lưu
 
 ## Câu hỏi còn mở
 
@@ -146,3 +147,15 @@ bản sao ngoài máy. Các archive có thể chứa ghi âm riêng tư.
 Ô tìm kiếm và lối vào Shadowing/Báo sai/Tiến độ thuộc shell dùng chung. Merge
 hai nhánh tính năng tương ứng trước khi bật bản shell này; phần entry chỉ chuyển
 đến route, không sao chép logic tìm kiếm hay player vào foundation.
+
+## Đối chiếu triển khai và bằng chứng — 2026-11-14
+
+Các dấu tick xác nhận phần code đã chạy qua test/fixture; không thay cho nghiệm thu độ phủ dữ liệu hay benchmark thiết bị. Các mục ghép chỉ hoàn thành một phần vẫn để [ ]. Không đổi tiêu chí/luật học.
+
+- Bằng chứng: `src/core/content.ts`.
+- Bằng chứng: `src/core/backup.ts`.
+- Bằng chứng: `tools/test-app.ts`.
+- Bằng chứng: `tests/backup.test.ts`.
+- Bằng chứng: `tools/home-run.ps1`.
+
+Next/React/Tailwind/SQLite đã chạy; FTS5 chưa có. PWA cold-offline SRS/outbox đã kiểm ở tools/test-app.ts, chưa bao phủ đọc bài offline. Có code/script sao lưu hằng ngày và download/restore; chưa nghiệm thu lịch backup production nên mục tự động còn để trống. Settings lưu các trường nhưng retention FSRS chưa nối scheduler (vẫn90%); không tick cả mục ghép. Cài PWA/font trên cả hai hệ điện thoại chưa có đủ chứng cứ thiết bị.

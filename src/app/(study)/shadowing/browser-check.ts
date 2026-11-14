@@ -7,6 +7,10 @@ import { randomBytes } from 'node:crypto';
 import { chromium } from 'playwright';
 import { seedDemo } from '../../../../tools/seed-demo.ts';
 import { hashPassword } from '../../../core/session.ts';
+import {updateProgress,readProgress} from '../today-roadmap/repository.ts';
+import {localClock} from '../today-roadmap/model.ts';
+import {practiceSessionKey} from './practice-store.ts';
+import {SESSION_COOKIE} from '../../../core/session.ts';
 import {youtubeFixture} from './youtube-fixture.ts';
 import {seedPrivateClipFixture} from './private-fixture.ts';
 
@@ -163,6 +167,18 @@ try {
   await page.evaluate(()=>{const f=(window as any).safariMedia,v=document.querySelector('video')!;f.time=16;for(let i=0;i<5;i++)v.dispatchEvent(new Event('timeupdate'));});await page.getByText(/Đã phát 0 lượt/).waitFor();
   await page.evaluate(()=>{const f=(window as any).safariMedia,v=document.querySelector('video')!;f.time=f.pending-.142;f.seeking=false;v.dispatchEvent(new Event('seeked'));f.time=1.2;v.dispatchEvent(new Event('timeupdate'));f.time=2.48;v.dispatchEvent(new Event('timeupdate'));});await page.getByText(/Đã phát 1 lượt/).waitFor();assert.equal(await page.locator('video').evaluate(v=>(v as HTMLVideoElement).paused),true);checks++;
   fs.rmSync(youtubeFile);await page.goto(origin+'/shadowing');assert.equal(await page.getByRole('button',{name:/YouTube tổng hợp/}).count(),0);await page.getByRole('heading',{name:'Shadowing',exact:true}).waitFor();checks++;
+  // Seed only synthetic metadata at14m59s; production has no accelerated-clock or bypass endpoint.
+  const authCookie=(await context.cookies()).find(c=>c.name===SESSION_COOKIE)!;const practiceKey=practiceSessionKey(authCookie.value),date=localClock(new Date()).date,progressFile=path.join(directory,'roadmap.json');
+  await page.goto(origin+'/today-roadmap');
+  updateProgress(progressFile,p=>{p.shadow=p.shadow.filter(s=>s.date!==date);p.shadowSessions??={};p.shadowSessions[practiceKey+':'+date]={practiceMs:899000,lastAt:Date.now(),clients:{},recordings:{[privateFixture.id]:Object.fromEntries(privateFixture.metadata.segments.map(s=>[s.id,Math.ceil((s.end_ms-s.start_ms)*.7)]))}};return p;});
+  const bodies:Record<string,unknown>[]=[];page.on('request',r=>{if(r.method()==='POST'&&r.url().endsWith('/shadowing/progress'))bodies.push(r.postDataJSON());});
+  const forbidden=await context.request.post(origin+'/shadowing/progress',{headers:{origin:'https://untrusted.invalid'},data:{client_id:randomBytes(18).toString('hex'),seq:0,active_ms:0}});assert.equal(forbidden.status(),403);
+  const audioRejected=await context.request.post(origin+'/shadowing/progress',{headers:{origin},data:{client_id:'11111111-1111-4111-8111-111111111111',seq:0,active_ms:0,audio:'forbidden'}});assert.equal(audioRejected.status(),400);
+  await page.goto(origin+'/shadowing');await page.getByRole('button',{name:/Clip riêng tổng hợp/}).click();await page.getByRole('button',{name:'Phát cả clip',exact:true}).click();await page.getByText('Đã ghi nhận buổi shadowing hôm nay.',{exact:true}).waitFor();
+  const saved=readProgress(progressFile);assert.equal(saved.shadow.filter(s=>s.date===date).length,1);assert.equal(saved.shadow.find(s=>s.date===date)!.method,'automatic');assert.ok(bodies.length>0);for(const body of bodies)assert.ok(Object.keys(body).every(k=>['client_id','seq','active_ms','recording'].includes(k)));checks++;
+  await page.reload();await page.getByRole('button',{name:/Clip riêng tổng hợp/}).click();await page.getByText('Đã ghi nhận buổi shadowing hôm nay.',{exact:true}).waitFor();assert.equal(readProgress(progressFile).shadow.filter(s=>s.date===date).length,1);
+  const other=await browser.newContext();await other.request.post(origin+'/api/session',{headers:{origin},form:{password},maxRedirects:0});const separate=await other.request.get(origin+'/shadowing/progress');assert.equal((await separate.json()).practiceMs,0);await other.close();
+  await page.goto(origin+'/today-roadmap');const count=new Set(saved.shadow.filter(s=>s.kind==='regular').map(s=>s.date)).size;await page.getByText('Shadowing tuần này · '+count+'/2',{exact:true}).waitFor();checks++;
   assert.deepEqual(errors, []); assert.deepEqual(outside, []); checks++;
   const result = { status: 'PASS', passed: checks, total: checks, media: 'public synthetic canvas + tones only; six private-fixture kana/speakers, no Erin in CI', microphone: 'native MediaRecorder with Chrome fake device; real hardware not verified', noExternalRequests: true };
   fs.writeFileSync('data/reports/shadowing-check.json', JSON.stringify(result, null, 2)); console.log(JSON.stringify(result));

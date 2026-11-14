@@ -14,14 +14,14 @@ Mỗi tối học 1–2 mẫu ngữ pháp và làm bài tập ngay; 403 mẫu N5
 
 ## Chức năng
 
-- [ ] Trang mẫu câu: tên mẫu, nghĩa tiếng Việt, cấp
+- [x] Trang mẫu câu: tên mẫu, nghĩa tiếng Việt, cấp
 - [ ] Công thức nối dạng khối màu (V-て + いく)
 - [ ] 2–3 câu ví dụ có furigana, audio, bản dịch; phần mẫu câu được tô màu
 - [ ] Ghi chú phân biệt mẫu dễ nhầm, có link sang mẫu kia
 - [ ] Câu trong clip shadowing có dùng mẫu này (nếu có)
-- [ ] Bài tập **chọn đáp án** (dạng 文法 JLPT)
-- [ ] Bài tập **sắp xếp câu ★** (kéo 4 mảnh)
-- [ ] Bài tập sinh từ câu ví dụ OpenJLPT
+- [x] Bài tập **chọn đáp án** (dạng 文法 JLPT)
+- [x] Bài tập **sắp xếp câu ★** (kéo 4 mảnh)
+- [x] Bài tập sinh từ câu ví dụ OpenJLPT
 
 ## Dữ liệu
 
@@ -52,3 +52,12 @@ Mỗi tối học 1–2 mẫu ngữ pháp và làm bài tập ngay; 403 mẫu N5
 - Nhịp ngày đi làm: **ban ngày 5–10 phút Ôn nhanh** (chỉ thẻ từ vựng + kanji, không âm thanh); **buổi tối 45–60 phút** cho bài mới, ngữ pháp, dạng đề JLPT, shadowing.
 - Bắt buộc **2 buổi shadowing/tuần** (Thứ Ba, Thứ Năm; Thứ Bảy khuyến khích). Thiếu buổi → khoá bài mới tuần sau; **ôn tập SRS không bao giờ bị khoá**.
 - Người dùng là người học, **không biên tập nội dung**: tiếng Việt lấy từ nguồn có sẵn, phần thiếu dùng dịch máy (luôn kèm bản tiếng Anh và nút Báo sai).
+
+## Đối chiếu triển khai và bằng chứng — 2026-11-14
+
+Các dấu tick xác nhận phần code đã chạy qua test/fixture; không thay cho nghiệm thu độ phủ dữ liệu hay benchmark thiết bị. Các mục ghép chỉ hoàn thành một phần vẫn để [ ]. Không đổi tiêu chí/luật học.
+
+- Bằng chứng: `src/app/(study)/grammar/grammar.test.ts`.
+- Bằng chứng: `src/app/(study)/grammar/browser-check.ts`.
+
+Cloze và sắp xếp dùng ví dụ thật/fixture, không bịa câu khi nguồn thiếu. Câu clip chỉ hiện khi đã có liên kết; chưa chứng minh đủ403 mẫu,3bài/mẫu hoặc đủ audio/bản dịch cho mọi ví dụ. Các mục ghép thiếu thành phần vẫn để trống.
