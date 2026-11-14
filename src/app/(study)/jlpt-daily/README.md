@@ -162,3 +162,16 @@ generate/verify; trường model trong metadata là kế hoạch, không khẳng
 đều do model chính. Các file này và toàn bộ câu nháp chỉ ở data/private; không
 publishBank, không ghi DB app. CLI chạy thủ công một tiến trình, không chạy song
 song trên cùng thư mục output/ledger.
+
+### Partial days and repair passes
+
+The draft runner visits all seven days before repairing partial days. It checkpoints
+accepted rows and marks incomplete days partial, then makes up to five repair passes
+in day order. Only missing positions are generated; each position has a durable maximum
+of five repair requests across resume (prior counts must be carried in a migrated seed).
+The initial generation is not a repair. API retries/quota use the existing provider.
+A quota/API stop records all accepted questions, including other partial days.
+Repair payloads include the actual forbidden kanji, the permitted-kanji list and the
+exact spelling marker/whole-stem script rule read from hard-qa.ts. Questions/options
+are never automatically rewritten. The earlier two-round/day stop description is
+superseded for the CLI; the day helper's default remains two for existing callers.

@@ -21,3 +21,17 @@ test('sparse checkpoint retains two accepted slots and their audit indexes throu
  });
  assert.equal(result.accepted,true);assert.equal(result.questions.length,10);for(const q of questions){const retained=result.questions.find(row=>row.position===q.position)!;assert.equal(retained.stem,q.stem);assert.equal(retained.explanation,q.explanation);assert.deepEqual(retained.choices,q.choices);}
 });
+
+import {repairEvidence,draftPassOrder} from './draft-roadmap.ts';
+test('partial day remains checkpointed while subsequent days run before missing-slot repair',async t=>{
+ const {catalog,drafts}=setup(t);const order=draftPassOrder();assert.deepEqual(order.slice(0,7).map(s=>s.day),[0,1,2,3,4,5,6]);assert.equal(order[7].day,0);assert.equal(order[7].pass,1);
+ const partial=await generateDraftDay({week:'2026-11-16',day:0,catalog,repairLimit:0},async phase=>phase==='generate'?drafts:fixtureAudit(drafts).map(a=>a.index===0?{...a,possibleAnswers:[0,1]}:a));
+ assert.equal(partial.accepted,false);assert.equal(partial.questions.length,9);
+ const seed={questions:partial.questions,audit:partial.audit.map((a,i)=>({...a,index:partial.questions[i].position})),rejected:partial.rejected,repairCounts:partial.repairCounts};
+ const repaired=await generateDraftDay({week:'2026-11-16',day:0,catalog,seed,repairLimit:1},async(phase,_prompt,payload)=>{if(phase==='generate'){assert.deepEqual((payload as any).repairPositions,[0]);return [drafts[0]];}return fixtureAudit((payload as any).questions);});assert.equal(repaired.questions.length,10);
+});
+test('repair evidence names forbidden kanji and exact kana marker rule; five attempts never relax QA',async t=>{
+ const {catalog,drafts}=setup(t),bad={...drafts[1],stem:'私abc'};const evidence=repairEvidence(bad,catalog,'UNLEARNED_KANJI,HARD_QA_SPELLING_MARKED_KANA');assert.ok(evidence.violatingKanji.includes('私'));assert.match(evidence.rule!,/ENTIRE stem/);assert.match(evidence.rule!,/【/);assert.ok(!evidence.allowedKanji.includes('私'));
+ let payload:any,checkpoint:any;const result=await generateDraftDay({week:'2026-11-16',day:0,catalog,seed:{questions:[bad],audit:[]},repairLimit:5,onCheckpoint:v=>{checkpoint=v;}},async(phase,_prompt,input)=>{payload=input;if(phase==='generate'){const positions=(input as any).repairPositions;return positions.map((p:number)=>p===1?bad:{...drafts[p],stem:'私'});}throw Error('hard rejects must not reach semantic QA');});
+ assert.equal(result.accepted,false);assert.equal(result.questions.length,0);assert.equal(result.repairCounts[1],5);assert.ok(payload.rejectionReasons[1].violatingKanji.includes('私'));assert.match(payload.rejectionReasons[1].rule,/ENTIRE stem/);assert.equal(checkpoint.questions.length,0);
+});
