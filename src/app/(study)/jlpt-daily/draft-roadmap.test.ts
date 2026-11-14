@@ -10,3 +10,14 @@ test('draft stops after two semantic repair rounds and keeps rejected rows for t
 
 test('hard-rejected seed rows never reach Gemini QA and nine valid rows remain byte-for-byte unchanged',async t=>{const {catalog,drafts}=setup(t),old=structuredClone(drafts);old[0].stem='ことし';let calls=0;const verified:number[]=[];const result=await generateDraftDay({week:'2026-11-16',day:0,catalog,seed:{questions:old,audit:fixtureAudit(old)}},async(phase,_prompt,payload)=>{if(phase==='generate'){calls++;assert.deepEqual((payload as {repairPositions:number[]}).repairPositions,[0]);return [drafts[0]];}const rows=(payload as {questions:Draft[]}).questions;verified.push(...rows.map(q=>q.position));return fixtureAudit(rows);});assert.equal(calls,1);assert.deepEqual(verified,[0]);assert.equal(result.accepted,true);for(let i=1;i<10;i++){assert.equal(result.questions[i].stem,old[i].stem);assert.deepEqual(result.questions[i].choices,old[i].choices);assert.equal(result.questions[i].explanation,old[i].explanation);}});
 test('503 propagates once with accepted seed checkpoint intact and no key auto-correction',async t=>{const {catalog,drafts}=setup(t),old=structuredClone(drafts);old[6].correct=3;let calls=0,last:any;await assert.rejects(generateDraftDay({week:'2026-11-16',day:0,catalog,seed:{questions:old,audit:fixtureAudit(old)},onCheckpoint:v=>last=v},async()=>{calls++;throw Error('AI_HTTP_503: busy');}),/AI_HTTP_503/);assert.equal(calls,1);assert.equal(last.questions.length,9);assert.equal(last.rejected[0].position,6);assert.match(last.rejected[0].reason,/WORD_ORDER/);});
+
+test('sparse checkpoint retains two accepted slots and their audit indexes through an API stop and resume',async t=>{
+ const {catalog,drafts}=setup(t),questions=[drafts[3],drafts[4]],audit=fixtureAudit(questions).map((a,i)=>({...a,index:questions[i].position}));let checkpoint:any;
+ await assert.rejects(generateDraftDay({week:'2026-11-16',day:0,catalog,seed:{questions,audit},onCheckpoint:v=>{checkpoint=v;}},async()=>{throw Error('AI_HTTP_503: busy');}),/AI_HTTP_503/);
+ assert.deepEqual(checkpoint.questions.map((q:Draft)=>q.position),[3,4]);assert.deepEqual(checkpoint.audit.map((a:Audit)=>a.index),[3,4]);
+ const result=await generateDraftDay({week:'2026-11-16',day:0,catalog,seed:checkpoint},async(phase,_prompt,payload)=>{
+  if(phase==='generate'){const positions=(payload as {repairPositions:number[]}).repairPositions;assert.deepEqual(positions,[0,1,2,5,6,7,8,9]);return drafts.filter(q=>positions.includes(q.position));}
+  return fixtureAudit((payload as {questions:Draft[]}).questions);
+ });
+ assert.equal(result.accepted,true);assert.equal(result.questions.length,10);for(const q of questions){const retained=result.questions.find(row=>row.position===q.position)!;assert.equal(retained.stem,q.stem);assert.equal(retained.explanation,q.explanation);assert.deepEqual(retained.choices,q.choices);}
+});
