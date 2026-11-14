@@ -1,16 +1,40 @@
 import {draftProvider} from './draft-provider.ts';
 import {auditSchema,VERIFY_PROMPT,type Provider} from './generation.ts';
 import {validateAudit,requireValue,type Question,type Audit} from './model.ts';
+import {orderedSentence} from './hard-qa.ts';
+const optionGradeSchema={type:'object',properties:{choiceIndex:{type:'integer'},completedSentence:{type:'string'},candidateOrder:{type:'array',items:{type:'integer'}},grammatical:{type:'boolean'},formCorrect:{type:'boolean'},natural:{type:'boolean'},meaningFits:{type:'boolean'},acceptable:{type:'boolean'},reason:{type:'string'}},required:['choiceIndex','completedSentence','candidateOrder','grammatical','formCorrect','natural','meaningFits','acceptable','reason'],additionalProperties:false};
+export function choiceSentence(q:Question,index:number,order:number[]=[]){
+ if(q.type==='order')return orderedSentence({...q,order});
+ const gap=/（\s*）|\(\s*\)|＿+|_+/u;
+ if(gap.test(q.stem))return q.stem.replace(gap,q.choices[index]);
+ if(['reading','spelling'].includes(q.type))return q.stem.replace(/【[^【】]+】/u,q.choices[index]);
+ return q.stem+' → '+q.choices[index];
+}
+export function validateOptionGrades(a:any,q:Question){
+ requireValue(Array.isArray(a.optionGrades)&&a.optionGrades.length===4&&new Set(a.optionGrades.map((g:any)=>g.choiceIndex)).size===4,'OPTION_GRADES_INCOMPLETE');
+ const accepted:number[]=[];
+ for(const g of a.optionGrades){
+  requireValue(Number.isInteger(g.choiceIndex)&&g.choiceIndex>=0&&g.choiceIndex<4&&Array.isArray(g.candidateOrder),'OPTION_GRADE_INDEX');
+  if(q.type==='order')requireValue(g.candidateOrder.length===4&&new Set(g.candidateOrder).size===4&&g.candidateOrder.every((i:number)=>Number.isInteger(i)&&i>=0&&i<4)&&g.candidateOrder[q.starSlot]===g.choiceIndex,'OPTION_ORDER_RECONSTRUCTION');
+  else requireValue(g.candidateOrder.length===0,'UNEXPECTED_OPTION_ORDER');
+  requireValue(g.completedSentence===choiceSentence(q,g.choiceIndex,g.candidateOrder)&&typeof g.reason==='string'&&g.reason.trim().length>0,'OPTION_SENTENCE_MISMATCH');
+  requireValue(['grammatical','formCorrect','natural','meaningFits','acceptable'].every(k=>typeof g[k]==='boolean'),'OPTION_GRADE_FLAGS');
+  const pass=g.grammatical&&g.formCorrect&&g.natural&&g.meaningFits;
+  requireValue(g.acceptable===pass,'OPTION_GRADE_CONTRADICTION');if(pass)accepted.push(g.choiceIndex);
+ }
+ requireValue(accepted.length===1,'OPTION_ACCEPTANCE_NOT_UNIQUE');
+ requireValue(accepted[0]===q.correct&&a.independentAnswer===accepted[0]&&a.possibleAnswers?.length===1&&a.possibleAnswers[0]===accepted[0],'OPTION_KEY_NOT_ACCEPTABLE');
+}
 export const independentPrompt=VERIFY_PROMPT+' Solve independently: the saved key and explanation are deliberately hidden. Return independentAnswer (0..3), natural and knowledgeCorrect. Reject invented words, incorrect readings, unnatural sentences and contradictions with context. All three must be independently established; uncertainty is rejection.';
-export const independentSchema={...auditSchema,items:{...auditSchema.items,properties:{...auditSchema.items.properties,independentAnswer:{type:'integer'},natural:{type:'boolean'},knowledgeCorrect:{type:'boolean'}},required:[...auditSchema.items.required,'independentAnswer','natural','knowledgeCorrect']}};
-export function independentPayload(questions:Question[]){return questions.map(({correct,explanation,...q},index)=>({...q,index}));}
+export const independentSchema={...auditSchema,items:{...auditSchema.items,properties:{...auditSchema.items.properties,optionGrades:{type:'array',minItems:4,maxItems:4,items:optionGradeSchema},independentAnswer:{type:'integer'},natural:{type:'boolean'},knowledgeCorrect:{type:'boolean'}},required:[...auditSchema.items.required,'independentAnswer','natural','knowledgeCorrect','optionGrades']}};
+export function independentPayload(questions:Question[]){return questions.map(({correct,explanation,order,...q},index)=>({...q,index,...(q.type!=='order'?{candidateSentences:q.choices.map((_,i)=>choiceSentence({...q,correct,explanation,order},i))}:{})}));}
 export function validateIndependent(rows:unknown,questions:Question[]){
  requireValue(Array.isArray(rows),'INCOMPLETE_SEMANTIC_QA');
- for(const a of rows){requireValue(a&&questions[a.index]&&a.independentAnswer===questions[a.index].correct&&a.natural===true&&a.knowledgeCorrect===true,'INDEPENDENT_SOLVE_REJECTED');}
+ for(const a of rows){requireValue(a&&questions[a.index],'INVALID_QA_INDEX');validateOptionGrades(a,questions[a.index]);requireValue(a.independentAnswer===questions[a.index].correct&&a.natural===true&&a.knowledgeCorrect===true,'INDEPENDENT_SOLVE_REJECTED');}
  return validateAudit(rows,questions);
 }
 export async function reviewIndependently(provider:Provider,questions:Question[],catalog:unknown){
- const blind=await provider('verify',independentPrompt+' The explanation is withheld: explanationCorrect is provisional until the separate explanation audit.',{catalog,questions:independentPayload(questions)},{...independentSchema,minItems:questions.length,maxItems:questions.length});
+ const blind=await provider('verify',independentPrompt+' For EACH of the four choices, insert the EXACT choice without conjugating or fixing it. Grade the resulting whole sentence: grammatical, formCorrect, natural, meaningFits, acceptable (AND of all four), with a specific reason. Return exactly four optionGrades indexed0..3 and the exact supplied candidateSentences. For each order choice consider ALL six permutations of the remaining three fragments. Mark acceptable if ANY is valid; show the best candidate, never cherry-pick a bad permutation. Return a permutation placing that choice at starSlot: return candidateOrder and the complete reconstructed sentence. Other types candidateOrder=[]. A task without a gap/marker uses stem + " → " + choice. Reject if two or more choices work, if none work, or the claimed choice is unnatural/wrong tense/form/collocation. Do not assume distractors are wrong. possibleAnswers must list ALL acceptable choices. The explanation is withheld: explanationCorrect is provisional until the separate explanation audit.',{catalog,questions:independentPayload(questions)},{...independentSchema,minItems:questions.length,maxItems:questions.length});
  requireValue(Array.isArray(blind)&&blind.length===questions.length&&new Set(blind.map(a=>a.index)).size===questions.length&&blind.every(a=>Number.isInteger(a.index)&&a.index>=0&&a.index<questions.length),'INVALID_QA_INDEX');
  const explanations=await provider('verify',VERIFY_PROMPT+' Check the explanation against the actual sentence and saved choice; do not rewrite anything.',{catalog,questions:questions.map((q,index)=>({...q,index}))},{...auditSchema,minItems:questions.length,maxItems:questions.length});
  requireValue(Array.isArray(explanations)&&explanations.length===questions.length&&new Set(explanations.map(a=>a.index)).size===questions.length&&explanations.every(a=>Number.isInteger(a.index)&&a.index>=0&&a.index<questions.length),'INVALID_QA_INDEX');
