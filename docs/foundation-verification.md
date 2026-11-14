@@ -554,3 +554,12 @@ Schema, worker dịch và database G0 không thay đổi.
 - Conditions remain15min actual practice, all sentences in at least one real clip recorded, each duration70percent minimum, distinct local day. Metadata-only recording events; no audio endpoint. Active meter excludes hidden/paused/stalled/seeking/suspended playback, counts recording and moving own-audio replay. Server validates clip/sentence IDs, caps credit by server elapsed time without losing measured time on delayed network delivery, and deduplicates sequences/tabs/day. Inactive tab heartbeats do not steal active-tab credit.
 - Progress and automatic regular entry atomically share existing locked roadmap JSON, session cookie hashed per-login/day. Existing Today/lesson gate accepts automatic regular entries; no automatic makeup or weaker unlock. Manual fallback retained. Tests cover every missing condition, same-day manual/auto/multiple logins, replay, parallel tabs, malformed restore, reload persistence, CSRF/audio rejection, delayed onstop and valid automatic status in Today. Browser seeds synthetic metadata at14m59s only in fixture storage, no production clock bypass.
 - All nine feature checklists reconciled with named source/tests; incomplete composites and unmeasured coverage/performance remain unchecked. No schema, private dictionary/video/DB change, real AI calls or secrets committed. Owner explicitly authorized shared Today/progress integration and docs alongside shadowing for this PR.
+
+### 2026-11-14 — JLPT draft resume and paced fallback
+
+- Checked commit: 60de2356c8821dd918dd3a76eec17fe4e4d56dd7.
+- Full check start: 11/14/2026 21:54:25; end: 11/14/2026 21:56:13. Windows, Node24, D: worktree; no real API in fixture tests.
+- npm run check PASS: typecheck, prototype22/22, unit115/115, production build, test:app16/16.
+- JLPT route browser-check PASS (auth/CSRF/alias, desktop/mobile, ten answers, resume/SRS/idempotency, no external API); scope guard against origin/master for jlpt-daily PASS.
+- Added fixture checks: sparse accepted-slot checkpoint survives API interruption; 503 waits30/60s then switches and records actual fallback; quota stops without fallback; six-call outage cap and incomplete output rejection. Hard/semantic QA gates unchanged.
+- Actual owner-authorized private draft run:2 retained unchanged+3 new=5/70;4 successful gemini-3.5-flash-lite requests;0 fallback/503/429. Stopped at existing two-repair bound with3 unlearned-kanji and2 spelling-marker rejections remaining. No bank publication/app DB writes, questions or private data committed.
