@@ -15,7 +15,10 @@ Tính năng chủ lực: luyện nói theo từng câu của đoạn hội tho�
 ## Chức năng
 
 **Kho clip**
-- [ ] Nguồn: Erin's Challenge (N5–N3), IRODORI (N5–N4, audio), file phim/anime cá nhân (N4–N2), YouTube nhúng (N4–N2)
+- [x] Đã có clip Erin – Bài 1: Giới thiệu, N5; tester iPhone đã duyệt.
+- [x] Đã có clip YouTube nhúng “Làm quen ở trường đại học”; tester iPhone đã duyệt. Metadata/phụ đề giữ trong data/private, không commit.
+- [ ] Còn thiếu clip từ file phim/anime cá nhân để đủ ba nguồn nghiệm thu.
+- [ ] Bổ sung IRODORI và mở rộng kho theo cấp.
 - [ ] Mỗi clip: tiêu đề, nguồn, cấp, chủ đề, tốc độ nói, số câu, % từ đã biết
 - [ ] Lịch sử luyện, bản ghi tốt nhất
 
@@ -60,7 +63,9 @@ Tính năng chủ lực: luyện nói theo từng câu của đoạn hội tho�
 
 - [ ] Ghi âm chạy trên Chrome Android và Safari iOS
 - [ ] Đếm buổi hợp lệ đúng 4 điều kiện
-- [ ] Tạo được 1 clip Erin, 1 clip file cá nhân, 1 clip YouTube
+- [x] Có 1 clip Erin; tester iPhone đã duyệt.
+- [x] Có 1 clip YouTube; tester iPhone đã duyệt.
+- [ ] Còn thiếu 1 clip file cá nhân.
 
 ## Câu hỏi còn mở
 

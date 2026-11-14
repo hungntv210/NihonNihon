@@ -505,3 +505,45 @@ Schema, worker dịch và database G0 không thay đổi.
 
 - Checked 7c9057367c03b7738cae9f39a258e4608d8e69a9 based on master2d0a98e; preserved Safari seek tolerance/entered state/metadata fixes, Node range endpoint and launcher Job Object. All log entries from both sides retained.
 - Full npm run check 2026-11-14T19:09:11.4241994+07:00 → 2026-11-14T19:11:24.8434776+07:00: typecheck PASS, prototype/unit counts 22/86 PASS, build PASS, test:app16/16 PASS; shadowing browser23/23 PASS (Safari simulation, YouTube deferred iframe/referrer and missing optional metadata, native media/microphone). Scope against origin/master shadowing PASS. No API calls/private caption commit. Metadata copied to ignored deploy data/private and SHA verified; deploy remains master until YouTube PR approved.
+## 2026-11-10 — isolated JLPT draft from Frozen roadmap snapshot
+
+- Checked implementation: `3c13bd5e8c4b26908b8c10b87d9759887ad5208b` (`codex/jlpt-first-week`), based on `origin/master` `0b43073c1fc051968af27d0ced44989d7674078a`.
+- Windows, Node24.10.0/npm11.6.1; tests use synthetic fixtures and never call Gemini.
+- Full `npm run check`: 2026-11-10T21:58:10.3727378+07:00 → 2026-11-10T21:59:46.7064411+07:00: typecheck PASS; prototype22/22 and app/unit77/77 PASS (12 JLPT tests); build PASS; test:app16 checks PASS.
+- All `npm run test:browser`: 2026-11-10T22:00:32.5331615+07:00 → 2026-11-10T22:02:23.1007967+07:00, 8/8 routes PASS. Scope `node tools/check-route-scope.mjs origin/master jlpt-daily` PASS (7 route files, append-only log).
+- Private pilot: mode=draft_roadmap, N5, actual Today roadmap weeks1–2, read-only Frozen snapshot. First day10 questions passed the existing structural + independent semantic QA after one repair round; accepted day is saved for resume. Next-day generation stopped on HTTP503 UNAVAILABLE/high demand. No app bank/DB publication; semantic quality and review remain tester-pending. Frozen live DB and snapshot SHA-256 were reverified unchanged. Requests contain only public OpenJLPT fields. Private banks, reviews, API outputs and quota ledger excluded from Git.
+- Production learned-content gate is unchanged. Draft output is not SRS evidence. Remaining60 questions need a later model-available run; no background API worker is left running.
+
+## 2026-11-10 — deterministic JLPT hard gate and selective repairs (PR33)
+
+- Checked implementation `1d8c7ba634c9afdde60dd19d47c0083ac8efcc3b` on codex/jlpt-first-week, Windows/Node24.10.0/npm11.6.1.
+- `npm run check` 2026-11-10T22:19:52.1849365+07:00 → 2026-11-10T22:22:00.3703738+07:00: typecheck PASS, prototype22/22 + app/unit84/84 PASS, build PASS, test:app16/16 PASS. New tests cover marked reading/no leak, spelling/near same-level distractors, plain choices, order/key/explanation/word overlap, paragraph/gap/type shape, selective hard rejection and 503 checkpoint preservation.
+- `npm run test:browser` 2026-11-10T22:23:27.9155513+07:00 → 2026-11-10T22:25:38.5477698+07:00: 8/8 routes PASS. Scope `origin/master jlpt-daily` PASS (12 route files, append-only log).
+- Private10-question repair: hard gate rejected8 original rows;2 kept unchanged. Exactly8 rejected slots regenerated. Four regenerated rows failed hard QA and never reached Gemini QA; other4 pending independent QA when the verify call returned HTTP503 UNAVAILABLE/high demand. Stopped immediately (2 real requests total: generate + failed verify), no repeated503 calls, no publication/app DB writes. Review0002 explicitly labels rejected/pending rows. Old review status marked superseded, original raw outputs preserved. Frozen snapshot unchanged; only public OpenJLPT payloads sent.
+- Model QA is still required after the deterministic gate and tester review is still pending. No auto-correction of raw options/order keys; no gate relaxation or schema changes.
+
+## 2026-11-10 — kana-only spelling stem edge case (PR33)
+
+- Checked implementation `49ad2f77a974e1956098c0f8160cac7a05518995`, Windows/Node24.10.0/npm11.6.1. Spelling stems now reject every non-kana letter (including Latin instruction text), while allowing punctuation/numbers. Added a Latin-stem negative case to the spelling test; no further API calls.
+- `npm run check` 2026-11-10T22:35:19.1404139+07:00 → 2026-11-10T22:37:09.5407599+07:00: typecheck PASS; prototype22/22 + app/unit84/84 PASS; build PASS; test:app16/16 PASS.
+- `npm run test:browser` 2026-11-10T22:38:00.2467378+07:00 → 2026-11-10T22:39:42.6420863+07:00: 8/8 routes PASS. Scope `origin/master jlpt-daily` PASS (12 route files plus append-only audit). Private repair/review0002 remains2 retained +4 hard-rejected +4 awaiting Gemini QA after503; zero publication. Previous head e66aceb had CI runs42845189270/42845266564 SUCCESS; final-head CI must be checked separately after this push.
+
+## 2026-11-10 — exact ★ reconstruction and typed distractors (PR33 tester follow-up)
+
+- Checked implementation `f566e721e3c5d2f60faabb943a840c69c874ddac`, Windows/Node24.10.0/npm11.6.1. No PR32/G0/schema/shared changes.
+- `npm run check` 2026-11-10T23:11:02.3349532+07:00 → 2026-11-10T23:12:25.8246267+07:00: typecheck PASS; prototype22/22 + app/unit88/88 PASS (23 JLPT tests); build PASS; test:app16/16 PASS.
+- `npm run test:browser` 2026-11-10T23:12:25.8339407+07:00 → 2026-11-10T23:13:45.9138794+07:00: 8/8 routes PASS. Scope `origin/master jlpt-daily` PASS (12 route files plus append-only audit), base still0b43073.
+- Order requires one quoted Câu field equal to the complete filled stem (NFC/whitespace only; preserves words/punctuation), a4-element permutation, strict sequence/key and all fragments exactly once. Tests reject substring-only answers, added/missing/repeated words, unused fragments and ★=10 matching a key of1.
+- Reading distractors: same kana script, bounded weighted-mora similarity; dictionary alternatives same level/target lexical category, source-derived misreadings retain source level. Spelling requires near-sound/shape plus same category; synonym must be a same-level catalog word with Japanese word script. The target's first lexical POS is shared by all4 options; vt/vi are flags, not lexical types. Tests cover the supplied ことし/こんねん/きょねん/ことしい example and unrelated/wrong-script/wrong-level/wrong-POS negatives, including noun/adverb mixing.
+- Read-only Frozen roadmap audit: 私 absent in weeks1–2; N5 word atweek10 (わたくし), N4 kanji atweek22. No whitelist exception added; test rejects when absent and allows when present in approved catalog. Prompt uses わたし when absent.
+- Private resume/review0003: retained2 accepted rows unchanged;6 hard rejects;2 pending rows verified but returned4 possible answers and were semantic-rejected. Next generation of only8 rejects returned503 UNAVAILABLE/high demand; stopped after2 actual requests, no additional retries or app publication. Review0003 explicitly labels2 retained/6 hard/2 semantic rejects (not a completed bank). No new accepted question text. Frozen source/previous raw outputs preserved; private data excluded from Git.
+
+## 2026-11-14 — PR33 rebase onto merged home/iOS master
+
+- Checked 2237cdd5bcd9702eed9db8906ec0a6940fc6749f on codex/jlpt-first-week, rebased onto master2d0a98e; all verification entries from both sides retained. No generation/model calls or private data publication.
+- Full npm run check 2026-11-14T19:09:25.9694216+07:00 → 2026-11-14T19:11:24.6952352+07:00: typecheck PASS, prototype/unit counts 22/99 PASS, build PASS, test:app16/16 PASS; JLPT browser-check PASS (auth/CSRF/alias/empty week/10 answers/resume/SRS/idempotency/no API). Old generated .next/types from the removed App media route were cleaned and regenerated; no source rule weakened. PR33 remains unmerged.
+
+## 2026-11-14 — PR33 integration after YouTube merge
+
+- Checked 819448797d5faea52f7b6a8083429b6c71f49580 rebased onto mastered6b8a6 after PR37 squash; all verification entries from both conflict sides retained. Owner-requested shadowing feature status now marks Erin and YouTube accepted on iPhone, with personal-file clip still pending; no unsupported full-feature completion claimed.
+- npm run check 2026-11-14T19:27:11.4093703+07:00 → 2026-11-14T19:28:47.3200135+07:00: typecheck PASS, prototype/unit 22/101 PASS, build PASS, test:app16/16 PASS; JLPT browser PASS. No model call, source data change, private file publication or schema change.
