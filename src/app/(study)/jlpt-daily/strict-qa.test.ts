@@ -10,8 +10,8 @@ test('strict draft rejects explanation numbers, misplaced order syntax, leaks an
 });
 test('independent solve hides key/explanation and rejects wrong solve, unnatural or false knowledge despite positive legacy flags',()=>{
  const rows=independentPayload([q]);assert.ok(!('correct' in rows[0]));assert.ok(!('explanation' in rows[0]));
- const a={optionGrades:q.choices.map((_,choiceIndex)=>({choiceIndex,completedSentence:choiceSentence(q,choiceIndex),candidateOrder:[],grammatical:true,formCorrect:true,natural:choiceIndex===0,meaningFits:choiceIndex===0,acceptable:choiceIndex===0,reason:'fixture evidence'})),index:0,independentAnswer:0,natural:true,knowledgeCorrect:true,possibleAnswers:[0],sameType:true,plausible:true,levelMatch:true,learnedOnly:true,original:true,explanationCorrect:true};
- assert.equal(validateIndependent([a],[q]).length,1);
+ const a:any={optionGrades:q.choices.map((_,choiceIndex)=>({choiceIndex,completedSentence:choiceSentence(q,choiceIndex),candidateOrder:[],grammatical:true,formCorrect:true,natural:choiceIndex===0,meaningFits:choiceIndex===0,acceptable:choiceIndex===0,reason:'fixture evidence'})),index:0,independentAnswer:0,natural:true,knowledgeCorrect:true,possibleAnswers:[0],sameType:true,plausible:true,levelMatch:true,learnedOnly:true,original:true,explanationCorrect:true};
+ a.isolatedOptionGrades=structuredClone(a.optionGrades);assert.equal(validateIndependent([a],[q]).length,1);const competing=structuredClone(a);Object.assign(competing.isolatedOptionGrades[2],{natural:true,meaningFits:true,acceptable:true});assert.throws(()=>validateIndependent([competing],[q]),/OPTION_ACCEPTANCE_NOT_UNIQUE/);
  for(const change of [{independentAnswer:1},{natural:false},{knowledgeCorrect:false}])assert.throws(()=>validateIndependent([{...a,...change}],[q]),/INDEPENDENT_SOLVE_REJECTED|OPTION_KEY_NOT_ACCEPTABLE/);
 });
 test('verifier always uses a different actual model, even after generation fallback',async t=>{

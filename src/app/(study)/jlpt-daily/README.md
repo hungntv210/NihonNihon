@@ -207,3 +207,9 @@ catalog word across the entire draft. Existing lexical, learned-kanji, meaning a
 budget gates still apply. After re-audit, a new generation campaign may use a fresh
 five-repair-per-position budget only with explicit owner authorization; quota ledgers
 are never reset. Existing accepted rows are not rewritten to pass the new gates.
+
+An additional isolated-sentence pass sees each completed candidate without targetId,
+key or competing choices. It must not infer an unstated intended meaning, tense or
+polarity. Its four independent judgments must ALSO admit exactly one stored answer;
+they cannot rescue a rejection from the first blind audit. Both full evidence sets
+remain in audit. Retained checkpoints without this new evidence must be re-audited.
