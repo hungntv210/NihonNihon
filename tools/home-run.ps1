@@ -1,5 +1,7 @@
 param([Parameter(Mandatory)][string]$ProjectPath,[string]$NodePath=(Get-Command node.exe -ErrorAction Stop).Source,[ValidateRange(1,65535)][int]$Port=3000)
 $ErrorActionPreference='Stop'
+if(!('NihonHomeProcessJob' -as [type])){Add-Type -Path (Join-Path $PSScriptRoot 'home-process-job.cs')}
+[NihonHomeProcessJob]::ProtectLauncher()
 Set-Location -LiteralPath $ProjectPath
 $logDirectory=Join-Path $ProjectPath 'data/reports/home'
 New-Item -ItemType Directory -Force $logDirectory|Out-Null
