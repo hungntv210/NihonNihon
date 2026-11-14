@@ -15,11 +15,11 @@ Tài liệu này đọc riêng được: mọi quyết định cần cho nhánh 
 ## Chức năng
 
 **Màn Hôm nay**
-- [ ] Ban ngày: một nút lớn **Ôn nhanh** kèm số thẻ từ + kanji còn lại
-- [ ] Từ giờ học tối: danh sách việc buổi tối, mỗi việc có nút bắt đầu và thời gian ước tính
-- [ ] Thanh shadowing tuần này (ví dụ 1/2), ô thiếu chuyển đỏ từ tối Thứ Sáu
-- [ ] Chuỗi ngày học, số lần "đóng băng" còn lại; đếm ngược kỳ thi; độ phủ cấp hiện tại
-- [ ] Nút Tiếp tục quay lại việc đang dở
+- [x] Ban ngày: một nút lớn **Ôn nhanh** kèm số thẻ từ + kanji còn lại
+- [x] Từ giờ học tối: danh sách việc buổi tối, mỗi việc có nút bắt đầu và thời gian ước tính
+- [x] Thanh shadowing tuần này (ví dụ 1/2), ô thiếu chuyển đỏ từ tối Thứ Sáu
+- [x] Chuỗi ngày học, số lần "đóng băng" còn lại; đếm ngược kỳ thi; độ phủ cấp hiện tại
+- [x] Nút Tiếp tục quay lại việc đang dở
 
 **Buổi tối (45–60 phút)**
 
@@ -31,13 +31,13 @@ Tài liệu này đọc riêng được: mọi quyết định cần cho nhánh 
 | 4 | Dạng đề JLPT 10 câu | 10–15 phút |
 | 5 | Shadowing (Thứ Ba, Thứ Năm, tuỳ chọn Thứ Bảy) thay cho bước 4 | 15–20 phút |
 
-- [ ] Tối chỉ có 20 phút: rút gọn còn bước 1–3, dời phần còn lại sang Chủ nhật
-- [ ] Chủ nhật: không bài mới; ôn SRS, kiểm tra tuần 20 phút, làm bù
+- [x] Tối chỉ có 20 phút: rút gọn còn bước 1–3, dời phần còn lại sang Chủ nhật
+- [x] Chủ nhật: không bài mới; ôn SRS, kiểm tra tuần 20 phút, làm bù
 
 **Lộ trình**
 - [ ] 87 tuần N5 → N2; mỗi tuần có chủ đề, kanji, từ, mẫu ngữ pháp, clip gợi ý
 - [ ] Chia kanji và từ tự động từ OpenJLPT theo cấp, ưu tiên tần suất cao
-- [ ] Xem dạng dòng thời gian; đổi ngày bắt đầu, phút học, kỳ thi → tự tính lại
+- [x] Xem dạng dòng thời gian; đổi ngày bắt đầu, phút học, kỳ thi → tự tính lại
 
 **Thông báo**
 - [ ] Ban ngày: 2–3 nhắc Ôn nhanh vào giờ nghỉ tự chọn, tự tắt khi đã ôn hết; không nhắc bài mới trong giờ làm
@@ -67,9 +67,9 @@ Khối lượng theo cấp (OpenJLPT): N5 84 kanji / 674 từ / 81 mẫu; N4 169
 
 ## Tiêu chí hoàn thành
 
-- [ ] Màn Hôm nay tự đổi giữa ban ngày và buổi tối theo giờ cài đặt
-- [ ] Thiếu buổi shadowing → tuần sau bị khoá bài mới, ôn SRS vẫn mở
-- [ ] Buổi bù mở khoá đúng
+- [x] Màn Hôm nay tự đổi giữa ban ngày và buổi tối theo giờ cài đặt
+- [x] Thiếu buổi shadowing → tuần sau bị khoá bài mới, ôn SRS vẫn mở
+- [x] Buổi bù mở khoá đúng
 - [ ] Thông báo không gửi bài mới trong giờ làm
 
 ## Câu hỏi còn mở
@@ -85,3 +85,12 @@ Khối lượng theo cấp (OpenJLPT): N5 84 kanji / 674 từ / 81 mẫu; N4 169
 - Nhịp ngày đi làm: **ban ngày 5–10 phút Ôn nhanh** (chỉ thẻ từ vựng + kanji, không âm thanh); **buổi tối 45–60 phút** cho bài mới, ngữ pháp, dạng đề JLPT, shadowing.
 - Bắt buộc **2 buổi shadowing/tuần** (Thứ Ba, Thứ Năm; Thứ Bảy khuyến khích). Thiếu buổi → khoá bài mới tuần sau; **ôn tập SRS không bao giờ bị khoá**.
 - Người dùng là người học, **không biên tập nội dung**: tiếng Việt lấy từ nguồn có sẵn, phần thiếu dùng dịch máy (luôn kèm bản tiếng Anh và nút Báo sai).
+
+## Đối chiếu triển khai và bằng chứng — 2026-11-14
+
+Các dấu tick xác nhận phần code đã chạy qua test/fixture; không thay cho nghiệm thu độ phủ dữ liệu hay benchmark thiết bị. Các mục ghép chỉ hoàn thành một phần vẫn để [ ]. Không đổi tiêu chí/luật học.
+
+- Bằng chứng: `src/app/(study)/today-roadmap/model.test.ts`.
+- Bằng chứng: `src/app/(study)/today-roadmap/browser-check.ts`.
+
+Luật2buổi/tuần và làm bù25phút2clip không đổi; buổi tự động kind regular được cùng bộ đọc và luật nhận. Phân87tuần/cấp có model test, nhưng tần suất từ và clip gợi ý theo tuần chưa đầy đủ nên các mục ghép giữ trống. Nhắc hiện chỉ khi trang đang mở, chưa có push nền/giờ nghỉ tuỳ chọn.

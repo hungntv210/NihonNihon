@@ -15,7 +15,7 @@ Ba công cụ có mặt ở mọi màn hình.
 ## Chức năng
 
 - [ ] **Popup tra từ:** chạm từ tiếng Nhật bất kỳ → cách đọc, Hán Việt, nghĩa Việt (nhãn nguồn), cấp, nút Thêm vào ôn (kèm câu gốc)
-- [ ] **Thanh tìm kiếm chung:** kanji, kana, romaji, Hán Việt, tiếng Việt; **gõ không dấu vẫn tìm ra** ("lam viec" → "làm việc")
+- [x] **Thanh tìm kiếm chung:** kanji, kana, romaji, Hán Việt, tiếng Việt; **gõ không dấu vẫn tìm ra** ("lam viec" → "làm việc")
 - [ ] Kết quả gồm từ, kanji, mẫu ngữ pháp, câu trong clip
 - [ ] Từ ngoài JLPT tra qua JMdict + tu-dien-nhat-viet
 - [ ] **Báo sai** trên mọi dòng tiếng Việt: chỉ đánh dấu, không phải sửa
@@ -35,7 +35,7 @@ Ba công cụ có mặt ở mọi màn hình.
 ## Tiêu chí hoàn thành
 
 - [ ] Tra từ trả kết quả < 200 ms
-- [ ] Gõ có dấu, không dấu, romaji đều tìm ra cùng từ
+- [x] Gõ có dấu, không dấu, romaji đều tìm ra cùng từ
 
 ## Câu hỏi còn mở
 
@@ -49,3 +49,13 @@ Ba công cụ có mặt ở mọi màn hình.
 - Nhịp ngày đi làm: **ban ngày 5–10 phút Ôn nhanh** (chỉ thẻ từ vựng + kanji, không âm thanh); **buổi tối 45–60 phút** cho bài mới, ngữ pháp, dạng đề JLPT, shadowing.
 - Bắt buộc **2 buổi shadowing/tuần** (Thứ Ba, Thứ Năm; Thứ Bảy khuyến khích). Thiếu buổi → khoá bài mới tuần sau; **ôn tập SRS không bao giờ bị khoá**.
 - Người dùng là người học, **không biên tập nội dung**: tiếng Việt lấy từ nguồn có sẵn, phần thiếu dùng dịch máy (luôn kèm bản tiếng Anh và nút Báo sai).
+
+## Đối chiếu triển khai và bằng chứng — 2026-11-14
+
+Các dấu tick xác nhận phần code đã chạy qua test/fixture; không thay cho nghiệm thu độ phủ dữ liệu hay benchmark thiết bị. Các mục ghép chỉ hoàn thành một phần vẫn để [ ]. Không đổi tiêu chí/luật học.
+
+- Bằng chứng: `src/app/(study)/common-tools/repository.ts`.
+- Bằng chứng: `src/app/(study)/common-tools/repository.test.ts`.
+- Bằng chứng: `src/app/(study)/common-tools/browser-check.ts`.
+
+Tìm chung đã có từ/kanji/ngữ pháp; popup mọi văn bản, câu trong clip và từ điển ngoài JLPT chưa có. Báo sai hiện có ở vocab/kanji/grammar, chưa phải mọi dòng Việt. Chưa đo mục tiêu200ms trên dữ liệu thật.

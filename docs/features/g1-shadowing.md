@@ -29,8 +29,8 @@ Tính năng chủ lực: luyện nói theo từng câu của đoạn hội tho�
 - [ ] Tự thêm furigana, dịch máy tiếng Việt, gắn tag, gắn vào tuần lộ trình
 
 **Player**
-- [ ] Danh sách câu, câu đang phát được làm nổi
-- [ ] Lặp 1/3/5/∞, A–B; tốc độ 0.5×–1.25× giữ cao độ
+- [x] Danh sách câu, câu đang phát được làm nổi
+- [x] Lặp 1/3/5/∞, A–B; tốc độ 0.5×–1.25× giữ cao độ
 - [ ] Dừng để nói theo (độ dài câu × 1.2)
 - [ ] Phụ đề 4 chế độ: đầy đủ / tiếng Nhật / kana / ẩn; chạm từ để tra
 - [ ] Phím tắt máy tính: Space, ← →, R, L
@@ -40,10 +40,10 @@ Tính năng chủ lực: luyện nói theo từng câu của đoạn hội tho�
 - [ ] Thêm câu vào SRS
 
 **Buổi hợp lệ** (tính vào hạn mức tuần khi đủ cả 4):
-- [ ] Luyện thực tế ≥ 15 phút
-- [ ] Ghi âm đủ mọi câu của ít nhất 1 clip
-- [ ] Mỗi bản ghi ≥ 70% độ dài câu gốc
-- [ ] Khác ngày với buổi hợp lệ trước đó trong tuần
+- [x] Luyện thực tế ≥ 15 phút
+- [x] Ghi âm đủ mọi câu của ít nhất 1 clip
+- [x] Mỗi bản ghi ≥ 70% độ dài câu gốc
+- [x] Khác ngày với buổi hợp lệ trước đó trong tuần
 
 ## Dữ liệu
 
@@ -62,7 +62,7 @@ Tính năng chủ lực: luyện nói theo từng câu của đoạn hội tho�
 ## Tiêu chí hoàn thành
 
 - [ ] Ghi âm chạy trên Chrome Android và Safari iOS
-- [ ] Đếm buổi hợp lệ đúng 4 điều kiện
+- [x] Đếm buổi hợp lệ đúng 4 điều kiện
 - [x] Có 1 clip Erin; tester iPhone đã duyệt.
 - [x] Có 1 clip YouTube; tester iPhone đã duyệt.
 - [ ] Còn thiếu 1 clip file cá nhân.
@@ -79,3 +79,13 @@ Tính năng chủ lực: luyện nói theo từng câu của đoạn hội tho�
 - Nhịp ngày đi làm: **ban ngày 5–10 phút Ôn nhanh** (chỉ thẻ từ vựng + kanji, không âm thanh); **buổi tối 45–60 phút** cho bài mới, ngữ pháp, dạng đề JLPT, shadowing.
 - Bắt buộc **2 buổi shadowing/tuần** (Thứ Ba, Thứ Năm; Thứ Bảy khuyến khích). Thiếu buổi → khoá bài mới tuần sau; **ôn tập SRS không bao giờ bị khoá**.
 - Người dùng là người học, **không biên tập nội dung**: tiếng Việt lấy từ nguồn có sẵn, phần thiếu dùng dịch máy (luôn kèm bản tiếng Anh và nút Báo sai).
+
+## Đối chiếu triển khai và bằng chứng — 2026-11-14
+
+Các dấu tick xác nhận phần code đã chạy qua test/fixture; không thay cho nghiệm thu độ phủ dữ liệu hay benchmark thiết bị. Các mục ghép chỉ hoàn thành một phần vẫn để [ ]. Không đổi tiêu chí/luật học.
+
+- Bằng chứng: `src/app/(study)/shadowing/player.tsx`.
+- Bằng chứng: `src/app/(study)/shadowing/practice.test.ts`.
+- Bằng chứng: `src/app/(study)/shadowing/browser-check.ts`.
+
+Bốn điều kiện giữ nguyên. API progress lưu metadata theo hash phiên đăng nhập/ngày trong roadmap JSON với khóa nguyên tử; không nhận audio. Bộ đếm chỉ nhận tab hiện, phát có tiến triển hoặc ghi âm; server chặn cộng thời gian song song/replay bằng đồng hồ server. Cùng ngày (kể cả đã ghi tay) không thêm buổi tự động. Ghi tay vẫn dự phòng. Chưa có clip file cá nhân, editor sóng âm, phím tắt, tự dừng×1.2, chạm từ hay so sánh sóng âm; các mục ghép tương ứng giữ trống.

@@ -1,7 +1,8 @@
+import type {PracticeState} from '../shadowing/practice.ts';
 export type Settings = { startDate: string; eveningTime: string; studyMinutes: number; examDate: string; timeZone: string; shadowingDays: number[]; newCardsPerDay: number };
 export const defaults: Settings = { startDate: '2026-11-02', eveningTime: '19:30', studyMinutes: 50, examDate: '2028-07-02', timeZone: 'Asia/Ho_Chi_Minh', shadowingDays: [2, 4], newCardsPerDay: 10 };
-export type Shadow = { date: string; kind: 'regular' | 'makeup'; minutes: number; clips: string[]; method: 'manual' };
-export type Progress = { version: 1; shadow: Shadow[]; activity: string[]; activeTask: string | null; shortDays: string[] };
+export type Shadow = { date: string; kind: 'regular' | 'makeup'; minutes: number; clips: string[]; method: 'manual' | 'automatic'; session?: string };
+export type Progress = { version: 1; shadowSessions?:Record<string,PracticeState>; shadow: Shadow[]; activity: string[]; activeTask: string | null; shortDays: string[] };
 export const emptyProgress = (): Progress => ({ version: 1, shadow: [], activity: [], activeTask: null, shortDays: [] });
 export const tasks = {
   review: { title: 'Ôn nốt thẻ + ngữ pháp', href: '/srs', minutes: 8 },

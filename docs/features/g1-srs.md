@@ -26,17 +26,17 @@ Một hàng ôn chung cho mọi loại thẻ, lên lịch bằng FSRS (mức ghi
 | Ngữ pháp | Câu có chỗ trống | (Giai đoạn 2) |
 
 **Phiên ôn**
-- [ ] FSRS (ts-fsrs), thẻ khoá theo ID OpenJLPT
-- [ ] 4 nút Quên / Khó / Được / Dễ hiện sẵn khoảng cách lần ôn tới
-- [ ] Phiên nhỏ 20 thẻ, dừng bất kỳ lúc nào không mất tiến độ; chạy offline
-- [ ] Dự báo số thẻ 7 ngày tới
+- [x] FSRS (ts-fsrs), thẻ khoá theo ID OpenJLPT
+- [x] 4 nút Quên / Khó / Được / Dễ hiện sẵn khoảng cách lần ôn tới
+- [x] Phiên nhỏ 20 thẻ, dừng bất kỳ lúc nào không mất tiến độ; chạy offline
+- [x] Dự báo số thẻ 7 ngày tới
 
 **Ôn nhanh (ban ngày)**
-- [ ] Chỉ thẻ từ vựng + kanji đến hạn; ưu tiên quá hạn lâu nhất và thẻ học tối hôm qua
-- [ ] Chỉ kiểu nhận mặt; **không tự phát audio** (có nút loa)
-- [ ] Vuốt một tay: trái = Quên, phải = Được, lên = Dễ; Khó qua nút
-- [ ] 15 thẻ mỗi phiên, hết phiên báo "còn X thẻ"
-- [ ] Thẻ chưa ôn hết ban ngày dồn sang đầu buổi tối
+- [x] Chỉ thẻ từ vựng + kanji đến hạn; ưu tiên quá hạn lâu nhất và thẻ học tối hôm qua
+- [x] Chỉ kiểu nhận mặt; **không tự phát audio** (có nút loa)
+- [x] Vuốt một tay: trái = Quên, phải = Được, lên = Dễ; Khó qua nút
+- [x] 15 thẻ mỗi phiên, hết phiên báo "còn X thẻ"
+- [x] Thẻ chưa ôn hết ban ngày dồn sang đầu buổi tối
 
 ## Dữ liệu
 
@@ -55,7 +55,7 @@ Một hàng ôn chung cho mọi loại thẻ, lên lịch bằng FSRS (mức ghi
 ## Tiêu chí hoàn thành
 
 - [ ] Ôn 100 thẻ không giật trên điện thoại tầm trung; chuyển thẻ < 100 ms
-- [ ] Ôn offline rồi đồng bộ không mất lượt ôn
+- [x] Ôn offline rồi đồng bộ không mất lượt ôn
 - [ ] Phiên Ôn nhanh 15 thẻ xong trong khoảng 2 phút bằng một tay
 
 ## Câu hỏi còn mở
@@ -70,3 +70,13 @@ Một hàng ôn chung cho mọi loại thẻ, lên lịch bằng FSRS (mức ghi
 - Nhịp ngày đi làm: **ban ngày 5–10 phút Ôn nhanh** (chỉ thẻ từ vựng + kanji, không âm thanh); **buổi tối 45–60 phút** cho bài mới, ngữ pháp, dạng đề JLPT, shadowing.
 - Bắt buộc **2 buổi shadowing/tuần** (Thứ Ba, Thứ Năm; Thứ Bảy khuyến khích). Thiếu buổi → khoá bài mới tuần sau; **ôn tập SRS không bao giờ bị khoá**.
 - Người dùng là người học, **không biên tập nội dung**: tiếng Việt lấy từ nguồn có sẵn, phần thiếu dùng dịch máy (luôn kèm bản tiếng Anh và nút Báo sai).
+
+## Đối chiếu triển khai và bằng chứng — 2026-11-14
+
+Các dấu tick xác nhận phần code đã chạy qua test/fixture; không thay cho nghiệm thu độ phủ dữ liệu hay benchmark thiết bị. Các mục ghép chỉ hoàn thành một phần vẫn để [ ]. Không đổi tiêu chí/luật học.
+
+- Bằng chứng: `src/app/(study)/srs/repository.test.ts`.
+- Bằng chứng: `src/app/(study)/srs/sync.test.ts`.
+- Bằng chứng: `src/app/(study)/srs/browser-check.ts`.
+
+Đã kiểm thuật toán, cỡ phiên, thao tác và đồng bộ bằng fixture/browser; không tick các mốc hiệu năng100ms/thiết bị tầm trung hay thời gian2phút khi chưa đo thật. Giọng TTS phụ thuộc voice Nhật được cài; không tự phát.

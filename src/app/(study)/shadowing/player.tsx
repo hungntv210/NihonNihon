@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 import { segmentAtIn, shouldRepeat } from './demo.ts';
 import {syntheticClip,updatePlayback,SEEK_TOLERANCE,type Clip} from './clip-model.ts';
 import styles from './shadowing.module.css';
+import {usePractice} from './use-practice.ts';
 
 type Take = { url: string; segment: number; seconds: number; extension: string };
 type YoutubePlayer={destroy():void;getCurrentTime():number;pauseVideo():void;playVideo():void;seekTo(seconds:number,allowSeekAhead:boolean):void;setPlaybackRate(rate:number):void};
@@ -14,6 +15,7 @@ export function ShadowingPlayer({clip=syntheticClip}:{clip?:Clip}) {
   const youtubeTimer=useRef<ReturnType<typeof setInterval>|null>(null);
   const replay = useRef<HTMLAudioElement>(null);
   const recorder = useRef<MediaRecorder | null>(null);
+  const recordingBegan=useRef(0),recordingEnded=useRef<number|null>(null);
   const stream = useRef<MediaStream | null>(null);
   const disposed = useRef(false);
   const takeUrls = useRef(new Map<number,string>());
@@ -34,6 +36,7 @@ export function ShadowingPlayer({clip=syntheticClip}:{clip?:Clip}) {
   const [supported, setSupported] = useState(false);
   const [youtubeLoaded,setYoutubeLoaded]=useState(false);
   const pending = useRef(false);
+  const practice=usePractice(clip.id,!clip.isDemo,()=>{const audio=replay.current,recording=recorder.current?.state==='recording';if(audio&&!audio.paused)return {recording,playing:true,seeking:audio.seeking,mediaTime:audio.currentTime};return {recording,playing:clip.youtubeId?playing:Boolean(video.current&&!video.current.paused),seeking:clip.youtubeId?false:Boolean(video.current?.seeking),mediaTime:clip.youtubeId?(youtube.current?.getCurrentTime()??0):(video.current?.currentTime??0)};});
 
   useEffect(() => {
     disposed.current = false;
@@ -114,7 +117,7 @@ export function ShadowingPlayer({clip=syntheticClip}:{clip?:Clip}) {
   function stopRecording() {
     if (timeout.current) clearTimeout(timeout.current);
     const current = recorder.current;
-    if (current && current.state !== 'inactive') current.stop();
+    if (current && current.state !== 'inactive') {recordingEnded.current??=performance.now();current.stop();}
     stream.current?.getTracks().forEach((track) => track.stop());
   }
   async function startRecording() {
@@ -128,7 +131,7 @@ export function ShadowingPlayer({clip=syntheticClip}:{clip?:Clip}) {
       const mimeType = ['audio/webm;codecs=opus', 'audio/mp4', 'audio/webm'].find((type) => MediaRecorder.isTypeSupported(type));
       const current = new MediaRecorder(acquired, mimeType ? { mimeType } : undefined);
       recorder.current = current;
-      const chunks: Blob[] = [], began = performance.now(), sentence = selected;
+      const chunks: Blob[] = [], sentence = selected;
       current.ondataavailable = (event) => { if (event.data.size) chunks.push(event.data); };
       current.onerror = () => { stopRecording(); if (!disposed.current) setStatus('Ghi âm bị gián đoạn. Thử cấp lại quyền micro.'); };
       current.onstop = () => {
@@ -138,11 +141,15 @@ export function ShadowingPlayer({clip=syntheticClip}:{clip?:Clip}) {
         setRecording(false);
         const blob = new Blob(chunks, { type: current.mimeType });
         if (!blob.size) { setStatus('Bản ghi trống. Kiểm tra micro rồi thử lại.'); return; }
+        const durationMs=Math.max(0,(recordingEnded.current??performance.now())-recordingBegan.current);
         const previous=takeUrls.current.get(sentence);if(previous)URL.revokeObjectURL(previous);
         const url=URL.createObjectURL(blob);takeUrls.current.set(sentence,url);
-        setTakes(values=>({...values,[sentence]:{url,segment:sentence,seconds:(performance.now()-began)/1000,extension:current.mimeType.includes('mp4')?'m4a':'webm'}}));
+        setTakes(values=>({...values,[sentence]:{url,segment:sentence,seconds:durationMs/1000,extension:current.mimeType.includes('mp4')?'m4a':'webm'}}));
+        practice.record(clip.segments[sentence].id,durationMs);
         setStatus('Đã ghi âm trên thiết bị. Nghe lại hoặc tải xuống trước khi rời trang.');
       };
+      recordingBegan.current=performance.now();recordingEnded.current=null;
+      current.onstart=()=>{recordingBegan.current=performance.now();};
       current.start(); setRecording(true);
       setStatus('Đang ghi micro · tự dừng sau 60 giây.');
       timeout.current = setTimeout(stopRecording, 60_000);
@@ -159,6 +166,7 @@ export function ShadowingPlayer({clip=syntheticClip}:{clip?:Clip}) {
   const active = segmentAtIn(time,clip.segments),caption=clip.segments[active>=0?active:selected],clipStart=clip.start,clipEnd=clip.end;
   return <div className={styles.root}>
     <aside className={styles.notice}>{clip.isDemo?<><strong>Bản thử tương tác · không phải tư liệu luyện nói</strong><p>Video tổng hợp 9 giây với tiếng bíp. Câu Nhật / Việt tự soạn chỉ để thử phụ đề; không khớp lời nói. Không tính buổi học hoặc tiến độ.</p></>:clip.youtubeId?<><strong>YouTube · {clip.level} · {clip.topic}</strong><p>{clip.attribution} · {clip.license}</p><p>Câu Nhật và mốc từ phụ đề ja manual; tiếng Việt từ phụ đề vi manual. Chỉ nhúng video sau khi bạn bấm, không tải video/audio và không dùng Whisper.</p></>:<><strong>Tư liệu riêng · {clip.level} · {clip.topic}</strong><p>{clip.attribution}</p><p>Phụ đề từ script chính thức; mốc thời gian chờ tester duyệt. Không gửi video hoặc bản ghi lên dịch vụ AI.</p></>}</aside>
+    {!clip.isDemo&&<aside aria-label="Buổi shadowing tự động"><p>{practice.status?.awarded?'Đã ghi nhận buổi shadowing hôm nay.':'Thời gian luyện đã lưu: '+Math.floor((practice.status?.practiceMs??0)/60000)+'/15 phút · Câu ghi đủ độ dài: '+(practice.status?.clips[clip.id]?.recorded??0)+'/'+clip.segments.length}</p><p>Chỉ tính khi tab đang hiện và video tiến hoặc đang ghi âm. Buổi tự ghi cần đủ 4 điều kiện; server lưu thời gian luyện và ID/độ dài bản ghi, không nhận audio. Có thể ghi tay dự phòng ở Hôm nay.</p>{practice.error&&<p role="status">Chưa lưu được tiến độ. Đang thử lại; có thể dùng ghi tay dự phòng.</p>}</aside>}
     <div className={styles.columns}>
       <section className={styles.card} aria-label={clip.isDemo?'Trình phát clip thử':clip.youtubeId?'Trình phát clip YouTube':'Trình phát clip riêng'}>
         <div className={styles.header}><h2>{clip.title}</h2><span>{clip.isDemo?'DEMO':clip.level} · {(clipEnd-clipStart).toFixed(1)} giây</span></div>
@@ -188,7 +196,7 @@ export function ShadowingPlayer({clip=syntheticClip}:{clip?:Clip}) {
       {!recording ? <button className="button primary" disabled={!supported || requesting} onClick={() => void startRecording()}>{requesting ? 'Đang xin quyền micro…' : `Ghi âm câu ${selected + 1}`}</button> : <button className="button primary" onClick={stopRecording}>Dừng ghi âm</button>}
       {take && !recording && <><a className="button" href={take.url} download={`shadowing-${clip.id.replace(/[^a-zA-Z0-9-]/g,'-')}-cau-${take.segment + 1}.${take.extension}`}>Tải bản ghi</a><button className="button" onClick={removeTake}>Xóa bản ghi</button></>}
     </div>{!supported && <p>Micro cần trình duyệt hỗ trợ MediaRecorder và kết nối HTTPS (hoặc localhost).</p>}
-    {take && !recording && <div className={styles.take}><p>Câu {take.segment + 1} · {take.seconds.toFixed(1)} giây · bản ghi thử</p><audio ref={replay} src={take.url} controls onPlay={() => video.current?.pause()} onError={() => setStatus('Trình duyệt không phát được định dạng bản ghi này. Thử tải xuống.')} aria-label="Nghe lại giọng của bạn" /></div>}
+    {take && !recording && <div className={styles.take}><p>Câu {take.segment + 1} · {take.seconds.toFixed(1)} giây · bản ghi thử</p><audio ref={replay} src={take.url} controls onPlay={() => {video.current?.pause();youtube.current?.pauseVideo();}} onError={() => setStatus('Trình duyệt không phát được định dạng bản ghi này. Thử tải xuống.')} aria-label="Nghe lại giọng của bạn" /></div>}
     </section><p role="status" className={styles.status}>{status}</p>
   </div>;
 }

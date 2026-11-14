@@ -14,17 +14,17 @@ Mỗi tối (trừ ngày shadowing) làm 10 câu theo dạng đề JLPT của c�
 
 ## Chức năng
 
-- [ ] Xoay vòng các dạng bài phần 文字・語彙 và 文法:
+- [x] Xoay vòng các dạng bài phần 文字・語彙 và 文法:
 
 | Phần | Dạng bài |
 | --- | --- |
 | 文字・語彙 | Cách đọc kanji, chọn kanji, từ theo ngữ cảnh, đồng nghĩa, cách dùng |
 | 文法 | Chọn ngữ pháp, sắp xếp câu ★, ngữ pháp trong đoạn văn |
 
-- [ ] Sinh câu hỏi từ dữ liệu OpenJLPT đúng cấp (AI hỗ trợ), chỉ từ/kanji/mẫu đã học
-- [ ] Giải thích đáp án ngay sau mỗi câu
-- [ ] Câu sai tự động vào SRS
-- [ ] Ghi kết quả theo dạng bài để biết điểm yếu
+- [x] Sinh câu hỏi từ dữ liệu OpenJLPT đúng cấp (AI hỗ trợ), chỉ từ/kanji/mẫu đã học
+- [x] Giải thích đáp án ngay sau mỗi câu
+- [x] Câu sai tự động vào SRS
+- [x] Ghi kết quả theo dạng bài để biết điểm yếu
 
 ## Dữ liệu
 
@@ -45,7 +45,7 @@ Mỗi tối (trừ ngày shadowing) làm 10 câu theo dạng đề JLPT của c�
 
 ## Câu hỏi còn mở
 
-- Sinh câu hỏi trước theo tuần hay theo ngày.
+- Đã chốt sinh trước theo tuần (7 ngày × 10 câu); bank thật vẫn cần QA/duyệt.
 
 ## Bối cảnh chung (tóm tắt)
 
@@ -55,3 +55,13 @@ Mỗi tối (trừ ngày shadowing) làm 10 câu theo dạng đề JLPT của c�
 - Nhịp ngày đi làm: **ban ngày 5–10 phút Ôn nhanh** (chỉ thẻ từ vựng + kanji, không âm thanh); **buổi tối 45–60 phút** cho bài mới, ngữ pháp, dạng đề JLPT, shadowing.
 - Bắt buộc **2 buổi shadowing/tuần** (Thứ Ba, Thứ Năm; Thứ Bảy khuyến khích). Thiếu buổi → khoá bài mới tuần sau; **ôn tập SRS không bao giờ bị khoá**.
 - Người dùng là người học, **không biên tập nội dung**: tiếng Việt lấy từ nguồn có sẵn, phần thiếu dùng dịch máy (luôn kèm bản tiếng Anh và nút Báo sai).
+
+## Đối chiếu triển khai và bằng chứng — 2026-11-14
+
+Các dấu tick xác nhận phần code đã chạy qua test/fixture; không thay cho nghiệm thu độ phủ dữ liệu hay benchmark thiết bị. Các mục ghép chỉ hoàn thành một phần vẫn để [ ]. Không đổi tiêu chí/luật học.
+
+- Bằng chứng: `src/app/(study)/jlpt-daily/jlpt.test.ts`.
+- Bằng chứng: `src/app/(study)/jlpt-daily/hard-qa.test.ts`.
+- Bằng chứng: `src/app/(study)/jlpt-daily/browser-check.ts`.
+
+Đánh dấu luồng code được kiểm bằng fixture, không tuyên bố bank thật đã phủ mọi tối. Generator sinh theo tuần7×10 và lọc nội dung đã ôn, không gọi AI lúc mở trang. Mục ngân hàng thật/nhắc ôn ngày hôm sau chưa nghiệm thu đủ nên vẫn để trống. Câu hỏi còn mở về chu kỳ sinh đã được chốt theo tuần, không đổi luật30ngày.

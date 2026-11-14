@@ -1,3 +1,4 @@
+import {validPracticeState} from '../shadowing/practice.ts';
 import fs from 'node:fs';
 import path from 'node:path';
 import { randomUUID } from 'node:crypto';
@@ -8,7 +9,8 @@ export function roadmapPath() { return path.resolve(process.env.NIHON_ROADMAP_PA
 export function validateProgress(value: unknown): Progress {
   const p = value as Progress;
   if (!p || p.version !== 1 || !Array.isArray(p.activity) || !Array.isArray(p.shortDays) || !Array.isArray(p.shadow) || p.activity.length > 10000 || p.shadow.length > 10000 || p.shortDays.length > 10000 || !p.activity.every(validDate) || !p.shortDays.every(validDate) || (p.activeTask !== null && !(typeof p.activeTask === 'string' && Object.hasOwn(tasks, p.activeTask)))) throw Error('INVALID_PROGRESS');
-  for (const s of p.shadow) if (!s || !validDate(s.date) || !['regular', 'makeup'].includes(s.kind) || s.method !== 'manual' || !Number.isInteger(s.minutes) || s.minutes < (s.kind === 'makeup' ? 25 : 15) || s.minutes > 180 || !Array.isArray(s.clips) || s.clips.length < (s.kind === 'makeup' ? 2 : 1) || s.clips.length > 2 || !s.clips.every(c => typeof c === 'string' && c.trim().length >= 1 && c.length <= 256) || new Set(s.clips).size !== s.clips.length) throw Error('INVALID_PROGRESS');
+  for (const s of p.shadow) if (!s || !validDate(s.date) || !['regular', 'makeup'].includes(s.kind) || !['manual','automatic'].includes(s.method) || (s.method==='automatic'&&(s.kind!=='regular'||!/^[a-f0-9]{64}$/.test(s.session??''))) || !Number.isInteger(s.minutes) || s.minutes < (s.kind === 'makeup' ? 25 : 15) || s.minutes > 180 || !Array.isArray(s.clips) || s.clips.length < (s.kind === 'makeup' ? 2 : 1) || s.clips.length > 2 || !s.clips.every(c => typeof c === 'string' && c.trim().length >= 1 && c.length <= 256) || new Set(s.clips).size !== s.clips.length) throw Error('INVALID_PROGRESS');
+  if(p.shadowSessions&&(typeof p.shadowSessions!=='object'||Array.isArray(p.shadowSessions)||Object.keys(p.shadowSessions).length>32||!Object.entries(p.shadowSessions).every(([key,value])=>/^[a-f0-9]{64}:\d{4}-\d{2}-\d{2}$/.test(key)&&validPracticeState(value))))throw Error('INVALID_PROGRESS');
   return p;
 }
 export function readProgress(file = roadmapPath()): Progress {
