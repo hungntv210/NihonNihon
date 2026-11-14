@@ -189,3 +189,27 @@ First solve hides stored correct/explanation; answer, naturalness and factual co
 must match. A separate audit checks the original explanation against that solve. Missing,
 malformed or contradictory evidence rejects the row. Existing drafts must be re-audited,
 not grandfathered by old flags; results are private and never published automatically.
+
+### Per-choice acceptance and duplicate prevention
+
+The independent verifier now returns four optionGrades: exact completedSentence,
+choiceIndex, grammatical, formCorrect, natural, meaningFits, acceptable and reason.
+acceptable must equal the conjunction of the four judgments, and exactly one must
+be true, matching both the stored key and independentAnswer. Missing/duplicate
+indexes, silently conjugated options or mismatched completed sentences fail closed.
+Order tasks hide the stored permutation and evaluate possible star choices; all
+remaining-fragment permutations must be considered. Per-choice evidence persists in
+private audit records, including rejected responses. A separate explanation audit remains.
+
+Draft hard QA forbids any option word overlapping stem words, duplicate base stems
+(NFKC, spaces/【】/gap markers removed), and reading/spelling pairs for the same
+catalog word across the entire draft. Existing lexical, learned-kanji, meaning and
+budget gates still apply. After re-audit, a new generation campaign may use a fresh
+five-repair-per-position budget only with explicit owner authorization; quota ledgers
+are never reset. Existing accepted rows are not rewritten to pass the new gates.
+
+An additional isolated-sentence pass sees each completed candidate without targetId,
+key or competing choices. It must not infer an unstated intended meaning, tense or
+polarity. Its four independent judgments must ALSO admit exactly one stored answer;
+they cannot rescue a rejection from the first blind audit. Both full evidence sets
+remain in audit. Retained checkpoints without this new evidence must be re-audited.

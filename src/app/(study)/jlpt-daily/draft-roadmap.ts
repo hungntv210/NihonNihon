@@ -6,16 +6,16 @@ import {sourceCatalog} from './catalog.ts';import {openContentDatabase} from '..
 import {GENERATE_PROMPT,VERIFY_PROMPT,questionSchema,auditSchema,type Provider} from './generation.ts';
 import {validateDrafts,validateDayDrafts,validateAudit,requireValue,questionTypes,hash,type Source,type Question,type Audit,type Draft,validateQuestion} from './model.ts';
 
-import {strictDraftIssues,plainJapanese,spellingNeighbor,readingDistractors,samePartOfSpeech} from './hard-qa.ts';
+import {draftCollisionIssues,strictDraftIssues,plainJapanese,spellingNeighbor,readingDistractors,samePartOfSpeech} from './hard-qa.ts';
 
 export const DRAFT_MODE='draft_roadmap' as const;
 export function roadmapDraftCatalog(db:DatabaseSync,startDate='2026-11-02'){
  const allowed=new Set(allocateRoadmap(roadmapData(db).items,startDate).slice(0,2).flatMap(w=>w.items.map(i=>i.id)));
  return sourceCatalog(db).filter(s=>s.level==='N5'&&allowed.has(s.id));
 }
-const generationPrompt=GENERATE_PROMPT.replace('Produce exactly7 days times10 questions, day0..6/position0..9,','Produce ONLY the supplied slots. Preserve each supplied day/position/type.').replaceAll('learned','roadmap-approved draft')+' Supplied targetId/choices/correct are source-grounded recommendations; reproduce them and write the original stem/explanation. Never conjugate the answer to hide a mismatch: design a gap accepting its dictionary form. Use only bare Japanese answerTitle values, and kana for story context except marked reading target. For grammar gaps choose a sentence accepting the exact supplied surface. Repair only requested positions. For synonym, ask for the word matching a simple kana definition. NO silent corrections will be made to your answer key or options.';
+const generationPrompt=GENERATE_PROMPT.replace('Produce exactly7 days times10 questions, day0..6/position0..9,','Produce ONLY the supplied slots. Preserve each supplied day/position/type.').replaceAll('learned','roadmap-approved draft')+' Supplied targetId/choices/correct are source-grounded recommendations; reproduce them and write the original stem/explanation. Never conjugate the answer to hide a mismatch: design a gap accepting its dictionary form. Use only bare Japanese answerTitle values, and kana for story context except marked reading target. For grammar gaps choose a sentence accepting the exact supplied surface. Repair only requested positions. For synonym, ask for the word matching a simple kana definition. NO silent corrections will be made to your answer key or options. Each stem must admit exactly ONE of the four exact surfaces. Make each distractor clearly wrong in grammar, required verb form, collocation or meaning in THIS sentence, not merely less likely. Check all four filled sentences before returning. Never print any option word already in the stem; never reuse a base sentence or a reading/spelling target.';
 const verificationPrompt=VERIFY_PROMPT.replaceAll('learned','roadmap-approved draft')+' This is mode=draft_roadmap, NOT evidence of SRS learning. The legacy learnedOnly field means strictly within the supplied roadmap-approved catalog. Never claim actual review history.';
-export const draftPromptHashes={generate:hash({prompt:generationPrompt,planning:'strict-independent-lexicon-v4'}),verify:hash(independentPrompt)};
+export const draftPromptHashes={generate:hash({prompt:generationPrompt,planning:'four-filled-options-isolated-v6'}),verify:hash(independentPrompt)};
 const schemaFor=(schema:typeof questionSchema|typeof auditSchema,count:number)=>({...schema,minItems:count,maxItems:count});
 function draftSchema(count:number,_knownKanji:string[],_catalog:Source[]){return schemaFor(questionSchema,count);}
 export function draftSlots(day:number,catalog:Source[]){return Array.from({length:10},(_,position)=>{
@@ -44,14 +44,14 @@ export async function generateDraftDay({week,day,catalog,history=[],seed,lexicon
   const pending:Question[]=[];
   for(const raw of rows as Draft[]){raws.set(raw.position,raw);try{
    requireValue(raw.day===day&&raw.type===slots[raw.position].type,'SLOT_TYPE_MISMATCH');
-   const q=validateQuestion(raw,catalog,week,'N5',[...history,...accepted.values(),...pending]);if(lexicon){const issues=strictDraftIssues(q,lexicon);requireValue(!issues.length,'STRICT_QA_'+issues.join(','));}
+   const q=validateQuestion(raw,catalog,week,'N5',[...history,...accepted.values(),...pending]);if(lexicon){const issues=[...strictDraftIssues(q,lexicon),...draftCollisionIssues(q,[...history,...accepted.values(),...pending],catalog)];requireValue(!issues.length,'STRICT_QA_'+issues.join(','));}
    if(priorAudit){const old=priorAudit.find(a=>a.index===raw.position);if(old){try{(lexicon?validateIndependent:validateAudit)([{...old,index:0}],[q]);accepted.set(q.position,q);audits.set(q.position,old);reasons.delete(q.position);continue;}catch{ /* recheck a previous semantic reject */ }}}
    pending.push(q);reasons.delete(raw.position);
   }catch(e){const reason=e instanceof Error?e.message:'INVALID_QUESTION';reasons.set(raw.position,reason);hardRejected.push({round,position:raw.position,reason});}}
   checkpoint();
   if(pending.length){const checked=lexicon?await reviewIndependently(provider,pending,publicCatalog):await provider('verify',lexicon?independentPrompt:verificationPrompt,{mode:DRAFT_MODE,level:'N5',catalog:publicCatalog,questions:lexicon?independentPayload(pending):pending.map((q,index)=>({...q,index}))},lexicon?{...independentSchema,minItems:pending.length,maxItems:pending.length}:schemaFor(auditSchema,pending.length));
    requireValue(Array.isArray(checked)&&checked.length===pending.length,'INCOMPLETE_SEMANTIC_QA');const seen=new Set<number>();
-   for(const a of checked as Audit[]){requireValue(Number.isInteger(a.index)&&a.index>=0&&a.index<pending.length&&!seen.has(a.index),'INVALID_QA_INDEX');seen.add(a.index);const q=pending[a.index];try{(lexicon?validateIndependent:validateAudit)([{...a,index:0}],[q]);accepted.set(q.position,q);audits.set(q.position,a);reasons.delete(q.position);}catch{reasons.set(q.position,'SEMANTIC_QA_REJECTED');semanticRejected.push({round,position:q.position,reason:'SEMANTIC_QA_REJECTED'});}}
+   for(const a of checked as Audit[]){requireValue(Number.isInteger(a.index)&&a.index>=0&&a.index<pending.length&&!seen.has(a.index),'INVALID_QA_INDEX');seen.add(a.index);const q=pending[a.index];try{(lexicon?validateIndependent:validateAudit)([{...a,index:0}],[q]);accepted.set(q.position,q);audits.set(q.position,a);reasons.delete(q.position);}catch(e){const reason=lexicon?'SEMANTIC_QA_REJECTED:'+(e instanceof Error?e.message:'INVALID_AUDIT'):'SEMANTIC_QA_REJECTED';reasons.set(q.position,reason);semanticRejected.push({round,position:q.position,reason});}}
   }
   checkpoint();
  }
