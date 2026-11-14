@@ -505,3 +505,11 @@ Schema, worker dịch và database G0 không thay đổi.
 
 - Checked 7c9057367c03b7738cae9f39a258e4608d8e69a9 based on master2d0a98e; preserved Safari seek tolerance/entered state/metadata fixes, Node range endpoint and launcher Job Object. All log entries from both sides retained.
 - Full npm run check 2026-11-14T19:09:11.4241994+07:00 → 2026-11-14T19:11:24.8434776+07:00: typecheck PASS, prototype/unit counts 22/86 PASS, build PASS, test:app16/16 PASS; shadowing browser23/23 PASS (Safari simulation, YouTube deferred iframe/referrer and missing optional metadata, native media/microphone). Scope against origin/master shadowing PASS. No API calls/private caption commit. Metadata copied to ignored deploy data/private and SHA verified; deploy remains master until YouTube PR approved.
+## 2026-11-10 — isolated JLPT draft from Frozen roadmap snapshot
+
+- Checked implementation: `3c13bd5e8c4b26908b8c10b87d9759887ad5208b` (`codex/jlpt-first-week`), based on `origin/master` `0b43073c1fc051968af27d0ced44989d7674078a`.
+- Windows, Node24.10.0/npm11.6.1; tests use synthetic fixtures and never call Gemini.
+- Full `npm run check`: 2026-11-10T21:58:10.3727378+07:00 → 2026-11-10T21:59:46.7064411+07:00: typecheck PASS; prototype22/22 and app/unit77/77 PASS (12 JLPT tests); build PASS; test:app16 checks PASS.
+- All `npm run test:browser`: 2026-11-10T22:00:32.5331615+07:00 → 2026-11-10T22:02:23.1007967+07:00, 8/8 routes PASS. Scope `node tools/check-route-scope.mjs origin/master jlpt-daily` PASS (7 route files, append-only log).
+- Private pilot: mode=draft_roadmap, N5, actual Today roadmap weeks1–2, read-only Frozen snapshot. First day10 questions passed the existing structural + independent semantic QA after one repair round; accepted day is saved for resume. Next-day generation stopped on HTTP503 UNAVAILABLE/high demand. No app bank/DB publication; semantic quality and review remain tester-pending. Frozen live DB and snapshot SHA-256 were reverified unchanged. Requests contain only public OpenJLPT fields. Private banks, reviews, API outputs and quota ledger excluded from Git.
+- Production learned-content gate is unchanged. Draft output is not SRS evidence. Remaining60 questions need a later model-available run; no background API worker is left running.
