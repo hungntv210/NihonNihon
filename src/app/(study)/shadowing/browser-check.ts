@@ -148,8 +148,12 @@ try {
   await page.getByRole('button',{name:/Câu 2.*2.5–4.0s/}).click();await page.getByLabel('Tốc độ',{exact:true}).selectOption('1');await page.getByLabel('Lặp đoạn',{exact:true}).selectOption('1');await page.getByRole('button',{name:'Nghe lại đoạn',exact:true}).click();
   await page.waitForFunction(()=>Boolean(document.querySelector('[aria-current="true"][data-active="true"]')));await page.getByText(/Đã phát 1 lượt/).waitFor();assert.ok(await page.locator('video').evaluate(m=>(m as HTMLVideoElement).paused));checks++;
   await page.getByLabel('Tốc độ',{exact:true}).selectOption('0.75');assert.equal(await page.locator('video').evaluate(m=>(m as HTMLVideoElement).playbackRate),0.75);
+  // Delay recorder onstop: the metadata must use stop time, not callback arrival.
+  const recordingDurations:number[]=[];page.on('request',r=>{if(r.method()==='POST'&&r.url().endsWith('/shadowing/progress')){const b=r.postDataJSON();if(b.recording)recordingDurations.push(b.recording.duration_ms);}});
+  await page.evaluate(()=>{const original=MediaRecorder.prototype.stop;MediaRecorder.prototype.stop=function(){const handler=this.onstop;if(handler)this.onstop=event=>{setTimeout(()=>handler.call(this,event),700);};original.call(this);};});
   for(const index of [0,1]){await page.getByRole('button',{name:new RegExp(`Câu ${index+1}.*${index?'2.5–4.0':'1.0–2.5'}s`)}).click();await page.getByRole('button',{name:`Ghi âm câu ${index+1}`,exact:true}).click();await page.getByRole('button',{name:'Dừng ghi âm',exact:true}).waitFor();await page.waitForTimeout(450);await page.getByRole('button',{name:'Dừng ghi âm',exact:true}).click();await page.getByRole('link',{name:'Tải bản ghi',exact:true}).waitFor();}
   await page.getByText(/Đã ghi 2\/6 câu/).waitFor();checks++;
+  await page.waitForTimeout(5200);assert.ok(recordingDurations.length>=2);assert.ok(recordingDurations.every(ms=>ms<1050),'delayed onstop inflated short recordings');const shortStatus=await context.request.get(origin+'/shadowing/progress');assert.equal((await shortStatus.json()).clips[privateFixture.id].recorded,0);checks++;
   // React unmount while recording must release the actual microphone track.
   await page.getByRole('button', { name: 'Ghi âm câu 2' }).click(); await page.getByRole('button', { name: 'Dừng ghi âm' }).waitFor();
   await page.getByRole('link', { name: 'Hôm nay', exact: true }).first().click();

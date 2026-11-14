@@ -36,7 +36,7 @@ export function ShadowingPlayer({clip=syntheticClip}:{clip?:Clip}) {
   const [supported, setSupported] = useState(false);
   const [youtubeLoaded,setYoutubeLoaded]=useState(false);
   const pending = useRef(false);
-  const practice=usePractice(clip.id,!clip.isDemo,()=>({recording:recorder.current?.state==='recording',playing:clip.youtubeId?playing:Boolean(video.current&&!video.current.paused),seeking:clip.youtubeId?false:Boolean(video.current?.seeking),mediaTime:clip.youtubeId?(youtube.current?.getCurrentTime()??0):(video.current?.currentTime??0)}));
+  const practice=usePractice(clip.id,!clip.isDemo,()=>{const audio=replay.current,recording=recorder.current?.state==='recording';if(audio&&!audio.paused)return {recording,playing:true,seeking:audio.seeking,mediaTime:audio.currentTime};return {recording,playing:clip.youtubeId?playing:Boolean(video.current&&!video.current.paused),seeking:clip.youtubeId?false:Boolean(video.current?.seeking),mediaTime:clip.youtubeId?(youtube.current?.getCurrentTime()??0):(video.current?.currentTime??0)};});
 
   useEffect(() => {
     disposed.current = false;
@@ -117,7 +117,7 @@ export function ShadowingPlayer({clip=syntheticClip}:{clip?:Clip}) {
   function stopRecording() {
     if (timeout.current) clearTimeout(timeout.current);
     const current = recorder.current;
-    if (current && current.state !== 'inactive') current.stop();
+    if (current && current.state !== 'inactive') {recordingEnded.current??=performance.now();current.stop();}
     stream.current?.getTracks().forEach((track) => track.stop());
   }
   async function startRecording() {
@@ -196,7 +196,7 @@ export function ShadowingPlayer({clip=syntheticClip}:{clip?:Clip}) {
       {!recording ? <button className="button primary" disabled={!supported || requesting} onClick={() => void startRecording()}>{requesting ? 'Đang xin quyền micro…' : `Ghi âm câu ${selected + 1}`}</button> : <button className="button primary" onClick={stopRecording}>Dừng ghi âm</button>}
       {take && !recording && <><a className="button" href={take.url} download={`shadowing-${clip.id.replace(/[^a-zA-Z0-9-]/g,'-')}-cau-${take.segment + 1}.${take.extension}`}>Tải bản ghi</a><button className="button" onClick={removeTake}>Xóa bản ghi</button></>}
     </div>{!supported && <p>Micro cần trình duyệt hỗ trợ MediaRecorder và kết nối HTTPS (hoặc localhost).</p>}
-    {take && !recording && <div className={styles.take}><p>Câu {take.segment + 1} · {take.seconds.toFixed(1)} giây · bản ghi thử</p><audio ref={replay} src={take.url} controls onPlay={() => video.current?.pause()} onError={() => setStatus('Trình duyệt không phát được định dạng bản ghi này. Thử tải xuống.')} aria-label="Nghe lại giọng của bạn" /></div>}
+    {take && !recording && <div className={styles.take}><p>Câu {take.segment + 1} · {take.seconds.toFixed(1)} giây · bản ghi thử</p><audio ref={replay} src={take.url} controls onPlay={() => {video.current?.pause();youtube.current?.pauseVideo();}} onError={() => setStatus('Trình duyệt không phát được định dạng bản ghi này. Thử tải xuống.')} aria-label="Nghe lại giọng của bạn" /></div>}
     </section><p role="status" className={styles.status}>{status}</p>
   </div>;
 }
