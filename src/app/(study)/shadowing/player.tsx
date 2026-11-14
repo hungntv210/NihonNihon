@@ -1,6 +1,6 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
-import { segmentAtIn } from './demo.ts';
+import { segmentAtIn, shouldRepeat } from './demo.ts';
 import {syntheticClip,updatePlayback,SEEK_TOLERANCE,type Clip} from './clip-model.ts';
 import styles from './shadowing.module.css';
 
@@ -90,7 +90,7 @@ export function ShadowingPlayer({clip=syntheticClip}:{clip?:Clip}) {
   async function play(whole = false) {
     if(clip.youtubeId){
       const player=youtube.current;if(!player){setStatus('Bấm “Mở trình phát YouTube” trước.');return;}
-      replay.current?.pause();session.current={selected,limit:whole?1:limit,count:0,active:!whole,whole};setCount(0);
+      replay.current?.pause();session.current={selected,limit:whole?1:limit,count:0,active:!whole,whole,entered:false};setCount(0);
       player.seekTo(whole?clip.start:clip.segments[selected].start,true);player.setPlaybackRate(speed);player.playVideo();setStatus(whole?'Đang phát toàn clip.':'Đang phát đoạn đã chọn.');return;
     }
     const media = video.current;
