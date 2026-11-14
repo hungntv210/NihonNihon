@@ -542,3 +542,8 @@ Schema, worker dịch và database G0 không thay đổi.
 
 - Checked 2237cdd5bcd9702eed9db8906ec0a6940fc6749f on codex/jlpt-first-week, rebased onto master2d0a98e; all verification entries from both sides retained. No generation/model calls or private data publication.
 - Full npm run check 2026-11-14T19:09:25.9694216+07:00 → 2026-11-14T19:11:24.6952352+07:00: typecheck PASS, prototype/unit counts 22/99 PASS, build PASS, test:app16/16 PASS; JLPT browser-check PASS (auth/CSRF/alias/empty week/10 answers/resume/SRS/idempotency/no API). Old generated .next/types from the removed App media route were cleaned and regenerated; no source rule weakened. PR33 remains unmerged.
+
+## 2026-11-14 — PR33 integration after YouTube merge
+
+- Checked 819448797d5faea52f7b6a8083429b6c71f49580 rebased onto mastered6b8a6 after PR37 squash; all verification entries from both conflict sides retained. Owner-requested shadowing feature status now marks Erin and YouTube accepted on iPhone, with personal-file clip still pending; no unsupported full-feature completion claimed.
+- npm run check 2026-11-14T19:27:11.4093703+07:00 → 2026-11-14T19:28:47.3200135+07:00: typecheck PASS, prototype/unit 22/101 PASS, build PASS, test:app16/16 PASS; JLPT browser PASS. No model call, source data change, private file publication or schema change.
