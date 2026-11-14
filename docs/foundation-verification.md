@@ -563,3 +563,10 @@ Schema, worker dịch và database G0 không thay đổi.
 - JLPT route browser-check PASS (auth/CSRF/alias, desktop/mobile, ten answers, resume/SRS/idempotency, no external API); scope guard against origin/master for jlpt-daily PASS.
 - Added fixture checks: sparse accepted-slot checkpoint survives API interruption; 503 waits30/60s then switches and records actual fallback; quota stops without fallback; six-call outage cap and incomplete output rejection. Hard/semantic QA gates unchanged.
 - Actual owner-authorized private draft run:2 retained unchanged+3 new=5/70;4 successful gemini-3.5-flash-lite requests;0 fallback/503/429. Stopped at existing two-repair bound with3 unlearned-kanji and2 spelling-marker rejections remaining. No bank publication/app DB writes, questions or private data committed.
+
+### 2026-11-14 — partial JLPT days and bounded per-slot repair
+
+- Checked commit c5ce2a90b4c872fd6294d731b31e235f6e445ec6, Windows/Node24/D: worktree. Start 11/14/2026 22:46:36; end 11/14/2026 22:48:08.
+- Full check PASS: typecheck, prototype22/22, unit117/117, build, app16/16. JLPT browser-check and route scope guard PASS.
+- Fixture tests cover seven-day-first scheduling, retained partial checkpoint, repair of only missing positions, explicit forbidden/allowed kanji and exact spelling rule, five-repair bound with hard rejects still excluded. Semantic payload labels each local audit index explicitly.
+- hard-qa.ts, model.ts and retry/quota provider are byte-unchanged from master. No manual question/answer correction or app publication. Private generation started from5 retained questions; aggregate results/rejection reasons stay private and final PR summary will state actual totals.
