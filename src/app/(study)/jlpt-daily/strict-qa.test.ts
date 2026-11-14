@@ -3,7 +3,7 @@ const q={type:'context',stem:'これは（　）です。',choices:['百','千',
 const lexicon=new Set(['これ','は','です','百']);
 test('strict draft rejects explanation numbers, misplaced order syntax, leaks and unattested words',()=>{
  assert.deepEqual(strictDraftIssues(q,lexicon),[]);
- for(const explanation of ['Đáp án 2.','lựa chọn số 3.','正解：4'])assert.ok(strictDraftIssues({...q,explanation},lexicon).includes('EXPLANATION_ANSWER_NUMBER'));
+ for(const explanation of ['Đáp án 2.','Đáp án ２.','đáp án thứ hai','lựa chọn số 3.','正解：4'])assert.ok(strictDraftIssues({...q,explanation},lexicon).includes('EXPLANATION_ANSWER_NUMBER'));
  for(const explanation of ['Thứ tự: 1→2→3→4','★=1'])assert.ok(strictDraftIssues({...q,explanation},lexicon).includes('ORDER_EXPLANATION_ON_OTHER_TYPE'));
  for(const type of ['reading','spelling','context','synonym','usage'] as const)assert.ok(strictDraftIssues({...q,type,stem:'百'},lexicon).includes('CORRECT_CHOICE_IN_STEM'));
  assert.ok(strictDraftIssues({...q,stem:'ひとりがくぶん'},lexicon).some(i=>i.startsWith('UNATTESTED_WORD:')));

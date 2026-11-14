@@ -4,8 +4,10 @@ import {toHiragana,toRomaji} from 'wanakana';
 export const plainJapanese=(s:string)=>s.normalize('NFC').split(/\s*[\/／]\s*/u)[0].replace(/[（(][^）)]*[）)]/gu,'').replace(/[〜～~]/gu,'').trim();
 export function strictDraftIssues(q:Draft,lexicon:ReadonlySet<string>){
  const issues:string[]=[];
- const mentioned=[...q.explanation.matchAll(/(?:đáp án|lựa chọn|phương án|câu trả lời|答え|正解|選択肢)\s*(?:đúng\s*)?(?:là\s*|số\s*|thứ\s*|[:：#]\s*)*(\d+)/giu)];
- if(mentioned.some(m=>Number(m[1])!==q.correct+1))issues.push('EXPLANATION_ANSWER_NUMBER');
+ const explanation=q.explanation.normalize('NFKC');
+ const mentioned=[...explanation.matchAll(/(?:đáp án|lựa chọn|phương án|câu trả lời|答え|正解|選択肢)\s*(?:đúng\s*)?(?:là\s*|số\s*|thứ\s*|[:：#]\s*)*(\d+|nhất|một|hai|ba|bốn)/giu)];
+ const numbers:Record<string,number>={nhất:1,một:1,hai:2,ba:3,bốn:4};
+ if(mentioned.some(m=>(numbers[m[1].toLowerCase()]??Number(m[1]))!==q.correct+1))issues.push('EXPLANATION_ANSWER_NUMBER');
  if(q.type!=='order'&&/Thứ tự|★/iu.test(q.explanation))issues.push('ORDER_EXPLANATION_ON_OTHER_TYPE');
  if(['reading','spelling','context','synonym','usage'].includes(q.type)&&q.stem.normalize('NFKC').includes(q.choices[q.correct].normalize('NFKC')))issues.push('CORRECT_CHOICE_IN_STEM');
  const segmenter=new Intl.Segmenter('ja',{granularity:'word'});
