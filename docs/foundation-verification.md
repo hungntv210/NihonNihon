@@ -607,3 +607,14 @@ Client JS gzip: 372307 -> 375473 bytes (+3166, below 40960). No new app dependen
 Fonts: Vietnamese UI coverage and Japanese scene specimen PASS via tools/subset-fonts.py.
 Scope guard: ui-phase1 PASS. Screenshots and raw proof remain gitignored under data/private/wasoku-phase1 and data/reports.
 Only this append-only audit entry changes after the successful full check.
+
+## Wasoku phase 2 — 11/15/2026 12:16:53
+
+Checked implementation: a4cd14dfba52888b5507f90473d023f464dca863.
+Environment: Windows Node 24.10.0. Full check: 11/15/2026 12:15:43 to 11/15/2026 12:16:53.
+Typecheck PASS; prototype 22/22 PASS; unit 132/132 PASS; production build PASS; test:app 16/16 PASS.
+All 9 browser checks PASS, including 4 server periods x 2 widths x 4 primary screens, computed contrast >=4.5:1, no horizontal overflow, no external requests, local fonts and saved/device reduced motion.
+Today reads actual due counts, manual activity and roadmap state. FSRS, offline outbox, media, recording and shadowing rules are unchanged.
+Client JS gzip: 375469 -> 376000 bytes (+531, below 40960). No dependency added. Original mascot drawings are local static SVG, with no mock learner data.
+Scope guard ui-phase2 PASS; screenshots remain gitignored under data/private/wasoku-phase2. Full browser logs remain under data/reports.
+Only this append-only audit entry changes after the successful full check.

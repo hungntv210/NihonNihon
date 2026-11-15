@@ -10,3 +10,5 @@ JLPT exercises/weekly tests, audio capture and background notification delivery 
 
 Verification: `npm run check`, then `node --import tsx "src/app/(study)/today-roadmap/browser-check.ts"`. The latter uses synthetic credentials and an isolated demo database, checks desktop/mobile layout and persistence, and writes ignored artifacts under `data/reports/today-roadmap/`.
 
+
+Wasoku GĐ2: ba nhóm Làm ngay / Tuần này / Hành trình; các bộ đếm lấy từ getToday và kế hoạch hiện có. Lịch, khóa bài, xác nhận và 87 chi tiết tuần giữ nguyên. Trang gốc dùng cùng dữ liệu thật, không có XP hoặc tên người từ mockup.

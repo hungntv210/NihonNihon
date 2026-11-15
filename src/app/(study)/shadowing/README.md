@@ -133,3 +133,5 @@ that range. Gaps longer than three seconds between sentences are skipped entirel
 shorter gaps and lead/trailing margins stay. Sentence repeats still use the original
 sentence boundaries. Erin's proposed bounds are 55.6–90.5s; its six original timing
 proposals are unchanged and remain pending the owner's listening approval.
+
+Wasoku GĐ2: thư viện clip, khung player, phụ đề và câu được trình bày theo mockup với font local, linh vật chim chích và token thời điểm. Không đổi media, YouTube, ghi âm hoặc điều kiện buổi hợp lệ. Browser appearance kiểm 4 thời điểm x 390/1440 trên Today, trang gốc, SRS và Shadowing; ảnh lưu data/private/wasoku-phase2.

@@ -9,7 +9,7 @@ import {chromium} from 'playwright';
 import {seedDemo} from '../../../../tools/seed-demo.ts';
 import {hashPassword} from '../../../core/session.ts';
 
-const artifacts=path.resolve('data/private/wasoku-phase1');fs.mkdirSync(artifacts,{recursive:true});
+const artifacts=path.resolve('data/private/wasoku-phase2');fs.mkdirSync(artifacts,{recursive:true});
 const base=path.resolve('.tmp');fs.mkdirSync(base,{recursive:true});
 const fixture=fs.mkdtempSync(path.join(process.env.NIHON_BROWSER_FIXTURE_ROOT||base,'appearance-'));
 const chrome=process.env.CHROME_PATH??(process.platform==='win32'?'C:/Program Files/Google/Chrome/Application/chrome.exe':'');
@@ -27,12 +27,13 @@ try{
    let ready=false;for(let n=0;n<150;n++){try{if((await fetch(origin+'/robots.txt')).ok){ready=true;break}}catch{}await new Promise(r=>setTimeout(r,200))}assert.ok(ready,log);
    assert.equal((await context.request.post(origin+'/api/session',{headers:{origin},form:{password},maxRedirects:0})).status(),303);
    const first=await context.request.get(origin+'/today-roadmap'),initialHTML=await first.text();assert.ok(initialHTML.includes(`data-time="${period}"`),`theme must be in server HTML before hydration: ${first.status()} ${initialHTML.match(/<html[^>]*>/)?.[0]}`);
-   for(const width of [390,1440]){
-    await page.setViewportSize({width,height:1050});await page.goto(origin+'/today-roadmap');await page.getByRole('heading',{name:'Ôn nhanh',exact:true}).waitFor();await page.evaluate(()=>document.fonts.ready);await page.waitForFunction(()=>document.documentElement.getAnimations().every(a=>a.playState!=='running'));
+   for(const width of [390,1440])for(const route of ['/today-roadmap','/','/srs?mode=quick','/shadowing']){
+    await page.setViewportSize({width,height:1050});await page.goto(origin+route);await page.locator('main h1').waitFor();await page.evaluate(()=>document.fonts.ready);await page.waitForFunction(()=>document.documentElement.getAnimations().every(a=>a.playState!=='running'));
     assert.equal(await page.locator('html').getAttribute('data-time'),period);
     assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),`${period}/${width} overflow`);
+    await page.evaluate(()=>document.fonts.load('24px VT323','ỘỆỜỮỸĐ'));
     assert.ok(await page.evaluate(()=>document.fonts.check('24px VT323','ỘỆỜỮỸĐ')));
-    assert.ok(await page.locator('.town-art svg').getAttribute('preserveAspectRatio')==='xMidYMid slice');
+    if(route==='/'||route==='/today-roadmap')assert.equal(await page.locator('.town-art svg').getAttribute('preserveAspectRatio'),'xMidYMid slice');
     const violations=await page.evaluate<string[]>(String.raw`(()=>{
      const rgba=(s)=>{const n=s.match(/[\d.]+/g)?.map(Number)||[0,0,0];return [n[0],n[1],n[2],n[3]??1]};
      const luminance=(c)=>c.slice(0,3).map(n=>{n/=255;return n<=.04045?n/12.92:((n+.055)/1.055)**2.4}).reduce((s,n,i)=>s+n*[.2126,.7152,.0722][i],0);
@@ -45,7 +46,7 @@ try{
     })()`);
     assert.deepEqual(violations,[],`contrast ${period}/${width}`);
     if(width===390){await page.getByRole('button',{name:'Tất cả',exact:true}).click();for(const label of ['Từ vựng','Ngữ pháp','Tiến độ','Cài đặt'])assert.ok(await page.getByRole('dialog').getByRole('link',{name:label,exact:true}).isVisible());await page.getByRole('button',{name:'Đóng',exact:true}).click()}
-    await page.screenshot({path:path.join(artifacts,`${period}-${width}.png`),fullPage:false});results.push({period,width,contrast:true,overflow:false});
+    const name=route==='/today-roadmap'?'':route==='/'?'-home':route.startsWith('/srs')?'-srs':'-shadowing';await page.screenshot({path:path.join(artifacts,`${period}-${width}${name}.png`),fullPage:false});results.push({period,width,route,contrast:true,overflow:false});
    }
    await page.goto(origin+'/settings');await page.getByLabel('Chuyển động',{exact:false}).uncheck();await page.getByRole('button',{name:'Lưu cài đặt',exact:true}).click();await page.getByRole('status').filter({hasText:'Đã lưu cài đặt.'}).waitFor();
    await page.goto(origin+'/today-roadmap');assert.equal(await page.locator('html').getAttribute('data-motion'),'off');
