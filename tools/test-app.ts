@@ -245,6 +245,19 @@ try {
   await page.evaluate(() => document.fonts.ready);
   assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth));
   await page.screenshot({ path: path.join(reports, 'foundation-mobile.png'), fullPage: true });
+  const quickLabel=page.locator('.today-quick .eyebrow');assert.equal(await quickLabel.innerText(),'TỪ & KANJI · KHÔNG ÂM THANH');
+  assert.ok(await quickLabel.evaluate(el=>{const r=document.createRange();r.selectNodeContents(el);return r.getClientRects().length===1&&el.scrollWidth<=el.clientWidth;}),'390px quick label stays on one line');
+  const mobileNav=page.getByRole('navigation',{name:'Điều hướng điện thoại'});
+  await mobileNav.getByRole('link',{name:'Lộ trình',exact:true}).click();await page.waitForFunction(()=>document.querySelector('.mobile-navigation a[aria-current="page"]')?.textContent?.includes('Lộ trình'));
+  assert.equal(await mobileNav.getByRole('link',{name:'Hôm nay',exact:true}).getAttribute('aria-current'),null);
+  await mobileNav.getByRole('link',{name:'Hôm nay',exact:true}).click();await page.waitForFunction(()=>document.querySelector('.mobile-navigation a[aria-current="page"]')?.textContent?.includes('Hôm nay'));
+  await page.goto(origin+'/srs?mode=quick');assert.equal(await mobileNav.getByRole('link',{name:'Ôn tập',exact:true}).getAttribute('aria-current'),'page');
+  await page.goto(origin+'/shadowing');await page.evaluate(()=>history.pushState(null,'','/shadowing/clip-fixture'));await page.waitForFunction(()=>location.pathname==='/shadowing/clip-fixture');assert.equal(await mobileNav.getByRole('link',{name:'Shadowing',exact:true}).getAttribute('aria-current'),'page');
+  await page.setViewportSize({width:1440,height:1100});await page.goto(origin+'/today-roadmap#roadmap-title');
+  await page.waitForFunction(()=>document.querySelector('.navigation a[href$="#roadmap-title"]')?.getAttribute('aria-current')==='page');
+  assert.equal(await page.getByRole('navigation',{name:'Học tập',exact:true}).getByRole('link',{name:'Hôm nay',exact:true}).getAttribute('aria-current'),null);
+  await page.setViewportSize({width:390,height:844});await page.goto(origin+'/');
+
   await page.keyboard.press('Tab');
   await page.keyboard.press('Enter');
   assert.equal(await page.evaluate(() => document.activeElement?.id), 'main');
