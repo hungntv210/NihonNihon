@@ -629,3 +629,9 @@ Lesson title heading contracts remain intact for vocabulary and grammar detail p
 Client JS gzip: 375989 -> 378023 bytes (+2034, below 40960). No dependency added. Local font coverage PASS.
 Scope guard ui-phase3 PASS; private screenshots remain in data/private/wasoku-phase3, logs in data/reports. Physical phone performance and production HTTPS depend on the existing host connection.
 Only this append-only audit entry changes after the successful full check.
+
+### 2026-11-15 — compact quick label and hash-aware navigation
+
+- Checked 71500a46a7068b95e5a50f8a9fafa82ec471aa52, Windows/Node24/D: worktree, 11/15/2026 20:16:40–11/15/2026 20:18:51.
+- npm run check PASS: typecheck, all prototype/unit tests, production build, app16/16. Foundation app browser assertions also verify390px single-line/no-overflow label, mobile/desktop roadmap hash active without Today active, Today click reset, SRS query and shadowing child-path parent active. Synthetic child path uses native history in the fixture, no production route added.
+- Scope guard foundation PASS. No schema/data/auth changes.
