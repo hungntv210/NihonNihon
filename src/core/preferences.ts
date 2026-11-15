@@ -1,7 +1,7 @@
 export const DEFAULT_PREFERENCES = {
   startDate: '2026-11-02', eveningTime: '19:30', studyMinutes: 50,
   examDate: '2028-07-02', timeZone: 'Asia/Ho_Chi_Minh', shadowingDays: [2, 4],
-  newCardsPerDay: 10, fsrsRetention: 0.9, furigana: true, ttsVoice: '', theme: 'system',
+  newCardsPerDay: 10, fsrsRetention: 0.9, furigana: true, ttsVoice: '', theme: 'system', motion: true,
 };
 export type StudyPreferences = typeof DEFAULT_PREFERENCES;
 export function newLessonsLocked(p: StudyPreferences, shadow: {date:string;kind:string}[], now=new Date()) {
@@ -21,7 +21,7 @@ export function validatePreferences(value: unknown): StudyPreferences {
     || !Number.isInteger(p.studyMinutes) || p.studyMinutes < 5 || p.studyMinutes > 180
     || !Number.isInteger(p.newCardsPerDay) || p.newCardsPerDay < 0 || p.newCardsPerDay > 100
     || !Number.isFinite(p.fsrsRetention) || p.fsrsRetention < .7 || p.fsrsRetention > .99
-    || typeof p.furigana !== 'boolean' || typeof p.ttsVoice !== 'string' || p.ttsVoice.length > 200
+    || typeof p.furigana !== 'boolean' || typeof p.motion !== 'boolean' || typeof p.ttsVoice !== 'string' || p.ttsVoice.length > 200
     || !['system','light','dark'].includes(p.theme) || !Array.isArray(p.shadowingDays)
     || p.shadowingDays.length < 2 || p.shadowingDays.some(d => !Number.isInteger(d) || d < 0 || d > 6) || new Set(p.shadowingDays).size !== p.shadowingDays.length) throw Error('INVALID_SETTINGS');
   if (typeof p.timeZone !== 'string' || p.timeZone.length > 80) throw Error('INVALID_TIMEZONE');

@@ -73,17 +73,23 @@ def main():
     if not files or not all((args.corpus / name).is_dir() for name in ['vocab', 'kanji', 'grammar']):
         parser.error('--corpus must be the public OpenJLPT data/json directory')
     text = ''.join(s for f in files for s in strings(json.loads(f.read_text(encoding='utf-8-sig'))))
+    # UI and the original scene are public source, never learner imports or private media.
+    ui_text = unicodedata.normalize('NFC', ''.join(f.read_text(encoding='utf-8-sig') for f in sorted((root / 'src').rglob('*')) if f.suffix in ['.ts', '.tsx']))
     latin = set(range(0x20, 0x250)) | set(range(0x300, 0x370)) | set(range(0x1E00, 0x1F00)) | set(range(0x2000, 0x2070))
     japanese = set(map(ord, unicodedata.normalize('NFC', text))) | set(range(0x20, 0x7F)) | set(range(0x3000, 0x3100)) | set(range(0xFF00, 0xFFF0))
+    japanese |= set(map(ord, ui_text))
     css, results = [], []
     for name, family, weight, points in [
+        ('VT323-Regular', 'VT323', '400', latin),
         ('BeVietnamPro-Regular', 'Be Vietnam Pro', '400', latin),
         ('BeVietnamPro-SemiBold', 'Be Vietnam Pro', '600 800', latin),
         ('ShipporiMincho-Regular', 'Shippori Mincho', '400 700', japanese),
     ]:
         selected, result = build(directory, name, points)
         results.append(result)
-        required = 'ỘỆỜỮỸĐ' if family == 'Be Vietnam Pro' else '働返直骨'
+        required = '商店街食堂ごはんみどり駅神社学校まちあさひるゆうがたよる今日も少しずつ' if family == 'Shippori Mincho' else 'ỘỆỜỮỸĐ'
+        if family == 'VT323':
+            required += ''.join(ch for ch in ui_text if 0xC0 <= ord(ch) <= 0x024F or 0x1E00 <= ord(ch) <= 0x1EFF)
         assert set(map(ord, required)) <= selected, 'Missing required Vietnamese/Japanese specimen'
         # The full original handles future imports and characters outside the public corpus.
         css.append(f"@font-face{{font-family:'{family}';src:url('/fonts/{name}.ttf') format('truetype');font-weight:{weight};font-style:normal;font-display:swap;}}")

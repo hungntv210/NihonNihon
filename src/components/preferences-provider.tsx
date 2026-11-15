@@ -3,7 +3,7 @@ import { useEffect } from 'react';
 import type { StudyPreferences } from '../core/preferences.ts';
 export function PreferencesProvider({initial}:{initial:StudyPreferences}) {
  useEffect(()=>{
-  const apply=(p:StudyPreferences)=>{ const dark=p.theme==='dark'||p.theme==='system'&&matchMedia('(prefers-color-scheme: dark)').matches; document.documentElement.dataset.theme=dark?'dark':'light';document.documentElement.dataset.furigana=String(p.furigana);localStorage.setItem('nihon-preferences',JSON.stringify(p)); };
+  const apply=(p:StudyPreferences)=>{ document.documentElement.dataset.theme=p.theme;document.documentElement.dataset.motion=p.motion?'on':'off';document.documentElement.dataset.furigana=String(p.furigana);localStorage.setItem('nihon-preferences',JSON.stringify(p));window.dispatchEvent(new Event('nihon-motion')); };
   apply(initial);const changed=(e:Event)=>apply((e as CustomEvent<StudyPreferences>).detail);window.addEventListener('nihon-preferences',changed);
   // Existing route TTS calls inherit the preferred voice when they do not set one.
   const synth=window.speechSynthesis, speak=synth?.speak.bind(synth);

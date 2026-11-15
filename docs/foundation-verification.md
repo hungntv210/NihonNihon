@@ -595,3 +595,15 @@ Schema, worker dịch và database G0 không thay đổi.
 - Owner clarified dictionary CONTEXT evidence is N5-only. Target catalog/kanji/level remain roadmap-only; N4 context, dictionary-only targets and outside-roadmap kanji are tested rejects. Added marked meaning queries, Latin/kana-mix and all-type target uniqueness guards.
 - Non-order wire prompts/schema omit order/starSlot and ordering explanation cues. Only neutral internal metadata defaults are added; Japanese/explanation/key are not rewritten. Each typed group is independently audited/checkpointed before another call may change actual generator model. Resume CLI isolated-payload provenance regression tested.
 - Actual approved re-audit12:7 retained; overlapping flags2 unmarked query,1 Latin/kana mix,1 no N5 word evidence,1 repeated target,1 multiple acceptable choices.8 proven word-split false-positive positions received recorded counters, already-spent attempts carried; all other counters and Pacific quota unchanged. Generation plus checkpoint resume ended11/70, sample11/30 private, all final gates rechecked; no app publication. Latest remaining-candidate hard diagnostics are recomputed separately from historical reasons.
+
+## Wasoku phase 1 — 2026-11-15T11:56:27.7464617+07:00
+
+Checked implementation: b7bbe6718989ff4a2a988d89e68fbe0ac9efa5d4.
+Environment: Windows Node 24.10.0. Full check: 2026-11-15T11:55:25.0062394+07:00 to 2026-11-15T11:56:27.7464617+07:00.
+Typecheck PASS; prototype 22/22 PASS; unit 132/132 PASS; production build PASS; test:app 16/16 PASS.
+All 9 browser checks PASS, including 4 server periods at 390/1440, real computed contrast >=4.5:1, no horizontal overflow, no external requests, all-menu, and saved/device reduced motion.
+The browser suite predates only a test assertion cleanup; its UI and browser inputs are unchanged.
+Client JS gzip: 372307 -> 375473 bytes (+3166, below 40960). No new app dependency.
+Fonts: Vietnamese UI coverage and Japanese scene specimen PASS via tools/subset-fonts.py.
+Scope guard: ui-phase1 PASS. Screenshots and raw proof remain gitignored under data/private/wasoku-phase1 and data/reports.
+Only this append-only audit entry changes after the successful full check.

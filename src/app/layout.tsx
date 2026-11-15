@@ -1,5 +1,9 @@
 import type { Metadata, Viewport } from 'next';
 import './globals.css';
+import { connection } from 'next/server';
+import { vietnamClock } from '../core/day-period.ts';
+import { TimeProvider } from '../components/time-provider.tsx';
+import { getAppearance } from '../server/preferences.ts';
 export const metadata: Metadata = {
   title: { default: 'Nihon Nihon', template: '%s · Nihon Nihon' },
   description: 'Không gian học tiếng Nhật riêng tư.',
@@ -11,10 +15,13 @@ export const viewport: Viewport = {
   viewportFit: 'cover',
   themeColor: '#F7F6F1',
 };
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  await connection();
+  const { period } = vietnamClock();
+  const appearance = getAppearance();
   return (
-    <html lang="vi">
-      <body>{children}</body>
+    <html lang="vi" data-time={period} data-theme={appearance.theme} data-motion={appearance.motion ? 'on' : 'off'}>
+      <body><TimeProvider period={period} />{children}</body>
     </html>
   );
 }
