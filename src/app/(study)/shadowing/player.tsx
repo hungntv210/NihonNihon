@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 import { segmentAtIn, shouldRepeat } from './demo.ts';
 import {syntheticClip,updatePlayback,SEEK_TOLERANCE,type Clip} from './clip-model.ts';
 import styles from './shadowing.module.css';
+import {VoiceMeter} from './voice-meter.tsx';
 import {usePractice} from './use-practice.ts';
 
 type Take = { url: string; segment: number; seconds: number; extension: string };
@@ -16,6 +17,7 @@ export function ShadowingPlayer({clip=syntheticClip}:{clip?:Clip}) {
   const replay = useRef<HTMLAudioElement>(null);
   const recorder = useRef<MediaRecorder | null>(null);
   const recordingBegan=useRef(0),recordingEnded=useRef<number|null>(null);
+  const meter=useRef<AudioContext|null>(null),analyser=useRef<AnalyserNode|null>(null);
   const stream = useRef<MediaStream | null>(null);
   const disposed = useRef(false);
   const takeUrls = useRef(new Map<number,string>());
@@ -46,7 +48,7 @@ export function ShadowingPlayer({clip=syntheticClip}:{clip?:Clip}) {
       if (timeout.current) clearTimeout(timeout.current);
       const current = recorder.current;
       if (current && current.state !== 'inactive') current.stop();
-      stream.current?.getTracks().forEach((track) => track.stop());
+      stream.current?.getTracks().forEach((track) => track.stop());void meter.current?.close().catch(()=>{});meter.current=null;analyser.current=null;
       for(const url of takeUrls.current.values())URL.revokeObjectURL(url);
     };
   }, []);
@@ -125,9 +127,10 @@ export function ShadowingPlayer({clip=syntheticClip}:{clip?:Clip}) {
     pending.current = true; setRequesting(true); stopPlayback();
     let acquired: MediaStream | null = null;
     try {
+      meter.current=new AudioContext();void meter.current.resume().catch(()=>{});
       acquired = await navigator.mediaDevices.getUserMedia({ audio: true });
       if (disposed.current) { acquired.getTracks().forEach((track) => track.stop()); return; }
-      stream.current = acquired;
+      stream.current = acquired;analyser.current=meter.current.createAnalyser();analyser.current.fftSize=256;meter.current.createMediaStreamSource(acquired).connect(analyser.current);
       const mimeType = ['audio/webm;codecs=opus', 'audio/mp4', 'audio/webm'].find((type) => MediaRecorder.isTypeSupported(type));
       const current = new MediaRecorder(acquired, mimeType ? { mimeType } : undefined);
       recorder.current = current;
@@ -181,7 +184,7 @@ export function ShadowingPlayer({clip=syntheticClip}:{clip?:Clip}) {
         <p className={styles.progress}>{Math.max(0,time-clipStart).toFixed(1)} / {(clipEnd-clipStart).toFixed(1)} giây · Câu {selected + 1} · Đã phát {count} lượt</p>
         <div className={styles.actions}>
           <button className="button primary" onClick={() => void play()} disabled={recording || requesting || Boolean(clip.youtubeId&&!youtubeLoaded)}>Nghe lại đoạn</button>
-          <button className="button" onClick={() => void play(true)} disabled={recording || requesting || Boolean(clip.youtubeId&&!youtubeLoaded)}>Phát cả clip</button>
+          <button className="button play-toggle" aria-pressed={playing} onClick={() => playing?stopPlayback():void play(true)} disabled={recording || requesting || Boolean(clip.youtubeId&&!youtubeLoaded)}><svg viewBox="0 0 20 20" aria-hidden="true"><path className="play-icon" d="M5 3 17 10 5 17Z"/><path className="pause-icon" d="M4 3h4v14H4zM12 3h4v14h-4z"/></svg>{playing?'Tạm dừng clip':'Phát cả clip'}</button>
           <button className="button" onClick={stopPlayback} disabled={!playing}>Tạm dừng</button>
         </div>
         <div className={styles.options}>
@@ -195,7 +198,7 @@ export function ShadowingPlayer({clip=syntheticClip}:{clip?:Clip}) {
     <section className={styles.card} aria-labelledby="record-title"><div className={styles.header}><h2 id="record-title">Giọng của bạn</h2><span>CHỈ TRÊN THIẾT BỊ</span></div><p>Bản ghi mới thay bản cũ của cùng câu. Không tải lên máy chủ; tải xuống để giữ lại. Đổi clip hoặc rời trang sẽ mất bản ghi. Đã ghi {Object.keys(takes).length}/{clip.segments.length} câu.</p><div className={styles.actions}>
       {!recording ? <button className="button primary" disabled={!supported || requesting} onClick={() => void startRecording()}>{requesting ? 'Đang xin quyền micro…' : `Ghi âm câu ${selected + 1}`}</button> : <button className="button primary" onClick={stopRecording}>Dừng ghi âm</button>}
       {take && !recording && <><a className="button" href={take.url} download={`shadowing-${clip.id.replace(/[^a-zA-Z0-9-]/g,'-')}-cau-${take.segment + 1}.${take.extension}`}>Tải bản ghi</a><button className="button" onClick={removeTake}>Xóa bản ghi</button></>}
-    </div>{!supported && <p>Micro cần trình duyệt hỗ trợ MediaRecorder và kết nối HTTPS (hoặc localhost).</p>}
+    </div>{recording&&<VoiceMeter analyser={analyser.current}/>}<span className="record-state" aria-hidden="true">{recording?'●':''}</span>{!supported && <p>Micro cần trình duyệt hỗ trợ MediaRecorder và kết nối HTTPS (hoặc localhost).</p>}
     {take && !recording && <div className={styles.take}><p>Câu {take.segment + 1} · {take.seconds.toFixed(1)} giây · bản ghi thử</p><audio ref={replay} src={take.url} controls onPlay={() => {video.current?.pause();youtube.current?.pauseVideo();}} onError={() => setStatus('Trình duyệt không phát được định dạng bản ghi này. Thử tải xuống.')} aria-label="Nghe lại giọng của bạn" /></div>}
     </section><p role="status" className={styles.status}>{status}</p>
   </div>;

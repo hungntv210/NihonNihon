@@ -1,4 +1,5 @@
 'use client';
+import {toast} from './motion/toasts.tsx';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import type { CardType } from '../core/review.ts';
@@ -24,7 +25,7 @@ export function AddToReview({
         return;
       }
       if (!response.ok) throw new Error();
-      setState('saved');
+      setState('saved');toast('Thẻ đã ở trong hàng ôn.');
       router.refresh();
     } catch {
       setState('error');

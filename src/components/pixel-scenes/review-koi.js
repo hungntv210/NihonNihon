@@ -1,6 +1,6 @@
 import {SceneEngine} from './engine.js';
 export default {crop:0.5,id:'review-koi',title:'Ao koi · Ôn tập',description:'Dưới bóng lá, từng con cá chậm rãi tìm đường qua mặt nước.',params:{dueCards:0},swatches:{29:'#b95d4c',30:'#d4a85e',31:'#263a40'},create(api){
- const {state,draw:d}=api,{rect:r,line:l,ellipse:e,polygon:p}=d;let leaving=null;
+ const {state,draw:d}=api,{rect:r,line:l,ellipse:e,polygon:p}=d;let leaving=null,departing=0,previous=0;
  // Vertical koi silhouettes: head, tapered body, paired pectoral fins and a separate moving tail.
  const koi=Array.from({length:3},(_,type)=>Array.from({length:6},(_,frame)=>{
   const a=Array.from({length:32},()=>Array(22).fill(-1)),put=(x,y,v)=>{if(a[y]&&x>=0&&x<22)a[y][x]=v};
@@ -46,23 +46,25 @@ export default {crop:0.5,id:'review-koi',title:'Ao koi · Ôn tập',description
   // Iris and reeds are rooted on the bank; no diagonal deck lines.
   for(let i=0;i<26;i++){const x=11+(i*7)%45,y=147+(i*13)%51,h=8+i%11;l(c,x,y,x+(i%3-1)*5,y-h,18);l(c,x+1,y,x+3,y-h+4,9);if(!winter&&i%3===0){p(c,[[x+2,y-h],[x-1,y-h-3],[x+2,y-h-5],[x+4,y-h-2],[x+7,y-h-3],[x+5,y-h+1]],5);r(c,x+2,y-h-1,1,2,14)}if(winter)l(c,x-2,y-h-1,x+2,y-h-1,39)}
  }
- function paintFish(c,frame,x,y,angle,type,submerged){
+ function paintFish(c,frame,x,y,angle,type,submerged,scale=1){
   const a=koi[type][frame%6],cos=Math.cos(angle),sin=Math.sin(angle);
   // Inverse nearest-pixel sampling keeps the body solid when its heading changes.
-  for(let yy=-19;yy<=19;yy++)for(let xx=-19;xx<=19;xx++){const sy=Math.round(-xx*sin+yy*cos)+15,sx=Math.round(xx*cos+yy*sin)+10;let v=a[sy]?.[sx];if(v===undefined||v<0)continue;if(submerged)v=v===39||v===13?16:v===29||v===30?17:7;r(c,x+xx,y+yy,1,1,v)}
+  for(let yy=-Math.ceil(19*scale);yy<=Math.ceil(19*scale);yy++)for(let xx=-Math.ceil(19*scale);xx<=Math.ceil(19*scale);xx++){const sy=Math.round((-xx*sin+yy*cos)/scale)+15,sx=Math.round((xx*cos+yy*sin)/scale)+10;let v=a[sy]?.[sx];if(v===undefined||v<0)continue;if(submerged)v=v===39||v===13?16:v===29||v===30?17:7;r(c,x+xx,y+yy,1,1,v)}
  }
- return{depths:[0,0,0],dynamicDepths:[0,0,0,0],layers:[bed,shadows,bankPlants],puddles:[],normalize(v){v.dueCards=Math.min(12,Math.floor(v.dueCards));leaving=null},frame(t,still){
-  const total=state.params.dueCards,elapsed=leaving===null?0:Math.max(0,t-leaving),gone=leaving!==null&&elapsed>=3;
+ return{depths:[0,0,0],dynamicDepths:[0,0,0,0],layers:[bed,shadows,bankPlants],puddles:[],normalize(v){v.dueCards=Math.min(10,Math.floor(v.dueCards));if(v.dueCards===0&&previous>0){departing=previous;leaving=state.seconds;}else if(v.dueCards>0){leaving=null;departing=0;}previous=v.dueCards;},frame(t,still){
+  if(api.reduced?.()&&leaving!==null)leaving=state.seconds-3;
+  const total=leaving===null?state.params.dueCards:departing,elapsed=leaving===null?0:Math.max(0,t-leaving),gone=leaving!==null&&elapsed>=3;
+  for(let i=0;i<2;i++){const a=i*Math.PI+t*.025,x=192+Math.cos(a)*56,y=126+Math.sin(a)*62,angle=Math.atan2(Math.cos(a)*62,-Math.sin(a)*56)+Math.PI/2;api.actor(0,{x:x-30,y:y-30,w:61,h:61},(c,xx,yy)=>paintFish(c,Math.floor(t*2+i)%6,xx+30,yy+30,angle,i,false,1.25));api.creature('resident-koi',{x:x-24,y:y-24,w:48,h:48});}
   if(!gone)for(let i=0;i<total;i++){
    const a=i*2.399+(still?.2:t*.05),rx=35+(i%3)*16,ry=43+(i%4)*8;
    let x=192+Math.cos(a)*rx,y=124+Math.sin(a)*ry,angle=Math.atan2(Math.cos(a)*ry,-Math.sin(a)*rx)+Math.PI/2;
    if(leaving!==null){x+=(192-x)*Math.min(1,elapsed);y+=elapsed*65;angle=Math.PI}
    const dive=leaving===null&&(still?i%5===4:(t+i*3)%29>23);
-   api.actor(0,{x:x-24,y:y-24,w:49,h:49},(c,xx,yy)=>paintFish(c,Math.floor(t*5+i)%6,xx+24,yy+24,Math.round(angle/(Math.PI/16))*Math.PI/16,i%3,dive));if(y<216)api.creature('koi',{x:x-18,y:y-18,w:36,h:36});
+   api.actor(0,{x:x-24,y:y-24,w:49,h:49},(c,xx,yy)=>paintFish(c,Math.floor(t*5+i)%6,xx+24,yy+24,Math.round(angle/(Math.PI/16))*Math.PI/16,i%3,dive,.65));if(y<216)api.creature('koi',{x:x-18,y:y-18,w:36,h:36});
    if(!dive&&(still||Math.floor(t+i)%11===0))api.actor(1,{x:x-18,y:y-7,w:37,h:15},(c,xx,yy)=>{for(let n=0;n<30;n++){const a=n/30*6.28;if(n%5<3)r(c,xx+18+Math.round(Math.cos(a)*17),yy+7+Math.round(Math.sin(a)*6),1,1,7)}});
   }
   for(const [i,x,y]of [[0,130,20],[1,178,14],[2,232,21]]){api.actor(2,{x,y,w:11,h:9},(c,xx,yy)=>{api.sprite(c,SceneEngine.sprites.bird,still?i:Math.floor(t*3+i)%4,xx,yy);r(c,xx+3,yy+4,2,1,14);r(c,xx+6,yy+2,2,1,36)});api.creature('sparrow',{x,y,w:9,h:7})}
   if(state.season!=='winter'&&(still||api.scheduled(t,'dragonfly',12,18,.7))){const x=225+(still?0:Math.sin(t)*9),y=82;api.actor(2,{x,y,w:11,h:7},(c,xx,yy)=>api.sprite(c,SceneEngine.sprites.dragonfly,Math.floor(t*7),xx,yy));api.creature('dragonfly',{x,y,w:9,h:5})}
   if(state.weather==='rain')for(let i=0;i<9;i++){const x=120+(i*31)%133,y=60+(i*47)%130,phase=still?i%3:(t*2+i)%3;api.actor(1,{x:x-5,y:y-3,w:11,h:7},(c,xx,yy)=>{const rad=1+Math.floor(phase);for(let n=0;n<16;n++){const a=n/16*6.28;r(c,xx+5+Math.round(Math.cos(a)*rad),yy+3+Math.round(Math.sin(a)*rad*.5),1,1,16)}})}
- },complete(instant){if(leaving!==null)return;leaving=state.seconds;if(instant)leaving=state.seconds-3},stats(){return{fishCount:leaving!==null&&state.seconds-leaving>=3?0:state.params.dueCards,completed:leaving!==null}}};
+ },complete(instant){if(leaving!==null)return;departing=state.params.dueCards;leaving=state.seconds;if(instant)leaving=state.seconds-3},stats(){return{fishCount:2+(leaving!==null?(state.seconds-leaving>=3?0:departing):state.params.dueCards),residentCount:2,dueFishCount:leaving!==null?(state.seconds-leaving>=3?0:departing):state.params.dueCards,completed:leaving!==null}}};
 }};

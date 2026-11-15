@@ -1,14 +1,19 @@
 'use client';
-import {useEffect,useRef,type ReactNode} from 'react';
-import {usePathname} from 'next/navigation';
+import {useEffect,useLayoutEffect,useRef,useState,type ReactNode} from 'react';import {usePathname,useRouter} from 'next/navigation';import {animateUI,keyboardMotion,reducedMotion} from './motion/animate.ts';import {Toasts} from './motion/toasts.tsx';
 export function RoutePresentation({children}:{children:ReactNode}){
- const pathname=usePathname(),root=useRef<HTMLDivElement>(null);
- useEffect(()=>{
-  const cards=root.current?.querySelectorAll<HTMLElement>('.content-card,.stat-card,.today-block');
-  if(!cards||!('IntersectionObserver'in window))return;
-  const observer=new IntersectionObserver(entries=>{for(const entry of entries)if(entry.isIntersecting){entry.target.classList.add('card-visible');observer.unobserve(entry.target)}},{threshold:.05});
-  for(const card of cards){card.classList.add('card-reveal');observer.observe(card)}
-  return()=>{observer.disconnect();for(const card of cards)card.classList.remove('card-reveal','card-visible')};
+ const pathname=usePathname()??'/',router=useRouter(),root=useRef<HTMLDivElement>(null),introRef=useRef<HTMLButtonElement>(null),pending=useRef<{resolve:()=>void;skip:()=>void}|null>(null),[intro,setIntro]=useState<{title:string;src:string}|null>(null);
+ useEffect(()=>{const key=()=>{document.documentElement.dataset.input='keyboard';introRef.current?.click();pending.current?.skip();pending.current?.resolve();document.getAnimations().forEach(a=>a.cancel());},pointer=()=>{document.documentElement.dataset.input='pointer';};document.addEventListener('keydown',key,true);document.addEventListener('pointerdown',pointer,true);
+ const click=(e:MouseEvent)=>{const link=(e.target as Element).closest?.('a[href]') as HTMLAnchorElement|null;if(!link||e.defaultPrevented||e.button!==0||e.metaKey||e.ctrlKey||e.altKey||e.shiftKey||link.target||link.download||e.detail===0||!document.startViewTransition)return;const url=new URL(link.href);if(url.origin!==location.origin||url.pathname===location.pathname)return;e.preventDefault();e.stopPropagation();pending.current?.skip();pending.current?.resolve();let timer:ReturnType<typeof setTimeout>;const transition=document.startViewTransition(()=>new Promise<void>(resolve=>{pending.current={resolve:()=>{clearTimeout(timer);resolve();pending.current=null;},skip:()=>transition.skipTransition()};timer=setTimeout(()=>{transition.skipTransition();resolve();pending.current=null;},2000);router.push(url.pathname+url.search+url.hash);}));transition.finished.catch(()=>{});};document.addEventListener('click',click,true);return()=>{document.removeEventListener('keydown',key,true);document.removeEventListener('pointerdown',pointer,true);document.removeEventListener('click',click,true);pending.current?.skip();pending.current?.resolve();};},[router]);
+ const dismiss=()=>{const a=animateUI(introRef.current,[{opacity:1},{opacity:0}],100);if(a)a.finished.catch(()=>{}).finally(()=>setIntro(null));else setIntro(null);};
+ useLayoutEffect(()=>{pending.current?.resolve();const element=root.current!;let timer:ReturnType<typeof setTimeout>|undefined;const animations:Animation[]=[];
+ if(!keyboardMotion()){
+  const cards=Array.from(element.querySelectorAll<HTMLElement>('.content-card,.stat-card,.today-block,article')).filter(el=>!el.closest('[data-srs-session]')).filter(el=>!el.parentElement?.closest('article')).slice(0,5);cards.forEach((card,i)=>{const a=animateUI(card,[{opacity:0,transform:'translateY(8px)'},{opacity:1,transform:'translateY(0)'}],160);if(a){a.effect?.updateTiming({delay:reducedMotion()?0:Math.min(i,3)*40,fill:'backwards'});animations.push(a);}});
+  const title=element.querySelector('h1')?.textContent??'',src=element.querySelector<HTMLImageElement>('.route-heading img')?.getAttribute('src')??'/mascots/shiba-normal.svg',date=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Ho_Chi_Minh'}).format(new Date()),corner=pathname==='/'?'today':pathname.split('/')[1]==='today-roadmap'?'today':pathname.split('/')[1];
+  try{const key='nihon:corner:'+date+':'+corner;if(!localStorage.getItem(key)){localStorage.setItem(key,'seen');setIntro({title,src});timer=setTimeout(()=>{const a=animateUI(introRef.current,[{opacity:1},{opacity:0}],100,false);if(a)a.finished.catch(()=>{}).finally(()=>setIntro(null));else setIntro(null);},520);}}catch{/* Storage disabled: avoid repeating an introduction. */}
+ }
+ element.dataset.motionReady='true';
+ return()=>{if(timer)clearTimeout(timer);animations.forEach(a=>a.cancel());setIntro(null);};
  },[pathname]);
- return <div ref={root} className="route-presentation" key={pathname}>{children}</div>;
+ useEffect(()=>{if(intro)animateUI(introRef.current,[{opacity:0,transform:'scale(.96)'},{opacity:1,transform:'scale(1)'}],160,false);},[intro]);
+ return <><div ref={root} className="route-presentation" key={pathname}>{children}</div>{intro&&<button ref={introRef} type="button" className="corner-intro" onClick={dismiss} aria-label={'Bỏ qua giới thiệu '+intro.title}><img src={intro.src} alt="" width={100} height={100}/><strong>{intro.title}</strong><small>Chạm để vào góc học</small></button>}<Toasts/></>;
 }
