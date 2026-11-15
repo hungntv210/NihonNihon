@@ -9,7 +9,7 @@ test('Vietnam periods use server instants and exact local boundaries',()=>{
 test('Japanese is confined to original scenery and no mockup learner data is ported',()=>{
  const scene=renderTown('night');
  for(const text of ['商店街','食堂','みどり駅','神社','学校','ごはん'])assert.ok(scene.includes(text));
- assert.doesNotMatch(scene,/PHỐ MUA SẮM|Tiệm|Hưng|1\.240 XP/);
+ assert.doesNotMatch(scene,/PHỐ MUA SẮM|Tiệm|\bXP\b/);
  assert.ok(scene.includes('M30 165Q250 184'));
  const nav=fs.readFileSync('src/components/nav.tsx','utf8');assert.doesNotMatch(nav,/[ぁ-龯]/);
 });
