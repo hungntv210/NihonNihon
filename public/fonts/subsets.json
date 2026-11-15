@@ -4,6 +4,15 @@
   "corpus_sha256": "27fadca85a5b8f6b01ae0ca407f51252ec01a0637e33385e161ae3f78e31bcfd",
   "fonts": [
     {
+      "source": "VT323-Regular.ttf",
+      "source_sha256": "cf4de751ada78ceac033dbe16a687742939995b77bc2a052ae17a4957958594d",
+      "file": "VT323-Regular-Subset.woff2",
+      "sha256": "a4d2e70687089e449e2d7aa169b1eff7f11bc96151dfdb94913db5258962e39f",
+      "source_bytes": 153116,
+      "bytes": 26832,
+      "unicode_count": 516
+    },
+    {
       "source": "BeVietnamPro-Regular.ttf",
       "source_sha256": "cd1ef6e9d7db28ad5cdb88a65ccbe693870e60d340b791f349d248342b4fe4c3",
       "file": "BeVietnamPro-Regular-Subset.woff2",
@@ -25,10 +34,10 @@
       "source": "ShipporiMincho-Regular.ttf",
       "source_sha256": "769b5269f0f9bc6534b352c0e6bd856a566e03ff788f107191c2d835863570b2",
       "file": "ShipporiMincho-Regular-Subset.woff2",
-      "sha256": "ec4e8dac43281929e47a998f6d57657079662316809be9ca6fb445bc8a7e56e6",
+      "sha256": "27d1d3bdfc30f23acc5f63d06ae63ba129d49cc18f106c4426a6a31845e7627e",
       "source_bytes": 8677284,
-      "bytes": 585420,
-      "unicode_count": 3130
+      "bytes": 587628,
+      "unicode_count": 3166
     }
   ],
   "fallback": "Unmodified original local TTF for characters outside subsets"

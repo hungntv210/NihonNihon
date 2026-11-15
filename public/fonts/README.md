@@ -1,5 +1,11 @@
 # Local fonts
 
+VT323 is also self-hosted under SIL OFL (`OFL.VT323.txt`); it is used only for
+headings, numbers and controls. `tools/subset-fonts.py` checks every Vietnamese
+letter found in public UI source against its subset. Japanese UI scene text
+(商店街, 食堂, みどり駅, 神社, 学校, and time/greeting labels) extends the Shippori
+subset. Learning kana/kanji keep Shippori Mincho; Vietnamese meanings keep Be Vietnam Pro.
+
 Downloaded from the official [Google Fonts repository](https://github.com/google/fonts) on 2026-11-06.
 Served locally; no Google Fonts request is made at runtime. Both families use SIL OFL 1.1;
 the complete licenses are included beside the font files.

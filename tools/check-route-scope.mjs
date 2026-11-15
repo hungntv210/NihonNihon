@@ -8,6 +8,7 @@ const ownership = new Map(
 );
 ownership.set('jlpt-daily', ['src/app/(study)/jlpt-daily/', 'src/app/(study)/jlpt/']);
 ownership.set('foundation', ['src/app/(study)/settings/', 'public/fonts/']);
+ownership.set('ui-phase1', ['src/app/(study)/settings/', 'public/fonts/', 'src/components/town/', 'src/app/(study)/appearance/', 'src/app/(study)/today-roadmap/page.tsx', 'src/core/day-period.ts', 'src/components/time-provider.tsx', 'tools/ui-test-clock.mjs', 'tests/day-period.test.ts']);
 if (!base || !branch) {
   console.error('Usage: node tools/check-route-scope.mjs BASE <g1/BRANCH|ROUTE>');
   process.exit(1);
@@ -35,7 +36,7 @@ const shared = new Set([
 const files = execFileSync('git', ['diff', '--name-only', '--no-renames', '-z', `${base}...HEAD`], { encoding: 'utf8' }).split('\0').filter(Boolean);
 const verification = 'docs/foundation-verification.md';
 const allowed = file => file === verification || ownership.get(route).some(prefix => file.startsWith(prefix))
-  || (route === 'foundation' && shared.has(file));
+  || (['foundation','ui-phase1'].includes(route) && shared.has(file));
 const outside = files.filter(file => !allowed(file));
 if (files.includes(verification)) {
   const ancestor = execFileSync('git', ['merge-base', base, 'HEAD'], { encoding: 'utf8' }).trim();

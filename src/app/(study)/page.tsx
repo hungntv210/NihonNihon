@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { getContent, getContentSummary } from '../../server/dal.ts';
 import { ContentCard } from '../../components/content-card.tsx';
 import { JaText, ViText } from '../../components/text.tsx';
+import { TownScene } from '../../components/town/town-scene.tsx';
 export default async function TodayPage() {
   const [summary, words] = await Promise.all([getContentSummary(), getContent('vocab', 3)]);
   return (
@@ -11,6 +12,7 @@ export default async function TodayPage() {
         <h1>Chào bạn, cùng học nhé.</h1>
         <p>Không cần học thật nhiều. Chỉ cần hôm nay tiến thêm một bước.</p>
       </div>
+      <TownScene />
       <p><Link className="button button-primary" href="/today-roadmap">Hôm nay và lộ trình →</Link></p><section className="welcome-panel" aria-labelledby="welcome-title">
         <div>
           <span className="small-label">GÓC NHỎ TIẾNG NHẬT</span>

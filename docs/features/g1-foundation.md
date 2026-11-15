@@ -159,3 +159,16 @@ Các dấu tick xác nhận phần code đã chạy qua test/fixture; không tha
 - Bằng chứng: `tools/home-run.ps1`.
 
 Next/React/Tailwind/SQLite đã chạy; FTS5 chưa có. PWA cold-offline SRS/outbox đã kiểm ở tools/test-app.ts, chưa bao phủ đọc bài offline. Có code/script sao lưu hằng ngày và download/restore; chưa nghiệm thu lịch backup production nên mục tự động còn để trống. Settings lưu các trường nhưng retention FSRS chưa nối scheduler (vẫn90%); không tick cả mục ghép. Cài PWA/font trên cả hai hệ điện thoại chưa có đủ chứng cứ thiết bị.
+# Wasoku visual foundation
+
+The server selects morning/day/sunset/night in Asia/Ho_Chi_Minh and writes the
+period into the initial HTML. System appearance follows that clock; saved light
+and dark preferences remain optional surface overrides. Motion is a validated,
+persisted preference; device reduced motion always takes precedence.
+
+The Japanese-only town signage is original inline SVG; its crop on small screens
+keeps the street readable. Canvas particles stop in hidden tabs and are capped
+at 30fps. The app adds no animation dependency or mockup learner records.
+`src/app/(study)/appearance/browser-check.ts` checks both widths for four server
+instants; screenshots stay in gitignored `data/private/wasoku-phase1`.
+

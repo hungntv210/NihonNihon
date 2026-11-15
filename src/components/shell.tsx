@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import type { ReactNode } from 'react';
-import { Navigation } from './nav.tsx';
+import { Navigation, MobileNavigation } from './nav.tsx';
 export function Shell({ children, reviewCount }: { children: ReactNode; reviewCount: number }) {
   return (
     <div className="app-shell">
@@ -66,6 +66,7 @@ export function Shell({ children, reviewCount }: { children: ReactNode; reviewCo
           Học để hiểu, ôn để nhớ.<span>Nihon Nihon</span>
         </footer>
       </div>
+      <MobileNavigation />
     </div>
   );
 }
