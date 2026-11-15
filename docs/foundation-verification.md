@@ -643,3 +643,24 @@ Only this append-only audit entry changes after the successful full check.
 - Full check PASS: typecheck, prototype22/22, unit136/136, build, app16/16. JLPT browser PASS for normal10-question bank AND approved one-question denominator/resume/source badge plus zero-question empty state. Route scope PASS.
 - Tests: exact11 approved-set/model/source/QA evidence, reject tampered/rejected input, idempotent import,10→1→0 across weeks without repeat, wrong-answer SRS idempotency, main DB bytes preserved by bank-only import. Separate pinned target append test preserves existing reviews/FKs; no content/schema overwrite.
 - Read-only production preflight found all11 target references absent. Real11-question dry-run on a SQLite backup of the app appended11 public OpenJLPT targets and11 approved questions successfully. Importer checks Frozen receipt/SHA, backs up app DB, copies only required public target/release rows and persists draft_roadmap/tester receipt. No rejected question, private dictionary, media or source question text committed. Live import waits for green CI/merge. Standard bank learned gate remains; only this explicitly owner-approved cohort uses its pinned roadmap evidence without fabricated reviews.
+
+### 2026-11-08T23:16:10.7533786+07:00 — Node24 action runtimes, local verification
+
+- Checked implementation4fcb17ac78c0c00ec889a2078a51c8673d28f80b; start2026-11-08T23:14:12.5055748+07:00,end2026-11-08T23:16:10.7533786+07:00. Windows Node24.10.0/npm11.6.1, production Next/installed Chrome and disposable fixtures.
+- npm run check PASS86/86,typecheck/build/app16checks PASS; npm run test:browser PASS7/7. Only three workflow references changed: checkout@v5,setup-node@v5,upload-artifact@v7. No step/condition/input changes; merged scope-always, timeout cleanup and native microphone fix remain intact.
+- Release verification: https://github.com/actions/checkout/releases/tag/v5.0.0 and https://github.com/actions/setup-node/releases/tag/v5.0.0 document Node24; latest upload major is7 (latestrelease7.0.2), https://github.com/actions/upload-artifact/releases/tag/v7.0.0 and https://raw.githubusercontent.com/actions/upload-artifact/v7/action.yml confirm default archive mode retained and runs.using node24.
+- PR14 was already merged179de3d before this instruction; changes are a narrow successor PR from master17f3e3b. GitHub rerun/deprecation-log verification pending first push. Raw local logs remain ignored at data/reports/node24-*. Only this audit entry changes after successful local checks.
+
+### 2026-11-08T23:19:41.2243912+07:00 — Node24 action runtime GitHub verification
+
+- GitHub Actions run42499109186 (job128787763582), head1ef097400db5ed93d5a7ef40a52b341246a7c00e: SUCCESS on Ubuntu24.04. npm run check and all7route browser checks passed; artifact upload and checkout/setup cleanup passed.
+- Read the completed job log and found zero Node.js20/node20 mentions or deprecation warnings. Log confirms checkout@v5, setup-node@v5 and upload-artifact@v7. Evidence: https://github.com/hungntv210/NihonNihon/actions/runs/42499109186 . Job finished2026-11-08T16:19:26.3455990Z.
+- Exact workflow comparison confirms only the three requested uses references differ from master17f3e3b; scope-always condition, timeout handling, microphone test, all other steps/inputs remain unchanged. Checked application/test tree remains4fcb17a; only append-only audit entries changed after local checks. This entry records the completed remote run; next push changes only this audit.
+
+
+### 2026-11-15 — PR16 rebased Node24 actions
+
+- Checked 69366cecf1b3bc95fd434d3d6218a447e175cdc2, Windows/Node24/D: worktree, 2026-11-15T20:54:57.6934092+07:00–2026-11-15T20:56:26.4755508+07:00. Full check PASS: typecheck, prototype22/22, unit136/136, build, app16/16.
+- Rebased onto master including approved JLPT/local bank. All master and original PR verification entries retained; normalized-prefix proof PASS. Only generated actions-node24/.next/types was removed to discard the deleted App media-route cache; no user data removed.
+- Exact workflow comparison PASS: only checkout v4→v5, setup-node v4→v5, upload-artifact v4→v7; all steps/inputs/conditions retained. Primary upstream action.yml for all3 refs verified runs.using node24. This explicitly authorized workflow-only PR is outside feature-route ownership.
+- PR23 closed with linked explanation: wait/poll/timeout behavior and tests already live in g0/data-import65d47a5; remaining3.6 example is obsolete under owner decision. No G0 code/data/worker changes.
