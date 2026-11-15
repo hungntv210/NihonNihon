@@ -1,3 +1,4 @@
+import {approvedFixture} from './approved-fixture.ts';import {importApproved,approvedBank} from './approved-store.ts';import {plusDays} from './model.ts';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -49,5 +50,16 @@ try{
  }
  await page.getByRole('heading',{name:'9 / 10 câu đúng'}).waitFor();await page.screenshot({path:path.join(reports,'result-mobile.png'),fullPage:true});await page.reload();await page.getByRole('heading',{name:'9 / 10 câu đúng'}).waitFor();
  assert.equal(readState(store).attempts.length,10);const db=new DatabaseSync(dbFile,{readOnly:true});try{assert.ok(db.prepare("SELECT 1 FROM srs_cards WHERE item_id=? AND card_type<>'recognition'").get(questions[0].targetId));}finally{db.close();}
+
+ // All edits here are confined to this disposable browser fixture.
+ fs.renameSync(path.join(store,'week-'+week+'-N5.json'),path.join(store,'normal-week.archived'));
+ importApproved(await approvedFixture(catalog,week),catalog,store);
+ const yesterday=plusDays(date,-1);approvedBank(yesterday,weekStart(yesterday),'N5',catalog,store);
+ const single=approvedBank(date,week,'N5',catalog,store)!;assert.equal(single.questions.length,1);
+ await page.reload();await page.getByText('1 câu đang có',{exact:true}).waitFor();await page.getByText(/draft_roadmap/).waitFor();
+ await page.getByRole('radio').nth(single.questions[0].correct).check();await page.getByRole('button',{name:'Kiểm tra đáp án',exact:true}).click();await page.getByRole('status').waitFor();await page.getByRole('button',{name:'Xem kết quả',exact:true}).click();await page.getByRole('heading',{name:'1 / 1 câu đúng',exact:true}).waitFor();
+ await page.reload();await page.getByRole('heading',{name:'1 / 1 câu đúng',exact:true}).waitFor();
+ const approvedDb=new DatabaseSync(path.join(store,'approved.sqlite'));try{approvedDb.prepare('UPDATE approved_schedule SET date=? WHERE date=?').run(plusDays(date,-2),date);}finally{approvedDb.close();}
+ await page.reload();await page.getByRole('heading',{name:'Hôm nay chưa có thêm câu mới',exact:true}).waitFor();assert.equal(await page.getByRole('radio').count(),0);await page.getByText('0 câu đang có',{exact:true}).waitFor();
  assert.deepEqual(external,[]);assert.deepEqual(errors,[]);console.log('JLPT browser PASS: auth, CSRF, alias, empty week, desktop/mobile, 10 answers, last explanation, resume, SRS, idempotency, no external API.');
 }finally{await browser?.close();fs.writeFileSync(path.join(reports,'server.log'),log);cleanup();}

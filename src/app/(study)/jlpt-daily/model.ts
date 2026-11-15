@@ -7,7 +7,7 @@ export type Source = { id:string; kind:'vocab'|'kanji'|'grammar'; level:Level; t
 export type Draft = { day:number; position:number; type:QuestionType; targetId:string; stem:string; choices:string[]; correct:number; explanation:string; order:number[]; starSlot:number };
 export type Question = Draft & { id:string; fingerprint:string; date:string };
 export type Audit = { index:number; possibleAnswers:number[]; sameType:boolean; plausible:boolean; levelMatch:boolean; learnedOnly:boolean; original:boolean; explanationCorrect:boolean };
-export type Bank = { version:1; week:string; level:Level; generatedAt:string; model:string; verifierModel:string; promptHash:string; auditPromptHash:string; sourceHashes:Record<string,string>; questions:Question[]; audit:Audit[] };
+export type Bank = { approval?:{origin:'draft_roadmap';reviewer:string}; version:1; week:string; level:Level; generatedAt:string; model:string; verifierModel:string; promptHash:string; auditPromptHash:string; sourceHashes:Record<string,string>; questions:Question[]; audit:Audit[] };
 export const hash=(value:unknown)=>createHash('sha256').update(JSON.stringify(value)).digest('hex');
 export function requireValue(condition:unknown,message:string):asserts condition{if(!condition)throw Error(message);}
 export function validDate(s:string){return /^\d{4}-\d{2}-\d{2}$/.test(s)&&Number.isFinite(Date.parse(s))&&new Date(s).toISOString().slice(0,10)===s;}
