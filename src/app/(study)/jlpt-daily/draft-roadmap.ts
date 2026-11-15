@@ -1,4 +1,4 @@
-import {roadmapLexicon} from './word-evidence.ts';
+import {draftContextLexicon} from './word-evidence.ts';
 import {generateTypedRows} from './typed-generation.ts';
 import fs from 'node:fs';import path from 'node:path';import {createHash} from 'node:crypto';
 import {parseArgs} from 'node:util';import {fileURLToPath} from 'node:url';import {reviewIndependently,independentProvider,independentPayload,independentPrompt,independentSchema,validateIndependent} from './independent-qa.ts';
@@ -73,7 +73,7 @@ export async function generateRoadmapDraft({snapshotPath,receiptPath,week,direct
  const receipt=JSON.parse(fs.readFileSync(receiptPath,'utf8'));requireValue(receipt.read_only===true&&path.resolve(receipt.path)===path.resolve(snapshotPath),'FROZEN_SNAPSHOT_RECEIPT_REQUIRED');
  const checksum=createHash('sha256');for await(const bytes of fs.createReadStream(snapshotPath))checksum.update(bytes);requireValue(checksum.digest('hex')===receipt.sha256,'SNAPSHOT_HASH_CHANGED');
  requireValue((fs.statSync(snapshotPath).mode&0o222)===0,'SNAPSHOT_MUST_BE_READ_ONLY');fs.mkdirSync(directory,{recursive:true});
- const db=openContentDatabase(snapshotPath);let catalog:Source[];let lexicon:Set<string>;try{catalog=roadmapDraftCatalog(db);lexicon=roadmapLexicon(catalog);requireValue(catalog.some(s=>s.kind==='vocab')&&catalog.some(s=>s.kind==='grammar'),'EMPTY_ROADMAP_DRAFT_CATALOG');}finally{db.close();}
+ const db=openContentDatabase(snapshotPath);let catalog:Source[];let lexicon:Set<string>;try{catalog=roadmapDraftCatalog(db);lexicon=draftContextLexicon(catalog,sourceCatalog(db));requireValue(catalog.some(s=>s.kind==='vocab')&&catalog.some(s=>s.kind==='grammar'),'EMPTY_ROADMAP_DRAFT_CATALOG');}finally{db.close();}
  const metadata={mode:DRAFT_MODE,week,level:'N5',roadmapWeeks:[1,2],learningEvidence:'roadmap_only_not_srs',answerEvidence:'hard-qa-source-options-v3 before independent semantic QA',snapshotSha256:receipt.sha256,model,verifierModel:model,...(modelChain?{modelIsPlan:true,modelChain,actualModelEvidence:'provider-attempts.jsonl; question-provenance.json'}:{}),promptHashes:draftPromptHashes,sourceHashes:Object.fromEntries(catalog.map(s=>[s.id,s.hash])),appPublished:false};
  const write=(name:string,value:unknown)=>fs.writeFileSync(path.join(directory,name),JSON.stringify(value,null,2)+'\n',{mode:0o600});if(fs.existsSync(path.join(directory,'metadata.json')))requireValue(hash(JSON.parse(fs.readFileSync(path.join(directory,'metadata.json'),'utf8')))===hash(metadata),'DRAFT_RESUME_CONTEXT_CHANGED');write('metadata.json',metadata);
  const all:Question[]=[],audits:Audit[]=[];let rejects=0;const days=new Map<number,any>();for(let d=0;d<7;d++){const f=path.join(directory,`draft-day-${d+1}.json`);if(fs.existsSync(f))days.set(d,JSON.parse(fs.readFileSync(f,"utf8")));}

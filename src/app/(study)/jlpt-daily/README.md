@@ -231,3 +231,10 @@ Synonym/meaning query text must be marked; explanations cannot join Latin and ka
 a target word may occur as target only once across types. The planner prefers unused
 catalog targets. Private re-audits record counter resets ONLY for proven word-split
 false positives; other counters and the Pacific API ledger remain intact.
+
+Owner clarification: existing internal dictionary provides CONTEXT evidence only for
+entries labelled N5. N4+ dictionary context remains rejected. Dictionary inclusion
+never authorizes a target outside roadmap or a kanji outside roadmap: use kana for
+those N5 context words instead. Tests cover N5 context, N4 rejection and independent
+target/kanji rejection. Schema also forces non-order audit permutations to empty at
+the source; validators still reject any invalid audit rather than rewriting it.

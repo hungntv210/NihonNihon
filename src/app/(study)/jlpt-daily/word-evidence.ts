@@ -34,6 +34,10 @@ export function roadmapLexicon(catalog:Source[]){
  }
  return words;
 }
+export function draftContextLexicon(roadmap:Source[],dictionary:Source[]){
+ // This evidence never changes the target catalog or the learned-kanji gate.
+ return roadmapLexicon([...roadmap,...dictionary.filter(s=>s.kind==='vocab'&&s.level==='N5')]);
+}
 
 export function japaneseWordEvidence(text:string,lexicon:ReadonlySet<string>){
  const allowed=new Set([...lexicon,...N5_FUNCTION_WORDS].map(w=>w.normalize('NFC')).filter(w=>!/^[ぁぃぅぇぉゃゅょっァィゥェォャュョッ]$/u.test(w)));
@@ -44,9 +48,18 @@ export function japaneseWordEvidence(text:string,lexicon:ReadonlySet<string>){
   // ICU may split りょこう or merge 時に. Match whole attested surfaces across
   // those boundaries; single fragments are never inserted into the word list.
   const preferred=new Set(segments.map(s=>s.index+s.segment.length));
+  const particles=new Set(['の','を','に','は','が','へ','で','と','も','か','ね','よ']);
+  const anchors=segments.filter(s=>particles.has(s.segment));
   const paths=new Map<number,string[]>([[0,[]]]);
   for(let i=0;i<span.length;i++)if(paths.has(i)){
-   const endings:number[]=[];for(let end=i+1;end<=span.length;end++)if(allowed.has(span.slice(i,end)))endings.push(end);
+   const endings:number[]=[];for(let end=i+1;end<=span.length;end++){
+    const surface=span.slice(i,end);if(!allowed.has(surface))continue;
+    const anchored=anchors.some(a=>a.index>=i&&a.index<end&&(a.index>i||a.index+a.segment.length<end));
+    // Do not swallow an ICU particle boundary to invent a noun compound such
+    // as ひとり + がく + ぶん. Whole N5 forms retain their explicit evidence.
+    if(anchored&&!N5_FUNCTION_WORDS.includes(surface)&&!/(?:ます|ました|ません|でした|ない|なかった|てください|でください)$/u.test(surface))continue;
+    endings.push(end);
+   }
    endings.sort((a,b)=>Number(preferred.has(b))-Number(preferred.has(a))||b-a);
    for(const end of endings)if(!paths.has(end))paths.set(end,[...paths.get(i)!,span.slice(i,end)]);
   }
