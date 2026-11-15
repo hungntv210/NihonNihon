@@ -54,6 +54,9 @@ export function japaneseWordEvidence(text:string,lexicon:ReadonlySet<string>){
   for(let i=0;i<span.length;i++)if(paths.has(i)){
    const endings:number[]=[];for(let end=i+1;end<=span.length;end++){
     const surface=span.slice(i,end);if(!allowed.has(surface))continue;
+    // A merged lexical word cannot be licensed merely by spelling it with
+    // known characters/nouns. Only N5 function boundaries may split it.
+    if(!preferred.has(end)&&!N5_FUNCTION_WORDS.includes(surface))continue;
     const anchored=anchors.some(a=>a.index>=i&&a.index<end&&(a.index>i||a.index+a.segment.length<end));
     // Do not swallow an ICU particle boundary to invent a noun compound such
     // as ひとり + がく + ぶん. Whole N5 forms retain their explicit evidence.

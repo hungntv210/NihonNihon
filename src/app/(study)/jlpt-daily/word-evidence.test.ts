@@ -25,6 +25,7 @@ import {draftContextLexicon} from './word-evidence.ts';import {validateQuestion}
 test('context dictionary permits N5 only; dictionary never authorizes target or kanji outside roadmap',()=>{
  const store=source('店','みせ'),expert={...source('専門','せんもん'),level:'N4' as const};const context=draftContextLexicon(catalog,[store,expert]);
  assert.deepEqual(japaneseWordEvidence('みせにいきます',context).unresolved,[]);assert.ok(japaneseWordEvidence('せんもん',context).unresolved.length>0);
+ const compound=draftContextLexicon([{...source('中','なか'),kind:'kanji'},{...source('国','くに'),kind:'kanji'}],[{...source('中国','ちゅうごく'),level:'N4'}]);assert.ok(japaneseWordEvidence('中国',compound).unresolved.length>0);
  assert.throws(()=>validateQuestion({...q,targetId:store.id},catalog,'2026-11-16','N5'),/SOURCE_NOT_LEARNED_OR_WRONG_LEVEL/);
  assert.throws(()=>validateQuestion({...q,correct:3,stem:'店で（　）'},catalog,'2026-11-16','N5'),/UNLEARNED_KANJI/);
 });
