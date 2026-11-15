@@ -1,0 +1,6 @@
+import {fixtureCatalog,fixtureBank} from './fixture.ts';import type {ApprovedInput} from './approved-store.ts';import {choiceSentence} from './independent-qa.ts';
+export async function approvedFixture(catalog:ReturnType<typeof fixtureCatalog>,week:string):Promise<ApprovedInput>{
+ const bank=await fixtureBank(catalog,week),questions=bank.questions.filter(q=>q.type==='context'||q.type==='usage').slice(0,11);
+ const audit=questions.map((q,index)=>{const grades=q.choices.map((_,choiceIndex)=>({choiceIndex,completedSentence:choiceSentence(q,choiceIndex),candidateOrder:[],grammatical:true,formCorrect:true,natural:choiceIndex===q.correct,meaningFits:choiceIndex===q.correct,acceptable:choiceIndex===q.correct,reason:'synthetic fixture'}));return {index,possibleAnswers:[q.correct],sameType:true,plausible:true,levelMatch:true,learnedOnly:true,original:true,explanationCorrect:true,independentAnswer:q.correct,natural:true,knowledgeCorrect:true,optionGrades:grades,isolatedOptionGrades:grades};});
+ return {questions,audit,sourceWeek:week,sourceHashes:Object.fromEntries(catalog.map(s=>[s.id,s.hash])),sourceSha256:'f'.repeat(64),model:'fixture-generator',verifierModel:'fixture-verifier',reviewer:'tester'};
+}

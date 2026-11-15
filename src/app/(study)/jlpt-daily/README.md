@@ -238,3 +238,26 @@ never authorizes a target outside roadmap or a kanji outside roadmap: use kana f
 those N5 context words instead. Tests cover N5 context, N4 rejection and independent
 target/kanji rejection. Schema also forces non-order audit permutations to empty at
 the source; validators still reject any invalid audit rather than rewriting it.
+
+## Local bank explicitly approved by the owner/tester
+
+`import-approved.ts` imports exactly the11 approved questions from a private
+review-sample.json and its sibling metadata/day-audit/model records. It verifies
+accepted-set/content identity, hashes, source references and independent QA. It
+never reads rejected rows as questions or edits Japanese/answers. Example:
+
+```powershell
+node --env-file=.env.local --import tsx 'src/app/(study)/jlpt-daily/import-approved.ts' --input 'D:/private/data/private/review/review-sample.json' --reviewer tester
+```
+
+The local approved.sqlite sidecar lives beside existing JLPT state in
+NIHON_JLPT_PATH (default DB-parent/private/jlpt-daily). Its separate question/schedule
+tables do not change the content DB/G0 schema. Back it up with the JLPT state.
+Receipts label draft_roadmap, tester approval, input SHA-256 and actual generation/
+verification models. Only this explicitly approved cohort may use roadmap content
+without fabricated SRS history; ordinary generated weeks retain the learned gate.
+
+Assignments persist: at most10 unused questions per local date, globally no reuse.
+With11 questions that means10, then1, then0. The UI/result denominator shows the
+actual total and never calls AI on page load. Wrong answers use existing SRS enqueue.
+No question content, receipts or sidecar DB belong in the public repository.
