@@ -1,3 +1,5 @@
+import {PixelScene} from '../../../components/pixel-scenes/pixel-scene.tsx';
+import {learnedKanjiCount} from '../../../components/pixel-scenes/data.ts';
 import {RouteHeading} from '../../../components/route-heading.tsx';
 import Link from 'next/link';
 import { withContentDatabase } from '../../../server/dal.ts';
@@ -13,9 +15,11 @@ export default async function KanjiPage({
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const filters = parseFilters(await searchParams),
-    result = await withContentDatabase((db) => searchKanji(db, filters));
+    result = await withContentDatabase((db) => searchKanji(db, filters)),
+    learned=await withContentDatabase(learnedKanjiCount);
   return (
     <>
+      <PixelScene id="kanji-himeji" params={{kanjiLearned:learned}}/>
       <RouteHeading title="Kanji" eyebrow="TỪNG NÉT, TỪNG Ý" species="fox"><p>Tìm mặt chữ, đối chiếu âm đọc và gặp lại trong những từ quen thuộc.</p></RouteHeading>
       <form
         key={filterUrl(filters)}

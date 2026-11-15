@@ -63,7 +63,7 @@ try{
     await page.setViewportSize({width,height:1050});const response=await page.goto(origin+route);assert.equal(response?.status(),200,route);await page.locator('main h1').waitFor();
     assert.equal(await page.locator('main h1').count(),1,route+' functional h1');assert.equal(await page.locator('html').getAttribute('data-time'),period);
     await appearance(page,`${period}/${width}/${route}`);
-    if(route==='/'||route==='/today-roadmap')assert.equal(await page.locator('.town-art svg').getAttribute('preserveAspectRatio'),'xMidYMid slice');
+    if(route==='/'||route==='/today-roadmap'){await page.locator('[data-pixel-viewport][data-ready=true]').waitFor();assert.equal(await page.locator('[data-pixel-scene]').getAttribute('data-pixel-scene'),'home-tokyo');}
     if(route==='/today-roadmap'){
      const map=page.getByLabel('Bản đồ lộ trình 87 tuần');assert.equal(await map.getByRole('button').count(),87);
      assert.equal(await page.locator('summary').count(),87);await map.getByRole('button',{name:/Tuần 36 ·/}).click();assert.equal(await page.locator('#week-36').getAttribute('open'),'');
@@ -79,7 +79,7 @@ try{
    await page.goto(origin+'/settings');await page.getByLabel('Chuyển động',{exact:false}).uncheck();await page.getByRole('button',{name:'Lưu cài đặt',exact:true}).click();await page.getByRole('status').filter({hasText:'Đã lưu cài đặt.'}).waitFor();
    await page.goto(origin+'/today-roadmap');assert.equal(await page.locator('html').getAttribute('data-motion'),'off');
    assert.equal(await page.locator('.cloud-bank').evaluate(el=>getComputedStyle(el).animationName),'none');
-   await page.emulateMedia({reducedMotion:'reduce'});assert.equal(await page.locator('.town-train').evaluate(el=>getComputedStyle(el).animationName),'none');
+   await page.emulateMedia({reducedMotion:'reduce'});assert.equal(await page.locator('[data-pixel-viewport]').evaluate(el=>(el as HTMLElement & {pixelEngine:{raf:number}}).pixelEngine.raf),0);
    assert.deepEqual(errors,[]);assert.deepEqual(external,[]);
   }finally{await context.close();child.kill();fs.writeFileSync(path.join(artifacts,`${period}-server.log`),log)}
  }

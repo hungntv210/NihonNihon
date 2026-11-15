@@ -1,0 +1,4 @@
+export type Definition={id:string;title:string;crop:number;params:Record<string,number>};
+export type SceneOptions={time:string;season:string;date:string;motion?:boolean;params?:Record<string,number>};
+export type PixelEngine={params:(values:Record<string,number>)=>void;set:(values:Partial<SceneOptions>)=>void;destroy:()=>void;stats:()=>Record<string,unknown>;drawAt:(seconds:number)=>void;raf:number;state:SceneOptions&{frames:number};visible:boolean;sync:()=>void};
+export const SceneEngine:{Engine:new(host:HTMLElement,definition:Definition,options:SceneOptions)=>PixelEngine};
