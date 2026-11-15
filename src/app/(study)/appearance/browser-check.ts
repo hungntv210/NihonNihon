@@ -78,7 +78,7 @@ try{
    await page.getByRole('heading',{name:'Xong một phiên nhỏ.',exact:true}).waitFor();await page.getByText(/0 lượt chờ đồng bộ/).waitFor();
    await page.goto(origin+'/settings');await page.getByLabel('Chuyển động',{exact:false}).uncheck();await page.getByRole('button',{name:'Lưu cài đặt',exact:true}).click();await page.getByRole('status').filter({hasText:'Đã lưu cài đặt.'}).waitFor();
    await page.goto(origin+'/today-roadmap');assert.equal(await page.locator('html').getAttribute('data-motion'),'off');
-   assert.equal(await page.locator('.cloud-bank').evaluate(el=>getComputedStyle(el).animationName),'none');
+   await page.locator('[data-pixel-viewport][data-ready=true]').waitFor();assert.equal(await page.locator('[data-pixel-viewport]').evaluate(el=>(el as HTMLElement & {pixelEngine:{raf:number}}).pixelEngine.raf),0);
    await page.emulateMedia({reducedMotion:'reduce'});assert.equal(await page.locator('[data-pixel-viewport]').evaluate(el=>(el as HTMLElement & {pixelEngine:{raf:number}}).pixelEngine.raf),0);
    assert.deepEqual(errors,[]);assert.deepEqual(external,[]);
   }finally{await context.close();child.kill();fs.writeFileSync(path.join(artifacts,`${period}-server.log`),log)}
