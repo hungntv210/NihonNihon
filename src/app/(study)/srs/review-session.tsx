@@ -9,6 +9,7 @@ import { queueReview, pendingReviews, acknowledge } from './outbox.ts';
 import { syncReviews } from './sync.ts';
 import type { ReviewEvent } from './model.ts';
 import css from './srs.module.css';
+import {remainingDue} from '../../../components/pixel-scenes/model.ts';
 import {Mascot} from '../../../components/mascot.tsx';
 const labels = ['Quên', 'Khó', 'Được', 'Dễ'];
 
@@ -25,6 +26,7 @@ export function ReviewSession({ initial }: { initial: StudySession }) {
     return()=>{alive=false;window.removeEventListener('online',connection);window.removeEventListener('offline',connection);window.speechSynthesis?.removeEventListener('voiceschanged',voices);window.speechSynthesis?.cancel();};
   },[cacheKey,initial]);
   useEffect(()=>{if(ready){try{localStorage.setItem(cacheKey,JSON.stringify({version:1,session,seen}));}catch{/* The durable review outbox is separate from the optional session snapshot. */}}},[cacheKey,ready,session,seen]);
+  useEffect(()=>{const remaining=remainingDue(initial,seen);window.dispatchEvent(new CustomEvent('nihon-scene-due',{detail:remaining}));},[initial,seen]);
   async function sync() {
     if(syncing.current||!navigator.onLine)return;syncing.current=true;
     try{const result=await syncReviews(await pendingReviews(),event=>fetch('/srs/review',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(event)}),acknowledge);setConflicts(result.conflicts);if(result.stopped==='auth')setMessage('Đăng nhập lại để đồng bộ; lượt ôn vẫn được giữ trên thiết bị.');else if(result.conflicts.length)setMessage('Có lượt cần kiểm tra; các thẻ độc lập vẫn tiếp tục đồng bộ.');else if(result.stopped)setMessage('Chưa đồng bộ được; lượt ôn vẫn được giữ trên thiết bị.');

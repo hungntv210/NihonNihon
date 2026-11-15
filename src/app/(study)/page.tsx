@@ -2,7 +2,7 @@ import Link from 'next/link';
 import {getContent,getContentSummary} from '../../server/dal.ts';
 import {ContentCard} from '../../components/content-card.tsx';
 import {JaText,ViText} from '../../components/text.tsx';
-import {TownScene} from '../../components/town/town-scene.tsx';
+import {PixelScene} from '../../components/pixel-scenes/pixel-scene.tsx';
 import {RouteHeading} from '../../components/route-heading.tsx';
 import {Mascot} from '../../components/mascot.tsx';
 import {getToday} from './today-roadmap/server.ts';
@@ -13,7 +13,7 @@ export default async function TodayPage(){
  const current=allocateRoadmap(today.data.items,plusDays(today.settings.startDate,plan.delayedWeeks*7))[plan.week-1];
  return <>
   <RouteHeading title="Hôm nay" eyebrow="MỖI NGÀY MỘT CHÚT"><h2 className="welcome-subtitle">Chào bạn, cùng học nhé.</h2><p>Không cần học thật nhiều. Chỉ cần hôm nay tiến thêm một bước.</p></RouteHeading>
-  <TownScene level={current.level}/>
+  <PixelScene id="home-tokyo"/>
   <section className="today-block" aria-labelledby="now-title"><div className="block-heading"><span>01</span><h2 id="now-title">Làm ngay</h2></div>
    <div className="today-quick"><div><p className="eyebrow">TỪ & KANJI · KHÔNG ÂM THANH</p><h3>Ôn nhanh</h3><p>{today.data.due} thẻ đến hạn trong hàng ôn của bạn.</p><Link className="button button-primary" href="/srs?mode=quick">Bắt đầu ôn nhanh →</Link></div><Mascot species="tanuki" size={108}/></div>
   </section>
