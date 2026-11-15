@@ -213,3 +213,28 @@ key or competing choices. It must not infer an unstated intended meaning, tense 
 polarity. Its four independent judgments must ALSO admit exactly one stored answer;
 they cannot rescue a rejection from the first blind audit. Both full evidence sets
 remain in audit. Retained checkpoints without this new evidence must be re-audited.
+
+### Word-boundary and typed-generation policy (draft only)
+
+Word evidence uses Node Intl.Segmenter('ja',word) boundaries with exact whole-surface
+matching over the roadmap lexicon and a closed code list of N5 function/scaffolding
+words and suffix forms. It coalesces ICU splits or splits merged units only when the
+entire span is covered by attested surfaces; small kana and on/kun fragments are
+never added as words. Verb/adjective surfaces are derived from catalog POS/classes,
+not arbitrary suffix stripping. Unresolved spans remain rejected, as does invented
+ひとりがくぶん. The kanji/level/meaning/choice/uniqueness gates are unchanged.
+
+Wire generation separates order slots from all others. Non-order prompt/schema has
+no ordering explanation cues or order/starSlot fields. Internal empty-order defaults
+preserve the existing Draft contract without altering Japanese, explanation or key.
+Synonym/meaning query text must be marked; explanations cannot join Latin and kana;
+a target word may occur as target only once across types. The planner prefers unused
+catalog targets. Private re-audits record counter resets ONLY for proven word-split
+false positives; other counters and the Pacific API ledger remain intact.
+
+Owner clarification: existing internal dictionary provides CONTEXT evidence only for
+entries labelled N5. N4+ dictionary context remains rejected. Dictionary inclusion
+never authorizes a target outside roadmap or a kanji outside roadmap: use kana for
+those N5 context words instead. Tests cover N5 context, N4 rejection and independent
+target/kanji rejection. Schema also forces non-order audit permutations to empty at
+the source; validators still reject any invalid audit rather than rewriting it.

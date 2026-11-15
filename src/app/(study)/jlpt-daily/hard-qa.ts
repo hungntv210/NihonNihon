@@ -1,3 +1,4 @@
+import {japaneseWordEvidence} from './word-evidence.ts';
 import type {Draft,Source} from './model.ts';
 import {toHiragana,toRomaji} from 'wanakana';
 
@@ -10,19 +11,21 @@ export function draftCollisionIssues(q:Draft,history:Draft[],catalog:Source[]){
  if(q.choices.some(c=>q.stem.normalize('NFKC').includes(c.normalize('NFKC'))||words(c).some(w=>stemWords.has(w))))issues.push('OPTION_WORD_IN_STEM');
  if(history.some(old=>baseStem(old.stem)===baseStem(q.stem)))issues.push('DUPLICATE_BASE_STEM');
  const word=(row:Draft)=>plainJapanese(catalog.find(s=>s.id===row.targetId)?.title??row.targetId);
+ if(history.some(old=>word(old)===word(q)))issues.push('REPEATED_TARGET_WORD');
  if(['reading','spelling'].includes(q.type)&&history.some(old=>['reading','spelling'].includes(old.type)&&old.type!==q.type&&word(old)===word(q)))issues.push('READING_SPELLING_SAME_WORD');
  return issues;
 }
 export function strictDraftIssues(q:Draft,lexicon:ReadonlySet<string>){
  const issues:string[]=[];
  const explanation=q.explanation.normalize('NFKC');
+ if(/[\p{Script=Latin}][\p{Script=Hiragana}\p{Script=Katakana}]|[\p{Script=Hiragana}\p{Script=Katakana}][\p{Script=Latin}]/u.test(explanation))issues.push('LATIN_KANA_MIX');
+ if(q.type==='synonym'&&!/【[^【】]*[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}][^【】]*】|[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}]\u0332/u.test(q.stem))issues.push('UNMARKED_MEANING_TARGET');
  const mentioned=[...explanation.matchAll(/(?:đáp án|lựa chọn|phương án|câu trả lời|答え|正解|選択肢)\s*(?:đúng\s*)?(?:là\s*|số\s*|thứ\s*|[:：#]\s*)*(\d+|nhất|một|hai|ba|bốn)/giu)];
  const numbers:Record<string,number>={nhất:1,một:1,hai:2,ba:3,bốn:4};
  if(mentioned.some(m=>(numbers[m[1].toLowerCase()]??Number(m[1]))!==q.correct+1))issues.push('EXPLANATION_ANSWER_NUMBER');
  if(q.type!=='order'&&/Thứ tự|★/iu.test(q.explanation))issues.push('ORDER_EXPLANATION_ON_OTHER_TYPE');
  if(['reading','spelling','context','synonym','usage'].includes(q.type)&&q.stem.normalize('NFKC').includes(q.choices[q.correct].normalize('NFKC')))issues.push('CORRECT_CHOICE_IN_STEM');
- const segmenter=new Intl.Segmenter('ja',{granularity:'word'});
- const unknown=[...segmenter.segment(q.stem+' '+q.choices[q.correct])].filter(s=>s.isWordLike&&!/^[\p{N}]+$/u.test(s.segment)&&!lexicon.has(s.segment.normalize('NFC'))).map(s=>s.segment);
+ const unknown=japaneseWordEvidence(q.stem+' '+q.choices[q.correct],lexicon).unresolved;
  if(unknown.length)issues.push('UNATTESTED_WORD:'+[...new Set(unknown)].join('/'));
  return issues;
 }
