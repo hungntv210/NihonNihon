@@ -15,7 +15,7 @@ export default async function TodayPage(){
   <RouteHeading title="Hôm nay" eyebrow="MỖI NGÀY MỘT CHÚT"><h2 className="welcome-subtitle">Chào bạn, cùng học nhé.</h2><p>Không cần học thật nhiều. Chỉ cần hôm nay tiến thêm một bước.</p></RouteHeading>
   <TownScene level={current.level}/>
   <section className="today-block" aria-labelledby="now-title"><div className="block-heading"><span>01</span><h2 id="now-title">Làm ngay</h2></div>
-   <div className="today-quick"><div><p className="eyebrow">TỪ VỰNG VÀ KANJI · KHÔNG ÂM THANH</p><h3>Ôn nhanh</h3><p>{today.data.due} thẻ đến hạn trong hàng ôn của bạn.</p><Link className="button button-primary" href="/srs?mode=quick">Bắt đầu ôn nhanh →</Link></div><Mascot species="tanuki" size={108}/></div>
+   <div className="today-quick"><div><p className="eyebrow">TỪ & KANJI · KHÔNG ÂM THANH</p><h3>Ôn nhanh</h3><p>{today.data.due} thẻ đến hạn trong hàng ôn của bạn.</p><Link className="button button-primary" href="/srs?mode=quick">Bắt đầu ôn nhanh →</Link></div><Mascot species="tanuki" size={108}/></div>
   </section>
   <section className="today-block" aria-labelledby="week-title"><div className="block-heading"><span>02</span><h2 id="week-title">Tuần này</h2></div><div className="today-week">
    <Link className="today-link" href="/shadowing"><Mascot species="bird"/><div><h3>Shadowing</h3><p>{plan.count}/2 buổi đã ghi nhận tuần này</p><span className="text-link">Mở thư viện clip →</span></div></Link>

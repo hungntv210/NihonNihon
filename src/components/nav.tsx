@@ -1,7 +1,7 @@
 'use client';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 const links = [
   ['/today-roadmap', 'Hôm nay', 'home'],
   ['/srs', 'Ôn tập', 'review'],
@@ -39,15 +39,21 @@ export function NavIcon({ name }: { name: string }) {
   );
 }
 const tools = [['/common-tools/search','Tra cứu'],['/common-tools/progress','Tiến độ'],['/common-tools/reports','Báo sai'],['/settings','Cài đặt'],['/sources','Nguồn dữ liệu']] as const;
+function useNavLocation(){
+ const current=usePathname()??'', [hash,setHash]=useState('');
+ useEffect(()=>{const sync=()=>setHash(window.location.hash);sync();window.addEventListener('hashchange',sync);window.addEventListener('popstate',sync);return()=>{window.removeEventListener('hashchange',sync);window.removeEventListener('popstate',sync);};},[current]);
+ const active=(href:string)=>{const [base,anchor]=href.split('#'),inside=current===base||current.startsWith(base+'/');if(anchor)return inside&&hash==='#'+anchor;return (inside||(base==='/today-roadmap'&&current==='/'))&&!(base==='/today-roadmap'&&hash==='#roadmap-title');};
+ return {active,navigate:(href:string)=>setHash(href.includes('#')?'#'+href.split('#')[1]:'')};
+}
 export function MobileNavigation() {
-  const dialog = useRef<HTMLDialogElement>(null), current = usePathname();
+  const dialog = useRef<HTMLDialogElement>(null), {active,navigate}=useNavLocation();
   return <><nav className="mobile-navigation" aria-label="Điều hướng điện thoại">
-    {[links[0],links[1],links[5],links[7]].map(([href,label,icon])=><Link key={href} href={href} aria-current={current===href?'page':undefined}><NavIcon name={icon}/><span>{label}</span></Link>)}
+    {[links[0],links[1],links[5],links[7]].map(([href,label,icon])=><Link key={href} href={href} onClick={()=>navigate(href)} aria-current={active(href)?'page':undefined}><NavIcon name={icon}/><span>{label}</span></Link>)}
     <button type="button" onClick={()=>dialog.current?.showModal()} aria-haspopup="dialog"><NavIcon name="all"/><span>Tất cả</span></button>
-  </nav><dialog ref={dialog} className="all-navigation" aria-label="Tất cả góc học"><header><h2>Tất cả góc học</h2><button type="button" className="button" onClick={()=>dialog.current?.close()}>Đóng</button></header><nav>{[...links,...tools].map(([href,label])=><Link key={href} href={href} onClick={()=>dialog.current?.close()}>{label}</Link>)}</nav></dialog></>;
+  </nav><dialog ref={dialog} className="all-navigation" aria-label="Tất cả góc học"><header><h2>Tất cả góc học</h2><button type="button" className="button" onClick={()=>dialog.current?.close()}>Đóng</button></header><nav>{[...links,...tools].map(([href,label])=><Link key={href} href={href} aria-current={active(href)?'page':undefined} onClick={()=>{navigate(href);dialog.current?.close();}}>{label}</Link>)}</nav></dialog></>;
 }
 export function Navigation() {
-  const current = usePathname() ?? '';
+  const {active,navigate}=useNavLocation();
   return (
     <nav className="navigation" aria-label="Học tập">
       {links.map(([href, label, icon]) => (
@@ -55,11 +61,7 @@ export function Navigation() {
           href={href}
           key={href}
           className="nav-link"
-          aria-current={
-            current === href || current.startsWith(href + '/')
-              ? 'page'
-              : undefined
-          }
+          onClick={()=>navigate(href)} aria-current={active(href)?'page':undefined}
         >
           <NavIcon name={icon} />
           <span>{label}</span>
