@@ -4,7 +4,7 @@ import path from 'node:path';
 import { createHash, randomUUID } from 'node:crypto';
 import { DatabaseSync } from 'node:sqlite';
 import { fileURLToPath } from 'node:url';
-import { saveDailyBackup, validateBackup } from '../src/core/backup.ts';
+import { saveDailyBackup, validateBackup, checkJlptDatabase } from '../src/core/backup.ts';
 
 export function verifyArchive(file: string) {
   const archive=validateBackup(fs.readFileSync(file));
@@ -16,7 +16,13 @@ export function verifyArchive(file: string) {
     db=new DatabaseSync(snapshot,{readOnly:true});
     if(db.prepare('PRAGMA integrity_check').get()?.integrity_check!=='ok'||db.prepare('PRAGMA foreign_key_check').all().length)throw Error('INVALID_DATABASE');
     for(const table of ['content_items','srs_cards','srs_reviews'])if(!db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name=?").get(table))throw Error('INVALID_SCHEMA');
-    return {integrity:'ok',files:archive.files.length};
+    for(const entry of archive.files.filter(f=>f.name.startsWith('jlpt/'))){
+      const restored=path.join(temporary,path.basename(entry.name)),bytes=Buffer.from(entry.bytes,'base64');
+      fs.writeFileSync(restored,bytes,{mode:0o600});
+      if(createHash('sha256').update(fs.readFileSync(restored)).digest('hex')!==entry.sha256)throw Error('RESTORE_HASH_MISMATCH');
+      if(entry.name==='jlpt/approved.sqlite')checkJlptDatabase(restored);
+    }
+    return {integrity:'ok',files:archive.files.length,jlptFiles:archive.files.filter(f=>f.name.startsWith('jlpt/')).length};
   } finally {
     db?.close();
     if(path.dirname(path.resolve(temporary))!==base)throw Error('UNSAFE_TEMP_CLEANUP');

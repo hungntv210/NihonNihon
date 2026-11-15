@@ -1,3 +1,4 @@
+import {maintenanceActive} from '../../../core/backup.ts';
 import fs from 'node:fs';import path from 'node:path';import {DatabaseSync} from 'node:sqlite';
 import {hash,validateQuestion,requireValue,plusDays,type Source,type Question,type Bank,type Audit} from './model.ts';
 import {validateIndependent} from './independent-qa.ts';
@@ -29,6 +30,7 @@ export function importApproved(input:ApprovedInput,catalog:Source[],directory:st
  }catch(e){try{db.exec('ROLLBACK');}catch{}throw e;}finally{db.close();}
 }
 export function approvedBank(date:string,week:string,level:string,catalog:Source[],directory:string):Bank|null{
+ requireValue(!maintenanceActive(),'MAINTENANCE');
  if(level!=='N5'||!fs.existsSync(path.join(directory,'approved.sqlite')))return null;
  const db=openStore(directory);try{
   db.exec('BEGIN IMMEDIATE');
