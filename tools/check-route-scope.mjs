@@ -10,7 +10,7 @@ ownership.set('jlpt-daily', ['src/app/(study)/jlpt-daily/', 'src/app/(study)/jlp
 ownership.set('foundation', ['src/app/(study)/settings/', 'public/fonts/']);
 ownership.set('ui-phase1', ['src/app/(study)/settings/', 'public/fonts/', 'src/components/town/', 'src/app/(study)/appearance/', 'src/app/(study)/today-roadmap/page.tsx', 'src/app/(study)/today-roadmap/today.module.css', 'src/core/day-period.ts', 'src/components/time-provider.tsx', 'tools/ui-test-clock.mjs', 'tests/day-period.test.ts']);
 ownership.set('ui-phase2', ['src/app/(study)/today-roadmap/', 'src/app/(study)/srs/', 'src/app/(study)/shadowing/', 'src/app/(study)/appearance/', 'src/components/mascot.tsx', 'src/components/route-heading.tsx', 'public/mascots/']);
-ownership.set('ui-phase3', ['src/app/(study)/vocab/', 'src/app/(study)/kanji/', 'src/app/(study)/grammar/', 'src/app/(study)/jlpt-daily/', 'src/app/(study)/common-tools/', 'src/app/(study)/sources/', 'src/app/(study)/settings/', 'src/app/(study)/today-roadmap/', 'src/app/(study)/appearance/', 'src/app/login/', 'src/components/route-presentation.tsx', 'public/fonts/']);
+ownership.set('ui-phase3', ['src/app/(study)/vocab/', 'src/app/(study)/kanji/', 'src/app/(study)/grammar/', 'src/app/(study)/jlpt-daily/', 'src/app/(study)/common-tools/', 'src/app/(study)/sources/', 'src/app/(study)/settings/', 'src/app/(study)/today-roadmap/', 'src/app/(study)/appearance/', 'src/app/login/', 'src/components/route-presentation.tsx', 'src/components/route-heading.tsx', 'public/fonts/']);
 if (!base || !branch) {
   console.error('Usage: node tools/check-route-scope.mjs BASE <g1/BRANCH|ROUTE>');
   process.exit(1);
