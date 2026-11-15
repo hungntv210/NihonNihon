@@ -31,7 +31,7 @@ export function Shell({ children, reviewCount }: { children: ReactNode; reviewCo
       </aside>
       <div className="main-sheet">
         <header className="topbar">
-          <span className="topbar-label">TIẾNG NHẬT · N5 → N2</span>
+          <span className="topbar-label">Nihon Nihon<small>Tiếng Nhật · N5 → N2</small></span>
           <div className="topbar-links"><Link href="/settings">Cài đặt</Link>
             <Link href="/sources" className="mobile-source">
               Nguồn dữ liệu
