@@ -618,3 +618,14 @@ Today reads actual due counts, manual activity and roadmap state. FSRS, offline 
 Client JS gzip: 375469 -> 376000 bytes (+531, below 40960). No dependency added. Original mascot drawings are local static SVG, with no mock learner data.
 Scope guard ui-phase2 PASS; screenshots remain gitignored under data/private/wasoku-phase2. Full browser logs remain under data/reports.
 Only this append-only audit entry changes after the successful full check.
+
+## Wasoku phase 3 — 11/15/2026 16:23:19
+
+Checked implementation: 7610e86e210b7cdd051714ebd087a424303a81c8.
+Environment: Windows Node 24.10.0. Full check: 11/15/2026 16:21:51 to 11/15/2026 16:23:19.
+Typecheck PASS; prototype 22/22 PASS; unit 132/132 PASS; production build PASS; test:app 16/16 PASS.
+All 9 browser checks PASS unchanged, with expanded appearance coverage: 19 screens x 4 server periods x 390/1440, text/control/placeholder contrast >=4.5:1, no overflow/external requests, local fonts, 87 map nodes opening real week details, completed 15-card SRS and reduced motion. Existing JLPT browser completes 10 questions.
+Lesson title heading contracts remain intact for vocabulary and grammar detail pages; Vietnamese function labels sit above them. No learning repository, scheduler, schema or question generation logic changed.
+Client JS gzip: 375989 -> 378023 bytes (+2034, below 40960). No dependency added. Local font coverage PASS.
+Scope guard ui-phase3 PASS; private screenshots remain in data/private/wasoku-phase3, logs in data/reports. Physical phone performance and production HTTPS depend on the existing host connection.
+Only this append-only audit entry changes after the successful full check.
