@@ -96,3 +96,25 @@ chỉ chứng minh kiểm tra archive trên fixture, không chứng minh máy đ
 Launcher home-run.ps1 tự đưa PowerShell vào Windows Job Object với KILL_ON_JOB_CLOSE trước khi tạo node. Khi Task Scheduler kết thúc launcher, Windows cũng kết thúc node con; không dựa vào finally hay handler SIGTERM để dọn tiến trình khi bị force-stop. Handle job không được truyền cho node. Không đóng handle thủ công trước exit để giữ mã thoát node.
 
 Khi cập nhật: Stop-ScheduledTask NihonNihon-App, xác nhận task đã Ready và cổng3000 không còn listener, rồi mới checkout/build và schtasks /Run /TN NihonNihon-App. Nếu launcher cũ để lại node mồ côi, không kill mọi node.exe: xác minh PID/CWD/command line của app; nếu không đủ quyền thì chủ dự án dừng đúng app bằng Administrator một lần. Sau đó launcher mới sẽ quản lý vòng đời bằng Job Object. Không coi task Ready là bằng chứng cổng đã trống.
+
+## Ngân hàng JLPT và kết quả làm bài
+
+Cùng job backup 23:30 và cùng đích `D:\NihonNihonBackup\`, archive nay chứa
+`jlpt/approved.sqlite` (câu đã duyệt, provenance, lịch phân câu) và
+`jlpt/attempts.json` (kết quả, liên kết thẻ ôn), nếu các tệp tồn tại. Nguồn mặc định
+là `private/jlpt-daily` cạnh DB app, hoặc `NIHON_JLPT_PATH` bên trong cùng thư mục
+dữ liệu app. SQLite được snapshot bằng backup API, gồm cả giao dịch đã commit
+trong WAL; khoá ghi kết quả được giữ trong lúc tạo snapshot. Không đưa câu hỏi
+vào Git. Archive dùng cùng SHA-256, quyền tạo file `0600` và ACL Windows kế thừa
+như dữ liệu học khác; JSON/base64 không phải mã hoá. Bảo vệ thư mục đích như trước.
+
+Lệnh `home-backup.ts verify` trích cả hai tệp JLPT vào thư mục tạm, so SHA-256
+từng tệp, kiểm integrity/FK/schema của ngân hàng rồi dọn thư mục tạm. Test
+`tests/jlpt-backup.test.ts` phục hồi vào app fixture riêng và so toàn bộ ngân hàng,
+lịch phân câu, kết quả; không thử phục hồi đè production.
+
+Backup cũ không có marker JLPT vẫn phục hồi dữ liệu học, giữ nguyên JLPT hiện tại.
+Backup mới có marker phục hồi đúng trạng thái có/không có tệp JLPT lúc snapshot.
+Nếu bản ngày đã tồn tại trước nâng cấp, giữ nguyên nó và tạo một bản
+`YYYY-MM-DD-jlpt-v1.json` dùng cho job chép ngày đó; không ghi đè bản đã chép ra D.
+Bản nâng cấp này được giữ như bản phục hồi, ngoài cơ chế dọn archive ngày hiện có.

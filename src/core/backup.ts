@@ -6,14 +6,15 @@ import { databasePath } from './config.ts';
 import { DEFAULT_PREFERENCES, newLessonsLocked, validatePreferences } from './preferences.ts';
 const MAX = 128 * 1024 * 1024;
 type Entry = { name:string; bytes:string; sha256:string };
-type Archive = { version:1; createdAt:string; files:Entry[] };
+type Archive = { version:1; createdAt:string; files:Entry[]; jlptIncluded?:true };
 const digest=(b:Buffer)=>createHash('sha256').update(b).digest('hex');
 export function backupPaths() {
  const db=databasePath(), root=path.dirname(db);
  // Explicit opt-in is required for a separately supplied snapshot, never a G0 worker database.
  if(path.basename(db)!=='demo.sqlite' && process.env.NIHON_DB_ROLE!=='snapshot') throw Error('BACKUP_REQUIRES_G1_SNAPSHOT');
- const paths = {db,root,backups:path.resolve(process.env.NIHON_BACKUP_DIR||path.join(root,'backups')),recordings:path.resolve(process.env.NIHON_RECORDINGS_DIR||path.join(root,'recordings')),settings:path.resolve(process.env.NIHON_SETTINGS_PATH||path.join(root,'settings.json')),roadmap:path.resolve(process.env.NIHON_ROADMAP_PATH||path.join(root,'private','today-roadmap.json')),lock:path.join(root,'maintenance.lock')};
- for(const key of ['backups','recordings','settings','roadmap'] as const){const relative=path.relative(root,paths[key]);if(!relative||relative.startsWith('..')||path.isAbsolute(relative))throw Error('PRIVATE_PATH_OUTSIDE_G1_ROOT');if(fs.existsSync(paths[key])&&fs.lstatSync(paths[key]).isSymbolicLink())throw Error('SYMLINK_FORBIDDEN');}
+ const paths = {db,root,jlpt:path.resolve(process.env.NIHON_JLPT_PATH||path.join(root,'private','jlpt-daily')),backups:path.resolve(process.env.NIHON_BACKUP_DIR||path.join(root,'backups')),recordings:path.resolve(process.env.NIHON_RECORDINGS_DIR||path.join(root,'recordings')),settings:path.resolve(process.env.NIHON_SETTINGS_PATH||path.join(root,'settings.json')),roadmap:path.resolve(process.env.NIHON_ROADMAP_PATH||path.join(root,'private','today-roadmap.json')),lock:path.join(root,'maintenance.lock')};
+ for(const key of ['backups','recordings','settings','roadmap','jlpt'] as const){const relative=path.relative(root,paths[key]);if(!relative||relative.startsWith('..')||path.isAbsolute(relative))throw Error('PRIVATE_PATH_OUTSIDE_G1_ROOT');if(fs.existsSync(paths[key])&&fs.lstatSync(paths[key]).isSymbolicLink())throw Error('SYMLINK_FORBIDDEN');}
+ for(let cursor=paths.jlpt;cursor!==root;cursor=path.dirname(cursor)){if(fs.existsSync(cursor)&&fs.lstatSync(cursor).isSymbolicLink())throw Error('SYMLINK_FORBIDDEN');}
  return paths;
 }
 export function maintenanceActive() { return fs.existsSync(path.join(path.dirname(databasePath()),'maintenance.lock')); }
@@ -28,21 +29,28 @@ function walk(directory:string, prefix='recordings/'):Entry[] {
  return fs.readdirSync(directory,{withFileTypes:true}).flatMap(entry=>{if(entry.isSymbolicLink())throw Error('SYMLINK_FORBIDDEN');const file=path.join(directory,entry.name);if(entry.isDirectory())return walk(file,prefix+entry.name+'/');if(!entry.isFile())throw Error('INVALID_RECORDING');const b=fs.readFileSync(file);return [{name:prefix+entry.name,bytes:b.toString('base64'),sha256:digest(b)}];});
 }
 function checkDatabase(file:string) {const db=new DatabaseSync(file,{readOnly:true});try {if(db.prepare('PRAGMA foreign_key_check').all().length)throw Error('FOREIGN_KEY_VIOLATION');if(db.prepare('PRAGMA integrity_check').get()?.integrity_check!=='ok')throw Error('DATABASE_CORRUPT');for(const table of ['content_items','srs_cards','srs_reviews'])if(!db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name=?").get(table))throw Error('INVALID_SCHEMA');}finally{db.close();}}
-export async function createBackup():Promise<Buffer> {
- const p=backupPaths(); fs.mkdirSync(p.backups,{recursive:true});
- const snapshot=path.join(p.backups,randomUUID()+'.sqlite');
+export function checkJlptDatabase(file:string){const db=new DatabaseSync(file,{readOnly:true});try{if(db.prepare('PRAGMA integrity_check').get()?.integrity_check!=='ok'||db.prepare('PRAGMA foreign_key_check').all().length)throw Error('INVALID_JLPT_DATABASE');for(const [table,columns]of [['approved_questions',['id','payload','receipt']],['approved_schedule',['date','position','question_id']]] as const){const actual=db.prepare('PRAGMA table_info('+table+')').all().map(r=>r.name);if(JSON.stringify(actual)!==JSON.stringify(columns))throw Error('INVALID_JLPT_SCHEMA');}}finally{db.close();}}
+function validateAttempts(bytes:Buffer){const state=JSON.parse(bytes.toString('utf8'));if(state.version!==1||!Array.isArray(state.attempts)||state.attempts.length>50000)throw Error('INVALID_JLPT_ATTEMPTS');for(const a of state.attempts)if(!a||typeof a.date!=='string'||!/^\d{4}-\d{2}-\d{2}$/.test(a.date)||typeof a.questionId!=='string'||!a.questionId||typeof a.type!=='string'||!Number.isInteger(a.choice)||a.choice<0||a.choice>3||typeof a.correct!=='boolean'||!(a.cardId===null||typeof a.cardId==='string'))throw Error('INVALID_JLPT_ATTEMPTS');}
+async function withJlptLock<T>(p:ReturnType<typeof backupPaths>,action:()=>Promise<T>){fs.mkdirSync(p.jlpt,{recursive:true});const lock=path.join(p.jlpt,'write.lock');let fd:number|undefined;for(let n=0;n<40;n++){try{fd=fs.openSync(lock,'wx',0o600);break;}catch(e){if((e as NodeJS.ErrnoException).code!=='EEXIST')throw e;await new Promise(r=>setTimeout(r,50));}}if(fd===undefined)throw Error('STORE_BUSY');try{return await action();}finally{fs.closeSync(fd);fs.unlinkSync(lock);}}
+export async function createBackup():Promise<Buffer>{const p=backupPaths();return withJlptLock(p,()=>createBackupUnlocked(p));}
+async function createBackupUnlocked(p:ReturnType<typeof backupPaths>):Promise<Buffer> {
+ fs.mkdirSync(p.backups,{recursive:true});
+ const snapshot=path.join(p.backups,randomUUID()+'.sqlite'),jlptSnapshot=path.join(p.backups,randomUUID()+'.sqlite');
  try {const db=new DatabaseSync(p.db,{readOnly:true});try{await backup(db,snapshot);}finally{db.close();}checkDatabase(snapshot);
  const file=(name:string,f:string)=>{const b=fs.readFileSync(f);return {name,bytes:b.toString('base64'),sha256:digest(b)};};
  const files=[file('database.sqlite',snapshot),...walk(p.recordings),...(['settings','roadmap'] as const).filter(k=>fs.existsSync(p[k])).map(k=>file(k+'.json',p[k]))];
- const result=Buffer.from(JSON.stringify({version:1,createdAt:new Date().toISOString(),files}));if(result.length>MAX)throw Error('BACKUP_TOO_LARGE');return result;
- }finally{if(fs.existsSync(snapshot))fs.unlinkSync(snapshot);}
+ for(const name of ['approved.sqlite','attempts.json']){const source=path.join(p.jlpt,name);if(!fs.existsSync(source))continue;if(fs.lstatSync(source).isSymbolicLink()||!fs.statSync(source).isFile())throw Error('INVALID_JLPT_FILE');if(name==='approved.sqlite'){const db=new DatabaseSync(source,{readOnly:true});try{await backup(db,jlptSnapshot);}finally{db.close();}checkJlptDatabase(jlptSnapshot);files.push(file('jlpt/'+name,jlptSnapshot));}else{validateAttempts(fs.readFileSync(source));files.push(file('jlpt/'+name,source));}}
+ const result=Buffer.from(JSON.stringify({version:1,createdAt:new Date().toISOString(),jlptIncluded:true,files}));if(result.length>MAX)throw Error('BACKUP_TOO_LARGE');return result;
+ }finally{if(fs.existsSync(snapshot))fs.unlinkSync(snapshot);if(fs.existsSync(jlptSnapshot))fs.unlinkSync(jlptSnapshot);}
 }
 function safeRecordingPath(name:string){return name.startsWith('recordings/')&&name.split('/').slice(1).every(part=>part.length>0&&part.length<=255&&part!=='.'&&part!=='..'&&!/[\x00-\x1f<>:"\\|?*]/.test(part)&&!/[. ]$/.test(part)&&! /^(con|prn|aux|nul|com[1-9]|lpt[1-9])(?:\.|$)/i.test(part));}
 export function validateBackup(bytes:Buffer):Archive {
  if(bytes.length>MAX)throw Error('BACKUP_TOO_LARGE');const a=JSON.parse(bytes.toString('utf8')) as Archive;
  if(a.version!==1||!Array.isArray(a.files)||!a.files.length||a.files.length>10000||typeof a.createdAt!=='string')throw Error('INVALID_BACKUP');
  const seen=new Set<string>();let total=0;
- for(const f of a.files){if(typeof f.name!=='string'||!( ['database.sqlite','settings.json','roadmap.json'].includes(f.name)||safeRecordingPath(f.name))||seen.has(f.name)||typeof f.bytes!=='string'||!/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(f.bytes))throw Error('INVALID_BACKUP_PATH');seen.add(f.name);const b=Buffer.from(f.bytes,'base64');total+=b.length;if(total>MAX||digest(b)!==f.sha256)throw Error('BACKUP_INTEGRITY');}
+ for(const f of a.files){if(typeof f.name!=='string'||!( ['database.sqlite','settings.json','roadmap.json','jlpt/approved.sqlite','jlpt/attempts.json'].includes(f.name)||safeRecordingPath(f.name))||seen.has(f.name)||typeof f.bytes!=='string'||!/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(f.bytes))throw Error('INVALID_BACKUP_PATH');seen.add(f.name);const b=Buffer.from(f.bytes,'base64');total+=b.length;if(total>MAX||digest(b)!==f.sha256)throw Error('BACKUP_INTEGRITY');}
+ if(a.jlptIncluded!==undefined&&a.jlptIncluded!==true||a.files.some(f=>f.name.startsWith('jlpt/'))&&a.jlptIncluded!==true)throw Error('INVALID_JLPT_MARKER');
+ for(const f of a.files)if(f.name==='jlpt/attempts.json')validateAttempts(Buffer.from(f.bytes,'base64'));
  if(!seen.has('database.sqlite'))throw Error('DATABASE_MISSING');
  for(const f of a.files){if(f.name==='settings.json')validatePreferences(JSON.parse(Buffer.from(f.bytes,'base64').toString('utf8')));if(f.name==='roadmap.json')validateRoadmap(JSON.parse(Buffer.from(f.bytes,'base64').toString('utf8')));}
  return a;
@@ -69,7 +77,8 @@ export function pruneDailyBackups(now=new Date()) {
  return removed;
 }
 export async function saveDailyBackup(now=new Date()) {
- const p=backupPaths();fs.mkdirSync(p.backups,{recursive:true});const file=path.join(p.backups,now.toISOString().slice(0,10)+'.json');
+ const p=backupPaths();fs.mkdirSync(p.backups,{recursive:true});let file=path.join(p.backups,now.toISOString().slice(0,10)+'.json');
+ if(fs.existsSync(file)){let complete=false;try{complete=validateBackup(fs.readFileSync(file)).jlptIncluded===true;}catch{}if(!complete)file=file.replace(/\.json$/,'-jlpt-v1.json');}
  if(fs.existsSync(file)){pruneDailyBackups(now);return file;}
  const bytes=await createBackup(),tmp=file+'.'+randomUUID()+'.tmp';try{fs.writeFileSync(tmp,bytes,{flag:'wx',mode:0o600});fs.renameSync(tmp,file);}finally{if(fs.existsSync(tmp))fs.unlinkSync(tmp);}pruneDailyBackups(now);return file;
 }
@@ -82,14 +91,15 @@ function validateRoadmap(value:unknown) {
  for(const row of v.shadow){const r=row as Record<string,unknown>;if(!r||!date(r.date)||!['regular','makeup'].includes(String(r.kind))||r.method!=='manual'||!Number.isInteger(r.minutes)||Number(r.minutes)<(r.kind==='makeup'?25:15)||Number(r.minutes)>180||!Array.isArray(r.clips)||r.clips.length<(r.kind==='makeup'?2:1)||r.clips.length>2||new Set(r.clips).size!==r.clips.length||r.clips.some(x=>typeof x!=='string'||!x.trim()||x.length>200))throw Error('INVALID_ROADMAP');}
 }
 function removePrivate(target:string,root:string){const relative=path.relative(path.resolve(root),path.resolve(target));if(!relative||relative.startsWith('..')||path.isAbsolute(relative))throw Error('UNSAFE_CLEANUP');fs.rmSync(target,{recursive:true,force:true});}
-export async function restoreBackup(bytes:Buffer) {
- const a=validateBackup(bytes),p=backupPaths(),stage=path.join(p.root,'.restore-'+randomUUID());fs.mkdirSync(stage,{recursive:true});
+export async function restoreBackup(bytes:Buffer){const p=backupPaths();return withJlptLock(p,()=>restoreBackupUnlocked(bytes,p));}
+async function restoreBackupUnlocked(bytes:Buffer,p:ReturnType<typeof backupPaths>) {
+ const a=validateBackup(bytes),stage=path.join(p.root,'.restore-'+randomUUID());fs.mkdirSync(stage,{recursive:true});
  let locked=false,committed=false,rollbackFailed=false,db:DatabaseSync|undefined;const replaced:{target:string;old:string;had:boolean}[]=[];
  try {
-  for(const f of a.files){const file=path.join(stage,f.name);fs.mkdirSync(path.dirname(file),{recursive:true});fs.writeFileSync(file,Buffer.from(f.bytes,'base64'),{mode:0o600});}checkDatabase(path.join(stage,'database.sqlite'));
+  for(const f of a.files){const file=path.join(stage,f.name);fs.mkdirSync(path.dirname(file),{recursive:true});fs.writeFileSync(file,Buffer.from(f.bytes,'base64'),{mode:0o600});}checkDatabase(path.join(stage,'database.sqlite'));if(fs.existsSync(path.join(stage,'jlpt/approved.sqlite')))checkJlptDatabase(path.join(stage,'jlpt/approved.sqlite'));
   const current=new DatabaseSync(p.db,{readOnly:true});const incoming=new DatabaseSync(path.join(stage,'database.sqlite'),{readOnly:true});try{const schema=(db:DatabaseSync)=>JSON.stringify(db.prepare("SELECT type,name,tbl_name,sql FROM sqlite_master WHERE name NOT LIKE 'sqlite_%' ORDER BY type,name").all());if(schema(current)!==schema(incoming))throw Error('SCHEMA_MISMATCH');}finally{current.close();incoming.close();}
   fs.writeFileSync(p.lock,new Date().toISOString(),{flag:'wx',mode:0o600});locked=true;
-  const safety=await createBackup();fs.writeFileSync(path.join(p.backups,'before-restore-'+Date.now()+'.json'),safety,{flag:'wx',mode:0o600});
+  const safety=await createBackupUnlocked(p);fs.writeFileSync(path.join(p.backups,'before-restore-'+Date.now()+'.json'),safety,{flag:'wx',mode:0o600});
   db=new DatabaseSync(p.db,{timeout:5000});db.prepare('ATTACH DATABASE ? AS restored').run(path.join(stage,'database.sqlite'));
   db.exec('PRAGMA foreign_keys=ON; BEGIN IMMEDIATE; PRAGMA defer_foreign_keys=ON');
   const tables=db.prepare("SELECT name FROM main.sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' ORDER BY name").all().map(row=>String(row.name));
@@ -97,7 +107,7 @@ export async function restoreBackup(bytes:Buffer) {
   for(const table of tables)db.exec('DELETE FROM main.'+quote(table));
   for(const table of tables)db.exec('INSERT INTO main.'+quote(table)+' SELECT * FROM restored.'+quote(table));
   if(db.prepare('PRAGMA main.foreign_key_check').all().length)throw Error('FOREIGN_KEY_VIOLATION');
-  const mappings=[['recordings',p.recordings],['settings.json',p.settings],['roadmap.json',p.roadmap]];
+  const mappings=[['recordings',p.recordings],['settings.json',p.settings],['roadmap.json',p.roadmap],...(a.jlptIncluded?['approved.sqlite','attempts.json','approved.sqlite-wal','approved.sqlite-shm'].map(name=>['jlpt/'+name,path.join(p.jlpt,name)]):[])];
   for(const [name,target] of mappings){const old=target+'.pre-restore-'+randomUUID(),had=fs.existsSync(target);if(had)fs.renameSync(target,old);replaced.push({target,old,had});const next=path.join(stage,name);if(fs.existsSync(next)){fs.mkdirSync(path.dirname(target),{recursive:true});fs.renameSync(next,target);}}
   db.exec('COMMIT');committed=true;
  }catch(error){try{db?.exec('ROLLBACK');}catch{}const failures:unknown[]=[];for(const r of [...replaced].reverse()){try{if(fs.existsSync(r.target))removePrivate(r.target,p.root);if(r.had)fs.renameSync(r.old,r.target);}catch(failure){rollbackFailed=true;failures.push(failure);}}if(failures.length)throw new AggregateError([error,...failures],'RESTORE_ROLLBACK_FAILED_RECOVERY_FILES_RETAINED');throw error;}

@@ -664,3 +664,13 @@ Only this append-only audit entry changes after the successful full check.
 - Rebased onto master including approved JLPT/local bank. All master and original PR verification entries retained; normalized-prefix proof PASS. Only generated actions-node24/.next/types was removed to discard the deleted App media-route cache; no user data removed.
 - Exact workflow comparison PASS: only checkout v4→v5, setup-node v4→v5, upload-artifact v4→v7; all steps/inputs/conditions retained. Primary upstream action.yml for all3 refs verified runs.using node24. This explicitly authorized workflow-only PR is outside feature-route ownership.
 - PR23 closed with linked explanation: wait/poll/timeout behavior and tests already live in g0/data-import65d47a5; remaining3.6 example is obsolete under owner decision. No G0 code/data/worker changes.
+
+### 2026-11-15 — Daily backup includes private JLPT bank and attempts
+
+- Checked commit: `2c46453be622228f3516550cdc5b082eb930306e` (`codex/backup-jlpt`).
+- Local full check: 2026-11-15T21:21:19+07:00–2026-11-15T21:22:56+07:00, Windows / Node 24, native D: worktree; unrestricted loopback needed for HTTP fixture tests (sandbox attempt denied localhost with EACCES).
+- `npm run check`: PASS — typecheck, prototype 22/22, route/core tests 139/139, production build, test:app 16/16 checks.
+- Targeted backup tests: 7/7 PASS, including WAL-backed approved bank, eleven synthetic questions, schedule, nonempty attempts and byte/hash comparison after restore into an isolated temporary app root. Existing source data remain unchanged. Legacy archives preserve current JLPT; same-day upgrade preserves the original archive. Fixtures contain no private questions.
+- `node tools/check-route-scope.mjs origin/master backup-jlpt`: PASS (registered exact backup-related paths, including approved-store maintenance barrier).
+- Existing 23:30 task/destination, integrity checks, file permissions and retention remain in use; no new encryption or task registration. Temporary extraction validates bank integrity/FK/schema and both JLPT file hashes.
+- Logs: gitignored `data/reports/full-check-verified.log`, `data/reports/backup-tests.log`. CI and actual deployment/backup verification follow only after push; no claim of production restore at this point.
