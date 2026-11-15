@@ -42,3 +42,9 @@ test('typed groups are audited before the next generation can change actual mode
  await generateTypedRows(async(_phase,_prompt,payload:any)=>{events.push('generate'+payload.positions[0]);return payload.positions[0]===0?[wire]:[orderRow];},GENERATE_PROMPT,positions=>({positions}),[{position:0,type:'context'},{position:1,type:'order'}],[0,1],async(_rows,positions)=>{events.push('audit'+positions[0]);});
  assert.deepEqual(events,['generate0','audit0','generate1','audit1']);
 });
+
+import {provenanceRows} from './independent-qa.ts';
+test('resume CLI provenance handles isolated sentence audits without a questions array',()=>{
+ assert.deepEqual(provenanceRows('verify',{sentences:[{index:0,completedSentence:'fixture'}]},[]),[]);
+ assert.deepEqual(provenanceRows('verify',{questions:[q]},[]),[q]);assert.deepEqual(provenanceRows('generate',{},[q]),[q]);
+});

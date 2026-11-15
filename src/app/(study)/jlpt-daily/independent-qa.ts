@@ -2,6 +2,10 @@ import {draftProvider} from './draft-provider.ts';
 import {auditSchema,VERIFY_PROMPT,type Provider} from './generation.ts';
 import {validateAudit,requireValue,type Question,type Audit} from './model.ts';
 import {orderedSentence} from './hard-qa.ts';
+export function provenanceRows(phase:'generate'|'verify',payload:unknown,output:unknown){
+ const rows=phase==='generate'?output:(payload as {questions?:unknown})?.questions;
+ return Array.isArray(rows)?rows:[]; // isolated sentence audit has no question array
+}
 const optionGradeSchema={type:'object',properties:{choiceIndex:{type:'integer'},completedSentence:{type:'string'},candidateOrder:{type:'array',items:{type:'integer'}},grammatical:{type:'boolean'},formCorrect:{type:'boolean'},natural:{type:'boolean'},meaningFits:{type:'boolean'},acceptable:{type:'boolean'},reason:{type:'string'}},required:['choiceIndex','completedSentence','candidateOrder','grammatical','formCorrect','natural','meaningFits','acceptable','reason'],additionalProperties:false};
 export function choiceSentence(q:Question,index:number,order:number[]=[]){
  if(q.type==='order')return orderedSentence({...q,order});

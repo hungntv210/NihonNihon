@@ -1,7 +1,7 @@
 import {draftContextLexicon} from './word-evidence.ts';
 import {generateTypedRows} from './typed-generation.ts';
 import fs from 'node:fs';import path from 'node:path';import {createHash} from 'node:crypto';
-import {parseArgs} from 'node:util';import {fileURLToPath} from 'node:url';import {reviewIndependently,independentProvider,independentPayload,independentPrompt,independentSchema,validateIndependent} from './independent-qa.ts';
+import {parseArgs} from 'node:util';import {fileURLToPath} from 'node:url';import {provenanceRows,reviewIndependently,independentProvider,independentPayload,independentPrompt,independentSchema,validateIndependent} from './independent-qa.ts';
 import type {DatabaseSync} from 'node:sqlite';
 import {allocateRoadmap} from '../today-roadmap/model.ts';import {roadmapData} from '../today-roadmap/repository.ts';
 import {sourceCatalog} from './catalog.ts';import {openContentDatabase} from '../../../core/content.ts';
@@ -105,7 +105,7 @@ if(process.argv[1]&&path.resolve(process.argv[1])===fileURLToPath(import.meta.ur
   if(v.seed){const seed=JSON.parse(fs.readFileSync(v.seed,'utf8')),receipt=JSON.parse(fs.readFileSync(v.receipt,'utf8'));requireValue(seed.mode===DRAFT_MODE&&seed.week===v.week&&seed.snapshotSha256===receipt.sha256&&hash(seed.promptHashes)===hash(draftPromptHashes),'DRAFT_SEED_CONTEXT_CHANGED');initialSeed={questions:seed.questions,audit:seed.audit,rejected:seed.rejected,repairCounts:seed.repairCounts};for(const q of seed.questions)provenance[`${q.day}:${q.position}`]={retained:true,model:seed.model,questionHash:hash(q)};}
   const provider=independentProvider(profiles,config.ledgerFile??path.join(privateRoot,'jlpt-quota.json'),process.env.GEMINI_API_KEY??'',{onAttempt:(event,payload,output)=>{
    fs.appendFileSync(path.join(v.output!,'provider-attempts.jsonl'),JSON.stringify(event)+'\n',{mode:0o600});console.log(JSON.stringify(event));
-   if(event.status==='ok'){fs.writeFileSync(path.join(v.output!,`response-${Date.now()}-${event.phase}.json`),JSON.stringify({event,payload,output},null,2)+'\n',{mode:0o600});const rows=event.phase==='generate'?output:(payload as {questions:Draft[]}).questions;for(const q of rows as Draft[]){const slot=`${q.day}:${q.position}`;provenance[slot]={...(provenance[slot]??{}),[event.phase+'Model']:event.model,[event.phase+'Hash']:hash(q)};}fs.writeFileSync(provenanceFile,JSON.stringify(provenance,null,2)+'\n',{mode:0o600});}
+   if(event.status==='ok'){fs.writeFileSync(path.join(v.output!,`response-${Date.now()}-${event.phase}.json`),JSON.stringify({event,payload,output},null,2)+'\n',{mode:0o600});const rows=provenanceRows(event.phase,payload,output);for(const q of rows as Draft[]){const slot=`${q.day}:${q.position}`;provenance[slot]={...(provenance[slot]??{}),[event.phase+'Model']:event.model,[event.phase+'Hash']:hash(q)};}fs.writeFileSync(provenanceFile,JSON.stringify(provenance,null,2)+'\n',{mode:0o600});}
   }});
   console.log(JSON.stringify(await generateRoadmapDraft({snapshotPath:v.snapshot,receiptPath:v.receipt,week:v.week,directory:v.output,model:config.model,modelChain:profiles.map(p=>p.model),initialSeed,provider,onDay:value=>console.log(JSON.stringify(value))})));
  }catch(e){console.error(e instanceof Error?e.message:'DRAFT_FAILED');process.exitCode=1;}
