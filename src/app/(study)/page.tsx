@@ -1,103 +1,31 @@
 import Link from 'next/link';
-import { getContent, getContentSummary } from '../../server/dal.ts';
-import { ContentCard } from '../../components/content-card.tsx';
-import { JaText, ViText } from '../../components/text.tsx';
-import { TownScene } from '../../components/town/town-scene.tsx';
-export default async function TodayPage() {
-  const [summary, words] = await Promise.all([getContentSummary(), getContent('vocab', 3)]);
-  return (
-    <>
-      <div className="page-heading">
-        <p className="eyebrow">MỖI NGÀY MỘT CHÚT</p>
-        <h1>Chào bạn, cùng học nhé.</h1>
-        <p>Không cần học thật nhiều. Chỉ cần hôm nay tiến thêm một bước.</p>
-      </div>
-      <TownScene />
-      <p><Link className="button button-primary" href="/today-roadmap">Hôm nay và lộ trình →</Link></p><section className="welcome-panel" aria-labelledby="welcome-title">
-        <div>
-          <span className="small-label">GÓC NHỎ TIẾNG NHẬT</span>
-          <h2 id="welcome-title">
-            Bắt đầu từ những
-            <br />
-            điều quen thuộc.
-          </h2>
-          <p>
-            Gặp một từ mới, hiểu thêm một chút.
-            <br />
-            Lưu lại để gặp nhau trong buổi ôn sau.
-          </p>
-          <Link className="button button-primary" href="/vocab">
-            Mở sổ từ vựng <span aria-hidden="true">↗</span>
-          </Link>
-        </div>
-        <svg className="desk-art" viewBox="0 0 320 230" aria-hidden="true">
-          <ellipse cx="167" cy="206" rx="128" ry="14" fill="#DDE6D9" />
-          <path d="m40 88 115-21 106 31-113 24Z" fill="#fff" stroke="#96AE95" />
-          <path d="M40 88v82l108 37v-85M148 207l113-30V98" fill="#EEF1E7" stroke="#96AE95" />
-          <path d="m54 97 93 32 99-26M147 129v63" fill="none" stroke="#96AE95" />
-          <path
-            d="m83 128 41 14m-41-3 41 14m42-8 47-14m-47 24 35-11"
-            stroke="#B0BDA9"
-            strokeWidth="3"
-          />
-          <path d="M251 108c-32-27-41-48-39-80 33 6 42 35 39 80Z" fill="#477D59" />
-          <path d="M250 110c2-36 17-57 44-61-2 34-17 51-44 61Z" fill="#86A681" />
-          <path d="m232 109 42 1-7 60h-27Z" fill="#D8B994" />
-          <path d="M251 111V62" stroke="#2F684E" strokeWidth="2" />
-          <circle cx="88" cy="43" r="17" fill="#E6C87B" />
-          <path
-            d="m28 51 8-5m-1 16 9 2M276 29l3-10m10 17 9-3"
-            stroke="#96AE95"
-            strokeWidth="2"
-            strokeLinecap="round"
-          />
-        </svg>
-      </section>
-      <section className="stats-grid" aria-label="Thư viện của bạn">
-        {(
-          [
-            ['Từ vựng', summary.vocab, '/vocab', 'Từng từ, từng ý'],
-            ['Kanji', summary.kanji, '/kanji', 'Nhận mặt, hiểu nghĩa'],
-            ['Ngữ pháp', summary.grammar, '/grammar', 'Nối những điều đã biết'],
-            ['Hàng ôn', summary.review, '/srs', 'Lưu lại để nhớ lâu'],
-          ] as const
-        ).map(([label, count, url, note]) => (
-          <Link className="stat-card" key={url} href={url}>
-            <span>{label}</span>
-            <strong>{count}</strong>
-            <small>{note}</small>
-          </Link>
-        ))}
-      </section>
-      <section className="section-block">
-        <div className="section-heading">
-          <div>
-            <p className="eyebrow">MỞ MỘT TRANG SỔ</p>
-            <h2>Những từ đầu tiên</h2>
-          </div>
-          <Link className="text-link" href="/vocab">
-            Xem từ vựng <span aria-hidden="true">→</span>
-          </Link>
-        </div>
-        <div className="content-grid">
-          {words.map((item) => (
-            <ContentCard key={item.id} item={item} />
-          ))}
-        </div>
-      </section>
-      <section className="type-sample">
-        <div>
-          <p className="eyebrow">ĐỌC RÕ, HỌC THOẢI MÁI</p>
-          <ViText as="p" className="vi-specimen">
-            Ộ Ệ Ờ Ữ Ỹ Đ
-          </ViText>
-          <p className="muted">Chữ Việt trọn dấu, chữ Nhật rõ nét.</p>
-        </div>
-        <JaText as="p" className="ja-specimen">
-          働 返 直 骨
-        </JaText>
-      </section>
-    </>
-  );
+import {getContent,getContentSummary} from '../../server/dal.ts';
+import {ContentCard} from '../../components/content-card.tsx';
+import {JaText,ViText} from '../../components/text.tsx';
+import {TownScene} from '../../components/town/town-scene.tsx';
+import {RouteHeading} from '../../components/route-heading.tsx';
+import {Mascot} from '../../components/mascot.tsx';
+import {getToday} from './today-roadmap/server.ts';
+import {todayPlan,allocateRoadmap,plusDays} from './today-roadmap/model.ts';
+export default async function TodayPage(){
+ const [summary,words,today]=await Promise.all([getContentSummary(),getContent('vocab',3),getToday()]);
+ const plan=todayPlan(today.progress,today.settings,new Date(today.now),today.data.due);
+ const current=allocateRoadmap(today.data.items,plusDays(today.settings.startDate,plan.delayedWeeks*7))[plan.week-1];
+ return <>
+  <RouteHeading title="Hôm nay" eyebrow="MỖI NGÀY MỘT CHÚT"><h2 className="welcome-subtitle">Chào bạn, cùng học nhé.</h2><p>Không cần học thật nhiều. Chỉ cần hôm nay tiến thêm một bước.</p></RouteHeading>
+  <TownScene level={current.level}/>
+  <section className="today-block" aria-labelledby="now-title"><div className="block-heading"><span>01</span><h2 id="now-title">Làm ngay</h2></div>
+   <div className="today-quick"><div><p className="eyebrow">TỪ VỰNG VÀ KANJI · KHÔNG ÂM THANH</p><h3>Ôn nhanh</h3><p>{today.data.due} thẻ đến hạn trong hàng ôn của bạn.</p><Link className="button button-primary" href="/srs?mode=quick">Bắt đầu ôn nhanh →</Link></div><Mascot species="tanuki" size={108}/></div>
+  </section>
+  <section className="today-block" aria-labelledby="week-title"><div className="block-heading"><span>02</span><h2 id="week-title">Tuần này</h2></div><div className="today-week">
+   <Link className="today-link" href="/shadowing"><Mascot species="bird"/><div><h3>Shadowing</h3><p>{plan.count}/2 buổi đã ghi nhận tuần này</p><span className="text-link">Mở thư viện clip →</span></div></Link>
+   <Link className="today-link" href="/common-tools/progress"><div><h3>Tiến độ học</h3><p>Xem số lượt ôn và kết quả đã lưu trong app.</p><span className="text-link">Xem tiến độ →</span></div></Link>
+  </div></section>
+  <section className="today-block" aria-labelledby="journey-title"><div className="block-heading"><span>03</span><h2 id="journey-title">Hành trình</h2></div><div className="journey-stats">
+   <article><span>Chuỗi ngày tự ghi nhận</span><strong>{plan.streak} ngày</strong></article><article><span>Chặng hiện tại</span><strong>{current.level} · tuần {plan.week}</strong></article><article><span>Kỳ thi dự kiến {today.settings.examDate}</span><strong>{Math.max(0,plan.examDays)} ngày</strong></article>
+  </div><Link className="text-link" href="/today-roadmap">Hôm nay và lộ trình →</Link></section>
+  <section className="stats-grid" aria-label="Thư viện của bạn">{([['Từ vựng',summary.vocab,'/vocab'],['Kanji',summary.kanji,'/kanji'],['Ngữ pháp',summary.grammar,'/grammar'],['Hàng ôn',summary.review,'/srs']]as const).map(([label,count,url])=><Link className="stat-card" key={url} href={url}><span>{label}</span><strong>{count}</strong><small>Mở để học →</small></Link>)}</section>
+  <section className="section-block"><div className="section-heading"><div><p className="eyebrow">MỞ MỘT TRANG SỔ</p><h2>Những từ đầu tiên</h2></div><Link className="text-link" href="/vocab">Xem từ vựng →</Link></div><div className="content-grid">{words.map(item=><ContentCard key={item.id} item={item}/>)}</div></section>
+  <section className="type-sample"><div><p className="eyebrow">ĐỌC RÕ, HỌC THOẢI MÁI</p><ViText as="p" className="vi-specimen">Ộ Ệ Ờ Ữ Ỹ Đ</ViText><p className="muted">Chữ Việt trọn dấu, chữ Nhật rõ nét.</p></div><JaText as="p" className="ja-specimen">働 返 直 骨</JaText></section>
+ </>;
 }
-

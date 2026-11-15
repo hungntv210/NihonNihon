@@ -23,3 +23,5 @@ full G0 dataset coverage. G0 is not merged by this work.
 
 Verification: root npm run check plus route-local tests. Run the browser smoke
 with `npx tsx "src/app/(study)/srs/browser-check.ts"` after a production build.
+
+Wasoku GĐ2: thẻ pixel theo 4 thời điểm, 4 nút tự đánh giá thành 2 cột trên điện thoại, Tanuki ở trạng thái hoàn tất. FSRS, outbox, đồng bộ và cử chỉ giữ nguyên. Không thêm thư viện chuyển động.
