@@ -10,14 +10,18 @@ function openStore(directory:string){
  CREATE TABLE IF NOT EXISTS approved_schedule(date TEXT NOT NULL, position INTEGER NOT NULL, question_id TEXT NOT NULL UNIQUE REFERENCES approved_questions(id), PRIMARY KEY(date,position));`);
  return db;
 }
-export function importApproved(input:ApprovedInput,catalog:Source[],directory:string){
+export function validateApproved(input:ApprovedInput,catalog:Source[]){
  requireValue(input.reviewer==='tester'&&input.questions.length===11&&input.audit.length===11&&/^[a-f0-9]{64}$/.test(input.sourceSha256)&&input.model!==input.verifierModel,'TESTER_APPROVED_ELEVEN_REQUIRED');
  const seen:Question[]=[];
  for(let index=0;index<input.questions.length;index++){
   const q=input.questions[index],validated=validateQuestion(q,catalog,input.sourceWeek,'N5',seen);requireValue(q.id===validated.id&&q.fingerprint===validated.fingerprint,'QUESTION_ID_CHANGED');
   requireValue(input.sourceHashes[q.targetId]===catalog.find(s=>s.id===q.targetId)?.hash,'SOURCE_CHANGED');validateIndependent([{...input.audit[index],index:0}],[q]);seen.push(q);
  }
- const receipt={origin:'draft_roadmap',status:'approved',reviewer:input.reviewer,sourceWeek:input.sourceWeek,sourceHashes:input.sourceHashes,sourceSha256:input.sourceSha256,model:input.model,verifierModel:input.verifierModel};
+ return seen;
+}
+export function importApproved(input:ApprovedInput,catalog:Source[],directory:string){
+ const seen=validateApproved(input,catalog);
+ const receipt={referenceCatalog:catalog,approvedAt:new Date().toISOString(),origin:'draft_roadmap',status:'approved',reviewer:input.reviewer,sourceWeek:input.sourceWeek,sourceHashes:input.sourceHashes,sourceSha256:input.sourceSha256,model:input.model,verifierModel:input.verifierModel};
  const db=openStore(directory);let inserted=0;try{
   db.exec('BEGIN IMMEDIATE');for(const q of seen){const old=db.prepare('SELECT payload,receipt FROM approved_questions WHERE id=?').get(q.id);if(old){requireValue(hash(JSON.parse(String(old.payload)))===hash(q)&&JSON.parse(String(old.receipt)).sourceSha256===input.sourceSha256,'APPROVED_QUESTION_CONFLICT');continue;}
    db.prepare('INSERT INTO approved_questions VALUES(?,?,?)').run(q.id,JSON.stringify(q),JSON.stringify({...receipt,audit:input.audit[seen.indexOf(q)],contentHash:hash(q)}));inserted++;
@@ -34,7 +38,7 @@ export function approvedBank(date:string,week:string,level:string,catalog:Source
   const rows=db.prepare('SELECT q.payload,q.receipt,s.position FROM approved_schedule s JOIN approved_questions q ON q.id=s.question_id WHERE s.date=? ORDER BY s.position').all(date);
   const questions:Question[]=[],audits:Audit[]=[];let receipt:any;
   for(const row of rows){const raw=JSON.parse(String(row.payload));receipt=JSON.parse(String(row.receipt));requireValue(receipt.origin==='draft_roadmap'&&receipt.status==='approved'&&receipt.reviewer==='tester'&&receipt.contentHash===hash(raw),'INVALID_APPROVED_RECEIPT');
-   const original=validateQuestion(raw,catalog,receipt.sourceWeek,'N5');requireValue(receipt.sourceHashes[raw.targetId]===catalog.find(s=>s.id===raw.targetId)?.hash,'SOURCE_CHANGED');validateIndependent([{...receipt.audit,index:0}],[original]);
+   const original=validateQuestion(raw,receipt.referenceCatalog??catalog,receipt.sourceWeek,'N5');requireValue(receipt.sourceHashes[raw.targetId]===catalog.find(s=>s.id===raw.targetId)?.hash,'SOURCE_CHANGED');validateIndependent([{...receipt.audit,index:0}],[original]);
    questions.push({...original,date,day:Math.round((Date.parse(date)-Date.parse(week))/86400000),position:Number(row.position),id:hash({approved:raw.id,date}).slice(0,32)});audits.push({...receipt.audit,index:questions.length-1});
   }
   db.exec('COMMIT');

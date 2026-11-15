@@ -24,3 +24,11 @@ test('CLI bundle accepts only exact private accepted-set evidence and actual dis
  fs.writeFileSync(path.join(dir,'attempts.jsonl'),[{phase:'generate',status:'ok',model:input.model},{phase:'verify',status:'ok',model:input.verifierModel}].map(e=>JSON.stringify(e)).join('\n'));
  assert.equal(approvedBundle(file).questions.length,11);const changed=structuredClone(input.questions);changed[0].explanation+=' changed';fs.writeFileSync(file,JSON.stringify({draft:true,available:11,questions:changed}));assert.throws(()=>approvedBundle(file),/NOT_IN_ACCEPTED_SET/);
 });
+
+import {copyApprovedTargets} from './approved-targets.ts';
+test('target import appends only pinned public rows and preserves existing reviews and media tables',t=>{
+ const dir=fs.mkdtempSync(path.join(os.tmpdir(),'nihon-approved-targets-'));t.after(()=>fs.rmSync(dir,{recursive:true,force:true}));const srcFile=path.join(dir,'frozen.sqlite'),appFile=path.join(dir,'demo.sqlite');fixtureCatalog(srcFile);fixtureCatalog(appFile);const src=new DatabaseSync(srcFile),app=new DatabaseSync(appFile);const before=app.prepare('SELECT count(*) n FROM srs_reviews').get()!.n;
+ const original=src.prepare("SELECT * FROM content_items WHERE kind='vocab' LIMIT 1").get()!,vocab=src.prepare('SELECT * FROM vocab WHERE item_id=?').get(original.item_id)!,id='openjlpt:vocab:approved-fixture-extra';
+ for(const [table,row]of [['content_items',{...original,item_id:id,source_key:'approved-fixture-extra',source_hash:'f'.repeat(64)}],['vocab',{...vocab,item_id:id}]] as const){const cols=Object.keys(row);src.prepare(`INSERT INTO ${table} (${cols.join(',')}) VALUES(${cols.map(()=>'?').join(',')})`).run(...Object.values(row));}
+ try{assert.equal(copyApprovedTargets(src,appFile,[id]),1);assert.equal(copyApprovedTargets(src,appFile,[id]),0);assert.equal(app.prepare('SELECT count(*) n FROM srs_reviews').get()!.n,before);assert.equal(app.prepare('SELECT source_hash FROM content_items WHERE item_id=?').get(id)!.source_hash,'f'.repeat(64));assert.equal(app.prepare('PRAGMA foreign_key_check').all().length,0);}finally{src.close();app.close();}
+});

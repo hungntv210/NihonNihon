@@ -261,3 +261,5 @@ Assignments persist: at most10 unused questions per local date, globally no reus
 With11 questions that means10, then1, then0. The UI/result denominator shows the
 actual total and never calls AI on page load. Wrong answers use existing SRS enqueue.
 No question content, receipts or sidecar DB belong in the public repository.
+
+If app targets are missing, the script first validates the read-only Frozen receipt/SHA, snapshots the app DB, and appends only the11 public OpenJLPT target rows plus their exact release references. It never overwrites existing content, imports private dictionary/translations/media, changes schema or inserts learner reviews. The question receipt retains the original roadmap reference catalog for validation; SRS uses the real appended target IDs. A conflicting existing hash aborts.
