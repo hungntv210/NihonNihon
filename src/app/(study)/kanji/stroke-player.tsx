@@ -12,7 +12,7 @@ export function StrokePlayer({
     [playing, setPlaying] = useState(false);
   useEffect(() => {
     if (!playing) return;
-    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches || document.documentElement.dataset.motion === 'off') {
       setVisible(paths.length);
       setPlaying(false);
       return;

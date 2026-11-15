@@ -1,3 +1,4 @@
+import {RouteHeading} from '../../../components/route-heading.tsx';
 import Link from 'next/link';
 import { withContentDatabase } from '../../../server/dal.ts';
 import { SourceLabel } from '../../../components/source-label.tsx';
@@ -26,11 +27,7 @@ export default async function GrammarPage({
   }
   return (
     <>
-      <div className="page-heading">
-        <p className="eyebrow">NỐI LỜI THÀNH CÂU</p>
-        <h1>Ngữ pháp</h1>
-        <p>Hiểu một mẫu câu, thử lại trong câu quen thuộc.</p>
-      </div>
+      <RouteHeading title="Ngữ pháp" eyebrow="NỐI LỜI THÀNH CÂU" species="owl"><p>Hiểu một mẫu câu, thử lại trong câu quen thuộc.</p></RouteHeading>
       <form
         key={result.q + '|' + result.level}
         className={styles.filters}

@@ -1,3 +1,4 @@
+import {RouteHeading} from '../../../components/route-heading.tsx';
 import Link from 'next/link';
 import { withContentDatabase } from '../../../server/dal.ts';
 import { JaText, ViText } from '../../../components/text.tsx';
@@ -15,11 +16,7 @@ export default async function KanjiPage({
     result = await withContentDatabase((db) => searchKanji(db, filters));
   return (
     <>
-      <div className="page-heading">
-        <p className="eyebrow">TỪNG NÉT, TỪNG Ý</p>
-        <h1>Kanji</h1>
-        <p>Tìm mặt chữ, đối chiếu âm đọc và gặp lại trong những từ quen thuộc.</p>
-      </div>
+      <RouteHeading title="Kanji" eyebrow="TỪNG NÉT, TỪNG Ý" species="fox"><p>Tìm mặt chữ, đối chiếu âm đọc và gặp lại trong những từ quen thuộc.</p></RouteHeading>
       <form
         key={filterUrl(filters)}
         className={styles.toolbar}

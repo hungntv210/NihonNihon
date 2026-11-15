@@ -11,7 +11,7 @@ export function proxy(request: NextRequest) {
     path === '/robots.txt' ||
     path === '/icon.svg' || path === '/sw.js' || path === '/offline.html' || path === '/manifest.webmanifest' ||
     path.startsWith('/_next/static/') ||
-    path.startsWith('/fonts/');
+    path.startsWith('/fonts/') || path.startsWith('/mascots/');
   const headers = {
     'Cache-Control': 'private, no-store',
     'X-Robots-Tag': 'noindex, nofollow, noarchive',

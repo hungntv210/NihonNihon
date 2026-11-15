@@ -1,13 +1,10 @@
+import {RouteHeading} from '../../../components/route-heading.tsx';
 import { getContentSources } from '../../../server/dal.ts';
 export default async function SourcesPage() {
   const sources = await getContentSources();
   return (
     <>
-      <div className="page-heading">
-        <p className="eyebrow">HỌC CÙNG NGUỒN MỞ</p>
-        <h1>Nguồn dữ liệu</h1>
-        <p>Ghi công những người đã tạo nên nội dung trong thư viện.</p>
-      </div>
+      <RouteHeading title="Nguồn dữ liệu" eyebrow="HỌC CÙNG NGUỒN MỞ" species="owl"><p>Ghi công những người đã tạo nên nội dung trong thư viện.</p></RouteHeading>
       <div className="source-list">
         {sources.map((source) => (
           <article className="source-card" key={source.id}>

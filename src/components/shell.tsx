@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import type { ReactNode } from 'react';
 import { Navigation, MobileNavigation } from './nav.tsx';
+import {RoutePresentation} from './route-presentation.tsx';
 export function Shell({ children, reviewCount }: { children: ReactNode; reviewCount: number }) {
   return (
     <div className="app-shell">
@@ -60,7 +61,7 @@ export function Shell({ children, reviewCount }: { children: ReactNode; reviewCo
           </nav>
         </div>
         <main id="main" tabIndex={-1}>
-          {children}
+          <RoutePresentation>{children}</RoutePresentation>
         </main>
         <footer className="page-footer">
           Học để hiểu, ôn để nhớ.<span>Nihon Nihon</span>

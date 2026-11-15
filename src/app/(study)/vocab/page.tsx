@@ -1,3 +1,4 @@
+import {RouteHeading} from '../../../components/route-heading.tsx';
 import Link from 'next/link';
 import { getVocabulary } from './server.ts';
 import { searchParams, vocabularyUrl } from './data.ts';
@@ -15,11 +16,7 @@ export default async function VocabPage({
   const result = await getVocabulary(searchParams(await params));
   return (
     <>
-      <div className="page-heading">
-        <p className="eyebrow">SỔ TỪ CỦA BẠN</p>
-        <h1>Từ vựng</h1>
-        <p>Tìm một từ, nghe cách đọc, rồi lưu lại để gặp nhau trong buổi ôn sau.</p>
-      </div>
+      <RouteHeading title="Từ vựng" eyebrow="SỔ TỪ CỦA BẠN" species="cat"><p>Tìm một từ, nghe cách đọc, rồi lưu lại để gặp nhau trong buổi ôn sau.</p></RouteHeading>
       <div className={styles.topLinks}>
         <Link href="/vocab/lesson" className="button button-primary">
           Học 5 từ mới →
@@ -52,7 +49,7 @@ export default async function VocabPage({
           <input type="checkbox" name="saved" value="1" defaultChecked={result.search.saved} />
           Đã vào hàng ôn
         </label>
-        <button className="button button-primary">Tìm từ</button>
+        <button className="button">Tìm từ</button>
       </form>
       <div className={styles.resultHeading}>
         <p>

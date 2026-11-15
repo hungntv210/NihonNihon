@@ -1,3 +1,4 @@
+import {RouteHeading} from '../../../../components/route-heading.tsx';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { getVocabularyDetail } from '../server.ts';
@@ -18,6 +19,7 @@ export default async function WordPage({ params }: { params: Promise<{ id: strin
   if (!item) notFound();
   return (
     <>
+      <RouteHeading heading="h2" title="Chi tiết từ vựng" species="cat" eyebrow="ĐỌC · HIỂU · GẶP LẠI"><p>Đối chiếu nội dung và lưu lại để ôn.</p></RouteHeading>
       <Link href="/vocab" className="text-link">
         ← Sổ từ vựng
       </Link>

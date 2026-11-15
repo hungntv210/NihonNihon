@@ -1,4 +1,5 @@
 'use client';
+import {RouteHeading} from '../../../../components/route-heading.tsx';
 import { useState } from 'react';
 import Link from 'next/link';
 import type { Vocabulary } from '../data.ts';
@@ -16,11 +17,9 @@ export function Lesson({ items }: { items: Vocabulary[] }) {
   const item = words[index];
   return (
     <>
-      <div className="page-heading">
-        <p className="eyebrow">MỘT BÀI HỌC NHỎ</p>
-        <h1>Gặp những từ mới</h1>
+      <RouteHeading title="Từ vựng" species="cat"><h2 className="welcome-subtitle">Gặp những từ mới</h2>
         <p>Nghe, đọc to rồi mở nghĩa để đối chiếu. Bạn có thể dừng bất cứ lúc nào.</p>
-      </div>
+      </RouteHeading>
       {item ? (
         <>
           <div className={styles.lessonProgress}>
