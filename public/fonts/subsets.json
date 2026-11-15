@@ -34,10 +34,10 @@
       "source": "ShipporiMincho-Regular.ttf",
       "source_sha256": "769b5269f0f9bc6534b352c0e6bd856a566e03ff788f107191c2d835863570b2",
       "file": "ShipporiMincho-Regular-Subset.woff2",
-      "sha256": "27d1d3bdfc30f23acc5f63d06ae63ba129d49cc18f106c4426a6a31845e7627e",
+      "sha256": "9ea5c5380cd0d226289bc1f815605687fae3e34336e30067add96bbe76bbf465",
       "source_bytes": 8677284,
-      "bytes": 587628,
-      "unicode_count": 3166
+      "bytes": 587716,
+      "unicode_count": 3168
     }
   ],
   "fallback": "Unmodified original local TTF for characters outside subsets"

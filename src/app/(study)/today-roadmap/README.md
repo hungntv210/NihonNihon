@@ -12,3 +12,5 @@ Verification: `npm run check`, then `node --import tsx "src/app/(study)/today-ro
 
 
 Wasoku GĐ2: ba nhóm Làm ngay / Tuần này / Hành trình; các bộ đếm lấy từ getToday và kế hoạch hiện có. Lịch, khóa bài, xác nhận và 87 chi tiết tuần giữ nguyên. Trang gốc dùng cùng dữ liệu thật, không có XP hoặc tên người từ mockup.
+
+Wasoku GĐ3: bản đồ đường uốn 4 vùng với 87 chặng mở đúng chi tiết tuần hiện có. Rùa đứng ở tuần kế hoạch hiện tại; trạng thái ghi rõ đã qua theo lịch / hiện tại / sắp tới, không khẳng định đã học xong và không khóa quyền xem. Ba cổng giữ mốc thi dự kiến. Nút giữ vị trí khi nhấn để không xung đột transform của layout chung.

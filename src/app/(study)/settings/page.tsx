@@ -1,3 +1,4 @@
+import {RouteHeading} from '../../../components/route-heading.tsx';
 import { getStudyPreferences } from '../../../server/preferences.ts';
 import { SettingsForm } from './settings-form.tsx';
-export default async function SettingsPage() { return <><div className="page-heading"><p className="eyebrow">GÓC HỌC CỦA BẠN</p><h1>Cài đặt</h1><p>Nhịp học phù hợp với mỗi ngày.</p></div><SettingsForm initial={await getStudyPreferences()} /></>; }
+export default async function SettingsPage() { return <><RouteHeading title="Cài đặt" eyebrow="GÓC HỌC CỦA BẠN" species="shiba"><p>Nhịp học phù hợp với mỗi ngày.</p></RouteHeading><SettingsForm initial={await getStudyPreferences()} /></>; }

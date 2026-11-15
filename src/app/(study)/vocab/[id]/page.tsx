@@ -1,3 +1,4 @@
+import {RouteHeading} from '../../../../components/route-heading.tsx';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { getVocabularyDetail } from '../server.ts';
@@ -18,13 +19,14 @@ export default async function WordPage({ params }: { params: Promise<{ id: strin
   if (!item) notFound();
   return (
     <>
+      <RouteHeading title="Chi tiết từ vựng" species="cat" eyebrow="ĐỌC · HIỂU · GẶP LẠI"><p>Đối chiếu nội dung và lưu lại để ôn.</p></RouteHeading>
       <Link href="/vocab" className="text-link">
         ← Sổ từ vựng
       </Link>
       <header className={styles.detailHeading}>
         <div>
           <span className="level">{item.level}</span>
-          <JaText as="h1" className={styles.detailWord}>
+          <JaText as="h2" className={styles.detailWord}>
             <Furigana segments={item.segments} />
           </JaText>
           <JaText as="p" className="reading">

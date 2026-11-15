@@ -172,3 +172,6 @@ at 30fps. The app adds no animation dependency or mockup learner records.
 `src/app/(study)/appearance/browser-check.ts` checks both widths for four server
 instants; screenshots stay in gitignored `data/private/wasoku-phase1`.
 
+
+Wasoku GĐ3: giao diện pixel được đưa vào các route còn lại, tiêu đề chức năng tiếng Việt, bộ lọc/thẻ/biểu mẫu theo bốn thời điểm. Mọi thống kê và bài học tiếp tục đọc từ app. Font local được subset lại từ corpus public và chữ trong source. Route enter 200ms, thẻ 250ms bằng opacity/transform; công tắc hoặc prefers-reduced-motion tắt hiệu ứng. Kanji giữ điều khiển từng nét, dùng opacity thay dash animation và hiện ngay khi tắt chuyển động. Không thêm dependency.
+Browser appearance kiểm 19 màn hình x 4 thời điểm x 390/1440, cả chữ điều khiển và placeholder, không tràn ngang/không gọi ngoài, bản đồ mở tuần, SRS đủ 15 thẻ, menu và reduced motion. Các browser-check nghiệp vụ cũ tiếp tục chạy, gồm JLPT đủ 10 câu. Ảnh và log nằm trong data/private/wasoku-phase3 và data/reports (gitignored).

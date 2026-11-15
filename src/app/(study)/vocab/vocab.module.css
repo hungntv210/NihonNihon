@@ -11,7 +11,7 @@
   flex-wrap: wrap;
   gap: 16px;
   padding: 22px;
-  background: #f5f7f0;
+  background: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: 14px;
 }
@@ -25,9 +25,9 @@
 .filters input[type='search'],
 .filters select {
   min-height: 44px;
-  border: 1px solid #c8d2c5;
+  border: 1px solid var(--color-border);
   border-radius: 9px;
-  background: #fff;
+  background: var(--color-surface);
   padding: 9px 12px;
   font-size: 16px;
   color: var(--color-ink);
@@ -72,8 +72,8 @@
   color: var(--color-muted);
 }
 .ambiguity {
-  background: #faf0d8;
-  color: #76561c;
+  background: var(--color-surface);
+  color: var(--color-ink);
   border-radius: 6px;
   padding: 3px 7px;
 }
@@ -113,8 +113,8 @@
   padding-top: 0;
 }
 .notice {
-  border: 1px solid #e5d7ae;
-  background: #fbf6e7;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
   border-radius: 12px;
   padding: 20px;
   margin-bottom: 24px;
@@ -265,7 +265,7 @@
   gap: 16px;
   padding: 36px 24px;
   margin-bottom: 24px;
-  background: #f5f7f0;
+  background: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: 16px;
 }
@@ -278,6 +278,7 @@
 .lessonMeaning :global(.source-label) {
   margin-bottom: 8px;
 }
+.filters{background:var(--theme-raised);border-radius:4px;box-shadow:0 3px 0 var(--theme-shadow)}.filters input[type=search],.filters select{border-radius:3px;background:var(--color-surface)}.ambiguity{border:1px solid var(--color-border);background:var(--color-accent-soft);color:var(--color-ink);border-radius:3px}.section,.notice,.lessonCard,.practicePrompt{background:var(--color-surface);border-radius:4px;box-shadow:0 3px 0 var(--theme-shadow)}.detailHeading{background:var(--theme-raised);padding:26px;border:1px solid var(--color-border);border-radius:4px;margin:18px 0}.section h2,.practicePrompt h2{font:29px var(--font-pixel)}.detailWord{font-family:var(--font-ja)!important}.kanjiLinks a{background:var(--theme-raised);border-radius:3px;min-height:60px}.english summary{min-height:44px}.lessonCard{border-top:5px solid var(--color-accent)}.practicePrompt{background:var(--theme-raised)}
 @media (max-width: 600px) {
   .filters {
     padding: 18px;
@@ -339,3 +340,4 @@
     padding: 22px;
   }
 }
+@media(max-width:600px){.pagination :global(.button),.detailActions button{font-size:21px}.detailHeading{padding:20px}.section{padding:20px}.topLinks{gap:12px}.filters .savedFilter{flex-basis:100%}}

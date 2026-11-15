@@ -3,7 +3,7 @@
   align-items: flex-end;
   gap: 12px;
   flex-wrap: wrap;
-  background: #f7f8f3;
+  background: var(--color-surface);
   padding: 20px;
   border-radius: 14px;
 }
@@ -25,7 +25,7 @@
   border-radius: 9px;
   padding: 10px 12px;
   min-height: 44px;
-  background: white;
+  background: var(--color-surface);
   color: var(--color-ink);
   font: inherit;
   font-size: 16px;
@@ -53,7 +53,7 @@
 .tags span {
   font-size: 10px;
   color: var(--color-muted);
-  background: #f2f4ee;
+  background: var(--color-surface);
   padding: 3px 7px;
   border-radius: 5px;
 }
@@ -131,7 +131,7 @@
   font-size: 13px;
   padding: 9px 12px;
   border-radius: 8px;
-  background: #edf2e7;
+  background: var(--color-surface);
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
@@ -141,7 +141,7 @@
 }
 .formation code.japaneseFormation { font-family: var(--font-ja); font-size: 18px; }
 .note {
-  background: #fafaf6;
+  background: var(--color-surface);
   margin-top: 20px;
 }
 .examples {
@@ -176,7 +176,7 @@
   color: var(--color-muted);
 }
 .japanese mark {
-  background: #e6efdc;
+  background: var(--color-surface);
   color: var(--color-accent);
   border-radius: 4px;
   padding: 0 2px;
@@ -186,7 +186,7 @@
 }
 .practice {
   margin-top: 32px;
-  background: #fbfcf8;
+  background: var(--color-surface);
 }
 .tabs {
   display: flex;
@@ -197,7 +197,7 @@
 .tabs button[aria-pressed='true'],
 .options button[aria-pressed='true'] {
   background: var(--color-accent);
-  color: white;
+  color: var(--color-ink);
   border-color: var(--color-accent);
 }
 .question,
@@ -227,8 +227,8 @@
 .slot {
   min-height: 85px;
   position: relative;
-  background: white;
-  border: 1px dashed #9eaf99;
+  background: var(--color-surface);
+  border: 1px dashed var(--color-border);
   border-radius: 10px;
   padding: 27px 10px 12px;
   overflow-wrap: anywhere;
@@ -247,16 +247,16 @@
 .feedback {
   padding: 20px;
   border-radius: 10px;
-  background: #eaf2e2;
+  background: var(--color-surface);
   margin-top: 20px;
   font-size: 13px;
 }
 .incorrect {
-  background: #f8eee5;
+  background: var(--color-surface);
 }
 .notice {
   padding: 22px;
-  background: #f4f5ef;
+  background: var(--color-surface);
   border-radius: 12px;
   font-size: 13px;
   color: var(--color-muted);
@@ -358,3 +358,5 @@
     padding-inline: 12px;
   }
 }
+
+.filters{background:var(--theme-raised);border:1px solid var(--color-border);border-radius:4px;box-shadow:0 3px 0 var(--theme-shadow)}.filters :is(input,select),.report textarea{border-radius:3px;background:var(--color-surface)}.panel,.note,.practice,.example,.relatedCard{background:var(--color-surface);border-radius:4px;box-shadow:0 3px 0 var(--theme-shadow)}.panel h2,.note h2,.sectionTitle{font:29px var(--font-pixel)}.tags span,.formation code,.japanese mark{background:var(--theme-raised);color:var(--color-ink);border:1px solid var(--color-border);border-radius:3px}.tabs button[aria-pressed=true],.options button[aria-pressed=true]{background:var(--theme-accent);color:var(--theme-accent-ink);border-color:var(--theme-link)}.slot{border-radius:3px;background:var(--theme-raised);min-height:90px}.feedback,.incorrect,.notice{background:var(--color-accent-soft);border:1px solid var(--color-border);border-radius:3px;color:var(--color-ink)}.incorrect{border-style:dashed}.reportToggle{min-height:44px;min-width:44px;font-size:12px}.practice{border-top:5px solid var(--color-accent)}.title h2{font-family:var(--font-ja);font-size:36px}.detailHeading{margin-top:18px}.help{font-size:12px}

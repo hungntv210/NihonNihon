@@ -1,3 +1,4 @@
+import {RouteHeading} from '../../../../components/route-heading.tsx';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { withContentDatabase } from '../../../../server/dal.ts';
@@ -48,13 +49,14 @@ export default async function GrammarDetailPage({ params }: { params: Promise<{ 
     ordering = orderingQuestions(item.examples);
   return (
     <>
+      <RouteHeading title="Chi tiết ngữ pháp" species="owl" eyebrow="ĐỌC · HIỂU · GẶP LẠI"><p>Đối chiếu nội dung và lưu lại để ôn.</p></RouteHeading>
       <Link href="/grammar" className="text-link">
         ← Sổ ngữ pháp
       </Link>
       <div className={`page-heading ${styles.detailHeading}`}>
         <p className="eyebrow">MỘT MẪU, NHIỀU CÁCH GẶP</p>
         <div className={styles.title}>
-          <JaText as="h1">{item.pattern}</JaText>
+          <JaText as="h2">{item.pattern}</JaText>
           <span className="level">{item.level}</span>
         </div>
         <p lang="en">{item.romaji}</p>

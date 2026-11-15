@@ -1,3 +1,4 @@
+import {Mascot} from '../../components/mascot.tsx';
 import { redirect } from 'next/navigation';
 import { isSignedIn } from '../../server/auth.ts';
 import { authConfig } from '../../core/config.ts';
@@ -22,11 +23,7 @@ export default async function LoginPage({
           日
         </span>
         <p className="eyebrow">NIHON NIHON</p>
-        <h1>
-          Một khoảng nhỏ,
-          <br />
-          dành cho tiếng Nhật.
-        </h1>
+        <h2>Một khoảng nhỏ,<br/>dành cho tiếng Nhật.</h2><Mascot size={128}/>
         <p>
           Quay lại với những điều đã học.
           <br />
@@ -36,7 +33,7 @@ export default async function LoginPage({
       </div>
       <section className="login-card" aria-labelledby="login-title">
         <p className="eyebrow">MỪNG BẠN TRỞ LẠI</p>
-        <h2 id="login-title">Cùng học tiếp nhé.</h2>
+        <h1 id="login-title">Đăng nhập</h1><p>Cùng học tiếp nhé.</p>
         <p className="muted">Đăng nhập để mở sổ học của bạn.</p>
         <form action="/api/session" method="post">
           <label htmlFor="password">Mật khẩu</label>

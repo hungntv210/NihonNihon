@@ -1,3 +1,4 @@
+import {RouteHeading} from '../../../../components/route-heading.tsx';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { withContentDatabase } from '../../../../server/dal.ts';
@@ -21,6 +22,7 @@ export default async function KanjiDetailPage({
   if (!item) notFound();
   return (
     <>
+      <RouteHeading title="Kanji" species="fox" eyebrow="ĐỌC · HIỂU · GẶP LẠI"><p>Đối chiếu nội dung và lưu lại để ôn.</p></RouteHeading>
       <Link className={styles.back} href="/kanji">
         ← Sổ kanji
       </Link>
@@ -28,9 +30,9 @@ export default async function KanjiDetailPage({
         <JaText className={styles.largeCharacter}>{item.character}</JaText>
         <div>
           <span className="level">{item.level}</span>
-          <h1 className={styles.detailHeading}>
+          <h2 className={styles.detailHeading}>
             Chữ <JaText>{item.character}</JaText>
-          </h1>
+          </h2>
           <div className={styles.hv}>
             {item.hanViet ? (
               <ViText as="strong" className={styles.primaryReading}>
