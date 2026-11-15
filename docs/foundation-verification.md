@@ -635,3 +635,4 @@ Only this append-only audit entry changes after the successful full check.
 - Checked 71500a46a7068b95e5a50f8a9fafa82ec471aa52, Windows/Node24/D: worktree, 11/15/2026 20:16:40–11/15/2026 20:18:51.
 - npm run check PASS: typecheck, all prototype/unit tests, production build, app16/16. Foundation app browser assertions also verify390px single-line/no-overflow label, mobile/desktop roadmap hash active without Today active, Today click reset, SRS query and shadowing child-path parent active. Synthetic child path uses native history in the fixture, no production route added.
 - Scope guard foundation PASS. No schema/data/auth changes.
+- Exact successful counts for checked71500a4: prototype22/22, unit132/132, app16/16.
