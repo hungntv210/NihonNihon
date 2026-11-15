@@ -26,10 +26,10 @@ export function roadmapLexicon(catalog:Source[]){
    const add=(stem:string,endings:string[])=>endings.forEach(e=>words.add(stem+e));
    if(tags.some(p=>p.startsWith('v1'))&&base.endsWith('る')){const stem=base.slice(0,-1);add(stem,[...polite,...teEndings,'ない','なかった']);}
    const row=tags.find(p=>/^v5[ukgstnbmr]/u.test(p));
-   if(row){const final=base.slice(-1),i='うくぐすつぬぶむる'.indexOf(final);if(i>=0){const stem=base.slice(0,-1);add(stem+'いきぎしちにびみり'[i],polite);const te=['って','いて','いで','して','って','んで','んで','んで','って'][i];const actual=row.startsWith('v5k-s')?'って':te;add(stem,[actual,actual.slice(0,-1)+(actual.endsWith('で')?'だ':'た'),actual+'います',actual+'いました',actual+'ください',actual+'から']);add(stem+'わかがさたなばまら'[i],['ない','なかった']);}}
+   if(row){const final=base.slice(-1),i='うくぐすつぬぶむる'.indexOf(final);if(i>=0){const stem=base.slice(0,-1);add(stem+'いきぎしちにびみり'[i],polite);const te=['って','いて','いで','して','って','んで','んで','んで','って'][i];const actual=row.startsWith('v5k-s')?'って':te;add(stem,[actual,actual.slice(0,-1)+(actual.endsWith('で')?'だ':'た'),actual+'います',actual+'いました',actual+'ください',actual+'から']);if(!row.startsWith('v5r-i'))add(stem+'わかがさたなばまら'[i],['ない','なかった']);}}
    if(tags.some(p=>p.startsWith('vs'))){const stem=base.endsWith('する')?base.slice(0,-2):base;add(stem,['する','します','しました','しません','しませんでした','して','した','しています','してください','しない']);}
    if(tags.includes('vk')){const stem=base.endsWith('くる')?base.slice(0,-2):base.endsWith('来る')?base.slice(0,-2):null;if(stem!==null)add(stem,base.endsWith('来る')?['来ます','来ました','来ません','来て','来た','来ています','来てください','来ない']:['きます','きました','きません','きて','きた','きています','きてください','こない']);}
-   if(tags.includes('adj-i')&&base.endsWith('い'))add(base.slice(0,-1),['く','くない','くなかった','かった','くて']);
+   if(tags.includes('adj-i')&&base.endsWith('い'))add(base==='いい'?'よ':base.slice(0,-1),['く','くない','くなかった','かった','くて']);
   }
  }
  return words;

@@ -59,10 +59,10 @@ export async function generateDraftDay({week,day,catalog,history=[],seed,lexicon
  }
  const payload=(positions:number[])=>({mode:DRAFT_MODE,week,day,level:'N5',roadmapWeeks:[1,2],knownKanji,slots:slots.filter(s=>positions.includes(s.position)),repairPositions:positions,catalog:publicCatalog,usedTargetWords:[...history,...accepted.values()].map(q=>plainJapanese(catalog.find(s=>s.id===q.targetId)?.title??q.targetId)),rejectionReasons:Object.fromEntries(positions.map(position=>[position,repairEvidence(raws.get(position),catalog,reasons.get(position)??'MISSING_POSITION')])),history:[...history,...accepted.values()].map(q=>q.stem)});
  const positions=slots.map(s=>s.position);
- const request=(selected:number[])=>lexicon?generateTypedRows(provider,generationPrompt,payload,slots,selected):provider('generate',generationPrompt,payload(selected),schemaFor(questionSchema,selected.length));
+ const generateAndAssess=async(selected:number[],round:number)=>{if(lexicon)await generateTypedRows(provider,generationPrompt,payload,slots,selected,(rows,group)=>assess(rows,group,round));else await assess(await provider('generate',generationPrompt,payload(selected),schemaFor(questionSchema,selected.length)),selected,round);};
  if(seed){requireValue(seed.questions.length<=10,'INVALID_DRAFT_SEED');await assess(seed.questions,seed.questions.map(q=>q.position),0,seed.audit);}
- else await assess(await request(positions),positions,0);
- while(accepted.size<10&&repairs<repairLimit){const bad=positions.filter(p=>!accepted.has(p)&&(repairCounts[p]??0)<5);if(!bad.length)break;for(const p of bad)repairCounts[p]=(repairCounts[p]??0)+1;checkpoint();rejectedAttempts.push({round:repairs,positions:bad});const next=await request(bad);repairs++;await assess(next,bad,repairs);}
+ else await generateAndAssess(positions,0);
+ while(accepted.size<10&&repairs<repairLimit){const bad=positions.filter(p=>!accepted.has(p)&&(repairCounts[p]??0)<5);if(!bad.length)break;for(const p of bad)repairCounts[p]=(repairCounts[p]??0)+1;checkpoint();rejectedAttempts.push({round:repairs,positions:bad});repairs++;await generateAndAssess(bad,repairs);}
  const rejectedPositions=positions.filter(p=>!accepted.has(p));if(rejectedPositions.length)rejectedAttempts.push({round:repairs,positions:rejectedPositions});
  const questions=[...accepted.values()].sort((a,b)=>a.position-b.position),audit=questions.map((q,index)=>({...audits.get(q.position)!,index}));
  if(!rejectedPositions.length){validateDayDrafts(questions,catalog,week,'N5',day,history);validateAudit(audit,questions);}

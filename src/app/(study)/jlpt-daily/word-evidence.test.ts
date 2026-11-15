@@ -6,6 +6,7 @@ test('whole attested words survive ICU splits/merges; kana fragments are never w
  for(const text of ['りょこう','まっています','あります','ありません','五つ','時に','わたし','わたしはりょこうにいきます','本を読んでください'])assert.deepEqual(japaneseWordEvidence(text,lexicon).unresolved,[],text);
  for(const fragment of ['り','ょ','っ','あり','つ','ありま']){assert.ok(!N5_FUNCTION_WORDS.includes(fragment));assert.deepEqual(japaneseWordEvidence(fragment,lexicon).words,[]);}
  assert.ok(japaneseWordEvidence('ひとりがくぶん',lexicon).unresolved.includes('ひとりがくぶん'));assert.ok(japaneseWordEvidence('ひとりがくぶん',new Set(['ひとり','がく','ぶん'])).unresolved.length>0);
+ const irregular=roadmapLexicon([source('ある','ある',['v5r-i']),source('いい','いい',['adj-i'])]);assert.ok(!irregular.has('あらない'));assert.ok(!irregular.has('いかった'));assert.ok(irregular.has('よかった'));
  assert.ok(!lexicon.has('待てます'));assert.ok(lexicon.has('待っています'));
 });
 test('meaning target must be marked, Latin/kana mixing and reused targets remain rejected',()=>{
@@ -33,4 +34,11 @@ test('context dictionary permits N5 only; dictionary never authorizes target or 
 import {reviewIndependently} from './independent-qa.ts';import type {Question} from './model.ts';
 test('non-order audit schema forces an empty permutation at the source, without bypassing validators',async()=>{
  await assert.rejects(reviewIndependently(async(_phase,_prompt,_payload,schema:any)=>{assert.equal(schema.items.properties.optionGrades.items.properties.candidateOrder.maxItems,0);throw Error('schema-probe');},[{...q,id:'f',fingerprint:'f',date:'2026-11-16'} as Question],catalog),/schema-probe/);
+});
+
+test('typed groups are audited before the next generation can change actual model',async()=>{
+ const events:string[]=[],{order,starSlot,...wire}=q;
+ const orderRow={...q,type:'order' as const,position:1,order:[0,1,2,3],starSlot:0};
+ await generateTypedRows(async(_phase,_prompt,payload:any)=>{events.push('generate'+payload.positions[0]);return payload.positions[0]===0?[wire]:[orderRow];},GENERATE_PROMPT,positions=>({positions}),[{position:0,type:'context'},{position:1,type:'order'}],[0,1],async(_rows,positions)=>{events.push('audit'+positions[0]);});
+ assert.deepEqual(events,['generate0','audit0','generate1','audit1']);
 });
