@@ -636,3 +636,10 @@ Only this append-only audit entry changes after the successful full check.
 - npm run check PASS: typecheck, all prototype/unit tests, production build, app16/16. Foundation app browser assertions also verify390px single-line/no-overflow label, mobile/desktop roadmap hash active without Today active, Today click reset, SRS query and shadowing child-path parent active. Synthetic child path uses native history in the fixture, no production route added.
 - Scope guard foundation PASS. No schema/data/auth changes.
 - Exact successful counts for checked71500a4: prototype22/22, unit132/132, app16/16.
+
+### 2026-11-15 — tester-approved local JLPT bank
+
+- Checked 8eae0e9f8ce182055dd8e898619bde6081df671c, Windows/Node24/D: worktree, 11/15/2026 20:42:57–11/15/2026 20:44:42.
+- Full check PASS: typecheck, prototype22/22, unit136/136, build, app16/16. JLPT browser PASS for normal10-question bank AND approved one-question denominator/resume/source badge plus zero-question empty state. Route scope PASS.
+- Tests: exact11 approved-set/model/source/QA evidence, reject tampered/rejected input, idempotent import,10→1→0 across weeks without repeat, wrong-answer SRS idempotency, main DB bytes preserved by bank-only import. Separate pinned target append test preserves existing reviews/FKs; no content/schema overwrite.
+- Read-only production preflight found all11 target references absent. Real11-question dry-run on a SQLite backup of the app appended11 public OpenJLPT targets and11 approved questions successfully. Importer checks Frozen receipt/SHA, backs up app DB, copies only required public target/release rows and persists draft_roadmap/tester receipt. No rejected question, private dictionary, media or source question text committed. Live import waits for green CI/merge. Standard bank learned gate remains; only this explicitly owner-approved cohort uses its pinned roadmap evidence without fabricated reviews.
