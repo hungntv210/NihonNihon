@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from 'next';
 import './globals.css';
+import '../components/motion/motion.css';
 import { connection } from 'next/server';
 import { vietnamClock } from '../core/day-period.ts';
 import { TimeProvider } from '../components/time-provider.tsx';

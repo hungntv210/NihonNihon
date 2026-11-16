@@ -15,7 +15,7 @@ export function PixelCanvas({id,clock,params}:{id:SceneId;clock:ReturnType<typeo
  useEffect(()=>{let disposed=false;const element=host.current!;
  const motion=()=>document.documentElement.dataset.motion!=='off';
  const changed=()=>instance.current?.set({motion:motion()});
- const due=(e:Event)=>{const n=(e as CustomEvent<number>).detail;if(id==='review-koi'&&Number.isFinite(n)){latest.current={dueCards:Math.max(0,Math.min(12,n))};instance.current?.params(latest.current);}};
+ const due=(e:Event)=>{const n=(e as CustomEvent<number>).detail;if(id==='review-koi'&&Number.isFinite(n)){latest.current={dueCards:Math.max(0,Math.min(10,n))};instance.current?.params(latest.current);}};
  const progress=(e:Event)=>{if(id==='shadowing-inari'){latest.current={progress:shadowProgress((e as CustomEvent).detail)};instance.current?.params(latest.current);}};
  window.addEventListener('nihon-motion',changed);window.addEventListener('nihon-scene-due',due);window.addEventListener('nihon-shadowing-progress',progress);
  void Promise.all([import('./engine.js'),loaders[id]()]).then(([{SceneEngine},definition])=>{if(disposed)return;const engine=new SceneEngine.Engine(element,definition.default as Definition,{time:clock.period,season:clock.season,date:clock.date,motion:motion(),params:latest.current});instance.current=engine;Object.assign(element,{pixelEngine:engine});element.dataset.ready='true';}).catch(()=>{if(!disposed)element.dataset.ready='error';});

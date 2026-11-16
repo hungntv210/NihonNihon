@@ -1,4 +1,5 @@
 'use client';
+import {useNavIndicator} from './motion/nav-indicator.ts';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
@@ -46,16 +47,17 @@ function useNavLocation(){
  return {active,navigate:(href:string)=>setHash(href.includes('#')?'#'+href.split('#')[1]:'')};
 }
 export function MobileNavigation() {
+  const nav=useRef<HTMLElement>(null);useNavIndicator(nav);
   const dialog = useRef<HTMLDialogElement>(null), {active,navigate}=useNavLocation();
-  return <><nav className="mobile-navigation" aria-label="Điều hướng điện thoại">
+  return <><nav ref={nav} className="mobile-navigation" aria-label="Điều hướng điện thoại">
     {[links[0],links[1],links[5],links[7]].map(([href,label,icon])=><Link key={href} href={href} onClick={()=>navigate(href)} aria-current={active(href)?'page':undefined}><NavIcon name={icon}/><span>{label}</span></Link>)}
     <button type="button" onClick={()=>dialog.current?.showModal()} aria-haspopup="dialog"><NavIcon name="all"/><span>Tất cả</span></button>
   </nav><dialog ref={dialog} className="all-navigation" aria-label="Tất cả góc học"><header><h2>Tất cả góc học</h2><button type="button" className="button" onClick={()=>dialog.current?.close()}>Đóng</button></header><nav>{[...links,...tools].map(([href,label])=><Link key={href} href={href} aria-current={active(href)?'page':undefined} onClick={()=>{navigate(href);dialog.current?.close();}}>{label}</Link>)}</nav></dialog></>;
 }
 export function Navigation() {
-  const {active,navigate}=useNavLocation();
+  const {active,navigate}=useNavLocation(),nav=useRef<HTMLElement>(null);useNavIndicator(nav);
   return (
-    <nav className="navigation" aria-label="Học tập">
+    <nav ref={nav} className="navigation" aria-label="Học tập">
       {links.map(([href, label, icon]) => (
         <Link
           href={href}
