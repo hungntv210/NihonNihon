@@ -63,7 +63,7 @@ try{
     await page.setViewportSize({width,height:1050});const response=await page.goto(origin+route);assert.equal(response?.status(),200,route);await page.locator('main h1').waitFor();
     assert.equal(await page.locator('main h1').count(),1,route+' functional h1');assert.equal(await page.locator('html').getAttribute('data-time'),period);
     await appearance(page,`${period}/${width}/${route}`);
-    if(route==='/'||route==='/today-roadmap'){await page.locator('[data-pixel-viewport][data-ready=true]').waitFor();assert.equal(await page.locator('[data-pixel-scene]').getAttribute('data-pixel-scene'),'home-tokyo');}
+    if(route==='/'||route==='/today-roadmap'){await page.locator('[data-pixel-viewport][data-ready=true]').waitFor();assert.equal(await page.locator('[data-pixel-scene]').getAttribute('data-pixel-scene'),route==='/'?'home-tokyo':'roadmap-journey');}
     if(route==='/today-roadmap'){
      const map=page.getByLabel('Bản đồ lộ trình 87 tuần');assert.equal(await map.getByRole('button').count(),87);
      assert.equal(await page.locator('summary').count(),87);await map.getByRole('button',{name:/Tuần 36 ·/}).click();assert.equal(await page.locator('#week-36').getAttribute('open'),'');
