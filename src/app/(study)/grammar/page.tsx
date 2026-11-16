@@ -1,3 +1,4 @@
+import {PixelScene} from '../../../components/pixel-scenes/pixel-scene.tsx';
 import {RouteHeading} from '../../../components/route-heading.tsx';
 import Link from 'next/link';
 import { withContentDatabase } from '../../../server/dal.ts';
@@ -28,6 +29,7 @@ export default async function GrammarPage({
   return (
     <>
       <RouteHeading title="Ngữ pháp" eyebrow="NỐI LỜI THÀNH CÂU" species="owl"><p>Hiểu một mẫu câu, thử lại trong câu quen thuộc.</p></RouteHeading>
+      <PixelScene id="grammar-kinkakuji"/>
       <form
         key={result.q + '|' + result.level}
         className={styles.filters}

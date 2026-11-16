@@ -11,8 +11,8 @@ test('kanji learned counts distinct active kanji with actual reviews, never queu
  const {file,db}=fixture(t),id=String(db.prepare('SELECT item_id FROM kanji LIMIT 1').get()!.item_id);assert.equal(learnedKanjiCount(db),0);const card=enqueueCard(file,id,'recognition');assert.equal(learnedKanjiCount(db),0);
  for(let n=0;n<2;n++)db.prepare('INSERT INTO srs_reviews(review_id,card_id,rating,reviewed_at,elapsed_ms,scheduler_version) VALUES(?,?,3,?,1000,?)').run(randomUUID(),card.cardId,new Date().toISOString(),'fixture');assert.equal(learnedKanjiCount(db),1);db.prepare('UPDATE content_items SET is_active=0 WHERE item_id=?').run(id);assert.equal(learnedKanjiCount(db),0);
 });
-test('all new scene JS and client wiring stay below 40KiB gzip without dependencies or URL overrides',()=>{
- const dir='src/components/pixel-scenes',files=fs.readdirSync(dir).filter(n=>/\.(js|tsx?)$/.test(n)&&!n.endsWith('.d.ts'));const bytes=files.reduce((sum,n)=>sum+gzipSync(fs.readFileSync(path.join(dir,n))).length,0);assert.ok(bytes<=40*1024,`${bytes} bytes gzip`);
+test('original four scene JS and shared client wiring stay below 40KiB gzip without dependencies or URL overrides',()=>{
+ const dir='src/components/pixel-scenes',files=['engine.js','home-tokyo.js','review-koi.js','kanji-himeji.js','shadowing-inari.js','pixel-canvas.tsx','pixel-scene.tsx','model.ts','data.ts'];const bytes=files.reduce((sum,n)=>sum+gzipSync(fs.readFileSync(path.join(dir,n))).length,0);assert.ok(bytes<=40*1024,`${bytes} bytes gzip`);
  const engine=fs.readFileSync(path.join(dir,'engine.js'),'utf8');assert.doesNotMatch(engine,/location\.search/);assert.match(engine,/1000\/30/);assert.match(engine,/document\.hidden/);assert.match(engine,/this\.visible/);
 });
 

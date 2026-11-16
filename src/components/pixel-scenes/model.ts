@@ -1,5 +1,5 @@
 import {vietnamClock} from '../../core/day-period.ts';
-export type SceneId='home-tokyo'|'review-koi'|'kanji-himeji'|'shadowing-inari';
+export type SceneId='home-tokyo'|'review-koi'|'kanji-himeji'|'shadowing-inari'|'vocab-market'|'grammar-kinkakuji'|'jlpt-study'|'roadmap-journey';
 export function sceneClock(now=new Date()){
  const clock=vietnamClock(now),date=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Ho_Chi_Minh',year:'numeric',month:'2-digit',day:'2-digit'}).format(now),month=Number(date.slice(5,7));
  return {...clock,date,season:month>=3&&month<=5?'spring':month>=6&&month<=8?'summer':month>=9&&month<=11?'autumn':'winter'};
