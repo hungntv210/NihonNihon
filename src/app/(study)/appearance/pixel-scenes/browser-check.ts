@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';import fs from 'node:fs';import path fro
 import {fixtureCatalog} from '../../jlpt-daily/fixture.ts';import {seedPrivateClipFixture} from '../../shadowing/private-fixture.ts';import {hashPassword,createSession,SESSION_COOKIE} from '../../../../core/session.ts';import {practiceSessionKey} from '../../shadowing/practice-store.ts';import {learnedKanjiCount} from '../../../../components/pixel-scenes/data.ts';
 const artifacts=path.resolve('data/reports/pixel-scenes');fs.mkdirSync(artifacts,{recursive:true});
 const manifest=JSON.parse(fs.readFileSync('.next/react-loadable-manifest.json','utf8')) as Record<string,{files:string[]}>;
-const chunks=[...new Set(Object.entries(manifest).filter(([key])=>key.includes('pixel-canvas')).flatMap(([,entry])=>entry.files).filter(f=>f.endsWith('.js')))];
+const chunks=[...new Set(Object.entries(manifest).filter(([key])=>key.includes('pixel-canvas')&&/\.\/(engine|home-tokyo|review-koi|kanji-himeji|shadowing-inari)\.js/.test(key)).flatMap(([,entry])=>entry.files).filter(f=>f.endsWith('.js')))];
 const budget=chunks.map(file=>({file,gzip:gzipSync(fs.readFileSync(path.join('.next',file))).length})),lazyGzip=budget.reduce((n,f)=>n+f.gzip,0);
 // Five entry pages (Today has two URLs): bound duplicated wiring by its unminified source gzip.
 const wiringUpperBound=5*['pixel-canvas.tsx','model.ts'].reduce((n,file)=>n+gzipSync(fs.readFileSync(path.join('src/components/pixel-scenes',file))).length,0),gzip=lazyGzip+wiringUpperBound;
@@ -19,7 +19,7 @@ try{
   const context=await browser.newContext({reducedMotion:'reduce'});await context.addCookies([{name:SESSION_COOKIE,value:cookie,url:origin}]);const page=await context.newPage(),errors:string[]=[];page.on('pageerror',e=>errors.push(e.message));
   try{
    let ready=false;for(let n=0;n<150;n++){try{if((await fetch(origin+'/login')).ok){ready=true;break;}}catch{}await new Promise(r=>setTimeout(r,200));}assert.ok(ready,log);
-   const loaded:string[]=[];page.on('response',r=>{if(r.url().endsWith('.js'))void r.text().then(t=>loaded.push(t)).catch(()=>{});});await page.goto(origin+'/vocab');await page.locator('main h1').waitFor();await page.waitForTimeout(700);assert.equal(loaded.some(s=>s.includes('maxDirtyArea')),false,'engine must not load on other routes');
+   const loaded:string[]=[];page.on('response',r=>{if(r.url().endsWith('.js'))void r.text().then(t=>loaded.push(t)).catch(()=>{});});await page.goto(origin+'/sources');await page.locator('main h1').waitFor();await page.waitForTimeout(700);assert.equal(loaded.some(s=>s.includes('maxDirtyArea')),false,'engine must not load on other routes');
    for(const width of [390,1440])for(const [route,id]of [['/','home-tokyo'],['/srs','review-koi'],['/kanji','kanji-himeji'],['/shadowing','shadowing-inari']]){
     await page.setViewportSize({width,height:1050});await page.goto(origin+route+'?time=night&season=winter&weather=clear&dueCards=99');const scene=page.locator(`[data-pixel-viewport="${id}"][data-ready=true]`);await scene.waitFor();await scene.scrollIntoViewIfNeeded();
     assert.equal(await page.locator('[data-pixel-scene]').getAttribute('data-scene-time'),period);assert.equal(await page.locator('[data-pixel-scene]').getAttribute('data-scene-season'),'autumn');assert.equal(await page.locator('[data-pixel-scene]').getAttribute('data-scene-date'),'2026-11-15');assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));

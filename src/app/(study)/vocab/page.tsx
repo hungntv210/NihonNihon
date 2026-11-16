@@ -1,3 +1,6 @@
+import {PixelScene} from '../../../components/pixel-scenes/pixel-scene.tsx';
+import {learnedVocabCount} from '../../../components/pixel-scenes/data.ts';
+import {withContentDatabase} from '../../../server/dal.ts';
 import {RouteHeading} from '../../../components/route-heading.tsx';
 import Link from 'next/link';
 import { getVocabulary } from './server.ts';
@@ -13,10 +16,12 @@ export default async function VocabPage({
 }: {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
+  const learned=await withContentDatabase(learnedVocabCount);
   const result = await getVocabulary(searchParams(await params));
   return (
     <>
       <RouteHeading title="Từ vựng" eyebrow="SỔ TỪ CỦA BẠN" species="cat"><p>Tìm một từ, nghe cách đọc, rồi lưu lại để gặp nhau trong buổi ôn sau.</p></RouteHeading>
+      <PixelScene id="vocab-market" params={{vocabLearned:learned}}/>
       <div className={styles.topLinks}>
         <Link href="/vocab/lesson" className="button button-primary">
           Học 5 từ mới →

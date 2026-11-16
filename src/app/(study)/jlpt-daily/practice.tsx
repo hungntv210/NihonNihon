@@ -1,10 +1,11 @@
 'use client';
 import {CountUp,MotionProgress} from '../../../components/motion/data-motion.tsx';import {animateUI,keyboardMotion} from '../../../components/motion/animate.ts';
-import { useState,useRef,useLayoutEffect } from 'react';import Link from 'next/link';import { JaText,ViText } from '../../../components/text.tsx';import { labels } from './labels.ts';import type { QuestionType } from './model.ts';import type { dailyView } from './repository.ts';import styles from './jlpt.module.css';
+import { useState,useRef,useLayoutEffect,useEffect } from 'react';import Link from 'next/link';import { JaText,ViText } from '../../../components/text.tsx';import { labels } from './labels.ts';import type { QuestionType } from './model.ts';import type { dailyView } from './repository.ts';import styles from './jlpt.module.css';
 type View=ReturnType<typeof dailyView>;
-export function Practice({initial}:{initial:View}){
+export function Practice({initial,answeredToday=initial.done}:{initial:View;answeredToday?:number}){
  const [view,setView]=useState(initial),[index,setIndex]=useState(Math.min(initial.done,9)),[choice,setChoice]=useState<number|null>(null),[busy,setBusy]=useState(false),[error,setError]=useState(''),heading=useRef<HTMLHeadingElement>(null);
  const [finished,setFinished]=useState(initial.done===initial.total);
+ useEffect(()=>{window.dispatchEvent(new CustomEvent('nihon-jlpt-answered',{detail:answeredToday+view.done-initial.done}));},[answeredToday,initial.done,view.done]);
  const card=useRef<HTMLElement>(null);
  const question=view.questions[index],answer=question?.answer,complete=view.done===view.total&&finished;
  useLayoutEffect(()=>{if(!answer)return;animateUI(card.current,answer.correct?[{opacity:.8},{opacity:1}]:[{transform:'translateX(0)'},{transform:'translateX(-3px)'},{transform:'translateX(3px)'},{transform:'translateX(0)'}],180);},[answer]);
