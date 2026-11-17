@@ -1,0 +1,10 @@
+main.page{position:relative;isolation:isolate;display:grid;grid-template-columns:minmax(0,1fr);align-content:center;min-height:100svh;max-width:1200px;width:100%;margin:0 auto;padding:16px 0;background:#19272f;color:#f1e6d0}
+.backdrop{grid-area:1/1;min-width:0;overflow:hidden}
+.card{grid-area:1/1;z-index:2;align-self:end;justify-self:center;width:min(320px,calc(100% - 32px));margin:0 0 12px;padding:14px;border:1px solid #677776;border-radius:12px;background:#19272f;color:#f1e6d0;box-shadow:0 8px 24px #10191c55;font-family:var(--font-vi),sans-serif}
+.card :global(#login-title){margin:0 0 6px;font:500 24px/29px var(--font-vi),sans-serif;letter-spacing:-.02em;color:#f1e6d0}
+.title{display:block;font:500 24px/29px var(--font-vi);color:#f1e6d0}
+.card form{display:grid;gap:5px;margin:0}.card label{color:#d0d5cd;font-size:14px;line-height:18px}
+.card input{width:100%;min-height:44px;margin:0;padding:8px 10px;border:1px solid #677776;border-radius:7px;background:#26373e;color:#f3e9d7;font:16px/24px var(--font-vi),sans-serif}
+.card input:focus-visible{outline:2px solid #f1d4a8;outline-offset:2px}
+.page .card button{width:100%;min-height:44px;margin:0;padding:8px 10px;border:1px solid #e6c99d;border-radius:7px;background:#e6c99d;color:#253139;font:500 14px/22px var(--font-vi),sans-serif}
+.message{min-height:18px;margin:0;color:#ffbcad;font-size:12px;line-height:18px}.note{display:flex;align-items:center;gap:6px;margin:8px 0 0;color:#cad3cd;font-size:10px;line-height:15px}
