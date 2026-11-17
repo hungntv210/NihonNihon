@@ -9,4 +9,4 @@
 
 .viewport.loginViewport{height:432px}@media(min-width:1200px){.viewport.loginViewport{height:648px}}
 
-@media(orientation:portrait){.viewport.loginViewport{height:100svh}}
+@media(orientation:portrait){.viewport.loginViewport{height:100svh;height:100dvh}}
