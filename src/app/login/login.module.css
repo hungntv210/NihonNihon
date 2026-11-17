@@ -10,3 +10,5 @@ main.page{position:relative;isolation:isolate;display:grid;grid-template-columns
 .message{min-height:18px;margin:0;color:#ffbcad;font-size:12px;line-height:18px}.note{display:flex;align-items:center;gap:6px;margin:8px 0 0;color:#cad3cd;font-size:10px;line-height:15px}
 
 @media(orientation:portrait){main.page{height:100svh;height:100dvh;min-height:100svh;min-height:100dvh;padding:0;align-content:stretch}.backdrop{height:100svh;height:100dvh}.card{margin-bottom:max(24px,env(safe-area-inset-bottom))}}
+
+.clock{position:absolute;top:12px;right:12px;z-index:1;padding:3px 7px;border-radius:4px;background:#19272fe6;color:#f1e6d0;font-size:12px}

@@ -47,7 +47,7 @@ export default {crop:.5,id:'grammar-kinkakuji',title:'Kinkaku-ji · Ngữ pháp'
   api.actor(1,{x:122,y:136,w:23,h:30},(c,x,y)=>C.crane(c,x,y,still?0:Math.floor(t*2)));api.creature('white-crane',{x:122,y:136,w:21,h:28});
   api.actor(1,{x:240,y:157,w:17,h:10},(c,x,y)=>{e(c,x+8,y+4,6,4,19);e(c,x+7,y+3,4,3,10);l(c,x+4,y+2,x+10,y+5,18);l(c,x+4,y+5,x+10,y+2,18);e(c,x+15,y+3,2,1,9);for(const xx of [3,11]){r(c,x+xx,y,2,1,18);r(c,x+xx,y+8,2,1,18)}r(c,x+16,y+3,1,1,21)});api.creature('turtle',{x:240,y:157,w:17,h:10});
   for(const [i,xx,yy]of [[0,185,187],[1,222,207]]){const x=xx+(still?0:Math.sin(t*.25+i)*13),y=yy;api.actor(0,{x,y,w:23,h:10},(c,x,y)=>C.fish(c,x,y,still?2:Math.floor(t*4),i));api.creature('koi',{x,y,w:21,h:8})}
-  if(state.season!=='winter'&&(still||api.scheduled(t,'kinkaku-dragonfly',9,16,.8))){api.actor(2,{x:145,y:145,w:11,h:7},(c,x,y)=>api.sprite(c,SceneEngine.sprites.dragonfly,Math.floor(t*6),x,y));api.creature('dragonfly',{x:145,y:145,w:9,h:5})}
+  if(state.weather!=='rain'&&state.season!=='winter'&&(still||api.scheduled(t,'kinkaku-dragonfly',9,16,.8))){api.actor(2,{x:145,y:145,w:11,h:7},(c,x,y)=>api.sprite(c,SceneEngine.sprites.dragonfly,Math.floor(t*6),x,y));api.creature('dragonfly',{x:145,y:145,w:9,h:5})}
   for(let i=0;i<4;i++){const x=166+i*23,y=155+(i*17)%48,n=still?0:Math.round(Math.sin(t*.6+i));api.actor(0,{x:x-2,y,w:17,h:2},(c,x,y)=>l(c,x+2+n,y,x+12+n,y,34))}
  },stats(){return{reflection:true}}};
 }};

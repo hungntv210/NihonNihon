@@ -1,10 +1,11 @@
+import {overcast,isWet} from './weather.js';
 import {SceneEngine} from './engine.js';
 export default {crop:0.5,id:'kanji-himeji',title:'Himeji · Kanji',description:'Qua khung shoji, từng tầng mái trắng hiện ra sau cành hoa.',params:{kanjiLearned:0},create(api){
  const {state,draw:d}=api,{rect:r,line:l,ellipse:e,polygon:p}=d;const winter=()=>state.season==='winter';let lamps=0;
  function distant(c){
   for(let y=0;y<216;y++)r(c,0,y,384,1,y<40?0:y<75?3:1);
   for(let i=0;i<17;i++){const x=i*24-5;e(c,x,102+Math.sin(i)*5,30,21,5);e(c,x-3,96+Math.sin(i)*5,25,14,6)}
-  if(state.time==='night'){e(c,239,39,10,10,1);e(c,239,39,7,7,39);for(let i=0;i<45;i++)r(c,(i*71)%384,12+(i*31)%72,1,1,i%4?15:39)}else e(c,249,44,12,12,14);
+  if(!overcast(state.weather)){if(state.time==='night'){e(c,239,39,10,10,1);e(c,239,39,7,7,39);for(let i=0;i<45;i++)r(c,(i*71)%384,12+(i*31)%72,1,1,i%4?15:39)}else e(c,249,44,12,12,14);}
   r(c,0,144,384,72,8);for(let i=0;i<160;i++){const x=(i*47)%384,y=148+(i*23)%67;l(c,x,y,x+2+i%6,y,i%4?9:33)}
  }
  function roof(c,x,y,w,h){
@@ -70,7 +71,7 @@ export default {crop:0.5,id:'kanji-himeji',title:'Himeji · Kanji',description:'
   for(let i=0;i<8;i++){const x=107+i*24,y=184;r(c,x,173,1,9,24);r(c,x-4,y-3,9,12,20);r(c,x-3,y-2,7,9,i<lamps?35:25);r(c,x-4,y-4,9,2,20);r(c,x-4,y+7,9,2,20);r(c,x-1,y+9,2,11,24);r(c,x-4,y+18,9,2,20);if(i<lamps){r(c,x-2,y-1,2,6,39);r(c,x-5,y,1,5,37);r(c,x+5,y,1,5,37)}}
  }
  return{depths:[.25,.5,1,0],dynamicDepths:[.25,1,0,0],weatherClip:[57,11,270,183],layers:[distant,castle,garden,shoji],puddles:[[145,164,20],[235,179,18]],normalize(p){p.kanjiLearned=Math.floor(p.kanjiLearned)},frame(t,still){
-  const hawkX=still?210:210+Math.sin(t*.18)*28,y=47;api.actor(1,{x:hawkX,y,w:15,h:8},(c,x,y)=>{const wing=Math.floor(t*3)%4;l(c,x,y+4,x+6,y+2,20);l(c,x+6,y+2,x+13,y+(wing<2?0:5),20);r(c,x+6,y+2,2,4,20);r(c,x+8,y+2,2,1,37)});api.creature('hawk',{x:hawkX,y,w:14,h:7});
+  const hawkX=still?210:210+Math.sin(t*.18)*28,y=47;if(state.weather!=='rain')api.actor(1,{x:hawkX,y,w:15,h:8},(c,x,y)=>{const wing=Math.floor(t*3)%4;l(c,x,y+4,x+6,y+2,20);l(c,x+6,y+2,x+13,y+(wing<2?0:5),20);r(c,x+6,y+2,2,4,20);r(c,x+8,y+2,2,1,37)});if(state.weather!=='rain')api.creature('hawk',{x:hawkX,y,w:14,h:7});
   for(const [i,x,y]of [[0,159,164],[1,211,174]]){api.actor(0,{x,y,w:26,h:12},(c,xx,yy)=>api.sprite(c,SceneEngine.sprites.fish,Math.floor(t*4+i),xx,yy,i===1));api.creature('moat-koi',{x,y,w:24,h:10})}
   for(const [x,y]of [[132,197],[248,197]]){api.actor(2,{x,y,w:11,h:9},(c,xx,yy)=>api.sprite(c,SceneEngine.sprites.bird,still?0:Math.floor(t*3)%4,xx,yy));api.creature('sparrow',{x,y,w:9,h:7})}
   api.actor(1,{x:265,y:95,w:16,h:12},(c,x,y)=>{const f=still?1:Math.floor(t*4)%4;p(c,[[x,y],[x+12,y+(f%2)],[x+11,y+7],[x,y+6]],30);l(c,x+2,y+1,x+10,y+2,27)});

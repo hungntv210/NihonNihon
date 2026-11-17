@@ -1,23 +1,6 @@
-/* Offline date-driven scene decorations. Dates are taken from the unchanged engine's state.date. */
-
- export const tsukimiDates={2021:'09-21',2022:'09-10',2023:'09-29',2024:'09-17',2025:'10-06',2026:'09-25',2027:'09-15',2028:'10-03',2029:'09-22',2030:'09-12',2031:'10-01',2032:'09-19',2033:['09-08','10-07'],2034:'09-27',2035:'09-16',2036:'10-04',2037:'09-24',2038:'09-13',2039:'10-02',2040:'09-21',2041:'09-10',2042:'09-28',2043:'09-17',2044:'10-05',2045:'09-25',2046:'09-15',2047:'10-04',2048:'09-22',2049:'09-11',2050:'09-30'};
- // NAOJ: https://eco.mtk.nao.ac.jp/koyomi/wiki/C3E6BDA9A4CECCBEB7EEA4C8A4CF.html
- export const catalog=[
-  {id:'hatsumode',scene:'shadowing-inari',label:'Tết · Hatsumōde',monthDay:'01-02',time:'night',season:'winter',window:'1–3/1'},
-  {id:'hanami',scene:'home-tokyo',label:'Hanami · Ngắm hoa',monthDay:'04-01',time:'day',season:'spring',window:'20/3–10/4'},
-  {id:'tanabata',scene:'vocab-market',label:'Tanabata · Thất tịch',monthDay:'07-07',time:'sunset',season:'summer',window:'7/7'},
-  {id:'matsuri',scene:'home-tokyo',label:'Lễ hội mùa hè · Pháo hoa',monthDay:'08-01',time:'night',season:'summer',window:'20/7–31/8; pháo hoa ban đêm'},
-  {id:'tsukimi',scene:'grammar-kinkakuji',label:'Tsukimi · Ngắm trăng',time:'night',season:'autumn',window:'Theo lịch NAOJ từng năm (2021–2050)'}
- ];
- export function eventFor(scene,date){
-  if(!/^\d{4}-\d{2}-\d{2}$/.test(date||''))return null;const year=Number(date.slice(0,4)),md=date.slice(5),month=Number(date.slice(5,7)),day=Number(date.slice(8)),check=new Date(Date.UTC(year,month-1,day));if(check.getUTCFullYear()!==year||check.getUTCMonth()!==month-1||check.getUTCDate()!==day)return null;let id=null;
-  if(scene==='shadowing-inari'&&md>='01-01'&&md<='01-03')id='hatsumode';
-  if(scene==='home-tokyo'&&md>='03-20'&&md<='04-10')id='hanami';
-  if(scene==='home-tokyo'&&md>='07-20'&&md<='08-31')id='matsuri';
-  if(scene==='vocab-market'&&md==='07-07')id='tanabata';
-  if(scene==='grammar-kinkakuji'&&[tsukimiDates[year]].flat().includes(md))id='tsukimi';
-  return catalog.find(e=>e.id===id)||null;
- }
+import {overcast,isWet} from './weather.js';
+import {catalog,eventFor,tsukimiDates} from './festival-calendar.js';
+export {catalog,eventFor,tsukimiDates} from './festival-calendar.js';
  function sample(event,year){const md=event.id==='tsukimi'?[tsukimiDates[year]].flat()[0]:event.monthDay;return md?`${year}-${md}`:null}
  export function decorate(def){
   if(!catalog.some(e=>e.scene===def.id)||def.mount)return def;
@@ -28,7 +11,7 @@
    const layers=[...base.layers];
    // Replace the ordinary small moon only on Tsukimi, leaving the underlying scene file untouched.
    layers[0]=c=>{originalFirst(c);if(active()?.id==='tsukimi'&&night())r(c,274,16,29,28,0)};
-   function back(c){if(active()?.id==='tsukimi'&&night()){e(c,258,29,22,22,1);e(c,258,29,18,18,39);e(c,251,25,3,2,13);e(c,264,35,4,2,13);p(c,[[253,32],[252,27],[254,24],[255,18],[257,18],[257,25],[259,26],[261,22],[263,22],[261,28],[263,33],[259,36]],15)}}
+   function back(c){if(active()?.id==='tsukimi'&&night()&&!overcast(state.weather)){e(c,258,29,22,22,1);e(c,258,29,18,18,39);e(c,251,25,3,2,13);e(c,264,35,4,2,13);p(c,[[253,32],[252,27],[254,24],[255,18],[257,18],[257,25],[259,26],[261,22],[263,22],[261,28],[263,33],[259,36]],15)}}
    function lamp(c,x,y){r(c,x,y,1,8,24);e(c,x,y+13,4,6,night()?35:29);l(c,x-3,y+8,x+3,y+8,21);l(c,x-3,y+18,x+3,y+18,21);l(c,x-2,y+10,x-2,y+16,30);r(c,x,y+11,1,4,21)}
    function bamboo(c,x,y){
     r(c,x-8,y-1,17,8,23);r(c,x-7,y,15,5,25);l(c,x-8,y,x+8,y,12);r(c,x-1,y-57,2,56,18);r(c,x,y-57,1,55,9);
@@ -53,7 +36,7 @@
    }
    function person(c,x,y,f,tone=7,small=false){
     // Six hand-pixelled walking poses at the same grounded baseline.
-    e(c,x+3,y+2,2,2,13);r(c,x+1,y+5,5,6,tone);r(c,x+(f%2?0:1),y+6,1,4,13);const n=[0,1,1,0,-1,-1][f%6];l(c,x+2,y+11,x+1+n,y+14,21);l(c,x+5,y+11,x+6-n,y+14,21);if(!small)r(c,x+5,y+6,3,4,24);
+    e(c,x+3,y+2,2,2,13);r(c,x+1,y+5,5,6,tone);r(c,x+(f%2?0:1),y+6,1,4,13);const n=[0,1,1,0,-1,-1][f%6];l(c,x+2,y+11,x+1+n,y+14,21);l(c,x+5,y+11,x+6-n,y+14,21);if(!small)r(c,x+5,y+6,3,4,24);if(isWet(state.weather)){const w=small?6:9;l(c,x+6,y-3,x+6,y+8,24);p(c,[[x+3-w,y-2],[x+3-w*.7,y-6],[x+3,y-9],[x+3+w*.7,y-6],[x+3+w,y-2]],29);l(c,x+3,y-9,x+3,y-2,30);l(c,x+3-w,y-2,x+3+w,y-2,31)}
    }
    function burst(t,still,x,y,phase,color){
     if(!still&&(phase<0||phase>4.8))return;const radius=still?33:3+Math.min(30,phase*17),drop=still?0:Math.max(0,phase-1.6)**2*2;
@@ -67,7 +50,7 @@
    }
    function frame(t,still){
     base.frame(t,still);const id=active()?.id;
-    if(id==='hatsumode')for(let i=0;i<8;i++){const f=i/7,x=148+f*99+(i%2?7:-7),foot=184-f*88,y=foot-15;api.actor(2,{x:x-1,y,w:12,h:18},(c,x,y)=>person(c,x+1,y,still?i%6:Math.floor(t*3+i),[7,29,18,25][i%4],i>4))}
+    if(id==='hatsumode')for(let i=0;i<8;i++){const f=i/7,x=148+f*99+(i%2?7:-7),foot=184-f*88,y=foot-15;api.actor(2,{x:x-(isWet(state.weather)?8:1),y:y-(isWet(state.weather)?10:0),w:isWet(state.weather)?28:12,h:isWet(state.weather)?31:18},(c,x,y)=>person(c,x+(isWet(state.weather)?8:1),y+(isWet(state.weather)?10:0),still?i%6:Math.floor(t*3+i),[7,29,18,25][i%4],i>4))}
     if(id==='hanami'){
      for(const[x,y,tone]of[[220,200,29],[240,201,18]])api.actor(2,{x,y,w:7,h:11},(c,x,y)=>{e(c,x+3,y+2,2,2,13);r(c,x+1,y+5,5,4,tone);l(c,x+1,y+8,x+6,y+8,21)});
      for(let i=0;i<6;i++){const x=222+(i*13+(still?0:t*2))%48,y=128+(i*17+(still?0:t*3))%70;api.actor(2,{x,y,w:3,h:2},(c,x,y)=>{r(c,x,y,2,1,27);r(c,x+1,y+1,1,1,28)})}

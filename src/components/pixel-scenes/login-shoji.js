@@ -1,3 +1,4 @@
+import {overcast,isWet} from './weather.js';
 import {SceneCraft} from './scene-craft.js';
 export default {crop:.5,nativeHeight:(host,scale)=>matchMedia('(orientation: portrait)').matches?Math.max(216,Math.ceil(host.parentElement.clientHeight/scale)):216,id:'login-shoji',title:'Shoji · Đăng nhập',description:'Một khoảng tatami yên, cửa shoji mở ra khu vườn và mặt hồ nhỏ.',params:{},swatches:s=>({8:s.time==='night'?'#203e4b':'#315765',16:'#8c9386',17:'#65776c',21:'#202b31',22:'#2b3336',23:'#3e3637',24:'#675247',25:'#8a7057',29:'#a7674d',30:'#bd9566',31:'#634638',...(s.time==='night'?{13:'#a3967d',14:'#d0bc91',39:'#ecdbb7'}:{13:'#d7c7a6',14:'#eee1bd',39:'#f6ebd0'})}),create(original){
  const height=()=>original.state.nativeHeight??216,portrait=()=>height()>216,top=()=>portrait()?Math.min(96,Math.round((height()-216)*.35)):0;
@@ -5,7 +6,7 @@ export default {crop:.5,nativeHeight:(host,scale)=>matchMedia('(orientation: por
  const {state,draw:d}=api,{rect:r,line:l,polygon:p,ellipse:e}=d,C=SceneCraft(api),winter=()=>state.season==='winter';
  function garden(c){
   r(c,0,0,384,216,23);r(c,102,12,180,72,0);r(c,102,39,180,45,3);
-  if(state.time==='night'){e(c,246,28,9,9,1);e(c,246,28,6,6,39);for(let i=0;i<25;i++)r(c,105+(i*31)%174,15+(i*17)%27,1,1,i%4?15:39)}else e(c,246,27,9,9,14);
+  if(!overcast(state.weather)){if(state.time==='night'){e(c,246,28,9,9,1);e(c,246,28,6,6,39);for(let i=0;i<25;i++)r(c,105+(i*31)%174,15+(i*17)%27,1,1,i%4?15:39)}else e(c,246,27,9,9,14);}
   p(c,[[102,47],[128,37],[151,44],[175,35],[203,45],[237,34],[282,45],[282,84],[102,84]],5);
   r(c,102,51,180,33,19);for(let i=0;i<17;i++){const x=103+i*11;e(c,x,51+i%3*2,11,5,18);e(c,x-1,49+i%3*2,8,3,9);if(winter())e(c,x,48+i%3*2,7,1,32)}
   // Pond, stone shore and a low bridge share the same garden plane.
@@ -66,7 +67,7 @@ export default {crop:.5,nativeHeight:(host,scale)=>matchMedia('(orientation: por
    e(c,x+16,yy+13-rise,14,7+rise,30);e(c,x+6,yy+17,6,4,29);e(c,x+6,yy+16,4,2,30);p(c,[[x+10,yy+8-rise],[x+14,yy+7-rise],[x+16,yy+12-rise],[x+12,yy+13-rise]],29);l(c,x+20,yy+8-rise,x+22,yy+11-rise,29);
    e(c,x+30,yy+13+head,6,5,13);p(c,[[x+24,yy+10+head],[x+25,yy+4+head],[x+29,yy+9+head]],30);p(c,[[x+30,yy+9+head],[x+34,yy+5+head],[x+35,yy+12+head]],30);l(c,x+28,yy+13+head,x+31,yy+14+head,24);r(c,x+35,yy+15+head,1,1,29);r(c,x+21,yy+19,11,2,39);
   });api.creature('sleeping-cat',{x:233,y:y+33,w:39,h:25});
-  const phase=still?0:Math.floor(t*.8)%4;api.actor(2,{x:181,y:y-17,w:23,h:22},(c,x,yy)=>{c.save();c.globalAlpha=.45;const vapor=state.time==='night'?39:17;for(let i=0;i<2;i++){const dx=[0,1,0,-1][(phase+i)%4],xx=x+5+i*6;l(c,xx,yy+19,xx-1+dx,yy+13,vapor);l(c,xx-1+dx,yy+13,xx+1+dx,yy+8,vapor);r(c,xx+1+dx,yy+4,1,2,vapor)}c.restore()});
+  const phase=still?0:Math.floor(t*.8)%4;api.actor(2,{x:181,y:y-17,w:23,h:22},(c,x,yy)=>{c.save();c.globalAlpha=isWet(state.weather)?.7:.45;const vapor=state.time==='night'?39:17;for(let i=0;i<2;i++){const dx=[0,1,0,-1][(phase+i)%4],xx=x+5+i*6;l(c,xx,yy+19,xx-1+dx,yy+13,vapor);l(c,xx-1+dx,yy+13,xx+1+dx,yy+8,vapor);r(c,xx+1+dx,yy+4,1,2,vapor)}c.restore()});
   for(let i=0;i<3;i++){const f=still?(i+1)*.23:(t*.07+i*.31)%1,x=[139,205,255][i]+Math.round(Math.sin(still?i:t*.35+i)*7),yy=83+Math.floor(f*(y-48));api.actor(2,{x,y:yy,w:4,h:4},(c,x,yy)=>{const tone=state.season==='spring'?27:state.season==='summer'?18:state.season==='autumn'?37:25;r(c,x+1,yy,2,1,tone);r(c,x,yy+1,3,1,tone);r(c,x+1,yy+2,1,1,state.season==='spring'?28:30)})}
  }
  const shifted=paint=>c=>{c.save();c.translate(0,top());paint(c);c.restore()};
