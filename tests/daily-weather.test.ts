@@ -1,6 +1,6 @@
 import test from 'node:test';import assert from 'node:assert/strict';import fs from 'node:fs';
 import {dailyWeather,weatherLabels,weatherWeights,weightsFor} from '../src/components/pixel-scenes/weather.js';
-import {eventFor,catalog} from '../src/components/pixel-scenes/festivals.js';
+import {eventFor,catalog,decorate} from '../src/components/pixel-scenes/festivals.js';
 import {sceneClock} from '../src/components/pixel-scenes/model.ts';
 import {weatherProfile,weatherPalette,weatherFrame} from '../src/components/pixel-scenes/weather-paint.js';
 
@@ -30,4 +30,7 @@ test('still weather is time-independent and particle count stays bounded in ever
   let commands:any[]=[];const noop=()=>{},ctx:any={save:noop,restore:noop,beginPath:noop,rect:noop,clip:noop};const engine:any={id:'login-shoji',state:{weather,date:'2026-01-16',season:'winter',time:'night',seconds:10},scene:{weatherClip:[103,84,176,70]},api:{hash:()=>3,random:()=>()=>.3,draw:new Proxy({},{get:(_o,k)=>(_c:any,...args:any[])=>commands.push([k,...args])})},dynamics:[null,null,null,{getContext:()=>ctx}],actor:(_n:any,b:any,paint:Function)=>paint(ctx,b.x,b.y)};
   weatherFrame(engine,true);const first=JSON.stringify(commands);commands=[];engine.state.seconds=100;weatherFrame(engine,true);assert.equal(JSON.stringify(commands),first,weather);assert.ok(engine.weatherParticles<=36||weather==='clear');
  }
+});
+test('Hatsumode visitors carry umbrellas in drizzle with dirty bounds covering the canopy',()=>{
+ const noop=()=>{};for(const weather of ['clear','drizzle']){const bounds:any[]=[],polygons:any[]=[];const definition:any={id:'shadowing-inari',params:{},create:()=>({layers:[noop],frame:noop})};const scene=(decorate(definition) as any).create({state:{date:'2026-01-02',time:'day',weather},draw:{rect:noop,line:noop,ellipse:noop,polygon:(_c:any,points:any)=>polygons.push(points)},actor:(_n:number,b:any,paint:Function)=>{bounds.push(b);paint({},b.x,b.y);},creature:noop});scene.frame(7,true);assert.equal(bounds.length,8);assert.ok(bounds.every(b=>b.w===(weather==='drizzle'?28:12)&&b.h===(weather==='drizzle'?31:18)));assert.equal(polygons.length,weather==='drizzle'?8:0);}
 });

@@ -1,4 +1,4 @@
-import {overcast} from './weather.js';
+import {overcast,isWet} from './weather.js';
 import {catalog,eventFor,tsukimiDates} from './festival-calendar.js';
 export {catalog,eventFor,tsukimiDates} from './festival-calendar.js';
  function sample(event,year){const md=event.id==='tsukimi'?[tsukimiDates[year]].flat()[0]:event.monthDay;return md?`${year}-${md}`:null}
@@ -36,7 +36,7 @@ export {catalog,eventFor,tsukimiDates} from './festival-calendar.js';
    }
    function person(c,x,y,f,tone=7,small=false){
     // Six hand-pixelled walking poses at the same grounded baseline.
-    e(c,x+3,y+2,2,2,13);r(c,x+1,y+5,5,6,tone);r(c,x+(f%2?0:1),y+6,1,4,13);const n=[0,1,1,0,-1,-1][f%6];l(c,x+2,y+11,x+1+n,y+14,21);l(c,x+5,y+11,x+6-n,y+14,21);if(!small)r(c,x+5,y+6,3,4,24);
+    e(c,x+3,y+2,2,2,13);r(c,x+1,y+5,5,6,tone);r(c,x+(f%2?0:1),y+6,1,4,13);const n=[0,1,1,0,-1,-1][f%6];l(c,x+2,y+11,x+1+n,y+14,21);l(c,x+5,y+11,x+6-n,y+14,21);if(!small)r(c,x+5,y+6,3,4,24);if(isWet(state.weather)){const w=small?6:9;l(c,x+6,y-3,x+6,y+8,24);p(c,[[x+3-w,y-2],[x+3-w*.7,y-6],[x+3,y-9],[x+3+w*.7,y-6],[x+3+w,y-2]],29);l(c,x+3,y-9,x+3,y-2,30);l(c,x+3-w,y-2,x+3+w,y-2,31)}
    }
    function burst(t,still,x,y,phase,color){
     if(!still&&(phase<0||phase>4.8))return;const radius=still?33:3+Math.min(30,phase*17),drop=still?0:Math.max(0,phase-1.6)**2*2;
@@ -50,7 +50,7 @@ export {catalog,eventFor,tsukimiDates} from './festival-calendar.js';
    }
    function frame(t,still){
     base.frame(t,still);const id=active()?.id;
-    if(id==='hatsumode')for(let i=0;i<8;i++){const f=i/7,x=148+f*99+(i%2?7:-7),foot=184-f*88,y=foot-15;api.actor(2,{x:x-1,y,w:12,h:18},(c,x,y)=>person(c,x+1,y,still?i%6:Math.floor(t*3+i),[7,29,18,25][i%4],i>4))}
+    if(id==='hatsumode')for(let i=0;i<8;i++){const f=i/7,x=148+f*99+(i%2?7:-7),foot=184-f*88,y=foot-15;api.actor(2,{x:x-(isWet(state.weather)?8:1),y:y-(isWet(state.weather)?10:0),w:isWet(state.weather)?28:12,h:isWet(state.weather)?31:18},(c,x,y)=>person(c,x+(isWet(state.weather)?8:1),y+(isWet(state.weather)?10:0),still?i%6:Math.floor(t*3+i),[7,29,18,25][i%4],i>4))}
     if(id==='hanami'){
      for(const[x,y,tone]of[[220,200,29],[240,201,18]])api.actor(2,{x,y,w:7,h:11},(c,x,y)=>{e(c,x+3,y+2,2,2,13);r(c,x+1,y+5,5,4,tone);l(c,x+1,y+8,x+6,y+8,21)});
      for(let i=0;i<6;i++){const x=222+(i*13+(still?0:t*2))%48,y=128+(i*17+(still?0:t*3))%70;api.actor(2,{x,y,w:3,h:2},(c,x,y)=>{r(c,x,y,2,1,27);r(c,x+1,y+1,1,1,28)})}
