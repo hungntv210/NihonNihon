@@ -90,3 +90,22 @@ No weather service, location permission, network request or new package is used.
  390px contact sheet, clear1440 pixel comparison against27db394, static controls,
  server/client agreement, query tampering, and FPS. Physical iPhone battery/GPU
  behavior still needs device review.
+
+
+### Rain clarity follow-up
+
+Tokyo uses a grey overcast horizon, a rain plane behind the station canopy/signs,
+and a separate bounded wind-blown foreground strip beside wet platform reflections.
+Login rain darkens only the garden, suppresses incoming room petals/leaves, and
+retains the paper lamp,tea,cat and dry form/floor. Rain circles use3–6native-pixel
+radii so they remain visible at390px. Market precipitation stays beyond the roof;
+the entry floor is wet, a visitor carries a closed umbrella, and snow sits on the
+visible arcade roof edge. Inari's accepted heavy-rain palette/streak opacity remains
+the reference. Drizzle has32legible thin streaks; cloudy has no weather particles.
+
+Browser proof isolates cloudy/drizzle/heavy at the **same date,time,season and
+static animation frame**. The composite is cropped to the390px visible scene;
+each scene must differ by at least120native pixels (480CSS pixels at2x) between
+cloud and drizzle. It stores exact counts and a27-photo rain-contact-390.png,
+alongside all81weather cases and clear1440 zero-difference guard against0addddf.
+Incremental compiled-JS limit for this follow-up is5,000gzip bytes abovePR56.

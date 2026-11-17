@@ -27,10 +27,20 @@ test('room weather exposure stays outside floor/form and clear palette is byte-i
 });
 test('still weather is time-independent and particle count stays bounded in every state',()=>{
  for(const weather of Object.keys(weatherLabels)){
-  let commands:any[]=[];const noop=()=>{},ctx:any={save:noop,restore:noop,beginPath:noop,rect:noop,clip:noop};const engine:any={id:'login-shoji',state:{weather,date:'2026-01-16',season:'winter',time:'night',seconds:10},scene:{weatherClip:[103,84,176,70]},api:{hash:()=>3,random:()=>()=>.3,draw:new Proxy({},{get:(_o,k)=>(_c:any,...args:any[])=>commands.push([k,...args])})},dynamics:[null,null,null,{getContext:()=>ctx}],actor:(_n:any,b:any,paint:Function)=>paint(ctx,b.x,b.y)};
-  weatherFrame(engine,true);const first=JSON.stringify(commands);commands=[];engine.state.seconds=100;weatherFrame(engine,true);assert.equal(JSON.stringify(commands),first,weather);assert.ok(engine.weatherParticles<=36||weather==='clear');
+  let commands:any[]=[];const noop=()=>{},ctx:any={save:noop,restore:noop,beginPath:noop,rect:noop,clip:noop,fillRect:noop};const engine:any={id:'login-shoji',state:{weather,date:'2026-01-16',season:'winter',time:'night',seconds:10},scene:{weatherClip:[103,84,176,70]},api:{hash:()=>3,random:()=>()=>.3,draw:new Proxy({},{get:(_o,k)=>(_c:any,...args:any[])=>commands.push([k,...args])})},dynamics:[null,null,null,{getContext:()=>ctx}],actor:(_n:any,b:any,paint:Function)=>paint(ctx,b.x,b.y)};
+  weatherFrame(engine,true);const first=JSON.stringify(commands);commands=[];engine.state.seconds=100;weatherFrame(engine,true);assert.equal(JSON.stringify(commands),first,weather);assert.ok(engine.weatherParticles<=72||weather==='clear');
  }
 });
 test('Hatsumode visitors carry umbrellas in drizzle with dirty bounds covering the canopy',()=>{
  const noop=()=>{};for(const weather of ['clear','drizzle']){const bounds:any[]=[],polygons:any[]=[];const definition:any={id:'shadowing-inari',params:{},create:()=>({layers:[noop],frame:noop})};const scene=(decorate(definition) as any).create({state:{date:'2026-01-02',time:'day',weather},draw:{rect:noop,line:noop,ellipse:noop,polygon:(_c:any,points:any)=>polygons.push(points)},actor:(_n:number,b:any,paint:Function)=>{bounds.push(b);paint({},b.x,b.y);},creature:noop});scene.frame(7,true);assert.equal(bounds.length,8);assert.ok(bounds.every(b=>b.w===(weather==='drizzle'?28:12)&&b.h===(weather==='drizzle'?31:18)));assert.equal(polygons.length,weather==='drizzle'?8:0);}
+});
+
+
+test('wet login keeps room petals off while the cat and tea stay in the room',async()=>{
+ const def=(await import('../src/components/pixel-scenes/login-shoji.js')).default as any,noop=()=>{};
+ for(const weather of ['cloudy','drizzle','rain']){const state={nativeHeight:422,time:'day',season:'spring',weather,params:{}},ctx={save:noop,restore:noop,translate:noop};const scene=def.create({state,draw:new Proxy({},{get:()=>noop}),random:()=>()=>.5,actor:(_n:any,b:any,paint:Function)=>paint(ctx,b.x,b.y),creature:noop,sprite:noop});scene.frame(7,true);assert.equal(scene.stats().seasonParticles,weather==='cloudy'?3:0);assert.equal(scene.stats().catFrame,0);assert.equal(scene.stats().roomObjects.length,4);}
+});
+
+test('Tokyo rain has a background plane behind the canopy and a bounded wet platform; market rain stays outside',()=>{
+ const home=weatherProfile('home-tokyo',{}),market=weatherProfile('vocab-market',{});assert.equal(home.rainLayer,0);assert.equal(home.rainCount,72);assert.equal(home.people.length,1);assert.ok(home.areas[0][3]>=150);assert.ok(home.frontAreas.every((a:number[])=>a[1]>=180));assert.equal(market.people.length,0);assert.equal(market.folded.length,1);assert.ok(market.caps.some((c:number[])=>c[0]===91&&c[1]===7));assert.ok(market.areas.every((a:number[])=>a[1]>=177||a[0]<40||a[0]>340));
 });
