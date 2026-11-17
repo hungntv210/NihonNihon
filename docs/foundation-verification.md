@@ -755,3 +755,12 @@ Only this append-only audit entry changes after the successful full check.
 - Browser suite 2026-11-17T15:30:58.7356839+07:00–2026-11-17T15:38:46.3666212+07:00:14/14 PASS; scope guard daily-weather PASS. 81weather screenshots/contact sheet (9scenes ×7day/morning states +heavy rain/snow at night); clear1440 visible scene pixels unchanged from27db394, including only visible panorama tiles.
 - Server/client weather agrees across all9routes and ignores query tampering. 30-year (2000–2029;10,958days) monthly/tsuyu distribution PASS; clear44.93%, maximum extreme run3; winter-only snow/morning-only fog/festival respite/static controls/30fps PASS.
 - Compiled static JS gzip 454704 -> 468464: +13760bytes, below15,000. Contact sheet self-reviewed, then roof/cap/exposure corrections and umbrella bounds tested. Raw logs/screenshots/budget are gitignored under data/reports/. Physical iPhone GPU/battery not measured.
+
+
+### Rain clarity at390px — 2026-11-17
+
+- Checked implementation `04d3e451be9648d913266556a4052c0c4cfa4545`; Windows, Node v24.10.0, Chrome headless, isolated public fixtures only.
+- Full check 2026-11-17T17:17:45.0071440+07:00–2026-11-17T17:19:14.6535921+07:00: typecheck PASS;22/22prototype and166/166core/route tests PASS; production build PASS;16/16app gates PASS.
+- All14browser scripts PASS 2026-11-17T17:19:14.6971823+07:00–2026-11-17T17:26:56.6231215+07:00; scope rain-clarity PASS.81weather cases plus27-image cloudy/drizzle/heavy390px sheet self-reviewed against accepted Inari; Tokyo night reviewed too. All9clear1440 visible scene pixel comparisons against0addddf are unchanged.
+- Cloud/drizzle comparison fixes the date,time,season and static frame, composites layers and crops to the visible canvas, excluding labels. All9scenes exceed120native changed pixels: home-tokyo=11814; review-koi=245; kanji-himeji=162; shadowing-inari=312; vocab-market=6334; grammar-kinkakuji=157; jlpt-study=15589; roadmap-journey=191; login-shoji=12201. Initial99-pixel Himeji failure was corrected in rendering, without lowering the120gate.
+- Wet login has0room petals, retains cat/tea/form; Tokyo uses a sheltered city rain plane plus wet platform, and the market keeps its interior dry. Existing30fps/static lifecycle PASS. Compiled JS gzip 468494->469052, +558bytes (<5000). Logs,budget,pixel proof and rain-contact-390.png remain gitignored in data/reports/. Physical iPhone GPU/battery not measured.
