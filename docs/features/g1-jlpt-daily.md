@@ -21,7 +21,7 @@ Mỗi tối (trừ ngày shadowing) làm 10 câu theo dạng đề JLPT của c�
 | 文字・語彙 | Cách đọc kanji, chọn kanji, từ theo ngữ cảnh, đồng nghĩa, cách dùng |
 | 文法 | Chọn ngữ pháp, sắp xếp câu ★, ngữ pháp trong đoạn văn |
 
-- [x] Sinh câu hỏi từ dữ liệu OpenJLPT đúng cấp (AI hỗ trợ), chỉ từ/kanji/mẫu đã học
+- [x] Sinh câu hỏi xác định từ dữ liệu OpenJLPT đúng cấp, chỉ từ/kanji/mẫu đã học; AI chỉ giải độc lập
 - [x] Giải thích đáp án ngay sau mỗi câu
 - [x] Câu sai tự động vào SRS
 - [x] Ghi kết quả theo dạng bài để biết điểm yếu
@@ -41,7 +41,7 @@ Mỗi tối (trừ ngày shadowing) làm 10 câu theo dạng đề JLPT của c�
 ## Tiêu chí hoàn thành
 
 - [ ] Mỗi tối có đủ 10 câu đúng cấp, không lặp câu trong 30 ngày
-- [ ] Câu sai xuất hiện trong hàng ôn ngày hôm sau
+- [x] Câu sai xuất hiện trong hàng ôn ngày hôm sau (unit + browser với đồng hồ cố định)
 
 ## Câu hỏi còn mở
 
@@ -65,3 +65,7 @@ Các dấu tick xác nhận phần code đã chạy qua test/fixture; không tha
 - Bằng chứng: `src/app/(study)/jlpt-daily/browser-check.ts`.
 
 Đánh dấu luồng code được kiểm bằng fixture, không tuyên bố bank thật đã phủ mọi tối. Generator sinh theo tuần7×10 và lọc nội dung đã ôn, không gọi AI lúc mở trang. Mục ngân hàng thật/nhắc ôn ngày hôm sau chưa nghiệm thu đủ nên vẫn để trống. Câu hỏi còn mở về chu kỳ sinh đã được chốt theo tuần, không đổi luật30ngày.
+
+## Generator v2 — quy tắc đã được chủ dự án điều chỉnh
+
+Tuần dùng các dạng có nguồn, tối thiểu reading/spelling/grammar/order; context khi đủ dữ liệu. Mỗi ngày 10 câu, ≥3 dạng, có từ/ngữ pháp; thiếu thì partial và hiện số thật. Không yêu cầu đủ tám dạng khi chưa có dữ liệu. Không dùng AI viết cả câu; lời giải từ nguồn, verifier không nhận key. Xem README tuyến và v2.test.ts. Nháp lộ trình theo đúng từng ngày ghi mode=draft_roadmap, chưa đưa vào kho duyệt; chế độ lịch sử ôn thật vẫn được giữ.

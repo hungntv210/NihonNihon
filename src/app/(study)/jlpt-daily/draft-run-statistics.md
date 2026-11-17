@@ -24,3 +24,19 @@ The partial day, checkpoints, rejected rows/reasons and model provenance remain 
 ignored data/private. Days 2–7 have not been generated because day 1 still fails QA.
 The retry/fallback branch is fixture-tested; it was not needed by the actual API run.
 No QA gate, answer key or generated question was manually corrected to reach a count.
+
+## Generator v2 source survey — 2026-11-17 (no API)
+
+Real SRS eligibility: 0 items. Owner authorized draft_roadmap eligibility through
+individual Vietnam dates, preserving real review mode. As-of survey: 129 words
+with readings, 16 kanji rows, 16 grammar patterns, 299 unique sourced examples;
+168 already satisfy the character gate, 292 can satisfy it using attested kana.
+The existing eligible-title/reading union contains 128 allowed characters.
+
+Hard-gated candidate upper bounds before history collisions/verifier:
+reading46, spelling94, grammar13, order10, context26. These are alternatives,
+not accepted independent questions. Same-target/30-day rules reduce supply.
+Synonym/usage/paragraph are omitted rather than invented. Real drafting occurs
+only after merge; its private statistics and HTML reviews are not approved bank
+content. Fixture CLI uses no API and cannot publish. No question text is in this
+report.

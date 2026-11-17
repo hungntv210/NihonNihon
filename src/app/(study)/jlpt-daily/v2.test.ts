@@ -1,0 +1,52 @@
+import test from 'node:test';import assert from 'node:assert/strict';import fs from 'node:fs';import os from 'node:os';import path from 'node:path';
+import {readingNoise,spellingNoise,candidates,validateV2,phrases} from './deterministic.ts';import {safeExample,exampleEvidence,type V2Source,type V2Context} from './v2-data.ts';import {fingerprint,hash,plusDays} from './model.ts';import {runDeterministic} from './v2-run.ts';import {blindQuestions,verifyDeterministic} from './v2-verifier.ts';import {enqueueMistake} from './repository.ts';import {enqueueCard} from '../../../core/review.ts';import {fixtureCatalog} from './fixture.ts';import {DatabaseSync} from 'node:sqlite';import {session} from '../srs/repository.ts';import {scheduler} from '../srs/model.ts';
+import {contextAt} from './v2-data.ts';import {japaneseWordEvidence,roadmapLexicon} from './word-evidence.ts';import {reviewHtml,main} from './generate-v2.ts';
+const source=(title:string,reading:string,kind:V2Source['kind']='vocab',pos=['n']):V2Source=>({id:'openjlpt:'+kind+':fixture-'+title,title,reading,kind,pos,level:'N5',hash:hash(title),english:['self-authored fixture'],vietnamese:null,on:[]});
+export function context():V2Context{
+ const words=[source('私','わたし','vocab',['pn']),source('毎日','まいにち','vocab',['adv']),source('学校','がっこう'),source('日本語','にほんご'),source('勉強','べんきょう','vocab',['vs']),source('校長','こうちょう'),source('日本','にほん'),source('曰本','にほん'),source('本','ほん'),source('はし','はし'),source('行','こう')];
+ const characters=[...new Set(words.flatMap(w=>[...w.title]).filter(c=>/\p{Script=Han}/u.test(c)))];characters.push('木','人','国');const catalog=[...words,...characters.map(k=>({...source(k,'こう','kanji'),on:k==='行'?['コウ','ギョウ','アン']:[]})),...['は','が','を','に','で','へ','と','だけ','です','だ','でした','ではありません'].map(s=>source(s,s,'grammar',[]))];
+ const target=catalog.find(s=>s.kind==='grammar'&&s.title==='で')!;return{mode:'draft_roadmap',date:'2026-11-16',level:'N5',catalog,dictionary:catalog,knownKanji:characters,examples:[{id:'fixture:sentence:1',targetId:target.id,text:'私は毎日学校で日本語を勉強しています。',english:'Self-authored test only.',notation:null,sourceId:'openjlpt',releaseId:'fixture',attribution:'Self-authored test'}]};
+}
+test('v2 reading distractors prove long vowels,sokuon,voicing,other On and shared-kanji readings',()=>{
+ const c=context(),school=c.catalog.find(s=>s.title==='学校')!,rows=readingNoise(school,c);assert.ok(rows.some(r=>r.rule==='long-vowel'&&r.value==='がっこお'));assert.ok(rows.some(r=>r.rule==='sokuon'&&r.value==='がこう'));assert.ok(rows.some(r=>r.rule==='shared-kanji'&&r.value==='こうちょう'));const voiced=readingNoise(c.catalog.find(s=>s.title==='はし')!,c);assert.ok(voiced.some(r=>r.value==='ばし'));assert.ok(voiced.some(r=>r.value==='ぱし'));assert.ok(readingNoise(c.catalog.find(s=>s.kind==='vocab'&&s.title==='行')!,c).some(r=>r.rule==='other-on'&&r.value==='ぎょう'));assert.ok(rows.every(r=>/^[\p{Script=Hiragana}\p{Script=Katakana}ー]+$/u.test(r.value)&&r.value!==school.reading&&!r.value.includes('っっ')));
+});
+test('v2 spelling derives same-sound,shape and one-learned-kanji evidence only',()=>{
+ const c=context(),target=c.catalog.find(s=>s.title==='日本')!,rows=spellingNoise(target,c);assert.ok(rows.some(r=>r.rule==='same-sound'&&r.value==='曰本'));assert.ok(rows.some(r=>r.rule==='similar-shape'));assert.ok(rows.some(r=>r.rule==='one-known-kanji'));assert.ok(rows.every(r=>r.sourceIds.length>0&&[...r.value].every(ch=>!/[\p{Script=Han}]/u.test(ch)||c.knownKanji.includes(ch))));
+});
+test('v2 is deterministic, preserves sourced grammar/order and requires all core hard gates',()=>{
+ const c=context(),a=candidates(c),b=candidates(structuredClone(c));assert.deepEqual(a,b);for(const type of ['reading','spelling','grammar','order'])assert.ok(a.questions.some(q=>q.type===type),JSON.stringify(a.rejected));
+ const q=a.questions.find(q=>q.type==='reading')!;
+ for(const mutate of [(r:any)=>r.stem+='鬱',(r:any)=>r.choices[1]=r.choices[0],(r:any)=>r.correct=(r.correct+1)%4,(r:any)=>r.explanation+=' forged',(r:any)=>r.sourceHash='changed']){const raw=structuredClone(q);mutate(raw);assert.throws(()=>validateV2(raw,c));}
+ const grammar=a.questions.find(q=>q.type==='grammar')!;assert.equal(grammar.stem.replace('＿',grammar.choices[grammar.correct]),grammar.sentence);assert.throws(()=>exampleEvidence({...grammar,example:{...grammar.example!,sourceId:''}},c),/SOURCE/);
+ const order=a.questions.find(q=>q.type==='order')!;assert.equal(order.order.length,4);assert.equal(phrases(order.sentence!).join(''),order.sentence);assert.equal(order.order[order.starSlot],order.correct);
+ assert.throws(()=>validateV2({...q,date:plusDays(c.date,29)}, {...c,date:plusDays(c.date,29)},[q]),/COLLISION|THIRTY/);assert.doesNotThrow(()=>validateV2({...q,date:plusDays(c.date,31)}, {...c,date:plusDays(c.date,31)},[q]));
+ const outside=structuredClone(q);outside.stem+='ひとりがくぶん';outside.fingerprint=fingerprint(outside.stem);assert.throws(()=>validateV2(outside,c),/UNATTESTED/);
+});
+test('source kana fallback preserves text readings and refuses missing/changed provenance',()=>{
+ const c=context(),e={...c.examples[0],text:'魚を見ます。',notation:'{魚|さかな}を{見|み}ます。'};assert.equal(safeExample(e,c),'さかなをみます。');assert.equal(safeExample({...e,notation:null},c),null);assert.equal(safeExample({...e,notation:'{魚|さかな}とは'},c),null);
+});
+test('verifier input hides key,explanation,target and distractor proofs; ambiguity is rejected without editing',async()=>{
+ const c=context(),q=candidates(c).questions.find(q=>q.type==='reading')!,payload=blindQuestions([q]);assert.ok(!('correct' in payload[0])&&!('explanation' in payload[0])&&!('distractors' in payload[0])&&!('targetId' in payload[0]));let calls=0;
+ const result=await verifyDeterministic(async(phase,_prompt,p)=>{assert.equal(phase,'verify');calls++;if(calls===1)return[{index:0,possibleAnswers:[0,1],independentAnswer:0,natural:true,knowledgeCorrect:true,optionGrades:q.choices.map((v,i)=>({choiceIndex:i,completedSentence:q.stem.replace(/【[^】]+】/u,v),candidateOrder:[],grammatical:true,formCorrect:true,natural:true,meaningFits:true,acceptable:true,reason:'fixture ambiguity'}))}];return q.choices.map((_,index)=>({index,grammatical:true,formCorrect:true,natural:true,meaningFits:true,reason:'fixture ambiguity'}));},[q]);assert.equal(calls,2);assert.equal(result[0].accepted,false);assert.equal(q.correct,candidates(c).questions.find(r=>r.id===q.id)!.correct);
+});
+test('bounded run checkpoints on quota and resumes deterministically without reaccepting a question',async()=>{
+ const contexts=Array.from({length:7},(_,n)=>({...context(),date:plusDays(context().date,n)}));let checkpoints=0;const stopped=await runDeterministic(contexts,[],{provider:async()=>{throw Error('DAILY_BUDGET_REACHED');},checkpoint:()=>checkpoints++});assert.match(stopped.status,/stopped/);assert.equal(stopped.questions.length,0);assert.ok(checkpoints>0);
+ const a=await runDeterministic(contexts,[],{noVerifier:true,seed:stopped}),b=await runDeterministic(contexts,[],{noVerifier:true});assert.deepEqual(a.questions,b.questions);assert.equal(a.status,'unverified_fixture');assert.equal(new Set(a.questions.map(q=>q.fingerprint)).size,a.questions.length);
+});
+test('wrong grammar cloze is due next day in full SRS, never quick; existing later card is brought forward',async t=>{
+ const dir=fs.mkdtempSync(path.join(os.tmpdir(),'jlpt-v2-'));t.after(()=>fs.rmSync(dir,{recursive:true,force:true}));const file=path.join(dir,'demo.sqlite'),catalog=fixtureCatalog(file),id=catalog.find(s=>s.kind==='grammar')!.id,now=new Date('2026-11-16T13:00:00Z'),due=new Date('2026-11-17T13:00:00Z');const original=enqueueCard(file,id,'cloze',new Date('2026-12-20T13:00:00Z'));assert.equal(enqueueMistake(file,id,'cloze',due,now).cardId,original.cardId);const db=new DatabaseSync(file);try{db.prepare("UPDATE srs_cards SET due_at='2027-01-01T00:00:00Z' WHERE card_id<>?").run(original.cardId);const engine=await scheduler();assert.equal(session(db,engine,'full',now).cards.length,0);assert.equal(session(db,engine,'full',due).cards[0]?.cardId,original.cardId);assert.equal(session(db,engine,'quick',due).cards.length,0);}finally{db.close();}
+});
+test('Vietnam day cutoff and roadmap never include future days; real review mode remains independent',t=>{
+ const dir=fs.mkdtempSync(path.join(os.tmpdir(),'jlpt-v2-days-'));t.after(()=>fs.rmSync(dir,{recursive:true,force:true}));const file=path.join(dir,'demo.sqlite');fixtureCatalog(file);const db=new DatabaseSync(file);try{
+  assert.equal(contextAt(db,db,'2026-11-01','draft_roadmap').catalog.length,0);
+  const monday=contextAt(db,db,'2026-11-02','draft_roadmap'),tuesday=contextAt(db,db,'2026-11-03','draft_roadmap');assert.ok(monday.catalog.length>0&&tuesday.catalog.length>=monday.catalog.length);assert.ok(monday.catalog.every(s=>tuesday.catalog.some(t=>t.id===s.id)));
+  db.exec("UPDATE srs_reviews SET reviewed_at='2026-11-16T17:00:00Z'");assert.equal(contextAt(db,db,'2026-11-16','srs').catalog.length,0);assert.ok(contextAt(db,db,'2026-11-17','srs').catalog.length>0);
+  assert.deepEqual(contextAt(db,db,'2026-11-02','draft_roadmap').catalog,monday.catalog);
+ }finally{db.close();}
+});
+test('attested whole calendar words survive ICU particle boundaries, invented compounds still fail',()=>{
+ const lex=roadmapLexicon([source('二十日','はつか'),source('三日','みっか'),source('ひとり','ひとり'),source('学','がく'),source('文','ぶん')]);for(const text of ['はつか','みっか'])assert.deepEqual(japaneseWordEvidence(text,lex).unresolved,[]);assert.ok(japaneseWordEvidence('ひとりがくぶん',lex).unresolved.length>0);
+});
+test('fixture CLI needs no key or API and writes only unverified draft review/checkpoints',async t=>{
+ const base=path.resolve('.tmp');fs.mkdirSync(base,{recursive:true});const dir=fs.mkdtempSync(path.join(base,'jlpt-v2-cli-'));t.after(()=>fs.rmSync(dir,{recursive:true,force:true}));const file=path.join(dir,'demo.sqlite');fixtureCatalog(file);const out=path.join(dir,'out');await main(['--content',file,'--learning',file,'--fixture','--no-verifier','--mode','draft_roadmap','--week','2026-11-16','--weeks','1','--output',out]);const bank=JSON.parse(fs.readFileSync(path.join(out,'bank-2026-11-16.json'),'utf8'));assert.equal(bank.status,'unverified_fixture');assert.equal(bank.mode,'draft_roadmap');assert.match(reviewHtml(bank),/Chưa nhập kho duyệt/);assert.ok(!fs.existsSync(path.join(out,'approved.sqlite')));
+});
