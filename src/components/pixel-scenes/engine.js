@@ -1,3 +1,5 @@
+import {dailyWeather,weatherLabels} from './weather.js';
+import {weatherPalette,staticAtmosphere,weatherFrame} from './weather-paint.js';
 // Approved standalone pixel renderer, adapted to route-local ES modules.
 const W=384,H=216;const palettes={
  morning:['#c4d8db','#d8e3dc','#ede8ce','#a7c2cc','#8aabb8','#78949f','#637b8b','#536e7c','#506c70','#6e8581','#929d8e','#b5b39d','#d7c8aa','#e9d5b5','#faf0cf','#c2b9a1','#9f9d8e','#7c8780','#596e6b','#384e55','#273d48','#1d303c','#26343e','#43454a','#676266','#8f8580','#b8a29a','#d8b9ad','#eed2bc','#b68b80','#91656b','#6c505d','#d1e9d6','#9ebfbd','#709590','#ffdd99','#efbc7d','#c58d65','#826e61','#f4e7c4'],
@@ -32,6 +34,7 @@ class Engine {
   this.height=H;this.host=host;this.def=definition;this.id=definition.id;
   this.state={nativeHeight:H,time:'day',season:'spring',date:'1970-01-01',motion:true,seconds:7,frames:0,params:{...definition.params},...options};
   if(!palettes[this.state.time])this.state.time='sunset';if(!['spring','summer','autumn','winter'].includes(this.state.season))this.state.season='spring';
+  if(!Object.hasOwn(weatherLabels,this.state.weather))this.state.weather=dailyWeather(this.state.date,this.state.time);
   this.palette=[];this.statics=[];this.dynamics=[];this.dirty=[];this.creatures=[];this.metrics={staticBuilds:0,frames:0,maxDirtyArea:0};this.raf=0;this.last=0;this.visible=false;this.media=matchMedia('(prefers-reduced-motion: reduce)');
   this.world=document.createElement('div');this.world.className='pixel-world';host.append(this.world);
   this.api={reduced:()=>this.reduced(),state:this.state,palette:this.palette,draw:makeDrawing(this.palette,this.state),actor:(...args)=>this.actor(...args),creature:(kind,bounds)=>this.creatures.push({kind,...bounds}),random:seeded,hash,scheduled:(t,name,start,end,chance=1)=>{const lap=Math.floor(t/24),r=seeded(hash(this.state.date+name+lap))();return t%24>=start&&t%24<end&&r<chance},sprite:(c,frames,f,x,y,flip=false)=>this.sprite(c,frames,f,x,y,flip)};
@@ -45,37 +48,25 @@ class Engine {
   this.resize();this.rebuild();
  }
  params(values,rebuild=true){for(const key of Object.keys(this.def.params)){const n=Number(values[key]);this.state.params[key]=Number.isFinite(n)?Math.max(0,n):this.def.params[key];}this.scene.normalize?.(this.state.params);if(rebuild)this.rebuild()}
- set(values){Object.assign(this.state,values);this.rebuild()}
+ set(values){Object.assign(this.state,values);if(values.date&&!values.weather)this.state.weather=dailyWeather(this.state.date,this.state.time);if(this.state.weather==='fog'&&this.state.time!=='morning')this.state.weather='cloudy';this.rebuild()}
  rebuild(){
   const colors=[...palettes[this.state.time]];
   if(this.def.seasonSwatches!==false){const seasonal={spring:['#b38793','#d2a8ac','#edc8ba'],summer:['#476759','#718966','#a4af7c'],autumn:['#965740','#bd7e46','#deaa66'],winter:['#839695','#bac4b6','#e6e1cb']}[this.state.season];colors.splice(26,3,...seasonal)}
-  const override=typeof this.def.swatches==='function'?this.def.swatches(this.state):this.def.swatches;for(const [i,color]of Object.entries(override||{}))colors[Number(i)]=color;this.palette.splice(0,this.palette.length,...colors);
-  const r=hash(this.state.date),weather=['rain','fog','wind','clear'][r%4];this.state.weather=weather;if(!['rain','fog','wind','clear'].includes(this.state.weather))this.state.weather=weather;
-  this.scene.layers.forEach((fn,i)=>{const c=this.statics[i].getContext('2d');c.clearRect(0,0,W,this.height);fn(c)});this.metrics.staticBuilds++;this.frame(true);this.sync();this.onChange?.();
+  const override=typeof this.def.swatches==='function'?this.def.swatches(this.state):this.def.swatches;for(const [i,color]of Object.entries(override||{}))colors[Number(i)]=color;this.palette.splice(0,this.palette.length,...weatherPalette(colors,this.state,['login-shoji','jlpt-study'].includes(this.id)));
+
+  this.scene.layers.forEach((fn,i)=>{const c=this.statics[i].getContext('2d');c.clearRect(0,0,W,this.height);fn(c);staticAtmosphere(this,i)});this.metrics.staticBuilds++;this.frame(true);this.sync();this.onChange?.();
  }
  actor(layer,bounds,paint){const {x,y,w,h}=bounds,c=this.dynamics[layer].getContext('2d');const b={x:Math.floor(x)-2,y:Math.floor(y)-2,w:Math.ceil(w)+4,h:Math.ceil(h)+4};this.dirty[layer].push(b);paint(c,Math.floor(x),Math.floor(y));}
  sprite(c,frames,index,x,y,flip=false){const frame=frames[((index%frames.length)+frames.length)%frames.length];for(let yy=0;yy<frame.length;yy++)for(let xx=0;xx<frame[yy].length;xx++){const color=frame[yy][xx];if(color>=0)this.api.draw.rect(c,x+(flip?frame[yy].length-xx-1:xx),y+yy,1,1,color)}}
  frame(still=false){for(let i=0;i<this.dynamics.length;i++){const c=this.dynamics[i].getContext('2d');for(const b of this.dirty[i])c.clearRect(b.x,b.y,b.w,b.h);this.dirty[i]=[]}this.creatures=[];this.scene.frame(this.state.seconds,still);this.weather(still);this.metrics.maxDirtyArea=Math.max(this.metrics.maxDirtyArea,this.dirty.flat().reduce((a,b)=>a+b.w*b.h,0));}
- weather(still){
-  const {rect,line,ellipse,dither}=this.api.draw,weather=this.state.weather,t=this.state.seconds,r=seeded(hash(this.state.date+'weather')),winter=this.state.season==='winter';
-  const surface=this.dynamics[3].getContext('2d'),clip=this.scene.weatherClip;if(clip){surface.save();surface.beginPath();surface.rect(...clip);surface.clip()}
-  if(weather==='rain'){
-   // Reflection pools sit on each scene's actual ground/water plane.
-   for(const [x,y,w]of this.scene.puddles||[[155,199,20],[231,205,16]])this.actor(3,{x,y,w,h:4},(c,xx,yy)=>{ellipse(c,xx+w/2,yy+2,w/2,2,7);line(c,xx+4,yy+1,xx+w-4,yy+1,16);if(this.state.time==='night')line(c,xx+w/2-2,yy+2,xx+w/2+2,yy+2,36)});
-   for(let i=0;i<24;i++){const x=(r()*W+t*5)%W,y=(r()*H+t*43)%H;this.actor(3,{x,y,w:3,h:5},(c,xx,yy)=>line(c,xx,yy,xx-1,yy+3,16))}
-  }else if(weather==='fog'){
-   for(const [x,y,w,h]of [[88,65,140,15],[157,122,135,15]])this.actor(3,{x,y,w,h},(c,xx,yy)=>{for(let v=0;v<h;v++)for(let u=0;u<w;u++){const noise=(Math.imul(xx+u+1,73856093)^Math.imul(yy+v+3,19349663))>>>0,density=10*Math.sin(u/w*Math.PI)*Math.sin(v/h*Math.PI);if(noise%100<density)rect(c,xx+u,yy+v,1,1,3)}});
-  }else if(weather==='wind'||winter){
-   const count=winter?18:10;for(let i=0;i<count;i++){const x=(r()*W+t*(winter?2:9))%W,y=(r()*H+t*(winter?3:5))%H;this.actor(3,{x,y,w:3,h:2},(c,xx,yy)=>{rect(c,xx,yy,winter?1:2,1,winter?39:this.state.season==='autumn'?37:27);if(i%4===0)rect(c,xx+1,yy+1,1,1,winter?13:26)})}
-  }if(clip)surface.restore();
- }
+ weather(still){this.weatherParticles=0;weatherFrame(this,still)}
  reduced(){return !this.state.motion||this.media.matches}
  parallax(){const n=this.reduced()?0:Math.max(-2,Math.min(2,Math.round((this.host.getBoundingClientRect().top-130)/250)));this.statics.forEach((c,i)=>{c.style.transform=`translateY(${Math.round(n*(this.scene.depths?.[i]||0))*this.scale}px)`});this.dynamics.forEach((c,i)=>{c.style.transform=`translateY(${Math.round(n*(this.scene.dynamicDepths?.[i]||0))*this.scale}px)`})}
  tick(now){this.raf=0;if(document.hidden||this.reduced()||!this.visible)return;this.raf=requestAnimationFrame(t=>this.tick(t));if(now-this.last<1000/30)return;this.state.seconds+=Math.min(.08,(now-this.clock)/1000);this.clock=now;this.last=now;this.state.frames++;this.metrics.frames++;this.frame(false)}
  sync(){cancelAnimationFrame(this.raf);this.raf=0;if(!document.hidden&&!this.reduced()&&this.visible){this.clock=performance.now();this.last=0;this.raf=requestAnimationFrame(t=>this.tick(t))}else if(this.reduced())this.frame(true);this.parallax()}
  drawAt(t){this.state.seconds=t;this.frame(true)}
  complete(){this.scene.complete?.(this.reduced());this.frame(this.reduced())}
- stats(){return{native:[W,this.height],scale:this.scale,palette:this.palette.length,weather:this.state.weather,creatures:this.creatures,params:{...this.state.params},...this.metrics,...this.scene.stats?.()}}
+ stats(){return{native:[W,this.height],scale:this.scale,palette:this.palette.length,weather:this.state.weather,weatherParticles:this.weatherParticles||0,creatures:this.creatures,params:{...this.state.params},...this.metrics,...this.scene.stats?.()}}
  destroy(){cancelAnimationFrame(this.raf);this.resizeObserver.disconnect();this.intersection.disconnect();document.removeEventListener('visibilitychange',this.onVisibility);this.media.removeEventListener('change',this.onMedia);window.removeEventListener('scroll',this.onScroll);this.world.remove()}
 }
 function hash(s){let n=2166136261;for(const c of s)n=Math.imul(n^c.charCodeAt(0),16777619);return n>>>0}

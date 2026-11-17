@@ -1,3 +1,4 @@
+import {weatherLabels} from '../../components/pixel-scenes/weather.js';
 import {PixelCanvas} from '../../components/pixel-scenes/pixel-canvas.tsx';
 import {sceneClock} from '../../components/pixel-scenes/model.ts';
 import styles from './login.module.css';
@@ -21,7 +22,7 @@ export default async function LoginPage({
   const clock=sceneClock();
   return (
     <main className={'login-page '+styles.page}>
-      <div className={styles.backdrop} data-scene-time={clock.period} data-scene-date={clock.date}><PixelCanvas id="login-shoji" clock={clock} params={{}}/></div>
+      <div className={styles.backdrop} data-scene-time={clock.period} data-scene-date={clock.date}><PixelCanvas id="login-shoji" clock={clock} params={{}}/><time className={styles.clock} dateTime={clock.now}>{clock.time} · <span lang="ja">{weatherLabels[clock.weather]}</span></time></div>
       <section className={styles.card} aria-labelledby="login-title">
         <h1 id="login-title"><span className={styles.title}>Đăng nhập</span></h1>
         <form action="/api/session" method="post">

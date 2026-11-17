@@ -1,3 +1,4 @@
+import {overcast,isWet} from './weather.js';
 import {SceneEngine} from './engine.js';
 export default {crop:0.52,id:'shadowing-inari',title:'Inari · Shadowing',description:'Một lối cổng đỏ men sườn núi, giữa rừng tuyết tùng và tiếng chuông.',params:{progress:0},swatches:state=>state.time==='night'?{29:'#ad684c',30:'#824332',31:'#4c302b'}:{29:'#ce8856',30:'#a94e34',31:'#6b352d'},create(api){
  const {state,draw:d}=api,{rect:r,line:l,ellipse:e,polygon:p}=d,winter=()=>state.season==='winter';
@@ -9,7 +10,7 @@ export default {crop:0.52,id:'shadowing-inari',title:'Inari · Shadowing',descri
  }
  function distance(c){
   r(c,0,0,384,216,0);r(c,0,39,384,47,3);r(c,0,76,384,35,4);
-  if(state.time==='night'){e(c,91,25,10,10,1);e(c,91,25,6,6,39);for(let i=0;i<38;i++)r(c,(i*71)%384,5+(i*19)%64,1,1,i%4?15:39)}else e(c,102,27,10,10,14);
+  if(!overcast(state.weather)){if(state.time==='night'){e(c,91,25,10,10,1);e(c,91,25,6,6,39);for(let i=0;i<38;i++)r(c,(i*71)%384,5+(i*19)%64,1,1,i%4?15:39)}else e(c,102,27,10,10,14);}
   p(c,[[0,63],[38,47],[67,55],[115,34],[155,50],[191,39],[245,58],[303,42],[384,57],[384,119],[0,119]],5);
   p(c,[[0,88],[41,69],[78,78],[124,61],[166,80],[207,57],[264,70],[301,60],[384,78],[384,132],[0,132]],6);
   // Kyoto roofs occupy a distant valley to the left of the hillside.

@@ -8,3 +8,6 @@ globalThis.Date=class extends RealDate{
   static parse(value){return RealDate.parse(value);}
   static UTC(...args){return RealDate.UTC(...args);}
 };
+
+// Only this explicit test preload enables server-side weather fixtures.
+globalThis.__nihonUIFixture=true;

@@ -1,8 +1,9 @@
+import {overcast,isWet} from './weather.js';
 import {SceneEngine} from './engine.js';
 // Scene-level pixel motifs. The engine and its lifecycle remain unchanged.
 export function SceneCraft(api){
  const {rect:r,line:l,ellipse:e,polygon:p}=api.draw,s=api.state;
- function sky(c){r(c,0,0,384,216,0);r(c,0,45,384,50,3);r(c,0,90,384,126,1);if(s.time==='night'){e(c,287,29,11,11,1);e(c,287,29,7,7,39);for(let i=0;i<45;i++)r(c,(i*71)%384,6+(i*31)%76,1,1,i%4?15:39)}else e(c,286,28,12,12,14);p(c,[[0,86],[35,67],[72,78],[116,52],[157,70],[201,59],[251,77],[308,60],[350,77],[384,66],[384,123],[0,123]],5)}
+ function sky(c){r(c,0,0,384,216,0);r(c,0,45,384,50,3);r(c,0,90,384,126,1);if(!overcast(s.weather)){if(s.time==='night'){e(c,287,29,11,11,1);e(c,287,29,7,7,39);for(let i=0;i<45;i++)r(c,(i*71)%384,6+(i*31)%76,1,1,i%4?15:39)}else e(c,286,28,12,12,14);}p(c,[[0,86],[35,67],[72,78],[116,52],[157,70],[201,59],[251,77],[308,60],[350,77],[384,66],[384,123],[0,123]],5)}
  function roof(c,x,y,w,h=10,snow=s.season==='winter'){
   p(c,[[x-7,y+h-2],[x-4,y+h+1],[x+w+4,y+h+1],[x+w+8,y+h-3],[x+w-2,y],[x+4,y]],21);p(c,[[x-3,y+h-1],[x+5,y+1],[x+w-3,y+1],[x+w+4,y+h-1]],7);
   for(let k=2;k<h;k+=2)l(c,x+4-k,y+k,x+w-3+k,y+k,18);for(let xx=x+7;xx<x+w-3;xx+=5)l(c,xx,y+1,xx+2,y+h-1,6);

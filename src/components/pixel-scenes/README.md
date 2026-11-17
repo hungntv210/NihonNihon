@@ -18,7 +18,8 @@ The standalone originals are unchanged.
 
 Server `sceneClock` uses Asia/Ho_Chi_Minh including the local month at UTC date
 boundaries. Seasons: Mar–May spring, Jun–Aug summer, Sep–Nov autumn, Dec–Feb winter.
-The original date hash selects weather deterministically, shared across all four scenes.
+Server `dailyWeather(date, period)` selects one offline weather state shared by all nine scenes.
+The engine honors that state; it calls the same selector only when no state was supplied.
 Preview query parameters do not override production state.
 
 `PixelCanvas` is client-only; engine and each renderer are dynamic imports in its
@@ -42,3 +43,50 @@ at 390/1440px for morning/day/sunset/night (32 screenshots) under
 Desktop browser checks do not establish iPhone GPU/battery behavior; physical-device
 review remains necessary. Engine statistics are exposed only on the canvas host for
 these checks and contain no learner content or credentials.
+
+
+## Daily weather (illustrative Tokyo seasons, not a live forecast)
+
+Vietnam calendar date, not the device timezone, seeds a stable versioned date hash.
+Weights are percentages before the two safety/calendar rules below. They model the
+requested seasonal atmosphere; they are design probabilities, not measured climate data.
+No weather service, location permission, network request or new package is used.
+
+| Month | 晴れ clear | 曇り cloudy | 小雨 drizzle | 大雨 heavy | 雪 snow | 霧 morning fog | 風 wind |
+|---|---:|---:|---:|---:|---:|---:|---:|
+|1|55|18|5|1|9|5|7|
+|2|50|18|7|1|8|6|10|
+|3|43|18|10|2|0|7|20|
+|4|40|20|12|3|0|5|20|
+|5|40|22|15|4|0|5|14|
+|6|32|23|24|10|0|4|7|
+|7|35|21|23|11|0|3|7|
+|8|58|16|9|4|0|3|10|
+|9|35|19|18|14|0|3|11|
+|10|43|21|12|5|0|7|12|
+|11|50|20|8|2|0|9|11|
+|12|56|17|5|1|7|6|8|
+|Tsuyu 15/6–15/7 (inclusive override)|24|22|32|13|0|3|6|
+
+- Fog is displayed only 05:00–10:59 Vietnam time; afterwards the same day's
+  fog state becomes cloudy. Snow is sampled only December–February.
+- A fourth consecutive raw extreme (heavy rain/snow) becomes clear. Heavy rain
+  on any active festival date becomes clear **on every route**, rather than
+  changing weather only in the festival's scene. Snow/cloud/drizzle keep festivals.
+- The 2000–2029 distribution test compares observed monthly counts with the table
+  (including each day's tsuyu/festival adjustment). Tolerance is a four-sigma
+  binomial band +0.5 percentage point, minimum2.5 points; extreme respite shifts
+  are negligible. Clear must also be the most frequent state across all30years.
+- Query strings never participate. Only the explicit isolated browser-test preload
+  can enable NIHON_UI_WEATHER_FIXTURE; the env var alone has no production effect.
+- Weather uses the existing30fps/visibility/motion lifecycle, maximum36 particles
+  per visible tile (15drizzle/20snow/8wind). It adds no animation loop. Still mode
+  keeps cloud banks, haze, pools, ice/snow caps and a frozen sparse particle frame.
+- Native exposure rectangles avoid roofs/timbers/interior floors. Fog is composited
+  by layer depth; indoor palettes stay warm and only window pixels are misted.
+  Snow caps are placed on fixed roof/stone/branch coordinates, never creature bounds.
+  Rain never adds lightning. The login tea/cushions/sleeping cat remain indoors.
+- Weather browser proof:9scenes ×7day/morning states +heavy/snow at night,
+ 390px contact sheet, clear1440 pixel comparison against27db394, static controls,
+ server/client agreement, query tampering, and FPS. Physical iPhone battery/GPU
+ behavior still needs device review.

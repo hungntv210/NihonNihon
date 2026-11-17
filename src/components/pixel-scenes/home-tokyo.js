@@ -1,10 +1,11 @@
+import {overcast,isWet} from './weather.js';
 import {SceneEngine} from './engine.js';
 export default {crop:0.55,id:'home-tokyo',title:'Tokyo · Cảnh chuẩn',description:'Bản adapter của cảnh sân ga đã duyệt; file pilot gốc không thay đổi.',seasonSwatches:false,params:{},create(api){const W=384,H=216;const state=api.state,P=api.palette;let seed=8712;const rand=()=>{seed=(Math.imul(seed,1664525)+1013904223)>>>0;return seed/4294967296};const{rect,line,polygon,dither,ellipse,lettering,BAYER}=api.draw;const windows=(c,x,y,cols,rows,step=6)=>api.draw.windows(c,x,y,cols,rows,step,rand);const region=(i,x,y,w,h,paint)=>api.actor(i,{x,y,w,h},paint);function sky(c){
  const bands=state.time==='sunset'?[0,1,3,2,12]:state.time==='night'?[0,0,1,3,4]:[0,0,3,1,2];
  for(let i=0;i<bands.length;i++){const y=i*15;rect(c,0,y,W,18,bands[i]);if(i&&bands[i]!==bands[i-1])for(let yy=0;yy<8;yy++)for(let x=0;x<W;x++)if(BAYER[(y+yy)&3][x&3]<(8-yy)*2)rect(c,x,y+yy,1,1,bands[i-1]);}
  rect(c,0,75,W,75,bands[4]);
- if(state.time==='night'){ellipse(c,251,29,11,11,1);ellipse(c,251,29,8,8,13);ellipse(c,251,29,6,6,39);ellipse(c,248,27,2,2,13);rect(c,254,33,2,1,13);for(let i=0;i<65;i++){const x=Math.floor(rand()*W),y=15+Math.floor(rand()*63);rect(c,x,y,1,1,i%6?15:39)}}
- else{const x=state.time==='sunset'?234:258,y=state.time==='sunset'?66:33;ellipse(c,x,y,12,12,14);ellipse(c,x,y,10,10,state.time==='sunset'?36:39)}
+ if(!overcast(state.weather)){if(state.time==='night'){ellipse(c,251,29,11,11,1);ellipse(c,251,29,8,8,13);ellipse(c,251,29,6,6,39);ellipse(c,248,27,2,2,13);rect(c,254,33,2,1,13);for(let i=0;i<65;i++){const x=Math.floor(rand()*W),y=15+Math.floor(rand()*63);rect(c,x,y,1,1,i%6?15:39)}}
+ else{const x=state.time==='sunset'?234:258,y=state.time==='sunset'?66:33;ellipse(c,x,y,12,12,14);ellipse(c,x,y,10,10,state.time==='sunset'?36:39)}}
  for(let i=0;i<7;i++){let x=rand()*W,y=18+rand()*42,w=14+rand()*40;rect(c,x,y,w,1,state.time==='night'?3:1);rect(c,x+6,y-1,w*.5,1,state.time==='night'?3:1)}
  polygon(c,[[113,95],[135,86],[153,65],[171,49],[182,51],[199,69],[226,92],[247,98]],4);
  polygon(c,[[150,68],[171,49],[182,51],[197,68],[186,64],[180,69],[172,65],[164,70]],state.time==='night'?5:1);
@@ -88,16 +89,16 @@ function drawMoving(t,staticFrame=false){const cycle=t%20,trainHere=cycle>=4&&cy
  const catX=cycle<3?148+cycle*6:cycle<13?166:166+(cycle-13)*3;if(staticFrame||Math.abs(Math.sin(episode*12.31+3))>.12)region(1,catX,99,18,13,(c,x,y)=>sprite(c,cats,cycle<3||cycle>13?Math.floor(t*6)%4:4+Math.floor(t*4)%4,x,y));
  // Two sheltered pigeons remain in view, even while the other flock takes flight.
  for(const [j,x]of [230,278].entries())region(2,x,205,10,8,(c,xx,yy)=>{const f=staticFrame?j:Math.floor(t*3+j)%4;sprite(c,birds,f,xx,yy);rect(c,xx+6,yy+(f===2?4:2),2,1,36);rect(c,xx+2,yy+7,1,1,37);rect(c,xx+5,yy+7,1,1,37)});
- for(const [j,x]of [212,242].entries())region(2,x,44+j*5,10,8,(c,xx,yy)=>sprite(c,birds,4+(staticFrame?j:Math.floor(t*5+j)%2),xx,yy));
- if(staticFrame)region(1,110,135,17,13,(c,xx,yy)=>sprite(c,riders,2,xx,yy));
+ if(state.weather!=='rain')for(const [j,x]of [212,242].entries())region(2,x,44+j*5,10,8,(c,xx,yy)=>sprite(c,birds,4+(staticFrame?j:Math.floor(t*5+j)%2),xx,yy));
+ if(staticFrame&&!isWet(state.weather))region(1,110,135,17,13,(c,xx,yy)=>sprite(c,riders,2,xx,yy));
  // Birds peck first, take off as the train approaches, then stay out of the scene.
  const flock=2+(Math.abs(Math.sin(episode*43.7))>.4?1:0);
  if(cycle<4){for(let j=0;j<flock;j++)region(2,199+j*12,202+(j%2)*3,10,8,(c,x,y)=>sprite(c,birds,Math.floor(t*4+j)%4,x,y))}
- else if(cycle<5.9&&!staticFrame){for(let j=0;j<flock;j++)region(2,199+j*12+(cycle-4)*22,202-(cycle-4)*39-j*7,10,8,(c,x,y)=>sprite(c,birds,4+Math.floor(t*7)%2,x,y))}
- if(cycle>12&&cycle<17&&!staticFrame&&Math.abs(chance)>.25){const x=95+(cycle-12)*20;region(1,x,135,17,13,(c,xx,yy)=>sprite(c,riders,Math.floor(t*8),xx,yy))}
- {const count=state.season==='winter'?23:state.season==='summer'?6:11;for(let i=0;i<count;i++){const speed=state.season==='winter'?3:4.5,x=(210+i*17+Math.sin(t*.4+i)*14)%384,y=(i*23+t*speed)%(175-20)+20;if(state.season==='summer'&&state.time!=='night')continue;region(2,x,y,3,3,(c,xx,yy)=>{rect(c,xx,yy,state.season==='winter'?1:2,1,state.season==='summer'?35:state.season==='winter'?39:state.season==='autumn'?37:27);if(i%3===0)rect(c,xx+1,yy+1,1,1,state.season==='winter'?13:state.season==='autumn'?30:28)})}}
+ else if(cycle<5.9&&!staticFrame&&state.weather!=='rain'){for(let j=0;j<flock;j++)region(2,199+j*12+(cycle-4)*22,202-(cycle-4)*39-j*7,10,8,(c,x,y)=>sprite(c,birds,4+Math.floor(t*7)%2,x,y))}
+ if(!isWet(state.weather)&&cycle>12&&cycle<17&&!staticFrame&&Math.abs(chance)>.25){const x=95+(cycle-12)*20;region(1,x,135,17,13,(c,xx,yy)=>sprite(c,riders,Math.floor(t*8),xx,yy))}
+ if(state.weather==='clear'||state.weather==='wind'){const count=state.season==='winter'?0:state.season==='summer'?6:11;for(let i=0;i<count;i++){const speed=state.season==='winter'?3:4.5,x=(210+i*17+Math.sin(t*.4+i)*14)%384,y=(i*23+t*speed)%(175-20)+20;if(state.season==='summer'&&state.time!=='night')continue;region(2,x,y,3,3,(c,xx,yy)=>{rect(c,xx,yy,state.season==='winter'?1:2,1,state.season==='summer'?35:state.season==='winter'?39:state.season==='autumn'?37:27);if(i%3===0)rect(c,xx+1,yy+1,1,1,state.season==='winter'?13:state.season==='autumn'?30:28)})}}
  // Stars blink in tiny dirty regions; the static sky is never repainted per tick.
- if(state.time==='night'&&!staticFrame)for(let i=0;i<9;i++)region(2,90+i*19,18+(i*17)%46,1,1,(c,x,y)=>rect(c,x,y,1,1,Math.sin(t+i*2)>.1?39:5));
+ if(state.time==='night'&&!staticFrame&&!overcast(state.weather))for(let i=0;i<9;i++)region(2,90+i*19,18+(i*17)%46,1,1,(c,x,y)=>rect(c,x,y,1,1,Math.sin(t+i*2)>.1?39:5));
 }
 
 return{layers:[sky,city,houses,tracks,tree,foreground].map((fn,i)=>c=>{seed=8712+i*117;fn(c)}),depths:[0,.5,1,1.5,2,0],dynamicDepths:[1.5,1,0,0],zIndices:[0,1,2,3,6,9],dynamicZIndices:[5,4,10,12],weatherClip:[45,12,294,160],frame(t,still){drawMoving(t,still);for(const[x,y]of[[166,99],[230,205],[278,205]])api.creature('home-animal',{x,y,w:10,h:8})}}}};

@@ -1,3 +1,4 @@
+import {overcast,dailyWeather} from './weather.js';
 /* A 1920-native-pixel panorama assembled from unchanged 384×216 engine tiles.
    Transition tiles show their first 128px. Offscreen tiles use the engine's visibility pause. */
 import {SceneEngine} from './engine.js';
@@ -41,8 +42,8 @@ function makeBackground(s){
  const material=(x,index)=>{const get=i=>profiles[i][Array.isArray(index)?index[i]:index];for(let i=0;i<3;i++){const begin=starts[i]+384,end=starts[i+1];if(x<begin)return get(i);if(x<end)return mix(get(i),get(i+1),smooth((x-begin)/(end-begin)))}return get(3)};
  // One world-space sky, one celestial disk. No local region can recolour or duplicate it.
  for(let y=0;y<216;y++){a.fillStyle=y<54?mix(base[0],base[3],Math.floor(y/6)/9):mix(base[3],base[1],Math.min(1,Math.floor((y-54)/7)/7));a.fillRect(0,y,TOTAL,1)}
- if(night){for(let i=0;i<150;i++){a.fillStyle=i%4?'#bacbd0':'#e9e9d0';a.fillRect((i*139+57)%TOTAL,6+(i*31)%69,1,1)}ellipseRGB(a,1090,28,13,13,base[1]);ellipseRGB(a,1090,28,8,8,'#f7ead2')}
- else{ellipseRGB(a,1090,28,12,12,base[14]);for(const[x,y,w]of[[80,24,34],[359,18,26],[629,30,40],[923,15,22],[1264,20,33],[1490,26,30],[1804,18,25]]){ellipseRGB(a,x,y,w,3,base[1]);ellipseRGB(a,x+8,y-3,Math.round(w*.7),4,base[1])}}
+ if(night&&!overcast(s.weather)){for(let i=0;i<150;i++){a.fillStyle=i%4?'#bacbd0':'#e9e9d0';a.fillRect((i*139+57)%TOTAL,6+(i*31)%69,1,1)}ellipseRGB(a,1090,28,13,13,base[1]);ellipseRGB(a,1090,28,8,8,'#f7ead2')}
+ else if(!overcast(s.weather)){ellipseRGB(a,1090,28,12,12,base[14]);for(const[x,y,w]of[[80,24,34],[359,18,26],[629,30,40],[923,15,22],[1264,20,33],[1490,26,30],[1804,18,25]]){ellipseRGB(a,x,y,w,3,base[1]);ellipseRGB(a,x+8,y-3,Math.round(w*.7),4,base[1])}}
  // Shared height fields span all seven tiles; only the ground material blends through connectors.
  for(let x=0;x<TOTAL;x++){const far=96+Math.sin(x/131)*10+Math.sin(x/47)*4;g.fillStyle=base[5];g.fillRect(x,Math.round(far),1,216)}
  const mountains=[[1368,116],[1444,99],[1492,108],[1536,112],[1587,88],[1624,101],[1693,44],[1745,88],[1789,61],[1837,93],[1881,68],[1920,100],[1920,216],[1368,216]];
@@ -203,8 +204,8 @@ function tileDefinition(kind,offset,width,journey){return{id:'journey-'+kind,par
    for(const[i,x,y]of[[0,238,153],[1,258,150]]){api.actor(2,{x:x-8,y:y-4,w:36,h:32},(c,x,y)=>{C.crane(c,x+8,y+4,still?i:Math.floor(t*2),true);r(c,x+8,y+2,4,2,29);if(still?i===1:Math.floor(t*.7+i)%4===2){p(c,[[x+14,y+13],[x+4,y+5],[x,y+7],[x+12,y+18]],39);l(c,x+2,y+7,x+13,y+17,21)}});api.creature('red-crowned-crane',{x:x-7,y:y-3,w:34,h:30})}
    birdActor(111,174,0,still?0:Math.floor(t)%4);
    for(let i=0;i<4;i++){const x=149+i*17,y=119;api.actor(2,{x,y,w:15,h:24},(c,x,y)=>{const n=still?0:Math.round(Math.sin(t*.6+i)*2);l(c,x+4,y+23,x+1+n,y+12,33);l(c,x+1+n,y+12,x+8,y+1,15);l(c,x+5,y+23,x+2+n,y+12,33)})}
-   for(let i=0;i<12;i++){const x=(i*37+(still?0:t*2))%384,y=18+(i*19+(still?0:t*3))%158;api.actor(2,{x,y,w:2,h:2},(c,x,y)=>r(c,x,y,i%3?1:2,1,32))}
-  }else{for(const[i,x,y]of[[0,34,79],[1,65,70],[2,96,84]]){api.actor(2,{x,y,w:12,h:6},(c,x,y)=>{l(c,x,y+4,x+4,y+1,20);l(c,x+4,y+1,x+8,y+4,20)});api.creature('flying-bird',{x,y,w:10,h:5})}}
+   if(state.weather==='snow')for(let i=0;i<12;i++){const x=(i*37+(still?0:t*2))%384,y=18+(i*19+(still?0:t*3))%158;api.actor(2,{x,y,w:2,h:2},(c,x,y)=>r(c,x,y,i%3?1:2,1,32))}
+  }else if(state.weather!=='rain'){for(const[i,x,y]of[[0,34,79],[1,65,70],[2,96,84]]){api.actor(2,{x,y,w:12,h:6},(c,x,y)=>{l(c,x,y+4,x+4,y+1,20);l(c,x+4,y+1,x+8,y+4,20)});api.creature('flying-bird',{x,y,w:10,h:5})}}
   // Only tiles intersected by the train dirty its small native rectangle.
   const local=journey.x-offset;if(local>-54&&local<width+54){const x=local-29,y=railY(journey.x)-12;api.actor(1,{x,y,w:60,h:17},(c,x,y)=>{
    for(let i=0;i<3;i++){const xx=x+i*16;p(c,[[xx,y+3],[xx+3,y],[xx+15,y],[xx+15,y+11],[xx,y+11]],39);r(c,xx+2,y+3,11,3,7);r(c,xx,y+8,15,1,6);r(c,xx+1,y+11,13,2,20);r(c,xx+15,y+3,1,7,16)}p(c,[[x+47,y],[x+51,y+2],[x+59,y+11],[x+47,y+11]],39);p(c,[[x+48,y+2],[x+52,y+4],[x+54,y+6],[x+48,y+6]],7);l(c,x+47,y+8,x+55,y+9,6);
@@ -230,7 +231,7 @@ class Journey{
   this.frameElement.addEventListener('pointerdown',this.onPointer,{passive:true});this.frameElement.addEventListener('wheel',this.onWheel,{passive:true});document.addEventListener('visibilitychange',this.onVisibility);this.observer=new ResizeObserver(this.resize);this.observer.observe(this.frameElement);
   this.state.weather=this.pieces[0].engine.state.weather;this.ready=true;this.resize();this.refreshRegions();this.render(true);
  }
- background(s){const key=s.time+':'+s.season;if(this.backgroundCache?.key!==key)this.backgroundCache={key,...makeBackground(s)};return this.backgroundCache}
+ background(s){const key=s.time+':'+s.season+':'+s.weather;if(this.backgroundCache?.key!==key)this.backgroundCache={key,...makeBackground(s)};return this.backgroundCache}
  get raf(){return this.pieces.find(p=>p.engine.raf)?.engine.raf||0}
  get active(){return this.pieces.find(p=>p.offset<=this.x&&p.offset+p.width>this.x)||this.pieces.at(-1)}
  get statics(){return this.active.engine.statics}get dynamics(){return this.active.engine.dynamics}get palette(){return this.active.engine.palette}
@@ -241,8 +242,8 @@ class Journey{
  position(){const f=this.duration?Math.min(1,Math.max(0,(this.state.seconds-this.moveStart)/this.duration)):1;this.x=this.from+(this.target-this.from)*(1-(1-f)**3);if(this.follow&&f<1)this.center(this.x);if(f===1&&this.from!==this.target){this.x=this.target;this.from=this.target;if(this.follow)this.center(this.x);this.onChange?.()}}
  render(still){for(const p of this.pieces){p.engine.state.seconds=this.state.seconds;p.engine.frame(still)}}
  params(v){const week=clampWeek(v.week);this.state.params.week=week;this.from=this.x;this.target=targetFor(week);this.moveStart=this.state.seconds;this.duration=Math.min(8,Math.max(1,Math.abs(this.target-this.from)/210));this.follow=true;for(const p of this.pieces)p.engine.state.params.week=week;this.refreshRegions();if(!this.state.motion||this.media.matches){this.x=this.target;this.from=this.target;this.center(this.x)}this.render(!this.state.motion||this.media.matches);this.onChange?.()}
- set(v){Object.assign(this.state,v);this.rebuild();this.sync()}
- rebuild(){for(const p of this.pieces)p.engine.set({time:this.state.time,season:this.state.season,date:this.state.date,motion:this.state.motion});this.state.weather=this.pieces[0].engine.state.weather;this.refreshRegions();this.onChange?.()}
+ set(v){Object.assign(this.state,v);if(v.date&&!v.weather)this.state.weather=dailyWeather(this.state.date,this.state.time);this.rebuild();this.sync()}
+ rebuild(){for(const p of this.pieces)p.engine.set({time:this.state.time,season:this.state.season,date:this.state.date,weather:this.state.weather,motion:this.state.motion});this.state.weather=this.pieces[0].engine.state.weather;this.refreshRegions();this.onChange?.()}
  sync(){if(!this.state.motion||this.media.matches){this.x=this.target;this.from=this.target;if(this.follow)this.center(this.x)}this.last=performance.now();for(const p of this.pieces){p.engine.state.motion=this.state.motion;p.engine.sync()}this.render(!this.state.motion||this.media.matches)}
  drawAt(t){this.state.seconds=t;this.x=this.target;this.from=this.target;if(this.follow)this.center(this.x);this.render(true)}
  frame(still=false){this.position();this.render(still)}
