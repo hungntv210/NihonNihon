@@ -29,8 +29,8 @@ return{rect,line,polygon,dither,ellipse,lettering,windows,BAYER}}
 // Canvas coordinates and dirty rectangles are always native pixels; CSS never filters them.
 class Engine {
  constructor(host,definition,options={}){
-  this.host=host;this.def=definition;this.id=definition.id;
-  this.state={time:'day',season:'spring',date:'1970-01-01',motion:true,seconds:7,frames:0,params:{...definition.params},...options};
+  this.height=H;this.host=host;this.def=definition;this.id=definition.id;
+  this.state={nativeHeight:H,time:'day',season:'spring',date:'1970-01-01',motion:true,seconds:7,frames:0,params:{...definition.params},...options};
   if(!palettes[this.state.time])this.state.time='sunset';if(!['spring','summer','autumn','winter'].includes(this.state.season))this.state.season='spring';
   this.palette=[];this.statics=[];this.dynamics=[];this.dirty=[];this.creatures=[];this.metrics={staticBuilds:0,frames:0,maxDirtyArea:0};this.raf=0;this.last=0;this.visible=false;this.media=matchMedia('(prefers-reduced-motion: reduce)');
   this.world=document.createElement('div');this.world.className='pixel-world';host.append(this.world);
@@ -38,9 +38,9 @@ class Engine {
   this.scene=definition.create(this.api);this.params(this.state.params,false);
   this.scene.layers.forEach((fn,i)=>{const c=makeCanvas();c.className='pixel-layer';c.style.zIndex=String(this.scene.zIndices?.[i]??i*2);this.world.append(c);this.statics.push(c)});
   for(let i=0;i<4;i++){const c=makeCanvas();c.className='pixel-layer';c.style.zIndex=String(this.scene.dynamicZIndices?.[i]??[3,5,11,13][i]);this.world.append(c);this.dynamics.push(c);this.dirty.push([])}
-  this.resize=()=>{const scale=innerWidth<600?2:Math.max(2,Math.min(4,Math.floor(host.clientWidth/W)));this.scale=scale;this.world.style.width=W*scale+'px';this.world.style.height=H*scale+'px';this.world.style.left=Math.round((host.clientWidth-W*scale)*(this.def.crop??.5))+'px';host.style.height=H*scale+'px';this.parallax()};
+  this.resize=()=>{let scale=innerWidth<600?2:Math.max(2,Math.min(4,Math.floor(host.clientWidth/W)));if(this.def.nativeHeight?.(host,scale)>H)scale=Math.max(scale,Math.ceil(host.clientWidth/W));this.scale=scale;this.world.style.width=W*scale+'px';const height=this.def.nativeHeight?.(host,scale)??H,changed=height!==this.height;this.height=height;this.state.nativeHeight=height;this.world.style.height=height*scale+'px';this.world.style.left=Math.round((host.clientWidth-W*scale)*(this.def.crop??.5))+'px';host.style.height=height*scale+'px';if(changed){for(const c of [...this.statics,...this.dynamics])c.height=height;this.rebuild()}this.parallax()};
   this.onScroll=()=>this.parallax();this.onVisibility=()=>this.sync();this.onMedia=()=>this.sync();
-  this.resizeObserver=new ResizeObserver(this.resize);this.resizeObserver.observe(host);this.intersection=new IntersectionObserver(entries=>{this.visible=entries[0].isIntersecting;this.sync()});this.intersection.observe(host);
+  this.resizeObserver=new ResizeObserver(this.resize);this.resizeObserver.observe(host);if(definition.nativeHeight)this.resizeObserver.observe(host.parentElement);this.intersection=new IntersectionObserver(entries=>{this.visible=entries[0].isIntersecting;this.sync()});this.intersection.observe(host);
   document.addEventListener('visibilitychange',this.onVisibility);this.media.addEventListener('change',this.onMedia);window.addEventListener('scroll',this.onScroll,{passive:true});
   this.resize();this.rebuild();
  }
@@ -51,7 +51,7 @@ class Engine {
   if(this.def.seasonSwatches!==false){const seasonal={spring:['#b38793','#d2a8ac','#edc8ba'],summer:['#476759','#718966','#a4af7c'],autumn:['#965740','#bd7e46','#deaa66'],winter:['#839695','#bac4b6','#e6e1cb']}[this.state.season];colors.splice(26,3,...seasonal)}
   const override=typeof this.def.swatches==='function'?this.def.swatches(this.state):this.def.swatches;for(const [i,color]of Object.entries(override||{}))colors[Number(i)]=color;this.palette.splice(0,this.palette.length,...colors);
   const r=hash(this.state.date),weather=['rain','fog','wind','clear'][r%4];this.state.weather=weather;if(!['rain','fog','wind','clear'].includes(this.state.weather))this.state.weather=weather;
-  this.scene.layers.forEach((fn,i)=>{const c=this.statics[i].getContext('2d');c.clearRect(0,0,W,H);fn(c)});this.metrics.staticBuilds++;this.frame(true);this.sync();this.onChange?.();
+  this.scene.layers.forEach((fn,i)=>{const c=this.statics[i].getContext('2d');c.clearRect(0,0,W,this.height);fn(c)});this.metrics.staticBuilds++;this.frame(true);this.sync();this.onChange?.();
  }
  actor(layer,bounds,paint){const {x,y,w,h}=bounds,c=this.dynamics[layer].getContext('2d');const b={x:Math.floor(x)-2,y:Math.floor(y)-2,w:Math.ceil(w)+4,h:Math.ceil(h)+4};this.dirty[layer].push(b);paint(c,Math.floor(x),Math.floor(y));}
  sprite(c,frames,index,x,y,flip=false){const frame=frames[((index%frames.length)+frames.length)%frames.length];for(let yy=0;yy<frame.length;yy++)for(let xx=0;xx<frame[yy].length;xx++){const color=frame[yy][xx];if(color>=0)this.api.draw.rect(c,x+(flip?frame[yy].length-xx-1:xx),y+yy,1,1,color)}}
@@ -75,7 +75,7 @@ class Engine {
  sync(){cancelAnimationFrame(this.raf);this.raf=0;if(!document.hidden&&!this.reduced()&&this.visible){this.clock=performance.now();this.last=0;this.raf=requestAnimationFrame(t=>this.tick(t))}else if(this.reduced())this.frame(true);this.parallax()}
  drawAt(t){this.state.seconds=t;this.frame(true)}
  complete(){this.scene.complete?.(this.reduced());this.frame(this.reduced())}
- stats(){return{native:[W,H],scale:this.scale,palette:this.palette.length,weather:this.state.weather,creatures:this.creatures,params:{...this.state.params},...this.metrics,...this.scene.stats?.()}}
+ stats(){return{native:[W,this.height],scale:this.scale,palette:this.palette.length,weather:this.state.weather,creatures:this.creatures,params:{...this.state.params},...this.metrics,...this.scene.stats?.()}}
  destroy(){cancelAnimationFrame(this.raf);this.resizeObserver.disconnect();this.intersection.disconnect();document.removeEventListener('visibilitychange',this.onVisibility);this.media.removeEventListener('change',this.onMedia);window.removeEventListener('scroll',this.onScroll);this.world.remove()}
 }
 function hash(s){let n=2166136261;for(const c of s)n=Math.imul(n^c.charCodeAt(0),16777619);return n>>>0}
