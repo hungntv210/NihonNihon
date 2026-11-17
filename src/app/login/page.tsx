@@ -1,4 +1,6 @@
-import {Mascot} from '../../components/mascot.tsx';
+import {PixelCanvas} from '../../components/pixel-scenes/pixel-canvas.tsx';
+import {sceneClock} from '../../components/pixel-scenes/model.ts';
+import styles from './login.module.css';
 import { redirect } from 'next/navigation';
 import { isSignedIn } from '../../server/auth.ts';
 import { authConfig } from '../../core/config.ts';
@@ -16,25 +18,12 @@ export default async function LoginPage({
   }
   if (configured && (await isSignedIn())) redirect('/');
   const { error } = await searchParams;
+  const clock=sceneClock();
   return (
-    <main className="login-page">
-      <div className="login-aside">
-        <span className="brand-mark large" lang="ja">
-          日
-        </span>
-        <p className="eyebrow">NIHON NIHON</p>
-        <h2>Một khoảng nhỏ,<br/>dành cho tiếng Nhật.</h2><Mascot size={128}/>
-        <p>
-          Quay lại với những điều đã học.
-          <br />
-          Mở thêm một điều mới, mỗi ngày.
-        </p>
-        <span className="login-aside-footer">Không gian học của riêng bạn.</span>
-      </div>
-      <section className="login-card" aria-labelledby="login-title">
-        <p className="eyebrow">MỪNG BẠN TRỞ LẠI</p>
-        <h1 id="login-title">Đăng nhập</h1><p>Cùng học tiếp nhé.</p>
-        <p className="muted">Đăng nhập để mở sổ học của bạn.</p>
+    <main className={'login-page '+styles.page}>
+      <div className={styles.backdrop} data-scene-time={clock.period} data-scene-date={clock.date}><PixelCanvas id="login-shoji" clock={clock} params={{}}/></div>
+      <section className={styles.card} aria-labelledby="login-title">
+        <h1 id="login-title"><span className={styles.title}>Đăng nhập</span></h1>
         <form action="/api/session" method="post">
           <label htmlFor="password">Mật khẩu</label>
           <input
@@ -46,7 +35,7 @@ export default async function LoginPage({
             maxLength={256}
             disabled={!configured}
           />
-          <p role="status" className="login-message">
+          <p role="status" className={styles.message}>
             {!configured
               ? 'Ứng dụng chưa sẵn sàng. Hãy hoàn tất cài đặt trên máy chủ.'
               : error
@@ -57,7 +46,7 @@ export default async function LoginPage({
             Mở góc học tập <span aria-hidden="true">→</span>
           </button>
         </form>
-        <p className="login-note">
+        <p className={styles.note}>
           <span className="status-dot" />
           Nội dung chỉ hiển thị sau khi đăng nhập.
         </p>

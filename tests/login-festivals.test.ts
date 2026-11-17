@@ -1,0 +1,16 @@
+import test from 'node:test';import assert from 'node:assert/strict';import fs from 'node:fs';import {gzipSync} from 'node:zlib';
+import {eventFor,decorate,tsukimiDates} from '../src/components/pixel-scenes/festivals.js';import {sceneClock} from '../src/components/pixel-scenes/model.ts';
+test('festival calendar validates dates and scene-specific inclusive boundaries',()=>{
+ for(const [id,date,event]of [['shadowing-inari','2026-01-01','hatsumode'],['shadowing-inari','2026-01-03','hatsumode'],['home-tokyo','2026-03-20','hanami'],['home-tokyo','2026-04-10','hanami'],['home-tokyo','2026-07-20','matsuri'],['home-tokyo','2026-08-31','matsuri'],['vocab-market','2026-07-07','tanabata'],['grammar-kinkakuji','2026-09-25','tsukimi']])assert.equal(eventFor(id,date)?.id,event);
+ for(const [id,date]of [['shadowing-inari','2026-01-04'],['home-tokyo','2026-03-19'],['home-tokyo','2026-04-11'],['home-tokyo','2026-07-19'],['home-tokyo','2026-09-01'],['vocab-market','2026-07-08'],['grammar-kinkakuji','2027-09-25'],['home-tokyo','2026-02-29'],['home-tokyo','2026-13-01'],['home-tokyo','bad']])assert.equal(eventFor(id,date),null);
+ assert.equal(eventFor('vocab-market',sceneClock(new Date('2026-07-06T17:00:00Z')).date)?.id,'tanabata');assert.equal(eventFor('vocab-market',sceneClock(new Date('2026-07-06T16:59:59Z')).date),null);
+});
+test('Tsukimi uses the existing NAOJ year table including both2033 dates and no out-of-table guess',()=>{
+ assert.equal(tsukimiDates[2026],'09-25');assert.equal(tsukimiDates[2027],'09-15');assert.equal(eventFor('grammar-kinkakuji','2028-10-03')?.id,'tsukimi');for(const md of ['09-08','10-07'])assert.equal(eventFor('grammar-kinkakuji','2033-'+md)?.id,'tsukimi');assert.equal(eventFor('grammar-kinkakuji','2051-09-25'),null);
+});
+test('summer night fireworks are full multicolor bursts with falling trails; day draws none',()=>{
+ const colors=new Set<string>(),bounds:{w:number;h:number}[]=[];let sparks=0;const state={date:'2026-08-01',time:'night'};const noop=()=>{};const definition:any={id:'home-tokyo',params:{},create:()=>({layers:[noop],frame:noop})};const scene=(decorate(definition) as any).create({state,draw:{rect:(_c:any,_x:number,_y:number,_w:number,_h:number,t:number)=>{sparks++;},line:noop,ellipse:noop,polygon:noop},actor:(_n:number,b:any,paint:Function)=>{bounds.push(b);paint({save:noop,restore:noop,fillStyle:'',fillRect(){colors.add(this.fillStyle);sparks++;}},b.x,b.y);},creature:noop});scene.frame(2,true);assert.ok(sparks>=1200);assert.ok(colors.size>=5);assert.ok(bounds.every(b=>b.w>=80&&b.h>=100));sparks=0;state.time='day';scene.frame(2,true);assert.equal(sparks,0);
+});
+test('login and festival source/client addition fits40KiB gzip and retains a password-only POST form',()=>{
+ const files=['login-shoji.js','festivals.js','pixel-canvas.tsx','model.ts','engine.js'];const bytes=files.reduce((n,p)=>n+gzipSync(fs.readFileSync('src/components/pixel-scenes/'+p)).length,0);assert.ok(bytes<40960,String(bytes));const page=fs.readFileSync('src/app/login/page.tsx','utf8');assert.match(page,/action="\/api\/session" method="post"/);assert.match(page,/type="password"/);assert.doesNotMatch(page,/type="email"/);assert.match(page,/isSignedIn/);assert.doesNotMatch(fs.readFileSync('src/app/login/login.module.css','utf8'),/!important/);assert.match(page,/disabled=\{!configured\}/);
+});

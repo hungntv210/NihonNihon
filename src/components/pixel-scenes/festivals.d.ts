@@ -1,0 +1,1 @@
+import type {Definition} from './engine.js';export type Festival={id:string;scene:string;label:string};export const catalog:Festival[];export const tsukimiDates:Record<number,string|string[]>;export function eventFor(scene:string,date:string):Festival|null;export function decorate(def:Definition):Definition;
