@@ -49,7 +49,7 @@ export default {crop:.5,nativeHeight:(host,scale)=>matchMedia('(orientation: por
   for(let yy=110;yy<end;yy+=3)for(let x=0;x<384;x+=6)l(c,x+(yy%2),yy,x+3+(yy%2),yy,13);
   for(const x of [48,120,192,264,336]){const xx=192+(x-192)*(1+(end-107)/310);l(c,x,107,xx,end,21);l(c,x+1,107,xx+1,end,25)}furniture(c);
  }
- const roomY=()=>Math.min(126,height()-top()-196),furnished=()=>portrait()&&roomY()>=120;let catFrame=0;
+ const roomY=()=>Math.min(126,height()-top()-196),furnished=()=>portrait()&&roomY()>=94;let catFrame=0;
  function shadow(c,x,y,rx,ry){c.save();c.globalAlpha=.12;e(c,x,y,rx,ry,21);c.restore()}
  function furniture(c){if(!furnished())return;const y=roomY();
   shadow(c,138,y+58,20,2);p(c,[[119,y+37],[151,y+35],[157,y+55],[122,y+58]],31);p(c,[[121,y+38],[150,y+37],[154,y+54],[124,y+56]],29);l(c,126,y+40,147,y+39,30);l(c,125,y+53,150,y+52,30);
