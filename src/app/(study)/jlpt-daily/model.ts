@@ -37,7 +37,7 @@ function validateDays(input:unknown,catalog:Source[],week:string,level:Level,his
  requireValue(Array.isArray(input)&&input.length===days.length*10,wholeWeek?'NEED_SEVENTY_QUESTIONS':'NEED_TEN_QUESTIONS');
  const seen=new Set<string>(),positions=new Set<string>();
  const rows=input.map(raw=>{const q=validateQuestion(raw,catalog,week,level,history),slot=q.day+':'+q.position;requireValue(days.includes(q.day),'INVALID_QUESTION');requireValue(!seen.has(q.fingerprint)&&!positions.has(slot),'DUPLICATE_QUESTION');seen.add(q.fingerprint);positions.add(slot);return q;});
- if(wholeWeek)requireValue(questionTypes.every(t=>rows.some(q=>q.type===t)),'MISSING_WEEKLY_QUESTION_TYPE');
+ if(wholeWeek)requireValue((['reading','spelling','grammar','order'] as const).every(t=>rows.some(q=>q.type===t)),'MISSING_WEEKLY_QUESTION_TYPE');
  for(const day of days){const selected=rows.filter(q=>q.day===day);requireValue(selected.length===10&&new Set(selected.map(q=>q.type)).size>=3&&selected.some(q=>['grammar','order','paragraph'].includes(q.type))&&selected.some(q=>!['grammar','order','paragraph'].includes(q.type)),'INVALID_DAILY_MIX');}
  return rows.sort((a,b)=>a.day-b.day||a.position-b.position);
 }

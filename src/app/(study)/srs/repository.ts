@@ -10,11 +10,11 @@ export function session(db: DatabaseSync, engine: Engine, mode: 'quick' | 'full'
   const rows = db.prepare(`SELECT c.*,i.kind,v.word,v.reading,v.meanings_en vocab_en,k.character,k.meanings_en kanji_en,g.pattern,g.meaning_en
     FROM srs_cards c JOIN content_items i USING(item_id)
     LEFT JOIN vocab v USING(item_id) LEFT JOIN kanji k USING(item_id) LEFT JOIN grammar g USING(item_id)
-    WHERE i.is_active=1 AND c.due_at<=? AND c.card_type IN ('recognition','reading','recall','listening')
+    WHERE i.is_active=1 AND c.due_at<=? AND c.card_type IN ('recognition','reading','recall','listening','cloze')
       AND i.kind IN ('vocab','kanji','grammar')
       AND (?='full' OR (i.kind IN ('vocab','kanji') AND c.card_type='recognition'))
     ORDER BY c.due_at,c.card_id`).all(now.toISOString(), mode);
-  const cards: StudyCard[] = [];let due = 0, unsupported = mode === 'full' ? Number(db.prepare(`SELECT count(*) n FROM srs_cards c JOIN content_items i USING(item_id) WHERE i.is_active=1 AND c.due_at<=? AND (i.kind NOT IN ('vocab','kanji','grammar') OR c.card_type NOT IN ('recognition','reading','recall','listening'))`).get(now.toISOString())?.n ?? 0) : 0;
+  const cards: StudyCard[] = [];let due = 0, unsupported = mode === 'full' ? Number(db.prepare(`SELECT count(*) n FROM srs_cards c JOIN content_items i USING(item_id) WHERE i.is_active=1 AND c.due_at<=? AND (i.kind NOT IN ('vocab','kanji','grammar') OR c.card_type NOT IN ('recognition','reading','recall','listening','cloze'))`).get(now.toISOString())?.n ?? 0) : 0;
   for (const row of rows) {
     const value = stored(row);
     try { hydrate(value, engine); } catch { unsupported++;continue; }
@@ -41,7 +41,7 @@ export async function recordReview(file: string, event: ReviewEvent, serverNow =
     }
     const row = db.prepare('SELECT c.*,i.kind,i.is_active FROM srs_cards c JOIN content_items i USING(item_id) WHERE c.card_id=?').get(event.cardId);
     if (!row || row.is_active !== 1) throw new Error('CARD_NOT_FOUND');
-    if (!['vocab','kanji','grammar'].includes(String(row.kind)) || !['recognition','recall','reading','listening'].includes(String(row.card_type))) throw new Error('UNSUPPORTED_CARD');
+    if (!['vocab','kanji','grammar'].includes(String(row.kind)) || !['recognition','recall','reading','listening','cloze'].includes(String(row.card_type))) throw new Error('UNSUPPORTED_CARD');
     if (row.updated_at !== event.baseUpdatedAt || String(row.due_at) > event.reviewedAt || String(row.updated_at) > event.reviewedAt) throw new Error('REVIEW_CONFLICT');
     const result = grade(stored(row), event.rating, time, engine);
     db.prepare('UPDATE srs_cards SET state_json=?,scheduler_version=?,due_at=?,updated_at=? WHERE card_id=?').run(JSON.stringify(result.card), VERSION, result.card.dueAt.toISOString(), event.reviewedAt, event.cardId);

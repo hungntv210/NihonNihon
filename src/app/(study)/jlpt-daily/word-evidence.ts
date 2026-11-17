@@ -44,7 +44,7 @@ export function japaneseWordEvidence(text:string,lexicon:ReadonlySet<string>){
  const segmenter=new Intl.Segmenter('ja',{granularity:'word'});
  const words:string[]=[],unresolved:string[]=[];
  for(const match of text.normalize('NFC').matchAll(/[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}ー]+|[\p{Script=Latin}]+/gu)){
-  const span=match[0],segments=[...segmenter.segment(span)];
+  const span=match[0];if(allowed.has(span)){words.push(span);continue;}const segments=[...segmenter.segment(span)];
   // ICU may split りょこう or merge 時に. Match whole attested surfaces across
   // those boundaries; single fragments are never inserted into the word list.
   const preferred=new Set(segments.map(s=>s.index+s.segment.length));

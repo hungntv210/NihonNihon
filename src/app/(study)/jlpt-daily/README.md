@@ -1,265 +1,80 @@
-# JLPT mỗi tối — G1
+# JLPT mỗi tối — generator v2
 
-`/jlpt-daily` cung cấp 10 câu/ngày theo cấp hiện tại của lộ trình 87 tuần.
-`/jlpt` (liên kết từ Hôm nay) chuyển hướng đến đây. Ngày shadowing hiện lời nhắc
-ưu tiên shadowing; bài luyện bổ sung vẫn mở. Trang không gọi AI, kể cả khi chưa
-có ngân hàng câu. Cấp và ngày được tính phía máy chủ từ cài đặt/lộ trình hiện có.
+`/jlpt-daily` chỉ đọc kho đã duyệt, không gọi AI khi mở trang. Mục tiêu 10
+câu/ngày; thiếu thì hiện số thật và thông báo, không lặp hay tạo câu để lấp chỗ.
+Giữ kiểm session/Origin/thứ tự/gửi lặp, không lộ key trước khi trả lời.
 
-## Chuẩn bị theo tuần
+## Sinh từ nguồn, kiểm độc lập
 
-Mỗi lần sinh **đủ 7 ngày × 10 câu**, chỉ dùng các mục OpenJLPT đúng cấp đã có
-lượt ôn thật trong `srs_reviews`. Lưu thẻ chưa ôn không được tính là đã học.
-Chạy offline trước tuần mới, sau khi cập nhật snapshot/app DB; không chạy từ HTTP.
-Chưa đăng ký Task Scheduler; khi triển khai có thể gọi lệnh này mỗi tuần một lần.
+`generate-v2.ts` thay luồng AI viết câu trong `generate-week.ts` và
+`draft-roadmap.ts`. File cũ giữ để đọc/checkpoint/test tương thích; không dùng
+để sinh thêm đề. V2 không gọi model với phase generate.
 
-```powershell
-# Dùng app demo.sqlite hoặc NIHON_DB_ROLE=snapshot; tuyệt đối không trỏ DB G0 đang chạy.
-# config.json thuộc data/private/, không chứa khóa. Chọn model/hạn mức đã được chủ dự án duyệt.
-node --env-file=.env --import tsx 'src/app/(study)/jlpt-daily/generate-week.ts' --week 2026-11-16 --config data/private/jlpt-config.json
-```
+| Dạng | Nguồn và nhiễu |
+|---|---|
+| reading | Reading từ đã học; trường âm, âm ngắt, dakuten/handakuten, On khác, reading từ đã học chung kanji |
+| spelling | Kana nguồn; đồng âm, chữ gần hình hoặc thay đúng một kanji đã học |
+| grammar | Khoét nguyên mẫu trong câu nguồn; nhiễu cùng nhóm trong confusion-groups.ts, chỉ mẫu đã học |
+| order ★ | Bốn cụm liên tiếp quanh mẫu; giữ ngữ cảnh, ghép lại đúng nguyên câu |
+| context | Câu nguồn của từ đã học; nhiễu từ đã học cùng từ loại |
 
-Cấu hình bắt buộc: `model`, `verifierModel` (ID Gemini thực tế, không có tiền tố
-`models/`), `requestsPerMinute`, `dailyBudget`, `timeoutMs`, `maxOutputTokens`.
-Không có model/hạn mức mặc định. Khóa chỉ đọc từ `GEMINI_API_KEY`; không ghi vào
-bank/log. REST dùng [structured JSON output](https://ai.google.dev/gemini-api/docs/structured-output).
-Hai request tuần: một tạo 70 câu, một kiểm định ngữ nghĩa độc lập. Mỗi request
-được tính trước vào sổ hạn mức theo ngày Pacific (kể cả khi lỗi), không retry tự
-động. Sổ này **chỉ ghi lượt JLPT**, phải trừ ngân sách G0/ứng dụng khác khi cấu hình.
-Trong PR chỉ dùng provider fixture, không tiêu hạn mức hay gọi API thật.
+Tuần dùng các dạng có dữ liệu, tối thiểu reading + spelling + grammar + order,
+không còn yêu cầu đủ tám dạng. Synonym/usage/paragraph chưa đủ bằng chứng nên bỏ.
+Ngày đủ phải có 10 câu, ≥3 dạng và từ/ngữ pháp. Ngày thiếu lưu partial; không bịa
+cho đủ 70 và không xuất bản tuần thiếu.
 
-Ngân hàng chưa đạt QA không được xuất bản. Không ghi đè tuần đã có; chạy lại tuần
-đã tồn tại dừng rõ ràng. Người vận hành xem lỗi trước khi thử lại, không tự bỏ gate.
-Một lần chọn tối đa 240 mục đã học để giới hạn input. Chưa đủ từ/ngữ pháp đã học
-thì dừng, giao diện hiển thị trạng thái trống thay vì tạo nội dung ngoài cấp.
+Nhiễu reading/spelling dùng luật nguồn v2 thay hai kiểm tra hàng xóm từ điển
+cũ. Các cổng khác vẫn dùng chung: bốn lựa chọn khác nhau, một key, không Latin/
+ghi chú trong lựa chọn, đánh dấu từ đích, không kanji chưa học, không từ tự chế,
+đúng từ loại, không lộ key trong stem, lời giải khớp, order dùng đủ mọi mảnh.
+Gate kanji giữ hợp ký tự trong title/reading của catalog đã cấp. Từ điển ngữ
+cảnh chỉ N5, không cấp phép từ đích ngoài roadmap. Không lặp stem chuẩn hóa NFKC
+hoặc từ đích trong 30 ngày, kể cả câu kho duyệt chưa được xếp lịch.
 
-## QA và nguồn
+Lời giải cố định từ reading/nghĩa Việt selected kèm nguồn/model (hoặc nghĩa Anh
+OpenJLPT), tên mẫu và nghĩa. Câu ví dụ cần nguồn/release/hash, ghép lại nguyên
+văn; chỉ đổi kanji chưa học sang kana khi có reading nguồn, không đoán cách đọc.
 
-- Đủ 70 vị trí duy nhất, 10/ngày; có cả từ/ngữ pháp mỗi ngày và đủ 8 dạng trong tuần.
-- Bốn lựa chọn khác nhau, một key; đọc có bằng chứng từ reading, chọn chữ/từ/mẫu
-  có bằng chứng từ source. Sắp xếp có hoán vị và vị trí ★ hợp lệ.
-- Không dùng kanji ngoài tập đã học. Không trùng stem chuẩn hóa NFKC trong 30 ngày,
-  kiểm lại dưới khóa lúc xuất bản để tránh hai lượt sinh đồng thời lọt trùng.
-- Request kiểm định riêng phải xác nhận đúng một đáp án có nghĩa, 3 nhiễu cùng loại,
-  hợp lý, đúng cấp/nội dung đã học và lời giải đúng. Không chắc thì loại cả tuần.
-  shortcut: kiểm định ngữ nghĩa bằng AI có thể bỏ sót lỗi; khi có dữ liệu dùng thật,
-  cần chủ dự án duyệt mẫu để đánh giá chất lượng, không coi boolean AI là chứng minh.
-- Bank ghi model tạo/kiểm định thực tế, hash prompt, hash nguồn và kết quả QA.
-  Nguồn thay đổi hoặc không còn là nội dung đã học thì bank không được dùng nữa.
+Verifier chỉ nhận stem/lựa chọn, không thấy key/lời giải/bằng chứng nhiễu.
+Hai lượt: giải/chấm tất cả lựa chọn, rồi chấm mỗi lựa chọn riêng. Mơ hồ, khác
+key, sai ngữ pháp/thể/kiến thức/tự nhiên đều loại, lưu audit, không sửa câu.
+Code sinh xác định nên verifier không phải model tác giả. Verifier vẫn có thể
+sai: tất cả là nháp chờ tester, không tự import.
 
-Không đọc hay đóng gói dữ liệu đề thi OpenJLPT/đề thi có bản quyền. Chỉ dùng nội
-dung học trong DB/fixture OpenJLPT đã có attribution của foundation; câu mới phải
-được AI tự tạo theo prompt, không sao chép đề. Không thể suy ra giấy phép đề thi
-từ giấy phép từ vựng. Bank sinh thật nằm riêng tư, không commit. `fixture.ts` là
-dữ liệu tổng hợp kiểm tra luồng, không phải ngân hàng câu đạt chất lượng sư phạm.
-
-## Chấm và lưu
-
-Máy chủ giữ key/lời giải đến khi trả lời, kiểm session/origin và thứ tự câu.
-Câu trả lời đầu tiên được lưu; gửi lặp không đổi điểm hoặc thêm thẻ trùng.
-Sau mỗi câu (cả câu 10) có giải thích, cuối buổi thống kê điểm yếu theo dạng.
-Câu sai dùng `enqueueCard` hiện có: reading / recall / cloze, thẻ mới hẹn sau 24h;
-thẻ đã có giữ lịch FSRS và lịch sử hiện tại. Không thêm bảng hay sửa schema.
-
-Bank và lượt trả lời: `NIHON_JLPT_PATH` hoặc thư mục `private/jlpt-daily/` cạnh DB.
-Ghi JSON nguyên tử với khóa, không có endpoint upload. Nếu máy tắt giữa lúc ghi,
-chỉ gỡ `write.lock` sau khi xác nhận không còn app/generator ghi vào thư mục.
-Sao lưu foundation hiện chưa gói thư mục route này: chép thêm thư mục JLPT cùng
-bản backup DB khi app/generator đã dừng; cần foundation mở rộng backup trước deploy.
-
-## Kiểm thử không gọi API
+## Vận hành riêng tư
 
 ```powershell
-node --import tsx --test 'src/app/(study)/jlpt-daily/jlpt.test.ts'
-npm run check
-node tools/check-route-scope.mjs origin/master g1/jlpt-daily
-node --import tsx 'src/app/(study)/jlpt-daily/browser-check.ts'
+node --env-file=.env --import tsx 'src/app/(study)/jlpt-daily/generate-v2.ts' `
+  --content data/private/frozen.sqlite --receipt data/private/frozen-receipt.json `
+  --learning data/demo.sqlite --mode draft_roadmap --week 2026-11-16 --weeks 2 `
+  --config data/private/jlpt-config.json --output data/private/jlpt-v2
 ```
 
-Browser-check dùng DB demo/khóa ngẫu nhiên/thư mục tạm riêng, tạo bank bằng provider
-giả, kiểm desktop 1440 và mobile 390, CSRF/auth, lưu/chấm 10 câu, reload, SRS và
-không có request ngoài app. Dọn fixture/server khi xong; ảnh/log ở data/reports/.
-Thiết bị điện thoại thật và chất lượng bank AI thật chưa được kiểm trong PR này.
+Frozen phải read-only và khớp path/SHA-256 receipt. --survey chỉ đọc, không gọi
+API. --mode srs mặc định: lượt ôn thật tới cuối đúng ngày Việt Nam. draft_roadmap
+là nháp được chủ dự án duyệt: chia mục mỗi loại trong tuần theo ngày, không lấy
+ngày sau; ghi mode trong bank/thống kê/review, không giả lịch sử ôn. Giữ nhánh
+SRS thật cho khi có lịch sử.
 
-## Nháp tuần đầu từ Frozen (chỉ theo duyệt riêng của chủ dự án)
+Config riêng dùng model/hạn mức đã duyệt: model=verifierModel, fallbacks,
+requestsPerMinute, dailyBudget, timeoutMs, maxOutputTokens, ledgerFile. Không
+hard-code model. Key chỉ từ môi trường. Sổ Pacific hiện có đếm cả lỗi; 503 tối
+đa ba lần cách 30/60s rồi dự phòng; 429/hết ngân sách dừng có checkpoint. Không
+reset quota, không retry vô hạn.
 
-`draft-roadmap.ts` là công cụ offline riêng, không gọi từ trang học và không dùng
-`publishBank`. Nó kiểm SHA-256/receipt/read-only của snapshot Frozen, giới hạn N5
-đúng tuần 1–2 từ allocator Today/87-week roadmap, ghi `mode=draft_roadmap` cùng
-`learningEvidence=roadmap_only_not_srs`. Không giả lịch sử ôn, không thay cổng đã học
-của `generate-week.ts`. Chỉ các trường OpenJLPT công khai được gửi Gemini.
+Cùng input có cùng ứng viên. Checkpoint khóa hash nguồn/ngữ cảnh/lịch sử/prompt;
+resume không nhận lại câu đã đạt/loại. bank-<tuần>.json, review-<tuần>.html,
+audit từng lựa chọn, survey.md, draft-run-statistics.md chỉ ở data/private/.
+--fixture --no-verifier chỉ dùng test, ghi unverified_fixture, không xuất bản.
+Unit/browser/CI dùng fixture, không gọi API thật. Không đọc đề thi có bản quyền.
 
-```powershell
-node --env-file=.env --import tsx 'src/app/(study)/jlpt-daily/draft-roadmap.ts' --snapshot 'D:/path/frozen.sqlite' --receipt 'D:/path/frozen.sqlite.json' --week 2026-11-16 --config data/private/config.json --output data/private/first-week
-```
+## Câu sai và lưu trữ
 
-Dùng model/hạn mức/timeout khai báo trong config như generator hiện có; ledger
-Pacific dùng chung `data/private/jlpt-quota.json`. Sinh riêng từng ngày 10 câu;
-source/options được gợi ý từ catalog với `answerTitle` dạng Nhật trần; không tự
-sửa options/key do AI trả về. Cổng cứng kiểm từng dòng trước request kiểm định
-độc lập. Chỉ thay vị trí bị cổng cứng hoặc SEMANTIC_QA_REJECTED loại,
-tối đa hai vòng, giữ nguyên câu đạt. Còn lỗi thì lưu ngày bị loại và dừng. Nếu API
-lỗi giữa ngày thì không nhận ngày đó; ngày trước đã qua QA được giữ để chạy tiếp.
-Metadata/prompt/schema-policy và hash nguồn thay đổi thì từ chối resume khác ngữ cảnh.
+Câu sai enqueue reading/recall/cloze cho ngày hôm sau; thẻ có lịch xa hơn được
+đưa về ngày hôm sau, giữ lịch sử và thông số FSRS. Phiên đầy đủ nhận cloze;
+Ôn nhanh chỉ recognition. Unit/browser cố định đồng hồ server lẫn trình duyệt,
+chấm sai rồi thực sự ôn cả reading và grammar ngày sau.
 
-Đầu ra nằm trong data/private: metadata, draft-day-N, status, mẫu 10 câu ngày đầu,
-bank nháp 70 câu và mẫu 30 câu khi xong. Feedback để trống chờ tester. Receipt,
-bank và report không đưa vào Git; không ghi bất kỳ câu nào vào DB/bank của app.
-HTTP lỗi giữ status/message đã che API key để phân biệt 400/429/503. Nội dung thật
-vẫn cần tester duyệt; QA bằng model không bảo đảm mọi câu có chất lượng sư phạm.
-
-Cổng cứng (`hard-qa.ts`) yêu cầu reading có 【kanji】 và không lộ đáp án kana;
-spelling có 【kana】, stem không có kanji, nhiễu cùng cấp có bằng chứng gần âm
-(edit distance) hoặc gần hình (kanji chỉ khác một chữ/nhóm hình gần đã khai báo).
-Không chứng minh được thì loại. Các lựa chọn không có Latin/chú giải/〜, đủ bốn
-và khác nhau. Order có đúng bốn ô tách bằng khoảng trắng, không lặp từ trong phần
-stem cố định (Intl.Segmenter), key và lời giải khớp thứ tự, ★ và câu hoàn chỉnh.
-Lời giải order dùng `Thứ tự: 2→1→3→4. ★=1. Câu: 「...」` để kiểm được bằng máy.
-Chỉ một trường Câu; so sánh NFC và bỏ khoảng trắng, giữ nguyên mọi chữ/dấu câu.
-Câu ghép từ stem và đúng bốn mảnh theo permutation phải bằng toàn bộ trường đó;
-thêm/thiếu/lặp một từ hoặc chỉ chứa câu đúng như một substring đều bị loại.
-Paragraph có 【ほんぶん】 ít nhất ba câu/40 chữ Nhật rồi 【とい】; các dạng điền
-từ/mẫu có chỗ trống. Các cổng cũ về nguồn/cấp/kanji/trùng câu vẫn áp dụng.
-
-`generateDraftDay` nhận seed câu + audit cũ và callback checkpoint: kiểm lại bằng
-cổng cứng, giữ nguyên câu đạt, chỉ gửi các vị trí bị loại để sửa tối đa hai vòng.
-Câu lỗi cứng không được gửi sang QA Gemini; API503 được trả ra một lần để caller
-lưu checkpoint và dừng, không tự lặp request. Mẫu có câu pending/rejected không
-được coi là bank đạt QA hoặc được xuất bản vào app.
-
-Nhiễu reading cùng kiểu kana (hiragana/katakana), gần âm theo khoảng cách mora
-có trọng số (âm ん/っ và cùng phụ âm/nguyên âm), tối đa hai đơn vị; nhiễu từ điển
-phải cùng cấp/từ loại. Sai cách đọc dẫn xuất từ từ đích (như ことしい) mang cấp của
-từ đích, không được xem là một từ mới đã học. Các ví dụ こんねん/きょねん/ことしい
-qua bộ lọc cho ことし; タクシー/ノート/き không qua. Đây là bộ lọc gần âm có quy tắc,
-vẫn cần QA ngữ nghĩa và tester để xác nhận độ hợp lý. Nhiễu spelling cũng kiểm
-từ loại; synonym phải là từ Nhật trần trong catalog cùng cấp và từ loại (danh từ,
-động từ, tính từい/な, trạng từ...), không chấp nhận một câu làm lựa chọn. Dùng
-từ loại từ vựng chính của mục đích (bỏ cờ vt/vi) làm loại chung cho cả bốn lựa
-chọn, tránh trộn các nghĩa danh từ/trạng từ khi từ đích mang nhiều nhãn POS.
-
-Đối chiếu Frozen ngày 2026-11-10: 私 không có trong tuần1–2. Mục từ N5 私
-(わたくし) ở tuần10, mục kanji N4 ở tuần22. Không thêm ngoại lệ cứng vào
-UNLEARNED_KANJI; dùng わたし trong nháp tuần1–2. Test xác nhận 私 bị loại khi
-vắng và tự được cho phép khi xuất hiện trong catalog nội dung đã duyệt.
-
-### Tiếp tục nháp và model dự phòng
-
-CLI nháp đọc `fallbacks` (mảng cấu hình đầy đủ như cấu hình chính) và `ledgerFile`
-tuỳ chọn từ config riêng. Chỉ HTTP503 được thử tối đa3 lần/model, nghỉ30 rồi60giây,
-sau đó chuyển model kế tiếp và giữ model đó cho những lượt còn lại. HTTP429 hoặc
-hết dailyBudget dừng ngay, không dùng fallback để vượt quota. Mọi lần gọi đều ghi
-ledger Pacific. Không retry lỗi QA/schema để coi như thành công.
-
-`--seed` nhận JSON riêng có mode,week,snapshotSha256,promptHashes,model,questions,
-audit; audit của seed/checkpoint dùng index là position gốc (kể cả seed thưa).
-Hash ngữ cảnh phải khớp; câu seed vẫn qua cổng cứng/audit hiện hành. Checkpoint
-theo ngày giữ câu đạt khi API dừng, resume chỉ sinh vị trí thiếu. Hai vòng sửa/ngày
-vẫn giữ nguyên; còn câu lỗi thì lưu lý do và dừng, không bịa đủ70.
-
-`status.json` báo cả số câu đạt của ngày dở dang khi dừng API/quota/QA.
-`provider-attempts.jsonl` và `question-provenance.json` ghi model thật theo lần
-generate/verify; trường model trong metadata là kế hoạch, không khẳng định mọi câu
-đều do model chính. Các file này và toàn bộ câu nháp chỉ ở data/private; không
-publishBank, không ghi DB app. CLI chạy thủ công một tiến trình, không chạy song
-song trên cùng thư mục output/ledger.
-
-### Partial days and repair passes
-
-The draft runner visits all seven days before repairing partial days. It checkpoints
-accepted rows and marks incomplete days partial, then makes up to five repair passes
-in day order. Only missing positions are generated; each position has a durable maximum
-of five repair requests across resume (prior counts must be carried in a migrated seed).
-The initial generation is not a repair. API retries/quota use the existing provider.
-A quota/API stop records all accepted questions, including other partial days.
-Repair payloads include the actual forbidden kanji, the permitted-kanji list and the
-exact spelling marker/whole-stem script rule read from hard-qa.ts. Questions/options
-are never automatically rewritten. The earlier two-round/day stop description is
-superseded for the CLI; the day helper's default remains two for existing callers.
-
-Strict draft QA: draft CLI rejects inconsistent answer-number references, misplaced
-order explanations, verbatim correct-choice leakage and unattested segmented words.
-Word boundaries use Intl.Segmenter; allowed surfaces come only from existing OpenJLPT
-vocab/grammar catalog entries/readings in the pinned local snapshot. Inflections or
-boundaries without evidence fail closed; no fabricated root/suffix whitelist is added.
-This may reject valid Japanese and needs tester review, rather than automatic bypass.
-This local lexical evidence does not expand the roadmap/kanji gate and is not sent to AI.
-
-Independent verification uses another actual model, including after generation fallback.
-First solve hides stored correct/explanation; answer, naturalness and factual correctness
-must match. A separate audit checks the original explanation against that solve. Missing,
-malformed or contradictory evidence rejects the row. Existing drafts must be re-audited,
-not grandfathered by old flags; results are private and never published automatically.
-
-### Per-choice acceptance and duplicate prevention
-
-The independent verifier now returns four optionGrades: exact completedSentence,
-choiceIndex, grammatical, formCorrect, natural, meaningFits, acceptable and reason.
-acceptable must equal the conjunction of the four judgments, and exactly one must
-be true, matching both the stored key and independentAnswer. Missing/duplicate
-indexes, silently conjugated options or mismatched completed sentences fail closed.
-Order tasks hide the stored permutation and evaluate possible star choices; all
-remaining-fragment permutations must be considered. Per-choice evidence persists in
-private audit records, including rejected responses. A separate explanation audit remains.
-
-Draft hard QA forbids any option word overlapping stem words, duplicate base stems
-(NFKC, spaces/【】/gap markers removed), and reading/spelling pairs for the same
-catalog word across the entire draft. Existing lexical, learned-kanji, meaning and
-budget gates still apply. After re-audit, a new generation campaign may use a fresh
-five-repair-per-position budget only with explicit owner authorization; quota ledgers
-are never reset. Existing accepted rows are not rewritten to pass the new gates.
-
-An additional isolated-sentence pass sees each completed candidate without targetId,
-key or competing choices. It must not infer an unstated intended meaning, tense or
-polarity. Its four independent judgments must ALSO admit exactly one stored answer;
-they cannot rescue a rejection from the first blind audit. Both full evidence sets
-remain in audit. Retained checkpoints without this new evidence must be re-audited.
-
-### Word-boundary and typed-generation policy (draft only)
-
-Word evidence uses Node Intl.Segmenter('ja',word) boundaries with exact whole-surface
-matching over the roadmap lexicon and a closed code list of N5 function/scaffolding
-words and suffix forms. It coalesces ICU splits or splits merged units only when the
-entire span is covered by attested surfaces; small kana and on/kun fragments are
-never added as words. Verb/adjective surfaces are derived from catalog POS/classes,
-not arbitrary suffix stripping. Unresolved spans remain rejected, as does invented
-ひとりがくぶん. The kanji/level/meaning/choice/uniqueness gates are unchanged.
-
-Wire generation separates order slots from all others. Non-order prompt/schema has
-no ordering explanation cues or order/starSlot fields. Internal empty-order defaults
-preserve the existing Draft contract without altering Japanese, explanation or key.
-Synonym/meaning query text must be marked; explanations cannot join Latin and kana;
-a target word may occur as target only once across types. The planner prefers unused
-catalog targets. Private re-audits record counter resets ONLY for proven word-split
-false positives; other counters and the Pacific API ledger remain intact.
-
-Owner clarification: existing internal dictionary provides CONTEXT evidence only for
-entries labelled N5. N4+ dictionary context remains rejected. Dictionary inclusion
-never authorizes a target outside roadmap or a kanji outside roadmap: use kana for
-those N5 context words instead. Tests cover N5 context, N4 rejection and independent
-target/kanji rejection. Schema also forces non-order audit permutations to empty at
-the source; validators still reject any invalid audit rather than rewriting it.
-
-## Local bank explicitly approved by the owner/tester
-
-`import-approved.ts` imports exactly the11 approved questions from a private
-review-sample.json and its sibling metadata/day-audit/model records. It verifies
-accepted-set/content identity, hashes, source references and independent QA. It
-never reads rejected rows as questions or edits Japanese/answers. Example:
-
-```powershell
-node --env-file=.env.local --import tsx 'src/app/(study)/jlpt-daily/import-approved.ts' --input 'D:/private/data/private/review/review-sample.json' --reviewer tester
-```
-
-The local approved.sqlite sidecar lives beside existing JLPT state in
-NIHON_JLPT_PATH (default DB-parent/private/jlpt-daily). Its separate question/schedule
-tables do not change the content DB/G0 schema. Back it up with the JLPT state.
-Receipts label draft_roadmap, tester approval, input SHA-256 and actual generation/
-verification models. Only this explicitly approved cohort may use roadmap content
-without fabricated SRS history; ordinary generated weeks retain the learned gate.
-
-Assignments persist: at most10 unused questions per local date, globally no reuse.
-With11 questions that means10, then1, then0. The UI/result denominator shows the
-actual total and never calls AI on page load. Wrong answers use existing SRS enqueue.
-No question content, receipts or sidecar DB belong in the public repository.
-
-If app targets are missing, the script first validates the read-only Frozen receipt/SHA, snapshots the app DB, and appends only the11 public OpenJLPT target rows plus their exact release references. It never overwrites existing content, imports private dictionary/translations/media, changes schema or inserts learner reviews. The question receipt retains the original roadmap reference catalog for validation; SRS uses the real appended target IDs. A conflicting existing hash aborts.
+Kho duyệt/kết quả dùng NIHON_JLPT_PATH hoặc private/jlpt-daily cạnh DB và đã
+thuộc backup học tập. V2 không ghi DB app/kho duyệt, không đổi schema/cổng đã
+học của app hay quy trình tester duyệt/import riêng.

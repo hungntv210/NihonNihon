@@ -1,3 +1,4 @@
+import {DatabaseSync} from 'node:sqlite';
 import {approvedBank} from './approved-store.ts';
 import fs from 'node:fs';import path from 'node:path';import { randomUUID } from 'node:crypto';
 import { databasePath } from '../../../core/config.ts';import { enqueueCard,type CardType } from '../../../core/review.ts';
@@ -30,7 +31,7 @@ export function gradeAnswer(input:{questionId:string;choice:number},day:{date:st
   if(old)return answerView(question,old,true);
   const current=questions.find(q=>!state.attempts.some(a=>a.date===day.date&&a.questionId===q.id));requireValue(current?.id===question.id,'ANSWER_OUT_OF_ORDER');
   const correct=input.choice===question.correct;let cardId:string|null=null;
-  if(!correct){const type:CardType=question.type==='reading'?'reading':['grammar','order','paragraph'].includes(question.type)?'cloze':'recall',due=new Date((options.now??new Date()).getTime()+86400000);cardId=(options.enqueue??((id,t,now)=>enqueueCard(options.dbFile??databasePath(),id,t,now)))(question.targetId,type,due).cardId;}
+  if(!correct){const type:CardType=question.type==='reading'?'reading':['grammar','order','paragraph'].includes(question.type)?'cloze':'recall',due=new Date((options.now??new Date()).getTime()+86400000);cardId=(options.enqueue??((id,t,now)=>enqueueMistake(options.dbFile??databasePath(),id,t,now,options.now??new Date())))(question.targetId,type,due).cardId;}
   const attempt:Attempt={date:day.date,questionId:question.id,type:question.type,choice:input.choice,correct,cardId};state.attempts.push(attempt);atomic(path.join(directory,'attempts.json'),state);return answerView(question,attempt,false);
  });
 }
@@ -38,4 +39,11 @@ function answerView(question:Question,attempt:Attempt,replayed:boolean){return {
 export function dailyView(bank:Bank,date:string,state:State){
  const questions=bank.questions.filter(q=>q.date===date),attempts=state.attempts.filter(a=>a.date===date&&questions.some(q=>q.id===a.questionId));
  return {date,level:bank.level,model:bank.model,approval:bank.approval,done:attempts.length,total:questions.length,score:attempts.filter(a=>a.correct).length,weaknesses:Object.fromEntries([...new Set(attempts.map(a=>a.type))].map(type=>[type,{total:attempts.filter(a=>a.type===type).length,wrong:attempts.filter(a=>a.type===type&&!a.correct).length}])),questions:questions.map(q=>({id:q.id,type:q.type,stem:q.stem,choices:q.choices,answer:attempts.find(a=>a.questionId===q.id)?answerView(q,attempts.find(a=>a.questionId===q.id)!,true):null}))};
+}
+
+// A wrong answer is due by the next evening even if this card already exists.
+// Preserve memory parameters and keep the hydrated JSON dueAt consistent.
+export function enqueueMistake(file:string,id:string,type:CardType,due:Date,now:Date){
+ const card=enqueueCard(file,id,type,due);if(card.created||Date.parse(card.dueAt)<=due.getTime())return card;
+ const db=new DatabaseSync(file,{timeout:5000});try{db.exec('BEGIN IMMEDIATE');const row=db.prepare('SELECT state_json,due_at FROM srs_cards WHERE card_id=?').get(card.cardId)!;if(String(row.due_at)>due.toISOString()){const state=JSON.parse(String(row.state_json));if(typeof state.dueAt==='string')state.dueAt=due.toISOString();db.prepare('UPDATE srs_cards SET due_at=?,updated_at=?,state_json=? WHERE card_id=?').run(due.toISOString(),now.toISOString(),JSON.stringify(state),card.cardId);}db.exec('COMMIT');return {...card,dueAt:due.toISOString()};}catch(e){try{db.exec('ROLLBACK');}catch{}throw e;}finally{db.close();}
 }
