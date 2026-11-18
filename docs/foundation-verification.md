@@ -775,3 +775,7 @@ Fixed server/browser-clock E2E wrong reading + grammar, next-day eligibility and
 ## JLPT verifier wire schema
 
 Checked fcb38b30237b3b69b2e6dce9f34a6515c5094c65 on Windows Node 24 from 2026-11-18T11:48:27.2891136+07:00 to 2026-11-18T11:50:32.3394517+07:00. Typecheck, tests (ℹ pass 22, ℹ pass 177), production build, 16 app checks, JLPT browser-check and route scope PASS. The live two-question fixture probe succeeded on the first request.
+
+## Dated JLPT approval
+
+Windows Node 24, d2890ee9fdf3eb65c48dcaef91eafb22b9994f76, 2026-11-18T13:35:20.0107395+07:00 through 2026-11-18T13:37:16.8283554+07:00. Typecheck, tests (ℹ pass 22, ℹ pass 178), build, 16 app checks, JLPT browser-check and scope passed.
