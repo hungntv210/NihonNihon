@@ -771,3 +771,7 @@ Checked implementation: a17a11250acedae0212746a03c13e2bef04cf71e. Windows / Node
 
 Fixed server/browser-clock E2E wrong reading + grammar, next-day eligibility and actual review/sync both PASS; full SRS cloze enabled, quick recognition unchanged. Partial approved bank count/notice, blind verifier ambiguity, sourced noise, deterministic resume/quota, source/kana evidence and date cutoffs covered. All raw proof/logs and survey remain gitignored. No schema/dependency changes, private questions/paths/credentials committed, G0 writes or approved-bank import. Only this append-only audit entry follows the checked commit.
 
+
+## JLPT verifier wire schema
+
+Checked fcb38b30237b3b69b2e6dce9f34a6515c5094c65 on Windows Node 24 from 2026-11-18T11:48:27.2891136+07:00 to 2026-11-18T11:50:32.3394517+07:00. Typecheck, tests (ℹ pass 22, ℹ pass 177), production build, 16 app checks, JLPT browser-check and route scope PASS. The live two-question fixture probe succeeded on the first request.
