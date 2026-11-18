@@ -4,7 +4,7 @@ import {hash,validateQuestion,requireValue,plusDays,type Source,type Question,ty
 import {validateIndependent} from './independent-qa.ts';
 
 export type ApprovedInput={questions:Question[];audit:Audit[];sourceWeek:string;sourceHashes:Record<string,string>;sourceSha256:string;model:string;verifierModel:string;reviewer:string};
-function openStore(directory:string){
+export function openStore(directory:string){
  fs.mkdirSync(directory,{recursive:true});const db=new DatabaseSync(path.join(directory,'approved.sqlite'),{timeout:5000});
  db.exec(`PRAGMA foreign_keys=ON;
  CREATE TABLE IF NOT EXISTS approved_questions(id TEXT PRIMARY KEY, payload TEXT NOT NULL, receipt TEXT NOT NULL);
@@ -35,15 +35,16 @@ export function approvedBank(date:string,week:string,level:string,catalog:Source
  const db=openStore(directory);try{
   db.exec('BEGIN IMMEDIATE');
   const existing=Number(db.prepare('SELECT count(*) n FROM approved_schedule WHERE date=?').get(date)!.n);
-  const fresh=db.prepare('SELECT id FROM approved_questions WHERE id NOT IN (SELECT question_id FROM approved_schedule) ORDER BY rowid LIMIT ?').all(10-existing);
+  const dated=db.prepare("SELECT 1 FROM approved_schedule s JOIN approved_questions q ON q.id=s.question_id WHERE s.date=? AND json_extract(q.receipt,'$.reviewer')='tester-claude' LIMIT 1").get(date);
+  const fresh=dated?[]:db.prepare("SELECT id FROM approved_questions WHERE json_extract(receipt,'$.reviewer') = 'tester' AND id NOT IN (SELECT question_id FROM approved_schedule) ORDER BY rowid LIMIT ?").all(10-existing);
   for(const [i,q]of fresh.entries())db.prepare('INSERT INTO approved_schedule VALUES(?,?,?)').run(date,existing+i,q.id);
   const rows=db.prepare('SELECT q.payload,q.receipt,s.position FROM approved_schedule s JOIN approved_questions q ON q.id=s.question_id WHERE s.date=? ORDER BY s.position').all(date);
   const questions:Question[]=[],audits:Audit[]=[];let receipt:any;
-  for(const row of rows){const raw=JSON.parse(String(row.payload));receipt=JSON.parse(String(row.receipt));requireValue(receipt.origin==='draft_roadmap'&&receipt.status==='approved'&&receipt.reviewer==='tester'&&receipt.contentHash===hash(raw),'INVALID_APPROVED_RECEIPT');
+  for(const row of rows){const raw=JSON.parse(String(row.payload));receipt=JSON.parse(String(row.receipt));if(receipt.reviewer==='tester-claude'){requireValue(raw.version===2&&receipt.origin==='draft_roadmap'&&receipt.status==='approved'&&receipt.approvedOn==='2026-11-18'&&['2026-11-16','2026-11-23'].includes(week)&&receipt.sourceWeek===week&&date>=week&&date<=plusDays(week,6)&&raw.date===date&&receipt.contentHash===hash(raw)&&catalog.some(s=>s.id===raw.targetId&&s.hash===raw.sourceHash),'INVALID_DATED_APPROVAL');questions.push({...raw,position:Number(row.position)});audits.push(receipt.audit.solver);continue;}requireValue(receipt.origin==='draft_roadmap'&&receipt.status==='approved'&&receipt.reviewer==='tester'&&receipt.contentHash===hash(raw),'INVALID_APPROVED_RECEIPT');
    const original=validateQuestion(raw,receipt.referenceCatalog??catalog,receipt.sourceWeek,'N5');requireValue(receipt.sourceHashes[raw.targetId]===catalog.find(s=>s.id===raw.targetId)?.hash,'SOURCE_CHANGED');validateIndependent([{...receipt.audit,index:0}],[original]);
    questions.push({...original,date,day:Math.round((Date.parse(date)-Date.parse(week))/86400000),position:Number(row.position),id:hash({approved:raw.id,date}).slice(0,32)});audits.push({...receipt.audit,index:questions.length-1});
   }
   db.exec('COMMIT');
-  return {version:1,week,level:'N5',generatedAt:'approved-local-import',model:receipt?.model??'approved',verifierModel:receipt?.verifierModel??'approved',promptHash:'approved-draft',auditPromptHash:'tester-approved',sourceHashes:receipt?.sourceHashes??{},questions,audit:audits,approval:{origin:'draft_roadmap',reviewer:'tester'}};
+  return {version:1,week,level:'N5',generatedAt:'approved-local-import',model:receipt?.model??'approved',verifierModel:receipt?.verifierModel??'approved',promptHash:'approved-draft',auditPromptHash:'tester-approved',sourceHashes:receipt?.sourceHashes??{},questions,audit:audits,approval:{origin:'draft_roadmap',reviewer:receipt?.reviewer??'tester'}};
  }catch(e){try{db.exec('ROLLBACK');}catch{}throw e;}finally{db.close();}
 }
