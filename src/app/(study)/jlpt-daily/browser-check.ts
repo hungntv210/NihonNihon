@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { spawn } from 'node:child_process';
 import { createServer } from 'node:net';
-import { randomBytes } from 'node:crypto';
+import { createHash, randomBytes } from 'node:crypto';
 import { DatabaseSync } from 'node:sqlite';
 import { chromium } from 'playwright';
 import { hashPassword } from '../../../core/session.ts';
@@ -20,7 +20,7 @@ const fixtureDb=new DatabaseSync(dbFile);fixtureDb.exec("UPDATE srs_cards SET du
 fs.writeFileSync(path.join(directory,'settings.json'),JSON.stringify({startDate:week,eveningTime:'00:00'}));
 const port=await new Promise<number>(resolve=>{const s=createServer();s.listen(0,'127.0.0.1',()=>{const p=(s.address() as {port:number}).port;s.close(()=>resolve(p));});});
 const origin=`http://127.0.0.1:${port}`,password=randomBytes(24).toString('hex');
-const environment:NodeJS.ProcessEnv={...process.env,NODE_ENV:'production',APP_ORIGIN:origin,NIHON_DB_PATH:dbFile,NIHON_DB_ROLE:'snapshot',NIHON_JLPT_PATH:store,NIHON_SETTINGS_PATH:path.join(directory,'settings.json'),NIHON_ROADMAP_PATH:path.join(directory,'roadmap.json'),GEMINI_API_KEY:'',NIHON_PASSWORD_HASH:hashPassword(password),SESSION_SECRET:randomBytes(32).toString('hex'),NEXT_TELEMETRY_DISABLED:'1'};
+const environment:NodeJS.ProcessEnv={...process.env,NODE_ENV:'production',APP_ORIGIN:origin,NIHON_DB_PATH:dbFile,NIHON_DB_ROLE:'snapshot',NIHON_JLPT_PATH:store,NIHON_JLPT_OFFICIAL_PATH:path.join(directory,'official'),NIHON_SETTINGS_PATH:path.join(directory,'settings.json'),NIHON_ROADMAP_PATH:path.join(directory,'roadmap.json'),GEMINI_API_KEY:'',NIHON_PASSWORD_HASH:hashPassword(password),SESSION_SECRET:randomBytes(32).toString('hex'),NEXT_TELEMETRY_DISABLED:'1'};
 function server(clock:string){return spawn(process.execPath,['--import','./tools/ui-test-clock.mjs','node_modules/next/dist/bin/next','start','--hostname','127.0.0.1','--port',String(port)],{env:{...environment,NIHON_UI_CLOCK_FIXTURE:clock},stdio:['ignore','pipe','pipe']});}
 let child=server(instant);
 let log='',browser:Awaited<ReturnType<typeof chromium.launch>>|undefined;
@@ -35,6 +35,17 @@ try{
  const context=await browser.newContext();assert.equal((await context.request.post(origin+'/api/session',{headers:{origin},form:{password},maxRedirects:0})).status(),303);
  assert.equal((await context.request.post(origin+'/jlpt-daily/answer',{headers:{origin:'https://untrusted.invalid'},data:{questionId:'fake',choice:0}})).status(),403);
  const page=await context.newPage(),errors:string[]=[],external:string[]=[];await page.clock.setFixedTime(new Date(instant));page.on('pageerror',e=>errors.push(e.message));page.on('request',r=>{if(!r.url().startsWith(origin))external.push(r.url());});
+ const offDir=environment.NIHON_JLPT_OFFICIAL_PATH!;
+ assert.equal((await context.request.get(origin+'/jlpt-daily/official')).status(),404);
+ fs.mkdirSync(offDir);
+ const fixture=JSON.stringify([{id:'N5V-1',number:1,section:'V',level:'N5',key:2,page:1,asset:'N5V-1.png'}]);
+ fs.writeFileSync(path.join(offDir,'bank.json'),fixture);
+ fs.writeFileSync(path.join(offDir,'approval.json'),JSON.stringify({enabled:true,reviewer:'fixture',sha256:createHash('sha256').update(fixture).digest('hex')}));
+ fs.writeFileSync(path.join(offDir,'N5V-1.png'),Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9WHncNcAAAAASUVORK5CYII=','base64'));
+ await page.goto(origin+'/jlpt-daily/official?level=N5');
+ await page.getByRole('radio',{name:'2',exact:true}).check();
+ await page.getByRole('button',{name:'Chấm bài'}).click();
+ await page.waitForFunction(()=>document.body.innerText.includes('Từ vựng 1/1'));
  await page.goto(origin+'/jlpt');await page.getByRole('heading',{name:'Bài tuần này chưa sẵn'}).waitFor();assert.ok(page.url().endsWith('/jlpt-daily'));
  const bank=await fixtureBank(catalog,week);publishBank(bank,store);const questions=bank.questions.filter(q=>q.date===date);
  for(const width of [1440,390]){
