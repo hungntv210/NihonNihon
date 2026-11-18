@@ -81,3 +81,12 @@ test('supplement only fills grammar or order vacancies while keeping the baselin
  assert.ok(run.questions.filter(r=>r.date===c.date).length<=1);
  for(const day of contexts)for(const type of ['grammar','order'])assert.ok(run.questions.filter(r=>r.date===day.date&&r.type===type).length<=3);
 });
+
+test('distractor evidence comes only from explicit forms of grammar records already allocated that day', async()=>{
+ const {learnedGrammarForms}=await import('./confusion-groups.ts');
+ const earlier=[{kind:'grammar',id:'exist',title:'〜がある / 〜がいる'},{kind:'vocab',id:'ha',title:'は'}];
+ assert.deepEqual(learnedGrammarForms(earlier).map(x=>x.surface),['がある','がいる']);
+ const today=[...earlier,{kind:'grammar',id:'negative',title:'〜ではありません / 〜じゃない'},{kind:'grammar',id:'or',title:'〜か（or）'}];
+ assert.deepEqual(learnedGrammarForms(today).slice(2),[{id:'negative',surface:'ではありません'},{id:'negative',surface:'じゃない'},{id:'or',surface:'か'}]);
+ assert.ok(!learnedGrammarForms(today).some(x=>['は','が','ます','ません'].includes(x.surface)));
+});

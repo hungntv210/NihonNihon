@@ -2,7 +2,7 @@ import {toHiragana,toKatakana} from 'wanakana';
 import {hash,fingerprint,requireValue,type Question,type Draft,type QuestionType} from './model.ts';
 import {plainJapanese,hardQuestionIssues,strictDraftIssues,draftCollisionIssues,samePartOfSpeech} from './hard-qa.ts';
 import {draftContextLexicon} from './word-evidence.ts';
-import {confusionGroups} from './confusion-groups.ts';
+import {confusionGroups,learnedGrammarForms} from './confusion-groups.ts';
 import {safeExample,exampleEvidence,type V2Context,type V2Source,type Example} from './v2-data.ts';
 export type Distractor={value:string;rule:string;sourceIds:string[]};
 export type V2Question=Question&{mode:V2Context['mode'];version:2;example?:Example;sentence?:string;distractors:Distractor[];sourceHash:string};
@@ -81,7 +81,7 @@ export function validateV2(q:V2Question,c:V2Context,history:Question[]=[]){
   const allowed=q.type==='reading'?readingNoise(s,c):spellingNoise(s,c);requireValue(q.choices.every((v,i)=>i===q.correct||allowed.some(n=>n.value===v))&&q.distractors.length===3&&q.distractors.every(n=>allowed.some(a=>hash(a)===hash(n))),'UNPROVEN_DISTRACTOR');
  }
  if(['grammar','order','context'].includes(q.type))exampleEvidence(q,c);
- if(q.type==='grammar'){const group=confusionGroups.find(g=>g.surfaces.includes(plainJapanese(s.title)));requireValue(group&&q.choices.every(v=>group.surfaces.includes(v)&&c.catalog.some(o=>o.kind==='grammar'&&plainJapanese(o.title)===v)),'GRAMMAR_GROUP_NOT_LEARNED');}
+ if(q.type==='grammar'){const group=confusionGroups.find(g=>g.surfaces.includes(plainJapanese(s.title)));requireValue(group&&q.choices.every(v=>group.surfaces.includes(v)&&learnedGrammarForms(c.catalog).some(o=>o.surface===v)),'GRAMMAR_GROUP_NOT_LEARNED');}
  if(q.type==='context')requireValue(q.choices.every(v=>c.catalog.some(o=>o.kind==='vocab'&&plainJapanese(o.title)===v&&samePartOfSpeech(s,o))),'CONTEXT_DISTRACTOR_POS');
  if(q.type==='grammar'||q.type==='context')requireValue(q.stem.replace(/＿+/u,q.choices[q.correct])===q.sentence,'EXAMPLE_RECONSTRUCTION');
  if(q.type==='order')requireValue(q.stem.replace(/(?:＿|★)(?:\s+(?:＿|★)){3}/u,q.order.map(i=>q.choices[i]).join(''))===q.sentence,'EXAMPLE_RECONSTRUCTION');
@@ -90,24 +90,36 @@ export function validateV2(q:V2Question,c:V2Context,history:Question[]=[]){
  requireValue(!history.some(h=>h.fingerprint===fingerprint(q.stem)&&Math.abs(Date.parse(h.date)-Date.parse(q.date))<=30*86400000),'REPEATED_WITHIN_THIRTY_DAYS');
  requireValue(q.fingerprint===fingerprint(q.stem),'FINGERPRINT_CHANGED');return q;
 }
-export function candidates(c:V2Context){
+export type CandidateDiagnostic={date:string;type:QuestionType;reason:string;stem:string;answer:string;targetId:string;group:string[];learned:{id:string;surface:string}[];eligible:string[]};
+export function candidates(c:V2Context,report?: (row:CandidateDiagnostic)=>void){
  const questions:V2Question[]=[],rejected:Record<string,number>={};const attempt=(fn:()=>V2Question)=>{try{const q=fn();validateV2(q,c);questions.push(q);}catch(e){const reason=e instanceof Error?e.message:'INVALID';rejected[reason]=(rejected[reason]??0)+1;}};
+ const forms=learnedGrammarForms(c.catalog);
+ const parents=new Set(c.catalog.filter(x=>x.kind==='vocab').map(x=>x.id));
  for(const s of c.catalog){
   if(s.kind==='vocab'&&s.reading&&s.title===plainJapanese(s.title)&&charsKnown(s.title,c)&&containsHan(s.title)){
    attempt(()=>make(c,s,'reading',`【${s.title}】のよみかたはどれですか。`,s.reading!,readingNoise(s,c)));
    attempt(()=>make(c,s,'spelling',`【${s.reading}】のかんじはどれですか。`,s.title,spellingNoise(s,c)));
   }
-  const parents=new Set(c.catalog.filter(x=>x.kind==='vocab').map(x=>x.id));
-  const examples=c.examples.filter(e=>e.targetId===s.id||(s.kind==='grammar'&&confusionGroups.some(g=>g.surfaces.includes(plainJapanese(s.title)))&&parents.has(e.targetId)&&e.text.includes(plainJapanese(s.title))));
+  const surfaces=s.kind==='grammar'?forms.filter(o=>o.id===s.id).map(o=>o.surface).filter(v=>v && !/[〜～~]/u.test(v)) : [];
+  const examples=c.examples.filter(e=>e.targetId===s.id||(s.kind==='grammar'&&parents.has(e.targetId)&&surfaces.some(v=>e.text.includes(v))));
   for(const example of examples){
    const sentence=safeExample(example,c);if(!sentence)continue;const surface=plainJapanese(s.title),boundaries=new Set([...new Intl.Segmenter('ja',{granularity:'word'}).segment(sentence)].flatMap(t=>[t.index,t.index+t.segment.length]));let start=sentence.indexOf(surface);while(start>=0&&(!boundaries.has(start)||!boundaries.has(start+surface.length)))start=sentence.indexOf(surface,start+1);
    if(start>=0&&surface&&charsKnown(surface,c)){
     const stem=sentence.slice(0,start)+'＿'+sentence.slice(start+surface.length),group=confusionGroups.find(g=>g.surfaces.includes(surface));
-    const noise=c.catalog.filter(o=>o.id!==s.id&&charsKnown(o.title,c)&&!stem.includes(plainJapanese(o.title))&&(s.kind==='grammar'?o.kind==='grammar'&&group?.surfaces.includes(plainJapanese(o.title)):o.kind==='vocab'&&samePartOfSpeech(s,o))).map(o=>({value:plainJapanese(o.title),rule:s.kind==='grammar'?'confusion-group':'same-pos',sourceIds:[o.id]}));
+    const noise=s.kind==='grammar' ? forms.filter(o=>o.id!==s.id && group?.surfaces.includes(o.surface) && !stem.includes(o.surface) && charsKnown(o.surface,c)).map(o=>({value:o.surface,rule:'confusion-group',sourceIds:[o.id]}))
+     : c.catalog.filter(o=>o.kind==='vocab'&&o.id!==s.id&&charsKnown(o.title,c)&&!stem.includes(plainJapanese(o.title))&&samePartOfSpeech(s,o)).map(o=>({value:plainJapanese(o.title),rule:'same-pos',sourceIds:[o.id]}));
+    if(report && group && s.kind==='grammar' && distinct(noise,surface).length<3)report({date:c.date,type:'grammar',reason:'INSUFFICIENT_DISTRACTORS',stem,answer:surface,targetId:s.id,group:group.surfaces,learned:forms.filter(o=>group.surfaces.includes(o.surface)),eligible:distinct(noise,surface).map(n=>n.value)});
     if(s.kind==='grammar'&&group||s.kind==='vocab')attempt(()=>make(c,s,s.kind==='grammar'?'grammar':'context',stem,surface,noise,{example,sentence}));
    }
-   if(s.kind==='grammar'&&start>=0){
-    const parts=phrases(sentence);for(let from=0;from+4<=parts.length;from++)if(parts.length>=4){const fragments=parts.slice(from,from+4);const offset=parts.slice(0,from).join('').length;if(start<offset||start+surface.length>offset+fragments.join('').length)continue;
+   // Order can use any explicitly taught spelling of the pattern in a sourced sentence.
+   // Do not infer an isolated particle from inside a composite pattern.
+   const orderMatch=s.kind==='grammar'?surfaces.map(value=>{
+    let index=sentence.indexOf(value);
+    while(index>=0 && (!boundaries.has(index)||!boundaries.has(index+value.length)))index=sentence.indexOf(value,index+1);
+    return {index,value};
+   }).find(m=>m.index>=0):undefined;
+   if(orderMatch){
+    const parts=phrases(sentence);for(let from=0;from+4<=parts.length;from++)if(parts.length>=4){const fragments=parts.slice(from,from+4);const offset=parts.slice(0,from).join('').length;if(orderMatch.index<offset||orderMatch.index+orderMatch.value.length>offset+fragments.join('').length)continue;
      attempt(()=>{const choices=stable(fragments,c.date+example.id,v=>v),order=fragments.map(f=>choices.indexOf(f)),starSlot=1,stem=parts.slice(0,from).join('')+'＿ ★ ＿ ＿'+parts.slice(from+4).join(''),correct=order[starSlot],fp=fingerprint(stem);return {version:2,mode:c.mode,id:hash({date:c.date,target:s.id,fp}).slice(0,32),date:c.date,fingerprint:fp,day:0,position:0,type:'order',targetId:s.id,stem,choices,correct,order,starSlot,distractors:[],sourceHash:s.hash,example,sentence,explanation:`Thứ tự: ${order.map(i=>i+1).join('→')}. ★=${correct+1}. Câu: 「${sentence}」 ${s.title}: ${meaning(s)}.`};});
     }
    }

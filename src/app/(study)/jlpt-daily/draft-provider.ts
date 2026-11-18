@@ -13,8 +13,8 @@ export function draftProvider(profiles:Profile[],ledger:string,key:string,option
  const providers=profiles.map(p=>geminiProvider(p,ledger,key,options.fetcher));
  let current=0;
  return async(phase,prompt,payload,schema)=>{
-  for(;current<providers.length;current++){
-   for(let attempt=0;attempt<3;attempt++){
+  const waits=[30000,60000,120000];
+   for(let attempt=0;attempt<=waits.length;attempt++){
     try{
      const output=await providers[current](phase,prompt,payload,schema);
      options.onAttempt?.({at:new Date().toISOString(),phase,model:profiles[current].model,attempt:attempt+1,status:'ok',outputHash:hash(output)},payload,output);
@@ -23,12 +23,12 @@ export function draftProvider(profiles:Profile[],ledger:string,key:string,option
      const error=(e instanceof Error?e.message:String(e)).replaceAll(key,'[REDACTED]').replace(/AIza[\w-]+/g,'[REDACTED]');
      options.onAttempt?.({at:new Date().toISOString(),phase,model:profiles[current].model,attempt:attempt+1,status:'error',error},payload);
      // Quota, schema and QA failures must never be hidden by a retry/fallback.
-     if(!/^AI_HTTP_503:/.test(error))throw Error(error);
-     if(attempt<2)await (options.sleep??(ms=>new Promise(r=>setTimeout(r,ms))))([30000,60000][attempt]);
-     else if(current===providers.length-1)throw Error(error);
+     const temporary=/^AI_HTTP_503:/.test(error) || (e instanceof TypeError && e.message==='fetch failed') || (e instanceof Error && e.name==='TimeoutError');
+     if(!temporary || attempt===waits.length) throw Error(error);
+     await (options.sleep??(ms=>new Promise(r=>setTimeout(r,ms))))(waits[attempt]);
+     if(attempt===2 && current+1<providers.length) current++;
     }
    }
-  }
   throw Error('DRAFT_MODELS_EXHAUSTED');
  };
 }

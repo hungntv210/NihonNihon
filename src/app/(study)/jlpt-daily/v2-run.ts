@@ -10,7 +10,7 @@ export async function runDeterministic(contexts:V2Context[],history:Question[],o
  requireValue(options.provider||options.noVerifier,'VERIFIER_REQUIRED');const inputHash=hash({contexts,history,verifierHash,supplement:!!options.supplement}),run:V2Run=options.seed??{version:2,mode:contexts[0].mode,week:contexts[0].date,inputHash,status:'running',questions:[],audit:{},rejected:[],statistics:{hard:{},attempted:{},accepted:{},rejected:{}},days:[]};
  requireValue(run.inputHash===inputHash,'RESUME_CONTEXT_CHANGED');const used=new Set([...run.questions,...run.rejected].map(q=>q.id));
  const checkpoint=()=>{run.days=contexts.map(c=>{const rows=run.questions.filter(q=>q.date===c.date);return{date:c.date,count:rows.length,mix:dailyMix(rows)};});options.checkpoint?.(structuredClone(run));};
- const pools=contexts.map(candidates);run.statistics.hard={};for(const pool of pools)for(const[reason,n]of Object.entries(pool.rejected))run.statistics.hard[reason]=(run.statistics.hard[reason]??0)+n;
+ const pools=contexts.map(c=>candidates(c));run.statistics.hard={};for(const pool of pools)for(const[reason,n]of Object.entries(pool.rejected))run.statistics.hard[reason]=(run.statistics.hard[reason]??0)+n;
  for(const [day,c]of contexts.entries()){
   const baseline=options.supplement?history.filter(q=>q.date===c.date):[];const pool=pools[day];
   const existing=run.questions.filter(q=>q.date===c.date);let rounds=0;
