@@ -1,3 +1,4 @@
+import {approvedItems} from './official/store.ts';
 import {PixelScene} from '../../../components/pixel-scenes/pixel-scene.tsx';
 import {RouteHeading} from '../../../components/route-heading.tsx';
 import Link from 'next/link';import { dailyContext } from './server-context.ts';import { availableBank,readState,dailyView } from './repository.ts';import { Practice } from './practice.tsx';import styles from './jlpt.module.css';
@@ -7,6 +8,7 @@ export default async function JlptDaily(){
  const answered=attempts.attempts.filter(a=>a.date===context.date).length;
  const view=bank?dailyView(bank,context.date,attempts):null;
  return <section className={styles.page}><RouteHeading title="JLPT mỗi tối" eyebrow="MỘT CHÚT MỖI TỐI" species="crane"><p>Tối đa mười câu mới mỗi tối. Hiểu kỹ thêm từng chút.</p><p>Cấp hiện tại: {context.level}</p></RouteHeading>
+ {approvedItems().length>0 && <Link className="button" href="/jlpt-daily/official">Đề chuẩn</Link>}
  <PixelScene id="jlpt-study" params={{answered}}/>
  <div className={styles.meta}><span>{view?.total??0} câu đang có</span><time dateTime={context.date}>{context.date}</time></div>
  {context.shadow&&<aside className={styles.notice}>Hôm nay ưu tiên <Link href="/shadowing">shadowing</Link>. Bài JLPT vẫn sẵn nếu bạn muốn luyện thêm.</aside>}
