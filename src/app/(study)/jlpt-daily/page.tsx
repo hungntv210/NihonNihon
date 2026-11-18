@@ -11,7 +11,7 @@ export default async function JlptDaily(){
  <div className={styles.meta}><span>{view?.total??0} câu đang có</span><time dateTime={context.date}>{context.date}</time></div>
  {context.shadow&&<aside className={styles.notice}>Hôm nay ưu tiên <Link href="/shadowing">shadowing</Link>. Bài JLPT vẫn sẵn nếu bạn muốn luyện thêm.</aside>}
  {!context.evening&&<p className={styles.muted}>Bài tối nay đã sẵn; bạn có thể luyện sớm hoặc quay lại vào buổi tối.</p>}
- {view&&view.total>0&&view.total<10&&<p className={styles.notice}>Hôm nay có {view.total}/10 câu đã duyệt. Bạn có thể làm số câu đang có.</p>}
+ {view?.approval?.reviewer==='tester-claude'&&<p className={styles.notice}>Hôm nay có {view.total} câu · {new Set(view.questions.map(q=>q.type)).size} dạng.</p>}{view&&view.approval?.reviewer!=='tester-claude'&&view.total>0&&view.total<10&&<p className={styles.notice}>Hôm nay có {view.total}/10 câu đã duyệt. Bạn có thể làm số câu đang có.</p>}
  {view&&view.total>0?<Practice initial={view} answeredToday={answered}/>:bank?<div className={styles.empty}><h2>Hôm nay chưa có thêm câu mới</h2><p>Ngân hàng đã duyệt hiện chưa có câu chưa dùng. Không lặp câu cũ; mở trang không gọi AI.</p></div>:<div className={styles.empty}><span aria-hidden="true">◇</span><h2>Bài tuần này chưa sẵn</h2><p>Câu luyện chỉ dùng nội dung đã ôn đúng cấp của bạn. Hãy ôn trước, rồi quay lại khi bộ câu tuần được chuẩn bị.</p><Link className="button primary" href="/srs">Vào ôn tập</Link><p className={styles.muted}>Mở trang không tạo câu hỏi hay gọi AI.</p></div>}
  </section>;
 }
