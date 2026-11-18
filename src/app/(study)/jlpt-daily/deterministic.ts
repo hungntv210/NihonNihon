@@ -25,8 +25,21 @@ export function readingNoise(source:V2Source,c:V2Context):Distractor[]{
 export const shapeGroups=['日曰目白田','土士','木本未末','人入八','大太犬','牛午','千干','力刀','待持','問間'];
 export function spellingNoise(source:V2Source,c:V2Context):Distractor[]{
  const rows:Distractor[]=[];
- for(const other of c.catalog)if(other.kind==='vocab'&&other.id!==source.id&&charsKnown(other.title,c)&&containsHan(other.title)&&other.reading===source.reading)rows.push({value:other.title,rule:'same-sound',sourceIds:[other.id]});
- for(const [i,ch]of [...source.title].entries())if(containsHan(ch))for(const replacement of c.knownKanji)if(replacement!==ch){const value=[...source.title].map((v,n)=>n===i?replacement:v).join('');rows.push({value,rule:shapeGroups.some(g=>g.includes(ch)&&g.includes(replacement))?'similar-shape':'one-known-kanji',sourceIds:c.catalog.filter(k=>k.title.includes(replacement)).map(k=>k.id)});}
+ const kanji=c.catalog.filter(k=>k.kind==='kanji');
+ const readings=(k:V2Source)=>new Set([...k.on,...k.kun??[]].map(v=>toHiragana(v.replaceAll('-','').split('.')[0])).filter(Boolean));
+ const homophones=new Set(c.dictionary.filter(w=>w.kind==='vocab'&&w.reading&&toHiragana(w.reading)===toHiragana(source.reading??'')).map(w=>plainJapanese(w.title)));
+ for(const [i,ch] of [...source.title].entries()){
+  const original=kanji.find(k=>k.title===ch);
+  if(!original)continue;
+  const sounds=readings(original);
+  for(const other of kanji){
+   if(ch===other.title)continue;
+   const similar=shapeGroups.some(g=>g.includes(ch)&&g.includes(other.title));
+   if(!similar&&![...readings(other)].some(r=>sounds.has(r)))continue;
+   const value=[...source.title].map((v,n)=>n===i?other.title:v).join('');
+   if(!homophones.has(value))rows.push({value,rule:similar?'similar-shape':'same-sound',sourceIds:[original.id,other.id]});
+  }
+ }
  return distinct(rows,source.title);
 }
 const lexicons=new WeakMap<V2Context,Set<string>>();
@@ -38,8 +51,19 @@ function make(c:V2Context,s:V2Source,type:QuestionType,stem:string,answer:string
 }
 // Boundaries follow source phrases (particles terminate a phrase); no sentence
 // or inflection is generated. Order windows leave attested fixed context visible.
-export function phrases(text:string){const out:string[]=[],attached=new Set(['は','が','を','に','で','へ','と','も','から','まで','より','の','です','でした','だ','だった','ます','ました','ません','ない','た','て','し','する','して','い','いる']);let pending='';for(const segment of new Intl.Segmenter('ja',{granularity:'word'}).segment(text)){if(segment.isWordLike&&!attached.has(segment.segment)&&pending){out.push(pending);pending='';}pending+=segment.segment;}if(pending)out.push(pending);return out;}
-
+export function phrases(text:string){
+ const parts:string[]=[];let pending='';
+ const tokens=[...new Intl.Segmenter('ja',{granularity:'word'}).segment(text)];
+ for(const [i,t] of tokens.entries()){
+  pending+=t.segment;
+  const next=tokens[i+1]?.segment??'';
+  if(/[、，]$/u.test(pending)||(['は','が','を','に','で','へ','と','も','の','から','まで','より'].includes(t.segment)&&next&&!['は','も','して','し','する','なる','なっ','い','いる'].includes(next))){
+   parts.push(pending);pending='';
+  }
+ }
+ if(pending)parts.push(pending);
+ return parts;
+}
 export function validateV2(q:V2Question,c:V2Context,history:Question[]=[]){
  const s=c.catalog.find(s=>s.id===q.targetId);requireValue(s&&s.level===c.level&&s.hash===q.sourceHash,'SOURCE_NOT_LEARNED_OR_CHANGED');
  requireValue(Number.isInteger(q.day)&&q.day>=0&&q.day<7&&Number.isInteger(q.position)&&q.position>=0&&q.position<10,'INVALID_DAY_POSITION');
@@ -73,7 +97,9 @@ export function candidates(c:V2Context){
    attempt(()=>make(c,s,'reading',`【${s.title}】のよみかたはどれですか。`,s.reading!,readingNoise(s,c)));
    attempt(()=>make(c,s,'spelling',`【${s.reading}】のかんじはどれですか。`,s.title,spellingNoise(s,c)));
   }
-  for(const example of c.examples.filter(e=>e.targetId===s.id)){
+  const parents=new Set(c.catalog.filter(x=>x.kind==='vocab').map(x=>x.id));
+  const examples=c.examples.filter(e=>e.targetId===s.id||(s.kind==='grammar'&&confusionGroups.some(g=>g.surfaces.includes(plainJapanese(s.title)))&&parents.has(e.targetId)&&e.text.includes(plainJapanese(s.title))));
+  for(const example of examples){
    const sentence=safeExample(example,c);if(!sentence)continue;const surface=plainJapanese(s.title),boundaries=new Set([...new Intl.Segmenter('ja',{granularity:'word'}).segment(sentence)].flatMap(t=>[t.index,t.index+t.segment.length]));let start=sentence.indexOf(surface);while(start>=0&&(!boundaries.has(start)||!boundaries.has(start+surface.length)))start=sentence.indexOf(surface,start+1);
    if(start>=0&&surface&&charsKnown(surface,c)){
     const stem=sentence.slice(0,start)+'＿'+sentence.slice(start+surface.length),group=confusionGroups.find(g=>g.surfaces.includes(surface));
@@ -81,7 +107,7 @@ export function candidates(c:V2Context){
     if(s.kind==='grammar'&&group||s.kind==='vocab')attempt(()=>make(c,s,s.kind==='grammar'?'grammar':'context',stem,surface,noise,{example,sentence}));
    }
    if(s.kind==='grammar'&&start>=0){
-    const parts=phrases(sentence);for(let from=0;from+4<=parts.length;from++)if(parts.length>4){const fragments=parts.slice(from,from+4);if(!fragments.some(p=>p.includes(surface)))continue;
+    const parts=phrases(sentence);for(let from=0;from+4<=parts.length;from++)if(parts.length>=4){const fragments=parts.slice(from,from+4);const offset=parts.slice(0,from).join('').length;if(start<offset||start+surface.length>offset+fragments.join('').length)continue;
      attempt(()=>{const choices=stable(fragments,c.date+example.id,v=>v),order=fragments.map(f=>choices.indexOf(f)),starSlot=1,stem=parts.slice(0,from).join('')+'＿ ★ ＿ ＿'+parts.slice(from+4).join(''),correct=order[starSlot],fp=fingerprint(stem);return {version:2,mode:c.mode,id:hash({date:c.date,target:s.id,fp}).slice(0,32),date:c.date,fingerprint:fp,day:0,position:0,type:'order',targetId:s.id,stem,choices,correct,order,starSlot,distractors:[],sourceHash:s.hash,example,sentence,explanation:`Thứ tự: ${order.map(i=>i+1).join('→')}. ★=${correct+1}. Câu: 「${sentence}」 ${s.title}: ${meaning(s)}.`};});
     }
    }

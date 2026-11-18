@@ -779,3 +779,7 @@ Checked fcb38b30237b3b69b2e6dce9f34a6515c5094c65 on Windows Node 24 from 2026-11
 ## Dated JLPT approval
 
 Windows Node 24, d2890ee9fdf3eb65c48dcaef91eafb22b9994f76, 2026-11-18T13:35:20.0107395+07:00 through 2026-11-18T13:37:16.8283554+07:00. Typecheck, tests (ℹ pass 22, ℹ pass 178), build, 16 app checks, JLPT browser-check and scope passed.
+
+## JLPT grammar, order and daily balance
+
+Checked e04dd8d1a63a3299b0bc4bdc4fc0d39b54d276b8 on Windows / Node 24, 2026-11-18T13:52:24.8066791+07:00 through 2026-11-18T13:54:24.1346698+07:00. Typecheck, tests (ℹ pass 22, ℹ pass 181), production build, 16 app checks, route browser and scope passed.

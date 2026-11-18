@@ -12,6 +12,7 @@ ownership.set('pixel-scenes', ['src/components/pixel-scenes/', 'src/app/(study)/
 ownership.set('login-room-details', ['src/components/pixel-scenes/login-shoji.js', 'src/app/(study)/appearance/login-festivals/', 'tests/login-portrait.test.ts', 'tools/check-route-scope.mjs']);
 ownership.set('jlpt-deterministic', ['src/app/(study)/jlpt-daily/', 'src/app/(study)/srs/repository.ts', 'docs/features/g1-jlpt-daily.md', 'tools/check-route-scope.mjs']);
 ownership.set('jlpt-approved-v2', ownership.get('jlpt-deterministic'));
+ownership.set('jlpt-generator-balance', ownership.get('jlpt-deterministic'));
 ownership.set('jlpt-verifier-schema', ownership.get('jlpt-deterministic'));
 ownership.set('rain-clarity', ['src/components/pixel-scenes/', 'src/app/(study)/appearance/daily-weather/', 'tests/daily-weather.test.ts', 'tools/check-route-scope.mjs']);
 ownership.set('daily-weather', ['src/components/pixel-scenes/', 'src/app/login/', 'src/app/(study)/appearance/', 'tests/daily-weather.test.ts', 'tools/ui-test-clock.mjs', 'tools/check-route-scope.mjs']);
