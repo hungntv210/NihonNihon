@@ -785,3 +785,5 @@ Windows Node 24, d2890ee9fdf3eb65c48dcaef91eafb22b9994f76, 2026-11-18T13:35:20.0
 Checked e04dd8d1a63a3299b0bc4bdc4fc0d39b54d276b8 on Windows / Node 24, 2026-11-18T13:52:24.8066791+07:00 through 2026-11-18T13:54:24.1346698+07:00. Typecheck, tests (ℹ pass 22, ℹ pass 181), production build, 16 app checks, route browser and scope passed.
 
 - 2026-11-18T14:41:57.2624878+07:00 — official JLPT sets, implementation 11cc1e77649e711cf1a7a5b5eeca4729393d4d64. Local full check passed (22 prototype, 182 core/route tests, production build, 16 app checks). All 14 browser checks and jlpt-daily route scope passed. Private approval, per-section grading, replay and separate results exercised with synthetic fixtures.
+
+- 2026-11-18T15:41:54.7165930+07:00 — c45e1097b448d84d7459cfc9c4b9ac8f7391700b JLPT grammar evidence and bounded verifier retries. Local typecheck, 22 prototype + 184 core/route tests, build, 16 app checks, authenticated JLPT browser check and route scope passed.
