@@ -78,3 +78,13 @@ chấm sai rồi thực sự ôn cả reading và grammar ngày sau.
 Kho duyệt/kết quả dùng NIHON_JLPT_PATH hoặc private/jlpt-daily cạnh DB và đã
 thuộc backup học tập. V2 không ghi DB app/kho duyệt, không đổi schema/cổng đã
 học của app hay quy trình tester duyệt/import riêng.
+
+Use --supplement with a separate output directory and the approved store to fill
+only grammar/order vacancies on their assigned dates. Each type is capped at
+three per ten-question day. For the next regular week, --prior-drafts can add
+a previous draft directory to collision history. Reviews remain private.
+Both solver and validator use zero-based indexes. The blind order payload lists
+all 24 reconstructions grouped by star choice. Polite predicates stay together.
+Grammar gaps can use a sourced example linked to an eligible vocabulary item.
+The pinned OpenJLPT N5 grammar JSON has pattern, meaning, formation, examples,
+tags and notes; it supplies no separate similar-expressions list.

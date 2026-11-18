@@ -5,14 +5,14 @@ import {verifierWireSchema} from './v2-verifier.ts';import {independentSchema,ch
 const source=(title:string,reading:string,kind:V2Source['kind']='vocab',pos=['n']):V2Source=>({id:'openjlpt:'+kind+':fixture-'+title,title,reading,kind,pos,level:'N5',hash:hash(title),english:['self-authored fixture'],vietnamese:null,on:[]});
 export function context():V2Context{
  const words=[source('私','わたし','vocab',['pn']),source('毎日','まいにち','vocab',['adv']),source('学校','がっこう'),source('日本語','にほんご'),source('勉強','べんきょう','vocab',['vs']),source('校長','こうちょう'),source('日本','にほん'),source('曰本','にほん'),source('本','ほん'),source('はし','はし'),source('行','こう')];
- const characters=[...new Set(words.flatMap(w=>[...w.title]).filter(c=>/\p{Script=Han}/u.test(c)))];characters.push('木','人','国');const catalog=[...words,...characters.map(k=>({...source(k,'こう','kanji'),on:k==='行'?['コウ','ギョウ','アン']:[]})),...['は','が','を','に','で','へ','と','だけ','です','だ','でした','ではありません'].map(s=>source(s,s,'grammar',[]))];
+ const characters=[...new Set(words.flatMap(w=>[...w.title]).filter(c=>/\p{Script=Han}/u.test(c)))];characters.push('木','人','国','未','末','目','白');const catalog=[...words,...characters.map(k=>({...source(k,'こう','kanji'),on:k==='行'?['コウ','ギョウ','アン']:k==='本'||k==='書'?['ホン']:k==='日'||k==='人'?['ジツ']:[]})),...['は','が','を','に','で','へ','と','だけ','です','だ','でした','ではありません'].map(s=>source(s,s,'grammar',[]))];
  const target=catalog.find(s=>s.kind==='grammar'&&s.title==='で')!;return{mode:'draft_roadmap',date:'2026-11-16',level:'N5',catalog,dictionary:catalog,knownKanji:characters,examples:[{id:'fixture:sentence:1',targetId:target.id,text:'私は毎日学校で日本語を勉強しています。',english:'Self-authored test only.',notation:null,sourceId:'openjlpt',releaseId:'fixture',attribution:'Self-authored test'}]};
 }
 test('v2 reading distractors prove long vowels,sokuon,voicing,other On and shared-kanji readings',()=>{
  const c=context(),school=c.catalog.find(s=>s.title==='学校')!,rows=readingNoise(school,c);assert.ok(rows.some(r=>r.rule==='long-vowel'&&r.value==='がっこお'));assert.ok(rows.some(r=>r.rule==='sokuon'&&r.value==='がこう'));assert.ok(rows.some(r=>r.rule==='shared-kanji'&&r.value==='こうちょう'));const voiced=readingNoise(c.catalog.find(s=>s.title==='はし')!,c);assert.ok(voiced.some(r=>r.value==='ばし'));assert.ok(voiced.some(r=>r.value==='ぱし'));assert.ok(readingNoise(c.catalog.find(s=>s.kind==='vocab'&&s.title==='行')!,c).some(r=>r.rule==='other-on'&&r.value==='ぎょう'));assert.ok(rows.every(r=>/^[\p{Script=Hiragana}\p{Script=Katakana}ー]+$/u.test(r.value)&&r.value!==school.reading&&!r.value.includes('っっ')));
 });
 test('v2 spelling derives same-sound,shape and one-learned-kanji evidence only',()=>{
- const c=context(),target=c.catalog.find(s=>s.title==='日本')!,rows=spellingNoise(target,c);assert.ok(rows.some(r=>r.rule==='same-sound'&&r.value==='曰本'));assert.ok(rows.some(r=>r.rule==='similar-shape'));assert.ok(rows.some(r=>r.rule==='one-known-kanji'));assert.ok(rows.every(r=>r.sourceIds.length>0&&[...r.value].every(ch=>!/[\p{Script=Han}]/u.test(ch)||c.knownKanji.includes(ch))));
+ const c=context(),target=c.catalog.find(s=>s.title==='日本')!,rows=spellingNoise(target,c);assert.ok(rows.some(r=>r.rule==='same-sound'&&r.value==='人本'));assert.ok(!rows.some(r=>r.value==='曰本'));assert.ok(rows.some(r=>r.rule==='similar-shape'));assert.ok(rows.every(r=>r.rule==='same-sound'||r.rule==='similar-shape'));assert.ok(rows.every(r=>r.sourceIds.length>0&&[...r.value].every(ch=>!/[\p{Script=Han}]/u.test(ch)||c.knownKanji.includes(ch))));
 });
 test('v2 is deterministic, preserves sourced grammar/order and requires all core hard gates',()=>{
  const c=context(),a=candidates(c),b=candidates(structuredClone(c));assert.deepEqual(a,b);for(const type of ['reading','spelling','grammar','order'])assert.ok(a.questions.some(q=>q.type===type),JSON.stringify(a.rejected));
@@ -57,4 +57,27 @@ test('Gemini wire schema avoids nested fixed-length state explosion while runtim
  await assert.rejects(verifyDeterministic(async(_phase,_prompt,_payload,schema)=>{assert.doesNotMatch(JSON.stringify(schema),/minItems|maxItems/);return [];},[q]),/INVALID_QA_INDEX/);
  let calls=0;await assert.rejects(verifyDeterministic(async(_phase,_prompt,_payload,schema)=>{assert.doesNotMatch(JSON.stringify(schema),/minItems|maxItems/);if(++calls===2)return [];return [{index:0,possibleAnswers:[q.correct],independentAnswer:q.correct,natural:true,knowledgeCorrect:true,optionGrades:q.choices.map((_,choiceIndex)=>({choiceIndex,completedSentence:choiceSentence(q,choiceIndex),candidateOrder:[],grammatical:choiceIndex===q.correct,formCorrect:choiceIndex===q.correct,natural:choiceIndex===q.correct,meaningFits:choiceIndex===q.correct,acceptable:choiceIndex===q.correct,reason:'Self-authored fixture'}))}];},[q]),/INVALID_ISOLATED_QA_INDEX/);assert.equal(calls,2);
  const incomplete=await verifyDeterministic(async()=>[{index:0,possibleAnswers:[q.correct],independentAnswer:q.correct,natural:true,knowledgeCorrect:true,optionGrades:[]}],[q]).catch(e=>e);assert.ok(incomplete instanceof Error);
+});
+import {orderPermutations} from './v2-verifier.ts';
+test('order alternatives provide all six exact reconstructions for each zero-based star choice',()=>{
+ const q=candidates(context()).questions.find(q=>q.type==='order')!;
+ const options=orderPermutations(q);assert.equal(new Set(options.map(x=>x.candidateOrder.join())).size,24);
+ for(let i=0;i<4;i++)assert.equal(options.filter(x=>x.choiceIndex===i&&x.candidateOrder[q.starSlot]===i).length,6);
+ assert.ok(options.some(x=>x.choiceIndex===q.correct&&x.completedSentence===q.sentence));
+ assert.ok(phrases('きのう、デパートでくつをかいました。').includes('かいました。'));
+});
+test('a vocabulary example can supply learned grammar and preserves its actual parent',()=>{
+ const c=context();c.examples[0].targetId=c.catalog.find(x=>x.kind==='vocab'&&x.title==='学校')!.id;
+ const q=candidates(c).questions.find(q=>q.type==='grammar'&&q.example?.id===c.examples[0].id);
+ assert.ok(q);assert.equal(q.example?.targetId,c.examples[0].targetId);assert.notEqual(q.targetId,q.example?.targetId);
+});
+test('supplement only fills grammar or order vacancies while keeping the baseline intact',async()=>{
+ const c=context(),contexts=Array.from({length:7},(_,i)=>({...c,date:plusDays(c.date,i)}));
+ const q=candidates(c).questions.find(x=>x.type==='reading')!;
+ const baseline=Array.from({length:9},(_,i)=>({...q,id:'existing-'+i,position:i}));
+ const before=JSON.stringify(baseline);const run=await runDeterministic(contexts,baseline,{supplement:true,noVerifier:true});
+ assert.equal(JSON.stringify(baseline),before);assert.ok(run.questions.length>0);
+ assert.ok(run.questions.every(r=>r.type==='grammar'||r.type==='order'));
+ assert.ok(run.questions.filter(r=>r.date===c.date).length<=1);
+ for(const day of contexts)for(const type of ['grammar','order'])assert.ok(run.questions.filter(r=>r.date===day.date&&r.type===type).length<=3);
 });
