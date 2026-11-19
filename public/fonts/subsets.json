@@ -33,12 +33,63 @@
     {
       "source": "ShipporiMincho-Regular.ttf",
       "source_sha256": "769b5269f0f9bc6534b352c0e6bd856a566e03ff788f107191c2d835863570b2",
-      "file": "ShipporiMincho-Regular-Subset.woff2",
-      "sha256": "85f22729b23b5eb04942494748988b66917cfa87ad946b7cfb08c13826def8f4",
+      "file": "ShipporiMincho-Regular-Core-Subset.woff2",
+      "sha256": "7a8ee4f9097258abdb4be82122d45621e9b0663576d7e5398e68711188a5ef97",
       "source_bytes": 8677284,
-      "bytes": 587624,
-      "unicode_count": 3169
+      "bytes": 83048,
+      "unicode_count": 600,
+      "bucket": "Core"
+    },
+    {
+      "source": "ShipporiMincho-Regular.ttf",
+      "source_sha256": "769b5269f0f9bc6534b352c0e6bd856a566e03ff788f107191c2d835863570b2",
+      "file": "ShipporiMincho-Regular-N5-Subset.woff2",
+      "sha256": "021ddd2a0960ab7ddf1eba5eedcc5024981bdf819b82e675b523d98802db6bab",
+      "source_bytes": 8677284,
+      "bytes": 109296,
+      "unicode_count": 556,
+      "bucket": "N5"
+    },
+    {
+      "source": "ShipporiMincho-Regular.ttf",
+      "source_sha256": "769b5269f0f9bc6534b352c0e6bd856a566e03ff788f107191c2d835863570b2",
+      "file": "ShipporiMincho-Regular-N4-Subset.woff2",
+      "sha256": "b8bed0a48e8bd7feb3905f1445fd3e4160611bd32ce9da1a1c08777694119d35",
+      "source_bytes": 8677284,
+      "bytes": 88216,
+      "unicode_count": 414,
+      "bucket": "N4"
+    },
+    {
+      "source": "ShipporiMincho-Regular.ttf",
+      "source_sha256": "769b5269f0f9bc6534b352c0e6bd856a566e03ff788f107191c2d835863570b2",
+      "file": "ShipporiMincho-Regular-N3-Subset.woff2",
+      "sha256": "f2f0fc2682fdfa16db70e9ee46a7baeb8b1fc6377f13f3bd5662fd4031acbf56",
+      "source_bytes": 8677284,
+      "bytes": 111472,
+      "unicode_count": 497,
+      "bucket": "N3"
+    },
+    {
+      "source": "ShipporiMincho-Regular.ttf",
+      "source_sha256": "769b5269f0f9bc6534b352c0e6bd856a566e03ff788f107191c2d835863570b2",
+      "file": "ShipporiMincho-Regular-N2-Subset.woff2",
+      "sha256": "a6f02d5e1a345b2b8f31881b3aabb2733f91bb3173ce79fa24a8a977fcb0a883",
+      "source_bytes": 8677284,
+      "bytes": 89532,
+      "unicode_count": 376,
+      "bucket": "N2"
+    },
+    {
+      "source": "ShipporiMincho-Regular.ttf",
+      "source_sha256": "769b5269f0f9bc6534b352c0e6bd856a566e03ff788f107191c2d835863570b2",
+      "file": "ShipporiMincho-Regular-N1-Subset.woff2",
+      "sha256": "d939b43da3ba1b5e12db4a5610af9031d4e2a7ae8178f1a0d01ba0d1c436aab8",
+      "source_bytes": 8677284,
+      "bytes": 165900,
+      "unicode_count": 726,
+      "bucket": "N1"
     }
   ],
-  "fallback": "Unmodified original local TTF for characters outside subsets"
+  "fallback": "Unmodified original local TTF for characters outside subsets (strictly disjoint unicode-range)"
 }
