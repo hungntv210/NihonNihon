@@ -1,5 +1,6 @@
 import test from 'node:test';import assert from 'node:assert/strict';import fs from 'node:fs';import os from 'node:os';import path from 'node:path';
-import {readingNoise,spellingNoise,candidates,validateV2,phrases} from './deterministic.ts';import {safeExample,exampleEvidence,type V2Source,type V2Context} from './v2-data.ts';import {fingerprint,hash,plusDays} from './model.ts';import {runDeterministic} from './v2-run.ts';import {blindQuestions,verifyDeterministic} from './v2-verifier.ts';import {enqueueMistake} from './repository.ts';import {enqueueCard} from '../../../core/review.ts';import {fixtureCatalog} from './fixture.ts';import {DatabaseSync} from 'node:sqlite';import {session} from '../srs/repository.ts';import {scheduler} from '../srs/model.ts';
+import {readingNoise,spellingNoise,candidates,validateV2,phrases,dailyMix} from './deterministic.ts';import {safeExample,exampleEvidence,type V2Source,type V2Context} from './v2-data.ts';import {fingerprint,hash,plusDays} from './model.ts';import {runDeterministic} from './v2-run.ts';import {blindQuestions,verifyDeterministic} from './v2-verifier.ts';import {enqueueMistake} from './repository.ts';import {enqueueCard} from '../../../core/review.ts';import {fixtureCatalog} from './fixture.ts';import {DatabaseSync} from 'node:sqlite';import {session} from '../srs/repository.ts';import {scheduler} from '../srs/model.ts';
+import {draftCollisionIssues,sentenceKeys} from './hard-qa.ts';
 import {contextAt} from './v2-data.ts';import {japaneseWordEvidence,roadmapLexicon} from './word-evidence.ts';import {reviewHtml,main} from './generate-v2.ts';
 import {verifierWireSchema} from './v2-verifier.ts';import {independentSchema,choiceSentence} from './independent-qa.ts';
 const source=(title:string,reading:string,kind:V2Source['kind']='vocab',pos=['n']):V2Source=>({id:'openjlpt:'+kind+':fixture-'+title,title,reading,kind,pos,level:'N5',hash:hash(title),english:['self-authored fixture'],vietnamese:null,on:[]});
@@ -89,4 +90,67 @@ test('distractor evidence comes only from explicit forms of grammar records alre
  const today=[...earlier,{kind:'grammar',id:'negative',title:'〜ではありません / 〜じゃない'},{kind:'grammar',id:'or',title:'〜か（or）'}];
  assert.deepEqual(learnedGrammarForms(today).slice(2),[{id:'negative',surface:'ではありません'},{id:'negative',surface:'じゃない'},{id:'or',surface:'か'}]);
  assert.ok(!learnedGrammarForms(today).some(x=>['は','が','ます','ません'].includes(x.surface)));
+});
+
+test('open translation reports in the live DB block the exact Frozen meaning before verification',t=>{
+ const dir=fs.mkdtempSync(path.join(os.tmpdir(),'jlpt-reports-'));t.after(()=>fs.rmSync(dir,{recursive:true,force:true}));
+ const live=path.join(dir,'live.sqlite'),frozen=path.join(dir,'frozen.sqlite');fixtureCatalog(live);const db=new DatabaseSync(live);
+ try{
+  const row=db.prepare("SELECT * FROM content_items WHERE kind='vocab' LIMIT 1").get()!;
+  db.prepare("INSERT INTO vi_translations(translation_id,item_id,field,text_vi,method,source_id,release_id,source_record_key,base_content_hash,status,match_method,created_at) VALUES('frozen-meaning',?,'meaning','Nghĩa fixture','dictionary','openjlpt',?,'fixture',?,'selected','word','2026-11-18')").run(row.item_id,row.release_id,row.source_hash);
+  db.exec(`VACUUM INTO '${frozen.replaceAll("'","''")}'`);
+  db.exec("UPDATE vi_translations SET translation_id='live-meaning' WHERE translation_id='frozen-meaning'");
+  db.exec("INSERT INTO translation_reports(report_id,translation_id,reason,reported_at,status) VALUES('report','live-meaning','Fixture report','2026-11-18','open')");
+  const snapshot=new DatabaseSync(frozen,{readOnly:true});try{
+   const read=()=>contextAt(snapshot,db,'2026-12-31','draft_roadmap');
+   assert.equal(read().catalog.find(s=>s.id===row.item_id)?.translationReported,true);
+   db.exec("UPDATE translation_reports SET status='resolved'");assert.equal(read().catalog.find(s=>s.id===row.item_id)?.translationReported,false);
+   db.exec("UPDATE translation_reports SET status='open'; UPDATE vi_translations SET text_vi='Dòng dịch khác'");assert.equal(read().catalog.find(s=>s.id===row.item_id)?.translationReported,false);
+  }finally{snapshot.close();}
+ }finally{db.close();}
+ const c=context(),school=c.catalog.find(s=>s.title==='学校')!;school.translationReported=true;
+ const pool=candidates(c);assert.ok(!pool.questions.some(q=>q.targetId===school.id));assert.ok(pool.rejected.TRANSLATION_REPORTED_OPEN>=1);
+ const good=context(),q=candidates(good).questions.find(q=>q.targetId===school.id)!;
+ assert.throws(()=>validateV2(q,c),/TRANSLATION_REPORTED_OPEN/);
+});
+
+test('same source sentence collides across grammar targets, gaps and order windows in one batch/week',async()=>{
+ const c=context();c.examples[0].text='私は毎日学校で日本語の本を人と勉強しています。';const pool=candidates(c),orders=pool.questions.filter(q=>q.type==='order');assert.ok(orders.length>1,JSON.stringify(pool.rejected));
+ const first=orders[0],other=orders.find(q=>q.stem!==first.stem)!;assert.ok(other);
+ assert.throws(()=>validateV2(other,c,[first]),/DUPLICATE_SENTENCE/);
+ const grammar=pool.questions.find(q=>q.type==='grammar')!;assert.throws(()=>validateV2(grammar,c,[first]),/DUPLICATE_SENTENCE/);
+ const wide={...first,example:{...first.example!,text:first.example!.text.replace('。','．')}};
+ const narrow={...other,example:{...other.example!,text:first.example!.text.replace('。','．').normalize('NFKC')}};
+ assert.ok(draftCollisionIssues(narrow,[wide],c.catalog).includes('DUPLICATE_SENTENCE'));
+ const run=await runDeterministic(Array.from({length:7},(_,n)=>({...c,date:plusDays(c.date,n)})),[],{noVerifier:true});
+ const rows=run.questions.filter(q=>q.type==='grammar'||q.type==='order');assert.equal(rows.length,1);
+ assert.equal(new Set(rows.map(q=>sentenceKeys(q)[0])).size,rows.length);
+});
+
+test('borrowed examples never assign or/connective/demonstrative meanings by substring to grammar or order',()=>{
+ for(const title of ['〜か（or）','〜くて / 〜で','これ / それ']){
+  const c=context(),s=source(title,'','grammar',[]);s.english=['WRONG_FUNCTION_SENTINEL'];c.catalog.push(s);
+  c.catalog.push(source('わからない','わからない'));
+  const sentences=title.includes('か')?['学校で本を勉強したのかはわからない。']:title.includes('くて')?['私は毎日学校で日本語を勉強しています。']:['私は毎日学校でこれを勉強しています。'];
+  c.examples=sentences.map((text,i)=>({...c.examples[0],id:'borrowed-'+i,text,targetId:c.catalog.find(s=>s.title==='学校')!.id}));
+  const pool=candidates(c),rows=pool.questions.filter(q=>q.targetId===s.id);assert.ok(rows.some(q=>q.type==='order'),title+JSON.stringify(pool.rejected));
+  for(const q of rows){assert.ok(!q.explanation.includes('WRONG_FUNCTION_SENTINEL'));assert.ok(q.explanation.includes(`Câu: 「${q.sentence}」`));assert.doesNotThrow(()=>validateV2(q,c));}
+ }
+ const c=context(),direct=candidates(c).questions.find(q=>q.type==='grammar')!;assert.ok(direct.explanation.includes('self-authored fixture'));
+});
+
+test('grammar can reuse a learned target with another sentence inside 30 days; daily and weekly mix stay strict',async()=>{
+ const c=context(),old=candidates(c).questions.find(q=>q.type==='grammar')!;
+ const changed={...c,examples:[{...c.examples[0],id:'second-sentence',text:'毎日私は学校で日本語を勉強しています。'}]};
+ const q=candidates(changed).questions.find(q=>q.type==='grammar'&&q.targetId===old.targetId)!;assert.ok(q);
+ assert.doesNotThrow(()=>validateV2(q,changed,[old]));
+ assert.throws(()=>validateV2({...old,date:plusDays(old.date,30)},{...c,date:plusDays(old.date,30)},[old]),/DUPLICATE/);
+ assert.doesNotThrow(()=>validateV2({...old,date:plusDays(old.date,31)},{...c,date:plusDays(old.date,31)},[old]));
+ const reading=candidates(c).questions.find(q=>q.type==='reading')!;
+ assert.ok(draftCollisionIssues({...reading,stem:reading.stem+'。'},[reading],c.catalog).includes('REPEATED_TARGET_WORD'));
+ const run=await runDeterministic(Array.from({length:7},(_,n)=>({...changed,date:plusDays(c.date,n)})),[old],{noVerifier:true});
+ assert.ok(run.questions.some(q=>q.targetId===old.targetId&&(q.type==='grammar'||q.type==='order')));
+ const ten=Array.from({length:10},(_,n)=>({...reading,type:n===0?'grammar' as const:n===1?'spelling' as const:'reading' as const}));
+ assert.equal(dailyMix(ten),true);assert.equal(dailyMix(ten.slice(1)),false);assert.equal(dailyMix(ten.map(q=>({...q,type:'reading'}))),false);
+ assert.ok(!run.days.every(day=>day.mix));assert.equal(run.status,'unverified_fixture');
 });

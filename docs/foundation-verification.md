@@ -787,3 +787,10 @@ Checked e04dd8d1a63a3299b0bc4bdc4fc0d39b54d276b8 on Windows / Node 24, 2026-11-1
 - 2026-11-18T14:41:57.2624878+07:00 — official JLPT sets, implementation 11cc1e77649e711cf1a7a5b5eeca4729393d4d64. Local full check passed (22 prototype, 182 core/route tests, production build, 16 app checks). All 14 browser checks and jlpt-daily route scope passed. Private approval, per-section grading, replay and separate results exercised with synthetic fixtures.
 
 - 2026-11-18T15:41:54.7165930+07:00 — c45e1097b448d84d7459cfc9c4b9ac8f7391700b JLPT grammar evidence and bounded verifier retries. Local typecheck, 22 prototype + 184 core/route tests, build, 16 app checks, authenticated JLPT browser check and route scope passed.
+
+
+## JLPT reported meanings and sentence history — 2026-11-19
+
+Checked implementation `5c8cc36dcaa4456570c211e450676bec87e8db84` on Windows / Node 24 / Chrome headless. Full check 2026-11-19T08:58:41.5822678+07:00 through 2026-11-19T09:00:47.1548483+07:00: typecheck PASS; 22/22 prototype and 188/188 core/route tests PASS (19 v2 tests); production build PASS; 16/16 app checks PASS. Authenticated JLPT browser check 2026-11-19T09:01:13.0158226+07:00 through 2026-11-19T09:01:30.5591888+07:00 PASS. Scope pokabu/jlpt-week30-fix against origin/master PASS.
+
+Regression coverage: live translation reports quarantine the exact Frozen meaning by provenance; resolved/unrelated reports do not block it. Grammar/order reject reconstructed sentence reuse across targets, gaps, order windows, batches and days; a different sentence may reuse the same grammar target within 30 days. Borrowed examples carry no unproven grammar-function label. Daily/weekly mix gates, four choices, learned characters and blind verifier remain unchanged. No API calls, imports, schema/dependency changes or private fixtures committed. Raw checks and the unverified source-capacity survey remain ignored.

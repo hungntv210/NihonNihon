@@ -14,6 +14,7 @@ ownership.set('jlpt-deterministic', ['src/app/(study)/jlpt-daily/', 'src/app/(st
 ownership.set('jlpt-approved-v2', ownership.get('jlpt-deterministic'));
 ownership.set('jlpt-generator-balance', ownership.get('jlpt-deterministic'));
 ownership.set('jlpt-verifier-schema', ownership.get('jlpt-deterministic'));
+ownership.set('pokabu/jlpt-week30-fix', ['src/app/(study)/jlpt-daily/', 'tools/check-route-scope.mjs']);
 ownership.set('rain-clarity', ['src/components/pixel-scenes/', 'src/app/(study)/appearance/daily-weather/', 'tests/daily-weather.test.ts', 'tools/check-route-scope.mjs']);
 ownership.set('daily-weather', ['src/components/pixel-scenes/', 'src/app/login/', 'src/app/(study)/appearance/', 'tests/daily-weather.test.ts', 'tools/ui-test-clock.mjs', 'tools/check-route-scope.mjs']);
 ownership.set('login-portrait', ['src/app/login/login.module.css', 'src/components/pixel-scenes/', 'src/app/(study)/appearance/login-festivals/', 'tests/login-portrait.test.ts', 'tools/check-route-scope.mjs']);

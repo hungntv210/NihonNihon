@@ -28,11 +28,21 @@ cũ. Các cổng khác vẫn dùng chung: bốn lựa chọn khác nhau, một k
 ghi chú trong lựa chọn, đánh dấu từ đích, không kanji chưa học, không từ tự chế,
 đúng từ loại, không lộ key trong stem, lời giải khớp, order dùng đủ mọi mảnh.
 Gate kanji giữ hợp ký tự trong title/reading của catalog đã cấp. Từ điển ngữ
-cảnh chỉ N5, không cấp phép từ đích ngoài roadmap. Không lặp stem chuẩn hóa NFKC
-hoặc từ đích trong 30 ngày, kể cả câu kho duyệt chưa được xếp lịch.
+cảnh chỉ N5, không cấp phép từ đích ngoài roadmap. Theo quyết định chủ dự án
+và tester ngày 19/11/2026, grammar/order chống lặp 30 ngày theo stem/câu nền
+chuẩn hóa NFKC, kể cả đổi vị trí khoét/★ hoặc đổi mẫu đích trong cùng câu.
+Cùng mẫu được hỏi lại bằng câu khác. reading/spelling/context vẫn chống lặp
+theo từ đích. Kiểm cả lịch sử kho duyệt chưa xếp lịch, các câu đã nhận trong
+cùng tuần và batch đang chọn; không nới cổng chất lượng hay cơ cấu ngày/tuần.
 
 Lời giải cố định từ reading/nghĩa Việt selected kèm nguồn/model (hoặc nghĩa Anh
-OpenJLPT), tên mẫu và nghĩa. Câu ví dụ cần nguồn/release/hash, ghép lại nguyên
+OpenJLPT). Dòng nghĩa selected có Báo sai chưa xử lý trong Frozen hoặc DB app
+bị loại trước verifier; đối chiếu đúng dòng theo mục/hash/nguồn/release/nội dung,
+không dùng nghĩa đó trong câu hỏi hay giải thích. Thống kê ghi
+TRANSLATION_REPORTED_OPEN theo số ứng viên/ngày bị chặn (không phải số report).
+Nhãn ngữ pháp chỉ lấy từ ví dụ gắn trực tiếp với mẫu nguồn; ví dụ mượn từ mục
+khác chỉ hiện đáp án, câu hoàn chỉnh và thứ tự, không suy nghĩa qua chuỗi con.
+Câu ví dụ cần nguồn/release/hash, ghép lại nguyên
 văn; chỉ đổi kanji chưa học sang kana khi có reading nguồn, không đoán cách đọc.
 
 Verifier chỉ nhận stem/lựa chọn, không thấy key/lời giải/bằng chứng nhiễu.
