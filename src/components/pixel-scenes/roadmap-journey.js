@@ -45,15 +45,14 @@ function makeBackground(s){
  if(night&&!overcast(s.weather)){for(let i=0;i<150;i++){a.fillStyle=i%4?'#bacbd0':'#e9e9d0';a.fillRect((i*139+57)%TOTAL,6+(i*31)%69,1,1)}ellipseRGB(a,1090,28,13,13,base[1]);ellipseRGB(a,1090,28,8,8,'#f7ead2')}
  else if(!overcast(s.weather)){ellipseRGB(a,1090,28,12,12,base[14]);for(const[x,y,w]of[[80,24,34],[359,18,26],[629,30,40],[923,15,22],[1264,20,33],[1490,26,30],[1804,18,25]]){ellipseRGB(a,x,y,w,3,base[1]);ellipseRGB(a,x+8,y-3,Math.round(w*.7),4,base[1])}}
  // Shared height fields span all seven tiles; only the ground material blends through connectors.
- for(let x=0;x<TOTAL;x++){const far=96+Math.sin(x/131)*10+Math.sin(x/47)*4;g.fillStyle=base[5];g.fillRect(x,Math.round(far),1,216)}
+ g.fillStyle=base[5];for(let x=0;x<TOTAL;x++){const far=96+Math.sin(x/131)*10+Math.sin(x/47)*4;g.fillRect(x,Math.round(far),1,216)}
  const mountains=[[1368,116],[1444,99],[1492,108],[1536,112],[1587,88],[1624,101],[1693,44],[1745,88],[1789,61],[1837,93],[1881,68],[1920,100],[1920,216],[1368,216]];
  polygonRGB(g,mountains,ice[33]);polygonRGB(g,[[1440,116],[1536,116],[1587,88],[1624,104],[1693,44],[1679,78],[1687,89],[1674,101],[1701,94],[1716,80],[1709,71],[1741,88],[1789,61],[1775,90],[1794,96],[1787,106],[1809,100],[1837,94],[1881,68],[1867,94],[1882,101],[1920,110],[1920,216],[1440,216]],ice[32]);
  polygonRGB(g,[[1693,49],[1689,75],[1701,88],[1694,99],[1718,115],[1711,96],[1720,87],[1707,76]],ice[17]);polygonRGB(g,[[1789,67],[1787,88],[1799,94],[1796,108],[1818,119],[1809,98]],ice[15]);
  polygonRGB(g,[[842,114],[884,90],[928,62],[948,78],[977,63],[1018,101],[1063,119],[1063,216],[842,216]],base[6]);
- for(let x=0;x<TOTAL;x++){
-  const middle=125+Math.sin(x/167)*7+Math.cos(x/61)*3,near=150+Math.sin(x/93)*6+Math.cos(x/31)*2;
-  const snow=s.season==='winter';g.fillStyle=material(x,snow?[27,27,27,33]:[18,17,6,33]);g.fillRect(x,Math.round(middle),1,216);g.fillStyle=material(x,snow?[28,28,28,32]:[9,17,22,32]);g.fillRect(x,Math.round(near),1,216);
- }
+ const snow=s.season==='winter',midIdx=snow?[27,27,27,33]:[18,17,6,33],nearIdx=snow?[28,28,28,32]:[9,17,22,32];
+ let prev='';for(let x=0;x<TOTAL;x++){const col=material(x,midIdx);if(col!==prev)g.fillStyle=prev=col;g.fillRect(x,Math.round(125+Math.sin(x/167)*7+Math.cos(x/61)*3),1,216)}
+ prev='';for(let x=0;x<TOTAL;x++){const col=material(x,nearIdx);if(col!==prev)g.fillStyle=prev=col;g.fillRect(x,Math.round(150+Math.sin(x/93)*6+Math.cos(x/31)*2),1,216)}
  // A single canal/river shape crosses the rice/Osaka/mountain boundaries.
  const canal=[[444,107],[459,111],[456,139],[489,146],[544,149],[610,142],[654,149],[725,143],[790,151],[860,142],[902,145],[936,157],[923,177],[884,186],[822,186],[750,180],[675,185],[598,178],[534,183],[478,184],[463,204],[455,216],[437,216],[444,192],[447,172],[430,140]];
  polygonRGB(g,canal,profiles[1][20]);const water=canal.map(([x,y])=>[x<478?x+(x<447?2:-2):x,y<170?y+2:y-2]);polygonRGB(g,water,profiles[1][8]);
@@ -216,20 +215,31 @@ function tileDefinition(kind,offset,width,journey){return{id:'journey-'+kind,par
 
 class Journey{
  constructor(host,options){
-  this.host=host;this.world=host;this.frameElement=host.closest('[data-journey-frame]');this.scale=innerWidth<600?2:3;this.ready=false;this.pieces=[];this.last=0;this.follow=true;this.media=matchMedia('(prefers-reduced-motion: reduce)');
+  this.host=host;this.world=host;this.frameElement=host.closest('[data-journey-frame]');
+  const cw=this.frameElement.clientWidth,scale=innerWidth<600?2:Math.max(2,Math.min(4,Math.floor(cw/384)));
+  this.scale=scale;this.frameWidth=cw;this.ready=false;this.pieces=[];this.last=0;this.follow=true;this.media=matchMedia('(prefers-reduced-motion: reduce)');
   const week=clampWeek(options.params.week);
   this.state={...options,params:{week},seconds:7,frames:0};
   this.target=targetFor(week);this.x=this.target;this.from=this.x;this.moveStart=7;this.duration=0;
-  host.classList.add('journey-strip');
+  host.classList.add('journey-strip');host.style.width=TOTAL*scale+'px';host.style.height=216*scale+'px';
   for(const[kind,offset,width]of[['kyoto',0,384],['rice',384,128],['osaka',512,384],['mountain',896,128],['tokyo',1024,384],['sea',1408,128],['hokkaido',1536,384]]){
-   const section=document.createElement('section');section.className='journey-piece';section.dataset.kind=kind;const tile=document.createElement('div');tile.className='journey-tile';section.append(tile);host.append(section);
+   const section=document.createElement('section');section.className='journey-piece';section.dataset.kind=kind;section.style.width=width*scale+'px';section.style.height=216*scale+'px';const tile=document.createElement('div');tile.className='journey-tile';tile.style.width=384*scale+'px';section.append(tile);host.append(section);
    const def=tileDefinition(kind,offset,width,this),engine=new SceneEngine.Engine(tile,def,{...this.state,params:{week}});this.pieces.push({kind,offset,width,section,tile,engine});
   }
   this.mist=document.createElement('canvas');this.mist.width=TOTAL;this.mist.height=216;this.mist.className='journey-mist';this.mist.setAttribute('aria-hidden','true');host.append(this.mist);
-  this.resize=()=>{const scale=innerWidth<600?2:Math.max(2,Math.min(4,Math.floor(this.frameElement.clientWidth/384)));this.scale=scale;host.style.width=TOTAL*scale+'px';host.style.height=216*scale+'px';for(const item of this.pieces){item.section.style.width=item.width*scale+'px';item.section.style.height=216*scale+'px';item.tile.style.width=384*scale+'px';item.engine.resize()}if(this.follow)this.center(this.x)};
+  this.resize=()=>{
+   const nextCw=this.frameElement.clientWidth,nextScale=innerWidth<600?2:Math.max(2,Math.min(4,Math.floor(nextCw/384)));
+   if(nextScale===this.scale&&nextCw===this.frameWidth)return;
+   const scaled=nextScale!==this.scale;this.scale=nextScale;this.frameWidth=nextCw;
+   if(scaled){
+    host.style.width=TOTAL*nextScale+'px';host.style.height=216*nextScale+'px';
+    for(const item of this.pieces){item.section.style.width=item.width*nextScale+'px';item.section.style.height=216*nextScale+'px';item.tile.style.width=384*nextScale+'px';item.engine.resize()}
+   }
+   if(this.follow)this.center(this.x);
+  };
   this.onPointer=()=>{this.follow=false};this.onWheel=e=>{if(Math.abs(e.deltaX)>0||e.shiftKey)this.follow=false};this.onVisibility=()=>{this.last=performance.now()};this.onMedia=()=>this.sync();this.media.addEventListener('change',this.onMedia);
   this.frameElement.addEventListener('pointerdown',this.onPointer,{passive:true});this.frameElement.addEventListener('wheel',this.onWheel,{passive:true});document.addEventListener('visibilitychange',this.onVisibility);this.observer=new ResizeObserver(this.resize);this.observer.observe(this.frameElement);
-  this.state.weather=this.pieces[0].engine.state.weather;this.ready=true;this.resize();this.refreshRegions();this.render(true);
+  this.state.weather=this.pieces[0].engine.state.weather;this.ready=true;if(this.follow)this.center(this.x);this.refreshRegions();
  }
  background(s){const key=s.time+':'+s.season+':'+s.weather;if(this.backgroundCache?.key!==key)this.backgroundCache={key,...makeBackground(s)};return this.backgroundCache}
  get raf(){return this.pieces.find(p=>p.engine.raf)?.engine.raf||0}
@@ -237,7 +247,20 @@ class Journey{
  get statics(){return this.active.engine.statics}get dynamics(){return this.active.engine.dynamics}get palette(){return this.active.engine.palette}
  get metrics(){return{staticBuilds:this.pieces.reduce((n,p)=>n+p.engine.metrics.staticBuilds,0),frames:this.state.frames,maxDirtyArea:Math.max(...this.pieces.map(p=>p.engine.metrics.maxDirtyArea))}}
  center(x){this.frameElement.scrollLeft=Math.round(Math.max(0,Math.min(TOTAL*this.scale-this.frameElement.clientWidth,x*this.scale-this.frameElement.clientWidth/2)))}
- refreshRegions(){const current=regionAt(this.target);this.host.dataset.time=this.state.time;for(const p of this.pieces)p.section.classList.toggle('journey-unreached',p.offset>=starts[current]+384);const c=this.mist.getContext('2d');c.clearRect(0,0,TOTAL,216);if(current===3)return;const data=c.createImageData(TOTAL,216),start=starts[current]+336,rgb=this.state.time==='night'?[113,137,158]:[196,211,206];for(let y=65;y<216;y++)for(let x=start;x<TOTAL;x++){const i=(y*TOTAL+x)*4;data.data[i]=rgb[0];data.data[i+1]=rgb[1];data.data[i+2]=rgb[2];data.data[i+3]=Math.round(36*smooth((x-start)/192)*smooth((y-65)/65))}c.putImageData(data,0,0)}
+ refreshRegions(){
+  const current=regionAt(this.target);this.host.dataset.time=this.state.time;
+  for(const p of this.pieces)p.section.classList.toggle('journey-unreached',p.offset>=starts[current]+384);
+  const c=this.mist.getContext('2d');c.clearRect(0,0,TOTAL,216);if(current===3)return;
+  const start=starts[current]+336,w=TOTAL-start,h=151,data=c.createImageData(w,h),d=data.data,rgb=this.state.time==='night'?[113,137,158]:[196,211,206];
+  const sx=Array.from({length:w},(_,dx)=>smooth(dx/192));let solid=null;
+  for(let dy=0;dy<h;dy++){
+   const off=dy*w*4;if(dy>=65&&solid){d.set(solid,off);continue}
+   const sy=36*smooth(dy/65);
+   for(let dx=0;dx<w;dx++){const i=off+dx*4;d[i]=rgb[0];d[i+1]=rgb[1];d[i+2]=rgb[2];d[i+3]=Math.round(sy*sx[dx])}
+   if(dy===65)solid=d.subarray(off,off+w*4);
+  }
+  c.putImageData(data,start,65);
+ }
  advance(){if(!this.ready)return;const now=performance.now();if(now-this.last<1000/30)return;const dt=Math.min(.08,(now-(this.last||now))/1000);this.last=now;if(document.hidden||!this.state.motion||this.media.matches)return;this.state.seconds+=dt;this.state.frames++;this.position();}
  position(){const f=this.duration?Math.min(1,Math.max(0,(this.state.seconds-this.moveStart)/this.duration)):1;this.x=this.from+(this.target-this.from)*(1-(1-f)**3);if(this.follow&&f<1)this.center(this.x);if(f===1&&this.from!==this.target){this.x=this.target;this.from=this.target;if(this.follow)this.center(this.x);this.onChange?.()}}
  render(still){for(const p of this.pieces){p.engine.state.seconds=this.state.seconds;p.engine.frame(still)}}
