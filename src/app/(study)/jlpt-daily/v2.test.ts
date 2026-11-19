@@ -154,3 +154,22 @@ test('grammar can reuse a learned target with another sentence inside 30 days; d
  assert.equal(dailyMix(ten),true);assert.equal(dailyMix(ten.slice(1)),false);assert.equal(dailyMix(ten.map(q=>({...q,type:'reading'}))),false);
  assert.ok(!run.days.every(day=>day.mix));assert.equal(run.status,'unverified_fixture');
 });
+
+test('multi-question verifier states the full batch count and indexes; a first-question-only response still stops both passes',async()=>{
+ const questions=candidates(context()).questions.filter(q=>q.type==='reading').slice(0,3);assert.equal(questions.length,3);
+ const grade=(q:typeof questions[number],index:number)=>({index,possibleAnswers:[q.correct],independentAnswer:q.correct,natural:true,knowledgeCorrect:true,optionGrades:q.choices.map((_,choiceIndex)=>({choiceIndex,completedSentence:choiceSentence(q,choiceIndex),candidateOrder:[],grammatical:choiceIndex===q.correct,formCorrect:choiceIndex===q.correct,natural:choiceIndex===q.correct,meaningFits:choiceIndex===q.correct,acceptable:choiceIndex===q.correct,reason:'Self-authored batch fixture'}))});
+ let calls=0;
+ await assert.rejects(verifyDeterministic(async(_phase,prompt,payload)=>{
+  calls++;assert.match(prompt,/exactly expectedResultCount/);assert.match(prompt,/EVERY index in expectedIndexes/);
+  assert.equal(payload.expectedResultCount,3);assert.deepEqual(payload.expectedIndexes,[0,1,2]);assert.deepEqual(payload.questions.map((q:any)=>q.index),[0,1,2]);
+  assert.ok(payload.questions.every((q:any)=>!('correct' in q)&&!('explanation' in q)&&!('targetId' in q)));
+  return [grade(questions[0],0)];
+ },questions),/INVALID_QA_INDEX/);assert.equal(calls,1);
+ calls=0;
+ await assert.rejects(verifyDeterministic(async(_phase,prompt,payload)=>{
+  calls++;assert.match(prompt,/exactly expectedResultCount/);
+  if(calls===1)return questions.map(grade);
+  assert.equal(payload.expectedResultCount,12);assert.deepEqual(payload.expectedIndexes,Array.from({length:12},(_,i)=>i));assert.deepEqual(payload.sentences.map((s:any)=>s.index),payload.expectedIndexes);
+  return [{index:0,grammatical:true,formCorrect:true,natural:true,meaningFits:true,reason:'Fixture incomplete response'}];
+ },questions),/INVALID_ISOLATED_QA_INDEX/);assert.equal(calls,2);
+});
