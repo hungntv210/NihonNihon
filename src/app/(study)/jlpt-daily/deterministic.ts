@@ -4,6 +4,7 @@ import {plainJapanese,hardQuestionIssues,strictDraftIssues,draftCollisionIssues,
 import {draftContextLexicon} from './word-evidence.ts';
 import {confusionGroups,learnedGrammarForms} from './confusion-groups.ts';
 import {safeExample,exampleEvidence,type V2Context,type V2Source,type Example} from './v2-data.ts';
+import {hardeningIssues,orderBoundaries,provenMeaning,standardMeanings} from './v2-hardening.ts';
 export type Distractor={value:string;rule:string;sourceIds:string[]};
 export type V2Question=Question&{mode:V2Context['mode'];version:2;example?:Example;sentence?:string;distractors:Distractor[];sourceHash:string};
 const kana=(s:string)=>/^[\p{Script=Hiragana}\p{Script=Katakana}ー]+$/u.test(s)&&!/[ゃゅょぁぃぅぇぉっャュョァィゥェォッ]/u.test(s[0]??'');
@@ -43,7 +44,7 @@ export function spellingNoise(source:V2Source,c:V2Context):Distractor[]{
  return distinct(rows,source.title);
 }
 const lexicons=new WeakMap<V2Context,Set<string>>();
-const meaning=(s:V2Source)=>s.vietnamese?`${s.vietnamese.text} [${s.vietnamese.sourceId}${s.vietnamese.model?' · '+s.vietnamese.model:''}]`:`${s.english.join('; ')} [OpenJLPT · EN]`;
+const meaning=(s:V2Source)=>provenMeaning(s)?`${s.vietnamese!.text} [${s.vietnamese!.sourceId}${s.vietnamese!.model?' · '+s.vietnamese!.model:''}]`:`${standardMeanings(s).join('; ')} [OpenJLPT · EN]`;
 function explanation(q:Pick<V2Question,'type'|'correct'|'choices'|'order'|'sentence'|'example'>,s:V2Source){
  const label=`${s.title}${s.reading?' — '+s.reading:''}: ${meaning(s)}.`;
  // A borrowed example attests the sentence, not the function of a matching particle.
@@ -59,13 +60,13 @@ function make(c:V2Context,s:V2Source,type:QuestionType,stem:string,answer:string
 }
 // Boundaries follow source phrases (particles terminate a phrase); no sentence
 // or inflection is generated. Order windows leave attested fixed context visible.
-export function phrases(text:string){
+export function phrases(text:string,allowed?:ReadonlySet<number>){
  const parts:string[]=[];let pending='';
  const tokens=[...new Intl.Segmenter('ja',{granularity:'word'}).segment(text)];
  for(const [i,t] of tokens.entries()){
   pending+=t.segment;
   const next=tokens[i+1]?.segment??'';
-  if(/[、，]$/u.test(pending)||(['は','が','を','に','で','へ','と','も','の','から','まで','より'].includes(t.segment)&&next&&!['は','も','して','し','する','なる','なっ','い','いる'].includes(next))){
+  if((!allowed||allowed.has(t.index+t.segment.length))&&(/[、，]$/u.test(pending)||(['は','が','を','に','で','へ','と','も','の','から','まで','より'].includes(t.segment)&&next&&!['は','も','して','し','する','なる','なっ','い','いる'].includes(next)))){
    parts.push(pending);pending='';
   }
  }
@@ -83,6 +84,7 @@ export function validateV2(q:V2Question,c:V2Context,history:Question[]=[]){
  requireValue(q.type==='order'||q.choices[q.correct]===(q.type==='reading'?s.reading:plainJapanese(s.title)),'ANSWER_SOURCE_EVIDENCE');
  // V2's two source-derived noise gates replace the legacy nearby-dictionary
  // restrictions; every other hard gate stays shared and unchanged.
+ const hardened=hardeningIssues(q,c);requireValue(!hardened.length,'HARDENING_'+hardened.join(','));
  requireValue(q.explanation===explanation(q,s),'EXPLANATION_SOURCE_MISMATCH');
  const issues=hardQuestionIssues(q,s,c.catalog).filter(i=>!(q.type==='reading'&&i==='READING_NEAR_SAME_LEVEL_DISTRACTORS')&&!(q.type==='spelling'&&i==='SPELLING_NEAR_DISTRACTORS'));
  requireValue(!issues.length,'HARD_QA_'+issues.join(','));
@@ -128,7 +130,7 @@ export function candidates(c:V2Context,report?: (row:CandidateDiagnostic)=>void)
     return {index,value};
    }).find(m=>m.index>=0):undefined;
    if(orderMatch){
-    const parts=phrases(sentence);for(let from=0;from+4<=parts.length;from++)if(parts.length>=4){const fragments=parts.slice(from,from+4);const offset=parts.slice(0,from).join('').length;if(orderMatch.index<offset||orderMatch.index+orderMatch.value.length>offset+fragments.join('').length)continue;
+    const parts=phrases(sentence,orderBoundaries(sentence,c,example));for(let from=0;from+4<=parts.length;from++)if(parts.length>=4){const fragments=parts.slice(from,from+4);const offset=parts.slice(0,from).join('').length;if(orderMatch.index<offset||orderMatch.index+orderMatch.value.length>offset+fragments.join('').length)continue;
      attempt(()=>{const choices=stable(fragments,c.date+example.id,v=>v),order=fragments.map(f=>choices.indexOf(f)),starSlot=1,stem=parts.slice(0,from).join('')+'＿ ★ ＿ ＿'+parts.slice(from+4).join(''),correct=order[starSlot],fp=fingerprint(stem);const q:V2Question={version:2,mode:c.mode,id:hash({date:c.date,target:s.id,fp}).slice(0,32),date:c.date,fingerprint:fp,day:0,position:0,type:'order',targetId:s.id,stem,choices,correct,order,starSlot,distractors:[],sourceHash:s.hash,example,sentence,explanation:''};q.explanation=explanation(q,s);return q;});
     }
    }

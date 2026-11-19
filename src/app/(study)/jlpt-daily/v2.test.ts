@@ -5,9 +5,9 @@ import {contextAt} from './v2-data.ts';import {japaneseWordEvidence,roadmapLexic
 import {verifierWireSchema} from './v2-verifier.ts';import {independentSchema,choiceSentence} from './independent-qa.ts';
 const source=(title:string,reading:string,kind:V2Source['kind']='vocab',pos=['n']):V2Source=>({id:'openjlpt:'+kind+':fixture-'+title,title,reading,kind,pos,level:'N5',hash:hash(title),english:['self-authored fixture'],vietnamese:null,on:[]});
 export function context():V2Context{
- const words=[source('私','わたし','vocab',['pn']),source('毎日','まいにち','vocab',['adv']),source('学校','がっこう'),source('日本語','にほんご'),source('勉強','べんきょう','vocab',['vs']),source('校長','こうちょう'),source('日本','にほん'),source('曰本','にほん'),source('本','ほん'),source('はし','はし'),source('行','こう')];
- const characters=[...new Set(words.flatMap(w=>[...w.title]).filter(c=>/\p{Script=Han}/u.test(c)))];characters.push('木','人','国','未','末','目','白');const catalog=[...words,...characters.map(k=>({...source(k,'こう','kanji'),on:k==='行'?['コウ','ギョウ','アン']:k==='本'||k==='書'?['ホン']:k==='日'||k==='人'?['ジツ']:[]})),...['は','が','を','に','で','へ','と','だけ','です','だ','でした','ではありません'].map(s=>source(s,s,'grammar',[]))];
- const target=catalog.find(s=>s.kind==='grammar'&&s.title==='で')!;return{mode:'draft_roadmap',date:'2026-11-16',level:'N5',catalog,dictionary:catalog,knownKanji:characters,examples:[{id:'fixture:sentence:1',targetId:target.id,text:'私は毎日学校で日本語を勉強しています。',english:'Self-authored test only.',notation:null,sourceId:'openjlpt',releaseId:'fixture',attribution:'Self-authored test'}]};
+ const words=[source('私','わたし','vocab',['pn']),source('毎日','まいにち','vocab',['adv']),source('学校','がっこう'),source('日本語','にほんご'),source('勉強','べんきょう','vocab',['vs']),source('校長','こうちょう'),source('日本','にほん'),source('曰本','にほん'),source('本','ほん'),source('名前','なまえ'),source('はし','はし'),source('行','こう')];
+ const characters=[...new Set(words.flatMap(w=>[...w.title]).filter(c=>/\p{Script=Han}/u.test(c)))];characters.push('木','人','国','未','末','目','白');const catalog=[...words,...characters.map(k=>({...source(k,'こう','kanji'),on:k==='行'?['コウ','ギョウ','アン']:k==='本'||k==='書'?['ホン']:k==='日'||k==='人'?['ジツ']:[]})),...['は','が','を','に','で','へ','と','の','だけ','です','だ','でした','ではありません'].map(s=>source(s,s,'grammar',[]))];
+ const target=catalog.find(s=>s.kind==='grammar'&&s.title==='で')!;return{mode:'draft_roadmap',date:'2026-11-16',level:'N5',catalog,dictionary:catalog,knownKanji:characters,examples:[{id:'fixture:sentence:1',targetId:target.id,text:'私は毎日学校で日本語を勉強しています。',english:'Self-authored test only.',notation:null,sourceId:'openjlpt',releaseId:'fixture',attribution:'Self-authored test'},{id:'fixture:sentence:modifiers',targetId:catalog.find(s=>s.kind==='grammar'&&s.title==='です')!.id,text:'私の学校の日本語の本です。',english:'Self-authored plumbing fixture; not semantic approval.',notation:null,sourceId:'openjlpt',releaseId:'fixture',attribution:'Self-authored test'}]};
 }
 test('v2 reading distractors prove long vowels,sokuon,voicing,other On and shared-kanji readings',()=>{
  const c=context(),school=c.catalog.find(s=>s.title==='学校')!,rows=readingNoise(school,c);assert.ok(rows.some(r=>r.rule==='long-vowel'&&r.value==='がっこお'));assert.ok(rows.some(r=>r.rule==='sokuon'&&r.value==='がこう'));assert.ok(rows.some(r=>r.rule==='shared-kanji'&&r.value==='こうちょう'));const voiced=readingNoise(c.catalog.find(s=>s.title==='はし')!,c);assert.ok(voiced.some(r=>r.value==='ばし'));assert.ok(voiced.some(r=>r.value==='ぱし'));assert.ok(readingNoise(c.catalog.find(s=>s.kind==='vocab'&&s.title==='行')!,c).some(r=>r.rule==='other-on'&&r.value==='ぎょう'));assert.ok(rows.every(r=>/^[\p{Script=Hiragana}\p{Script=Katakana}ー]+$/u.test(r.value)&&r.value!==school.reading&&!r.value.includes('っっ')));
@@ -16,7 +16,7 @@ test('v2 spelling derives same-sound,shape and one-learned-kanji evidence only',
  const c=context(),target=c.catalog.find(s=>s.title==='日本')!,rows=spellingNoise(target,c);assert.ok(rows.some(r=>r.rule==='same-sound'&&r.value==='人本'));assert.ok(!rows.some(r=>r.value==='曰本'));assert.ok(rows.some(r=>r.rule==='similar-shape'));assert.ok(rows.every(r=>r.rule==='same-sound'||r.rule==='similar-shape'));assert.ok(rows.every(r=>r.sourceIds.length>0&&[...r.value].every(ch=>!/[\p{Script=Han}]/u.test(ch)||c.knownKanji.includes(ch))));
 });
 test('v2 is deterministic, preserves sourced grammar/order and requires all core hard gates',()=>{
- const c=context(),a=candidates(c),b=candidates(structuredClone(c));assert.deepEqual(a,b);for(const type of ['reading','spelling','grammar','order'])assert.ok(a.questions.some(q=>q.type===type),JSON.stringify(a.rejected));
+ const c=context(),a=candidates(c),b=candidates(structuredClone(c));assert.deepEqual(a,b);for(const type of ['reading','spelling','grammar','order'])assert.ok(a.questions.some(q=>q.type===type),JSON.stringify(a.rejected));assert.ok(a.rejected.HARDENING_ORDER_SCRAMBLING>0,'The original multi-argument fixture must now be excluded as an order task');
  const q=a.questions.find(q=>q.type==='reading')!;
  for(const mutate of [(r:any)=>r.stem+='鬱',(r:any)=>r.choices[1]=r.choices[0],(r:any)=>r.correct=(r.correct+1)%4,(r:any)=>r.explanation+=' forged',(r:any)=>r.sourceHash='changed']){const raw=structuredClone(q);mutate(raw);assert.throws(()=>validateV2(raw,c));}
  const grammar=a.questions.find(q=>q.type==='grammar')!;assert.equal(grammar.stem.replace('＿',grammar.choices[grammar.correct]),grammar.sentence);assert.throws(()=>exampleEvidence({...grammar,example:{...grammar.example!,sourceId:''}},c),/SOURCE/);
@@ -115,10 +115,10 @@ test('open translation reports in the live DB block the exact Frozen meaning bef
 });
 
 test('same source sentence collides across grammar targets, gaps and order windows in one batch/week',async()=>{
- const c=context();c.examples[0].text='私は毎日学校で日本語の本を人と勉強しています。';const pool=candidates(c),orders=pool.questions.filter(q=>q.type==='order');assert.ok(orders.length>1,JSON.stringify(pool.rejected));
+ const c=context();c.examples=[{...c.examples[0],targetId:c.catalog.find(s=>s.kind==='vocab'&&s.title==='学校')!.id,text:'これは私の学校の日本語の本です。'}];const pool=candidates(c),orders=pool.questions.filter(q=>q.type==='order');assert.ok(orders.length>1,JSON.stringify(pool.rejected));
  const first=orders[0],other=orders.find(q=>q.stem!==first.stem)!;assert.ok(other);
  assert.throws(()=>validateV2(other,c,[first]),/DUPLICATE_SENTENCE/);
- const grammar=pool.questions.find(q=>q.type==='grammar')!;assert.throws(()=>validateV2(grammar,c,[first]),/DUPLICATE_SENTENCE/);
+ const grammar=pool.questions.find(q=>q.type==='grammar')!;assert.ok(grammar);assert.throws(()=>validateV2(grammar,c,[first]),/DUPLICATE_SENTENCE/);
  const wide={...first,example:{...first.example!,text:first.example!.text.replace('。','．')}};
  const narrow={...other,example:{...other.example!,text:first.example!.text.replace('。','．').normalize('NFKC')}};
  assert.ok(draftCollisionIssues(narrow,[wide],c.catalog).includes('DUPLICATE_SENTENCE'));
@@ -131,7 +131,7 @@ test('borrowed examples never assign or/connective/demonstrative meanings by sub
  for(const title of ['〜か（or）','〜くて / 〜で','これ / それ']){
   const c=context(),s=source(title,'','grammar',[]);s.english=['WRONG_FUNCTION_SENTINEL'];c.catalog.push(s);
   c.catalog.push(source('わからない','わからない'));
-  const sentences=title.includes('か')?['学校で本を勉強したのかはわからない。']:title.includes('くて')?['私は毎日学校で日本語を勉強しています。']:['私は毎日学校でこれを勉強しています。'];
+  const sentences=title.includes('か')?['これは私の学校の本の名前か。']:title.includes('くて')?['この学校の日本語の本で勉強します。']:['私の学校の名前はこれです。'];
   c.examples=sentences.map((text,i)=>({...c.examples[0],id:'borrowed-'+i,text,targetId:c.catalog.find(s=>s.title==='学校')!.id}));
   const pool=candidates(c),rows=pool.questions.filter(q=>q.targetId===s.id);assert.ok(rows.some(q=>q.type==='order'),title+JSON.stringify(pool.rejected));
   for(const q of rows){assert.ok(!q.explanation.includes('WRONG_FUNCTION_SENTINEL'));assert.ok(q.explanation.includes(`Câu: 「${q.sentence}」`));assert.doesNotThrow(()=>validateV2(q,c));}

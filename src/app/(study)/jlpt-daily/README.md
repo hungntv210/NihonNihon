@@ -101,3 +101,34 @@ all 24 reconstructions grouped by star choice. Polite predicates stay together.
 Grammar gaps can use a sourced example linked to an eligible vocabulary item.
 The pinned OpenJLPT N5 grammar JSON has pattern, meaning, formation, examples,
 tags and notes; it supplies no separate similar-expressions list.
+
+## Cổng QA xác định trước verifier
+
+Order chỉ chia tại ranh giới ICU được đối chiếu lại bằng từ, reading, biến thể
+đã có trong từ điển và đơn vị furigana nguồn. Những dữ liệu này chỉ chứng minh
+ranh giới; không cấp phép từ đích, kanji hay nội dung ngoài lộ trình. Cắt trong
+một từ bị `ORDER_WORD_BOUNDARY`. Cửa sổ có ít nhất hai cụm kết thúc bằng trợ từ
+cách hoặc trạng từ tự do bị chặn bảo thủ bằng `ORDER_SCRAMBLING`; không nhờ model
+chọn một thứ tự trong nhiều thứ tự hợp lệ.
+
+Grammar chặn các tập lựa chọn có nguy cơ cảm thán/hỏi lại ở cuối câu
+(`GRAMMAR_COPULA_AMBIGUITY`), から sau đuôi lịch sự cuối câu
+(`GRAMMAR_FINAL_KARA_AMBIGUITY`), だけ trước vị ngữ tồn tại/copula
+(`GRAMMAR_DAKE_AMBIGUITY`), và から trong mệnh đề có 買う
+(`GRAMMAR_BUY_KARA_AMBIGUITY`). Context trạng từ có trạng từ khác làm nhiễu bị
+`CONTEXT_ADVERB_AMBIGUITY`: nguồn hiện chưa có nhóm nghĩa/ngữ cảnh đủ để chứng
+minh một đáp án. Gốc ichidan trần sau を rồi dùng copula phủ định bị
+`SOURCE_INVALID_VERB_COPULA`.
+
+Nghĩa Việt chỉ dùng khi context của đúng dòng selected gắn gloss tiếng Anh và
+từ loại với mục nguồn; nhãn phương ngữ/cổ/hiếm không được dùng. Thiếu bằng chứng
+thì hiện các gloss Anh chuẩn của OpenJLPT, không tự dịch hay đoán sense.
+`TRANSLATION_SENSE_UNPROVEN` chặn lời giải cũ còn dùng sense chưa chứng minh;
+`NO_STANDARD_MEANING` chặn mục chỉ còn gloss có nhãn hạn chế.
+
+Câu nguồn được so với toàn bộ catalog ngữ pháp OpenJLPT, bao gồm cách viết kana
+có reading từ điển. Mẫu có nhãn N3/N2/N1 bị `GRAMMAR_ABOVE_N4`. Cấu trúc hình
+thức chưa có nhãn <=N4 được cách ly bằng `GRAMMAR_LEVEL_UNPROVEN`; không tự gán
+nhãn cấp độ mà nguồn không cung cấp. Các cổng học, bốn lựa chọn, một key, dailyMix,
+hai lượt verifier mù, chống lặp và kiểm nguồn vẫn giữ nguyên. Đây là bộ lọc bảo
+thủ, không phải chứng minh mọi câu còn lại đều đúng: review của tester vẫn bắt buộc.
