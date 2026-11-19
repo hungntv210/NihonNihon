@@ -115,7 +115,8 @@ test('open translation reports in the live DB block the exact Frozen meaning bef
 });
 
 test('same source sentence collides across grammar targets, gaps and order windows in one batch/week',async()=>{
- const c=context();c.examples=[{...c.examples[0],targetId:c.catalog.find(s=>s.kind==='vocab'&&s.title==='学校')!.id,text:'これは私の学校の日本語の本です。'}];const pool=candidates(c),orders=pool.questions.filter(q=>q.type==='order');assert.ok(orders.length>1,JSON.stringify(pool.rejected));
+ const c=context();c.catalog=c.catalog.filter(s=>s.title!=='だけ'); // Keep this collision fixture free of the independently forbidden limiting distractor.
+ c.examples=[{...c.examples[0],targetId:c.catalog.find(s=>s.kind==='vocab'&&s.title==='学校')!.id,text:'これは私の学校の日本語の本です。'}];const pool=candidates(c),orders=pool.questions.filter(q=>q.type==='order');assert.ok(orders.length>1,JSON.stringify(pool.rejected));
  const first=orders[0],other=orders.find(q=>q.stem!==first.stem)!;assert.ok(other);
  assert.throws(()=>validateV2(other,c,[first]),/DUPLICATE_SENTENCE/);
  const grammar=pool.questions.find(q=>q.type==='grammar')!;assert.ok(grammar);assert.throws(()=>validateV2(grammar,c,[first]),/DUPLICATE_SENTENCE/);
@@ -172,4 +173,9 @@ test('multi-question verifier states the full batch count and indexes; a first-q
   assert.equal(payload.expectedResultCount,12);assert.deepEqual(payload.expectedIndexes,Array.from({length:12},(_,i)=>i));assert.deepEqual(payload.sentences.map((s:any)=>s.index),payload.expectedIndexes);
   return [{index:0,grammatical:true,formCorrect:true,natural:true,meaningFits:true,reason:'Fixture incomplete response'}];
  },questions),/INVALID_ISOLATED_QA_INDEX/);assert.equal(calls,2);
+});
+test('model chain exhaustion persists a stopped checkpoint without accepting the pending batch',async()=>{
+ const contexts=Array.from({length:7},(_,day)=>({...context(),date:plusDays('2026-11-16',day)}));let last:any;
+ const run=await runDeterministic(contexts,[],{provider:async()=>{throw Error('DRAFT_MODELS_EXHAUSTED');},checkpoint:r=>{last=r;}});
+ assert.equal(run.status,'stopped:DRAFT_MODELS_EXHAUSTED');assert.equal(last.status,run.status);assert.equal(run.questions.length,0);assert.equal(last.days.length,7);
 });
