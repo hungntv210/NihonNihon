@@ -28,8 +28,9 @@ def ranges(points):
 
 
 def fallback_ranges(available, excluded):
+    """Build compact unicode-range for available - excluded that never overlaps excluded."""
     avail_sorted = sorted(available - excluded)
-    excl_sorted = sorted(excluded - available)
+    excl_sorted = sorted(excluded)
     result = []
     i = 0
     for cp in avail_sorted:
@@ -46,6 +47,15 @@ def fallback_ranges(available, excluded):
     return ','.join(f'U+{a:X}' + (f'-{b:X}' if b != a else '') for a, b in result)
 
 
+def is_cjk(cp):
+    return (
+        0x3400 <= cp <= 0x4DBF
+        or 0x4E00 <= cp <= 0x9FFF
+        or 0xF900 <= cp <= 0xFAFF
+        or 0x20000 <= cp <= 0x2FA1F
+    )
+
+
 def strings(value):
     if isinstance(value, str):
         yield value
@@ -57,7 +67,7 @@ def strings(value):
             yield from strings(item)
 
 
-def build(directory, filename, points):
+def build(directory, filename, points, output_name=None, bucket=None):
     original = directory / (filename + '.ttf')
     font = TTFont(original, recalcTimestamp=False)
     available = set(font.getBestCmap())
@@ -70,16 +80,45 @@ def build(directory, filename, points):
     tool.populate(unicodes=selected)
     tool.subset(font)
     font.flavor = 'woff2'
-    output = directory / (filename + '-Subset.woff2')
+    output = directory / (output_name or (filename + '-Subset.woff2'))
     font.save(output)
     font.close()
     reopened = TTFont(output)
     assert set(reopened.getBestCmap()) >= selected, 'Lost requested font coverage'
     reopened.close()
-    return available, selected, {'source': original.name, 'source_sha256': digest(original),
-                                 'file': output.name, 'sha256': digest(output),
-                                 'source_bytes': original.stat().st_size, 'bytes': output.stat().st_size,
-                                 'unicode_count': len(selected)}
+    entry = {
+        'source': original.name,
+        'source_sha256': digest(original),
+        'file': output.name,
+        'sha256': digest(output),
+        'source_bytes': original.stat().st_size,
+        'bytes': output.stat().st_size,
+        'unicode_count': len(selected),
+    }
+    if bucket is not None:
+        entry['bucket'] = bucket
+    return available, selected, entry
+
+
+def shippori_buckets(corpus, japanese, ui_points, available):
+    """Partition Shippori Mincho codepoints into disjoint Core + JLPT N5..N1 subsets."""
+    target = japanese & available
+    core = ({cp for cp in target if not is_cjk(cp)} | (ui_points & available)) & target
+    seen = set(core)
+    buckets = [('Core', core)]
+    for level in ['n5', 'n4', 'n3', 'n2', 'n1']:
+        level_points = set()
+        for kind in ['kanji', 'vocab', 'grammar']:
+            for file in sorted((corpus / kind).glob(f'*{level}*.json')):
+                level_text = ''.join(strings(json.loads(file.read_text(encoding='utf-8-sig'))))
+                level_points |= set(map(ord, unicodedata.normalize('NFC', level_text)))
+        bucket_points = (level_points & target) - seen
+        if level == 'n1':
+            bucket_points |= target - seen
+        buckets.append((level.upper(), bucket_points))
+        seen |= bucket_points
+    assert seen == target, 'Shippori buckets lost codepoints'
+    return buckets
 
 
 def main():
@@ -111,18 +150,46 @@ def main():
         ('VT323-Regular', 'VT323', '400', latin),
         ('BeVietnamPro-Regular', 'Be Vietnam Pro', '400', latin),
         ('BeVietnamPro-SemiBold', 'Be Vietnam Pro', '600 800', latin),
-        ('ShipporiMincho-Regular', 'Shippori Mincho', '400 700', japanese),
     ]:
         available, selected, result = build(directory, name, points)
         results.append(result)
-        required = '商店街食堂ごはんみどり駅神社学校まちあさひるゆうがたよる今日も少しずつ' if family == 'Shippori Mincho' else 'ỘỆỜỮỸĐ'
+        required = 'ỘỆỜỮỸĐ'
         if family == 'VT323':
             required += ''.join(ch for ch in ui_text if 0xC0 <= ord(ch) <= 0x024F or 0x1E00 <= ord(ch) <= 0x1EFF)
-        assert set(map(ord, required)) <= selected, 'Missing required Vietnamese/Japanese specimen'
-        # The full original handles future imports and characters outside the public corpus
-        # while excluding UI characters missing from the TTF so browsers fall back to system fonts.
-        css.append(f"@font-face{{font-family:'{family}';src:url('/fonts/{name}.ttf') format('truetype');font-weight:{weight};font-style:normal;font-display:swap;unicode-range:{fallback_ranges(available, ui_points)};}}")
+        assert set(map(ord, required)) <= selected, 'Missing required Vietnamese specimen'
+        # The full original handles future imports and characters outside the subset
+        # while staying strictly disjoint from WOFF2 subsets and missing UI characters.
+        css.append(f"@font-face{{font-family:'{family}';src:url('/fonts/{name}.ttf') format('truetype');font-weight:{weight};font-style:normal;font-display:swap;unicode-range:{fallback_ranges(available, ui_points | selected)};}}")
         css.append(f"@font-face{{font-family:'{family}';src:url('/fonts/{result['file']}') format('woff2');font-weight:{weight};font-style:normal;font-display:swap;unicode-range:{ranges(selected)};}}")
+
+    shippori_name = 'ShipporiMincho-Regular'
+    shippori_family = 'Shippori Mincho'
+    shippori_weight = '400 700'
+    shippori_font = TTFont(directory / (shippori_name + '.ttf'), recalcTimestamp=False)
+    shippori_available = set(shippori_font.getBestCmap())
+    shippori_font.close()
+    buckets = shippori_buckets(args.corpus, japanese, ui_points, shippori_available)
+    shippori_selected_all = set()
+    shippori_rules = []
+    for label, bucket_points in buckets:
+        if not bucket_points:
+            continue
+        output_name = f'{shippori_name}-{label}-Subset.woff2'
+        _, selected, result = build(directory, shippori_name, bucket_points, output_name=output_name, bucket=label)
+        assert selected.isdisjoint(shippori_selected_all), f'Overlapping Shippori bucket: {label}'
+        shippori_selected_all |= selected
+        results.append(result)
+        shippori_rules.append(
+            f"@font-face{{font-family:'{shippori_family}';src:url('/fonts/{result['file']}') format('woff2');font-weight:{shippori_weight};font-style:normal;font-display:swap;unicode-range:{ranges(selected)};}}"
+        )
+    required_ja = '商店街食堂ごはんみどり駅神社学校まちあさひるゆうがたよる今日も少しずつ働返直骨'
+    assert set(map(ord, required_ja)) <= shippori_selected_all, 'Missing required Japanese specimen'
+    assert set(map(ord, required_ja)) <= buckets[0][1], 'Required UI/specimen Japanese missing from Core bucket'
+    css.append(
+        f"@font-face{{font-family:'{shippori_family}';src:url('/fonts/{shippori_name}.ttf') format('truetype');font-weight:{shippori_weight};font-style:normal;font-display:swap;unicode-range:{fallback_ranges(shippori_available, ui_points | shippori_selected_all)};}}"
+    )
+    css.extend(shippori_rules)
+
     generated_css = '\n'.join(css) + '\n'
     (directory / 'subsets.css').write_text(generated_css, encoding='utf-8')
     tokens = root / 'src/styles/tokens.css'
@@ -133,7 +200,7 @@ def main():
                       + generated_css + ':root {' + body, encoding='utf-8')
     manifest = {'generator': 'fontTools', 'corpus': 'Public OpenJLPT JSON, all available levels',
                 'corpus_sha256': hashlib.sha256(''.join(digest(f) for f in files).encode()).hexdigest(),
-                'fonts': results, 'fallback': 'Unmodified original local TTF for characters outside subsets'}
+                'fonts': results, 'fallback': 'Unmodified original local TTF for characters outside subsets (strictly disjoint unicode-range)'}
     (directory / 'subsets.json').write_text(json.dumps(manifest, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
     print(json.dumps({'fonts': results, 'specimens': 'PASS'}, ensure_ascii=False))
 

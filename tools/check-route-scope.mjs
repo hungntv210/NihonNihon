@@ -27,6 +27,8 @@ ownership.set('mobile-perf', ['tools/perf-mobile.mjs', 'package.json', 'tools/ch
 ownership.set('naetoru/mobile-perf', ownership.get('mobile-perf'));
 ownership.set('font-perf', ['tools/subset-fonts.py', 'public/fonts/', 'src/styles/tokens.css', 'src/components/pixel-scenes/engine.js', 'tests/pixel-scenes.test.ts', 'tools/check-route-scope.mjs']);
 ownership.set('naetoru/font-perf', ownership.get('font-perf'));
+ownership.set('font-split', ['tools/subset-fonts.py', 'public/fonts/', 'src/styles/tokens.css', 'tests/font-split.test.ts', 'tools/check-route-scope.mjs']);
+ownership.set('naetoru/font-split', ownership.get('font-split'));
 ownership.set('roadmap-perf', ['src/components/pixel-scenes/roadmap-journey.js', 'src/components/pixel-scenes/scene.module.css', 'src/app/(study)/today-roadmap/', 'tests/pixel-scenes-next.test.ts', 'tools/check-route-scope.mjs']);
 ownership.set('naetoru/roadmap-perf', ownership.get('roadmap-perf'));
 ownership.set('ui-motion', ['src/components/motion/', 'src/components/route-presentation.tsx', 'src/components/nav.tsx', 'src/components/add-to-review.tsx', 'src/components/route-heading.tsx', 'src/components/pixel-scenes/', 'src/app/layout.tsx', 'src/app/(study)/srs/page.tsx', 'src/app/(study)/srs/review-session.tsx', 'src/app/(study)/jlpt-daily/practice.tsx', 'src/app/(study)/shadowing/player.tsx', 'src/app/(study)/shadowing/voice-meter.tsx', 'src/app/(study)/common-tools/progress/page.tsx', 'src/app/(study)/today-roadmap/today.tsx', 'src/app/(study)/appearance/', 'tests/pixel-scenes.test.ts', 'tests/ui-motion.test.ts', 'tools/check-route-scope.mjs']);
