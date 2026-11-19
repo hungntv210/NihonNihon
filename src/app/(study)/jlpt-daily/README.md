@@ -48,6 +48,9 @@ văn; chỉ đổi kanji chưa học sang kana khi có reading nguồn, không �
 Verifier chỉ nhận stem/lựa chọn, không thấy key/lời giải/bằng chứng nhiễu.
 Hai lượt: giải/chấm tất cả lựa chọn, rồi chấm mỗi lựa chọn riêng. Mơ hồ, khác
 key, sai ngữ pháp/thể/kiến thức/tự nhiên đều loại, lưu audit, không sửa câu.
+Mỗi lượt gửi rõ expectedResultCount và danh sách expectedIndexes để model
+trả đủ cả batch, mỗi câu có bốn optionGrades. Thiếu/thừa/trùng chỉ số vẫn dừng
+và lưu checkpoint; không nhận một phần phản hồi và không tự gọi lại để che lỗi.
 Code sinh xác định nên verifier không phải model tác giả. Verifier vẫn có thể
 sai: tất cả là nháp chờ tester, không tự import.
 
