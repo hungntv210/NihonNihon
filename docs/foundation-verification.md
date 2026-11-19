@@ -808,3 +808,10 @@ Both blind passes now state expectedResultCount and expectedIndexes, without dis
 Checked implementation: `eb9caeaf00bbf8b1896aba3e52c3c14f641e337c`. Windows local environment, Node v24.10.0; start 2026-11-19T11:45:16.945+07:00, end 2026-11-19T11:46:43.747+07:00. Complete `npm run check`: typecheck PASS; prototype tests 22/22, core/route tests 195/195; production build PASS; app gate PASS (16 checks). Authenticated route browser check PASS (2026-11-19T11:48:40.718+07:00?2026-11-19T11:48:55.129+07:00); no external API. Route scope guard against origin/master PASS.
 
 Adds deterministic word-boundary, scrambling, ambiguous distractor, restricted-sense and grammar-level rejection with authored fixtures. Existing collision and permutation assertions retained; the former free-argument order fixture is explicitly rejected. Full checks ran on the implementation commit above; this append-only audit is the sole subsequent public change. No private bank, source questions or raw logs committed.
+
+
+## Pokabu JLPT hardening 2 and overload fallback — 2026-11-19
+
+Checked implementation: `c68ee46ec188363a3e8a9aec16f22ce2c9f3e142`. Complete `npm run check` in an isolated temporary worktree (Windows, Node v24.10.0), start 2026-11-19T12:52:16.885+07:00, end 2026-11-19T12:53:47.793+07:00: typecheck PASS; prototype 22/22, core/route 206/206; production build PASS; app gate PASS (16 checks). Authenticated JLPT browser check PASS from 2026-11-19T12:54:09.578+07:00 to 2026-11-19T12:54:23.238+07:00. Scope against origin/master PASS. No real generation or import; provider tests use mocked responses and authored questions.
+
+Tests cover auxiliary/no-ka cuts, limiting distractors, false upper-level matches, 503/429 and repeated timeout routing, shared 200-call budget, exhausted-chain checkpoint, cross-verifier rejection and actual provenance. Updated retry assertions reflect the newly authorized overload-switch policy; collision assertions remain intact with an eligible authored fixture. This append-only audit is the only public change after the checked implementation.
