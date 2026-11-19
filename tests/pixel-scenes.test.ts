@@ -1,4 +1,4 @@
-import test from 'node:test';import assert from 'node:assert/strict';import fs from 'node:fs';import path from 'node:path';import {gzipSync} from 'node:zlib';import {randomUUID} from 'node:crypto';
+import test from 'node:test';import assert from 'node:assert/strict';import fs from 'node:fs';import path from 'node:path';import {gzipSync} from 'node:zlib';import {randomUUID,createHash} from 'node:crypto';
 import {sceneClock,shadowProgress} from '../src/components/pixel-scenes/model.ts';import {learnedKanjiCount} from '../src/components/pixel-scenes/data.ts';import {fixture} from './helpers.ts';import {enqueueCard} from '../src/core/review.ts';
 test('scene clock uses Vietnam date/time including UTC month crossover and four real seasons',()=>{
  assert.equal(sceneClock(new Date('2026-11-15T22:00:00Z')).date,'2026-11-16');
@@ -27,4 +27,45 @@ test('single koi remains connected through tail frames and changes of direction'
 
 test('pond keeps two residents, caps small due fish at ten and only small fish depart',async()=>{
  const def=(await import('../src/components/pixel-scenes/review-koi.js')).default as any;const state={params:{dueCards:0},seconds:0,season:'winter',weather:'clear'};const noop=()=>{};let reduced=false;const scene=def.create({state,reduced:()=>reduced,draw:{rect:noop,line:noop,ellipse:noop,polygon:noop},random:()=>()=>.5,scheduled:()=>false,creature:noop,sprite:noop,actor:noop});scene.normalize(state.params);scene.frame(0,true);assert.equal(scene.stats().fishCount,2);state.params.dueCards=50;scene.normalize(state.params);assert.equal(state.params.dueCards,10);assert.equal(scene.stats().fishCount,12);state.params.dueCards=0;scene.normalize(state.params);assert.equal(scene.stats().dueFishCount,10);state.seconds=4;scene.frame(4,false);assert.equal(scene.stats().fishCount,2);assert.equal(scene.stats().residentCount,2);state.params.dueCards=3;scene.normalize(state.params);reduced=true;state.params.dueCards=0;scene.normalize(state.params);scene.frame(4,true);assert.equal(scene.stats().fishCount,2);
+});
+
+test('engine builds static layers exactly once on mount for portrait and standard scenes with identical canvas pixels',async()=>{
+ const {SceneEngine}=await import('../src/components/pixel-scenes/engine.js');
+ const loginShoji=(await import('../src/components/pixel-scenes/login-shoji.js')).default;
+ const homeTokyo=(await import('../src/components/pixel-scenes/home-tokyo.js')).default;
+ const prev={innerWidth:(globalThis as any).innerWidth,matchMedia:(globalThis as any).matchMedia,ResizeObserver:(globalThis as any).ResizeObserver,IntersectionObserver:(globalThis as any).IntersectionObserver,requestAnimationFrame:(globalThis as any).requestAnimationFrame,cancelAnimationFrame:(globalThis as any).cancelAnimationFrame,window:(globalThis as any).window,document:(globalThis as any).document};
+ try{
+  const makeMockCanvas=(w=384,h=216)=>{
+   let width=w,height=h,buf=new Uint8Array(width*height*4),tx=0,ty=0;
+   const stack:Array<{fillStyle:string;globalAlpha:number;tx:number;ty:number}>=[];
+   const parseHex=(hex:string)=>{const s=String(hex||'#000000').replace('#',''),v=s.length===3?s.split('').map(c=>c+c).join(''):s,n=parseInt(v,16)||0;return[(n>>16)&255,(n>>8)&255,n&255,255];};
+   const ctx={fillStyle:'#000000',globalAlpha:1,save(){stack.push({fillStyle:this.fillStyle,globalAlpha:this.globalAlpha,tx,ty});},restore(){const s=stack.pop();if(s){this.fillStyle=s.fillStyle;this.globalAlpha=s.globalAlpha;tx=s.tx;ty=s.ty;}},translate(dx:number,dy:number){tx+=dx;ty+=dy;},beginPath(){},moveTo(){},lineTo(){},closePath(){},fill(){},clearRect(x:number,y:number,cw:number,ch:number){const x0=Math.max(0,Math.floor(x+tx)),y0=Math.max(0,Math.floor(y+ty)),x1=Math.min(width,Math.ceil(x+tx+cw)),y1=Math.min(height,Math.ceil(y+ty+ch));for(let yy=y0;yy<y1;yy++)for(let xx=x0;xx<x1;xx++)buf.fill(0,(yy*width+xx)*4,(yy*width+xx)*4+4);},fillRect(x:number,y:number,cw:number,ch:number){const [r,g,b,a]=parseHex(this.fillStyle),x0=Math.max(0,Math.floor(x+tx)),y0=Math.max(0,Math.floor(y+ty)),x1=Math.min(width,Math.ceil(x+tx+cw)),y1=Math.min(height,Math.ceil(y+ty+ch));for(let yy=y0;yy<y1;yy++)for(let xx=x0;xx<x1;xx++){const idx=(yy*width+xx)*4;buf[idx]=r;buf[idx+1]=g;buf[idx+2]=b;buf[idx+3]=Math.round(a*this.globalAlpha);}}};
+   return{className:'',style:{},get width(){return width;},set width(v){width=v;buf=new Uint8Array(width*height*4);tx=0;ty=0;stack.length=0;},get height(){return height;},set height(v){height=v;buf=new Uint8Array(width*height*4);tx=0;ty=0;stack.length=0;},getContext(){return ctx;},hash(){return createHash('sha256').update(buf).digest('hex');}};
+  };
+  for(const [def,expectedHeight]of [[loginShoji,422],[homeTokyo,216]]as const){
+   let roCallback:(()=>void)|null=null;
+   (globalThis as any).innerWidth=390;
+   (globalThis as any).matchMedia=(q:string)=>({matches:q.includes('orientation: portrait')||q.includes('max-width'),addEventListener(){},removeEventListener(){}});
+   (globalThis as any).ResizeObserver=class{constructor(cb:()=>void){roCallback=cb;}observe(){}disconnect(){}};
+   (globalThis as any).IntersectionObserver=class{observe(){}disconnect(){}};
+   (globalThis as any).requestAnimationFrame=()=>1;
+   (globalThis as any).cancelAnimationFrame=()=>{};
+   (globalThis as any).window={addEventListener(){},removeEventListener(){}};
+   (globalThis as any).document={hidden:false,addEventListener(){},removeEventListener(){},createElement(tag:string){return tag==='canvas'?makeMockCanvas():{className:'',style:{},children:[]as unknown[],append(c:unknown){this.children.push(c);},remove(){}};}};
+   const host={clientWidth:390,parentElement:{clientHeight:844},style:{},children:[]as unknown[],append(c:unknown){this.children.push(c);},getBoundingClientRect:()=>({top:130})};
+   const engine=new (SceneEngine as any).Engine(host,def,{time:'day',season:'autumn',date:'2026-11-19',weather:'clear',motion:false});
+   assert.equal(engine.stats().staticBuilds,1);
+   assert.deepEqual(engine.stats().native,[384,expectedHeight]);
+   if(roCallback)(roCallback as ()=>void)();
+   assert.equal(engine.stats().staticBuilds,1);
+   const hashes=[...engine.statics,...engine.dynamics].map((c:any)=>c.hash());
+   engine.rebuild();
+   assert.equal(engine.stats().staticBuilds,2);
+   const rebuiltHashes=[...engine.statics,...engine.dynamics].map((c:any)=>c.hash());
+   assert.deepEqual(hashes,rebuiltHashes);
+   engine.destroy();
+  }
+ }finally{
+  Object.assign(globalThis,prev);
+ }
 });

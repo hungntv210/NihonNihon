@@ -27,6 +27,25 @@ def ranges(points):
     return ','.join(f'U+{a:X}' + (f'-{b:X}' if b != a else '') for a, b in result)
 
 
+def fallback_ranges(available, excluded):
+    avail_sorted = sorted(available - excluded)
+    excl_sorted = sorted(excluded - available)
+    result = []
+    i = 0
+    for cp in avail_sorted:
+        if not result:
+            result.append([cp, cp])
+            continue
+        prev_end = result[-1][1]
+        while i < len(excl_sorted) and excl_sorted[i] <= prev_end:
+            i += 1
+        if i < len(excl_sorted) and excl_sorted[i] < cp:
+            result.append([cp, cp])
+        else:
+            result[-1][1] = cp
+    return ','.join(f'U+{a:X}' + (f'-{b:X}' if b != a else '') for a, b in result)
+
+
 def strings(value):
     if isinstance(value, str):
         yield value
@@ -57,10 +76,10 @@ def build(directory, filename, points):
     reopened = TTFont(output)
     assert set(reopened.getBestCmap()) >= selected, 'Lost requested font coverage'
     reopened.close()
-    return selected, {'source': original.name, 'source_sha256': digest(original),
-                      'file': output.name, 'sha256': digest(output),
-                      'source_bytes': original.stat().st_size, 'bytes': output.stat().st_size,
-                      'unicode_count': len(selected)}
+    return available, selected, {'source': original.name, 'source_sha256': digest(original),
+                                 'file': output.name, 'sha256': digest(output),
+                                 'source_bytes': original.stat().st_size, 'bytes': output.stat().st_size,
+                                 'unicode_count': len(selected)}
 
 
 def main():
@@ -74,10 +93,19 @@ def main():
         parser.error('--corpus must be the public OpenJLPT data/json directory')
     text = ''.join(s for f in files for s in strings(json.loads(f.read_text(encoding='utf-8-sig'))))
     # UI and the original scene are public source, never learner imports or private media.
-    ui_text = unicodedata.normalize('NFC', ''.join(f.read_text(encoding='utf-8-sig') for f in sorted((root / 'src').rglob('*')) if f.suffix in ['.ts', '.tsx']))
+    ui_text = unicodedata.normalize(
+        'NFC',
+        ''.join(
+            f.read_text(encoding='utf-8-sig')
+            for f in sorted((root / 'src').rglob('*'))
+            if f.is_file() and f.suffix in ['.ts', '.tsx', '.js', '.jsx', '.css', '.json']
+        ),
+    )
+    ui_points = set(map(ord, ui_text))
     latin = set(range(0x20, 0x250)) | set(range(0x300, 0x370)) | set(range(0x1E00, 0x1F00)) | set(range(0x2000, 0x2070))
+    latin |= ui_points
     japanese = set(map(ord, unicodedata.normalize('NFC', text))) | set(range(0x20, 0x7F)) | set(range(0x3000, 0x3100)) | set(range(0xFF00, 0xFFF0))
-    japanese |= set(map(ord, ui_text))
+    japanese |= ui_points
     css, results = [], []
     for name, family, weight, points in [
         ('VT323-Regular', 'VT323', '400', latin),
@@ -85,14 +113,15 @@ def main():
         ('BeVietnamPro-SemiBold', 'Be Vietnam Pro', '600 800', latin),
         ('ShipporiMincho-Regular', 'Shippori Mincho', '400 700', japanese),
     ]:
-        selected, result = build(directory, name, points)
+        available, selected, result = build(directory, name, points)
         results.append(result)
         required = '商店街食堂ごはんみどり駅神社学校まちあさひるゆうがたよる今日も少しずつ' if family == 'Shippori Mincho' else 'ỘỆỜỮỸĐ'
         if family == 'VT323':
             required += ''.join(ch for ch in ui_text if 0xC0 <= ord(ch) <= 0x024F or 0x1E00 <= ord(ch) <= 0x1EFF)
         assert set(map(ord, required)) <= selected, 'Missing required Vietnamese/Japanese specimen'
-        # The full original handles future imports and characters outside the public corpus.
-        css.append(f"@font-face{{font-family:'{family}';src:url('/fonts/{name}.ttf') format('truetype');font-weight:{weight};font-style:normal;font-display:swap;}}")
+        # The full original handles future imports and characters outside the public corpus
+        # while excluding UI characters missing from the TTF so browsers fall back to system fonts.
+        css.append(f"@font-face{{font-family:'{family}';src:url('/fonts/{name}.ttf') format('truetype');font-weight:{weight};font-style:normal;font-display:swap;unicode-range:{fallback_ranges(available, ui_points)};}}")
         css.append(f"@font-face{{font-family:'{family}';src:url('/fonts/{result['file']}') format('woff2');font-weight:{weight};font-style:normal;font-display:swap;unicode-range:{ranges(selected)};}}")
     generated_css = '\n'.join(css) + '\n'
     (directory / 'subsets.css').write_text(generated_css, encoding='utf-8')
