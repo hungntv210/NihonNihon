@@ -25,7 +25,7 @@ export async function runDeterministic(contexts:V2Context[],history:Question[],o
    if(!selected.length)break;
    try{
     const audits=options.noVerifier?selected.map(q=>({id:q.id,accepted:true,reason:'',fixtureOnly:true})):await verifyDeterministic(options.provider!,selected);
-    for(const q of selected){increment(run.statistics.attempted,q.type);const audit=audits.find(a=>a.id===q.id)!;run.audit[q.id]=audit;if(audit.accepted){q.position=baseline.length+existing.length;existing.push(q);run.questions.push(q);increment(run.statistics.accepted,q.type);}else{run.rejected.push({id:q.id,date:c.date,type:q.type,reason:audit.reason});increment(run.statistics.rejected,audit.reason);}}
+    for(const q of selected){increment(run.statistics.attempted,q.type);const audit=audits.find(a=>a.id===q.id)!;run.audit[q.id]=audit;if(audit.accepted){if('provenance' in audit)q.provenance=audit.provenance;q.position=baseline.length+existing.length;existing.push(q);run.questions.push(q);increment(run.statistics.accepted,q.type);}else{run.rejected.push({id:q.id,date:c.date,type:q.type,reason:audit.reason});increment(run.statistics.rejected,audit.reason);}}
    }catch(e){for(const q of selected)used.delete(q.id);run.status='stopped:'+(e instanceof Error?e.message.split(':')[0]:'VERIFIER_ERROR');checkpoint();return run;}
    checkpoint();
   }

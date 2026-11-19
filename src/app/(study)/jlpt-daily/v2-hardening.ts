@@ -27,6 +27,10 @@ export function orderBoundaries(text:string,c:V2Context,example?:Example){
  let cache=boundariesCache.get(c);if(!cache){cache=new Map();boundariesCache.set(c,cache);}const key=text+'\0'+(example?.notation??'');const saved=cache.get(key);if(saved)return saved;
  const boundaries=new Set([0,text.length,...[...new Intl.Segmenter('ja',{granularity:'word'}).segment(text)].flatMap(t=>[t.index,t.index+t.segment.length])]);
  const protectedSpans:{start:number;end:number}[]=[],protect=(start:number,end:number)=>{protectedSpans.push({start,end});boundaries.add(start);boundaries.add(end);};
+ // ICU may split an auxiliary or embedded question; order fragments must not.
+ for(const form of ['でしょう','だろう','でした','です','ではありませんでした','ではありません','じゃありませんでした','じゃありません','ませんでした','ます','ました','ません','ましょう','のです','んです','のかどうか','のかは','のか']){
+  let at=text.indexOf(form);while(at>=0){protect(at,at+form.length);at=text.indexOf(form,at+1);}
+ }
  for(let start=0;start<text.length;start++)for(const word of index(c).words.get(text[start])??[])if(text.startsWith(word,start))protect(start,start+word.length);
  if(example?.notation&&example.notation.replace(/\{([^{}|]+)\|([^{}|]+)\}/gu,'$1')===example.text){
   let rendered='',from=0;const spans:{start:number;end:number}[]=[];
@@ -43,7 +47,7 @@ const casePhrase=(text:string)=>{
  const value=text.replace(/[、，\s]/gu,'');
  return /(?:を|で|に|が|へ|と|から)$/u.test(value);
 };
-const grammarCache=new WeakMap<V2Context,{surface:string;level:string}[]>();
+const grammarCache=new WeakMap<V2Context,{id:string;surface:string;level:string}[]>();
 function upperGrammar(c:V2Context){
  let rows=grammarCache.get(c);if(rows)return rows;
  const grammar=(c.grammarCatalog??c.catalog).filter(s=>s.kind==='grammar'&&['N1','N2','N3'].includes(s.level));
@@ -52,8 +56,40 @@ function upperGrammar(c:V2Context){
   const level=grammar.find(s=>s.id===form.id)!.level;
   if(form.surface.length<2||/[\p{Script=Latin}〜～~+()[\]（）]/u.test(form.surface))return [];
   let kana=form.surface;for(const word of conversions)if(kana.includes(word.title))kana=kana.replaceAll(word.title,word.reading!);
-  return [...new Set([form.surface,kana])].map(surface=>({surface,level}));
+  return [...new Set([form.surface,kana])].map(surface=>({id:form.id,surface,level}));
  });grammarCache.set(c,rows);return rows;
+}
+const lowerCache=new WeakMap<V2Context,ReturnType<typeof learnedGrammarForms>>();
+function lowerGrammar(c:V2Context){
+ let rows=lowerCache.get(c);if(rows)return rows;
+ rows=learnedGrammarForms((c.grammarCatalog??c.catalog).filter(s=>['N4','N5'].includes(s.level))).flatMap(f=>{
+  const forms=[f.surface];for(const [base,variants]of [['する',['します','しました','した','しています']],['なる',['なります','なりました','なった']],['ある',['あります','ありました','あった']],['できる',['できます','できました','できた']]] as const)if(f.surface.endsWith(base))for(const ending of variants)forms.push(f.surface.slice(0,-base.length)+ending);
+  return forms.map(surface=>({...f,surface}));
+ });lowerCache.set(c,rows);return rows;
+}
+// Source labels that share a surface need functional evidence, not a substring veto.
+export function grammarLevelMatches(sentence:string,c:V2Context,example?:Example){
+ const edges=orderBoundaries(sentence,c,example),ends=new Set([...new Intl.Segmenter('ja',{granularity:'word'}).segment(sentence)].map(t=>t.index+t.segment.length)),lower=lowerGrammar(c);
+ const attested=(id:string)=>example?.targetId===id&&c.examples.some(e=>e.id===example.id&&e.text===example.text&&e.targetId===id);
+ const lowerSpans=lower.filter(f=>f.surface.length>1&&!/[\p{Script=Latin}〜～~+()[\]（）]/u.test(f.surface)).flatMap(f=>{
+  const spans=[];let at=sentence.indexOf(f.surface);while(at>=0){if(edges.has(at)&&ends.has(at+f.surface.length))spans.push({...f,start:at,end:at+f.surface.length});at=sentence.indexOf(f.surface,at+1);}return spans;
+ });
+ return upperGrammar(c).flatMap(g=>{
+  const matches:{surface:string;level:string;uncertain:boolean}[]=[];let at=sentence.indexOf(g.surface);
+  while(at>=0){const end=at+g.surface.length,before=sentence.slice(0,at),after=sentence.slice(end);if(edges.has(at)){
+   const covers=lowerSpans.filter(l=>l.start<=at&&l.end>=end),direct=attested(g.id);
+   let provenLower=!direct&&covers.some(l=>l.end-l.start>g.surface.length||attested(l.id));
+   const shared=lower.some(l=>l.surface===g.surface);
+   if(!direct&&shared){
+    if(g.surface==='こと'&&/^(?:が|を|は|も|に|の)/u.test(after))provenLower=true;
+    if(g.surface==='まで'&&((c.boundaryWords??c.dictionary).some(w=>w.kind==='vocab'&&w.pos.includes('n-t')&&[w.title,w.reading??''].some(v=>v&&before.endsWith(v)))||/[0-9０-９一二三四五六七八九十百]+(?:時|分|日|月|年|時間)$/u.test(before)))provenLower=true;
+    if(['くらい','ぐらい'].includes(g.surface)&&/[0-9０-９一二三四五六七八九十百]+(?:時間|時|分|日|月|年|人|個|本|枚|円|回)?$/u.test(before))provenLower=true;
+   }
+   if(!direct&&g.surface==='あまり'&&lower.some(l=>l.surface==='あまり〜ない')&&/(?:^|[はがを])$/u.test(before)&&/^[^。？！!?]*(?:ない|ません)/u.test(after))provenLower=true;
+   if(!provenLower)matches.push({surface:g.surface,level:g.level,uncertain:!direct&&shared});
+  }at=sentence.indexOf(g.surface,at+1);}
+  return matches;
+ });
 }
 export function hardeningIssues(q:V2Question,c:V2Context){
  const issues:string[]=[],source=c.catalog.find(s=>s.id===q.targetId);if(!source)return issues;
@@ -62,8 +98,9 @@ export function hardeningIssues(q:V2Question,c:V2Context){
  const sentence=q.sentence??'';
  if(sentence){
   if(index(c).verbStems.some(stem=>sentence.includes('を'+stem+'じゃ')||sentence.includes('を'+stem+'では')))issues.push('SOURCE_INVALID_VERB_COPULA');
-  const starts=orderBoundaries(sentence,c,q.example);
-  if(upperGrammar(c).some(g=>{let at=sentence.indexOf(g.surface);while(at>=0){if(starts.has(at))return true;at=sentence.indexOf(g.surface,at+1);}return false;}))issues.push('GRAMMAR_ABOVE_N4');
+  const matches=grammarLevelMatches(sentence,c,q.example);
+  if(matches.some(g=>!g.uncertain))issues.push('GRAMMAR_ABOVE_N4');
+  if(matches.some(g=>g.uncertain))issues.push('GRAMMAR_LEVEL_UNPROVEN');
   if(sentence.includes('である')&&!learnedGrammarForms((c.grammarCatalog??c.catalog).filter(s=>s.kind==='grammar'&&['N5','N4'].includes(s.level))).some(form=>form.surface==='である'))issues.push('GRAMMAR_LEVEL_UNPROVEN');
  }
  if(q.type==='order'&&Array.isArray(q.order)&&q.order.length===4&&q.order.every(i=>Number.isInteger(i)&&i>=0&&i<4)){
@@ -77,6 +114,7 @@ export function hardeningIssues(q:V2Question,c:V2Context){
  }
  if(q.type==='grammar'){
   const hole=q.stem.indexOf('＿'),before=q.stem.slice(0,hole),after=q.stem.slice(hole).replace(/^＿+/u,'');
+  if(/[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}]/u.test(after)&&q.choices.some((v,i)=>i!==q.correct&&['だけ','も','しか'].includes(v)))issues.push('GRAMMAR_LIMITING_PARTICLE_AMBIGUITY');
   if(/^[かねよの。？！!?\s]*$/u.test(after)&&q.choices.some((v,i)=>i!==q.correct&&['じゃない','でした','でしょう'].includes(v)))issues.push('GRAMMAR_COPULA_AMBIGUITY');
   if(q.choices.includes('から')&&/(?:ます|ました|ません)$/u.test(before)&&/^[。？！!?\s]*$/u.test(after))issues.push('GRAMMAR_FINAL_KARA_AMBIGUITY');
   if(q.choices.includes('だけ')&&/^(?:ある|あります|です|だ)[。？！!?\s]*$/u.test(after))issues.push('GRAMMAR_DAKE_AMBIGUITY');

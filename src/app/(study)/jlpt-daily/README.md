@@ -132,3 +132,34 @@ thức chưa có nhãn <=N4 được cách ly bằng `GRAMMAR_LEVEL_UNPROVEN`; k
 nhãn cấp độ mà nguồn không cung cấp. Các cổng học, bốn lựa chọn, một key, dailyMix,
 hai lượt verifier mù, chống lặp và kiểm nguồn vẫn giữ nguyên. Đây là bộ lọc bảo
 thủ, không phải chứng minh mọi câu còn lại đều đúng: review của tester vẫn bắt buộc.
+# Hardening 2 and model overload policy
+
+Order fragments keep auxiliaries, polite/negative inflections and embedded
+`のか` chains intact. Grammar tasks with limiting-particle distractors before a
+predicate are conservatively rejected. Upper-level grammar matching distinguishes
+source-attested N4/N5 functions and longer forms from ambiguous shared surfaces;
+an unresolved shared surface remains `GRAMMAR_LEVEL_UNPROVEN`, never an automatic
+N4 approval. Vocabulary, character, source, uniqueness and both blind QA gates
+still apply after this matcher.
+
+Offline draft CLI discovers `generateContent` models with the supplied key and
+intersects them with the reviewed order: Gemini 3.6 Flash (owner-selected primary),
+Gemini 4 Carbon, Argon, Hydrogen, then Gemini 3.8 Flash. This is a quality policy,
+not a Japanese QA benchmark. Missing fallback models are omitted. Lite/nano models
+cannot enter the chain. HTTP 503/429 switches immediately; repeated timeout or
+network failure gets one existing 30-second retry before switching. Schema/QA and
+local budget failures never trigger fallback. Exhaustion saves a stopped checkpoint.
+The daily ceiling is 200 reservations across **all** models in the shared ledger
+(including retries and cross-verification); switching models does not reset it.
+Existing lower daily budgets and timeouts are preserved. Model-list metadata
+requests are recorded separately from generation-call reservations.
+
+V2 question generation is deterministic, so provenance records
+`generationModel=deterministic`, the actual initial solver model, every successful
+QA round, the final two verification models, and switch reasons. If either initial
+QA pass uses fallback, the full solver + isolated pair is repeated with the initial
+solver model excluded. Both final passes must use another actual model. A question
+with AI-generation provenance also excludes its generator. Missing cross-model
+verification rejects the question; overload exhaustion stops with a checkpoint.
+Accepted fallback questions are marked FALLBACK in private HTML and counted by
+date and type in HTML/statistics for 100% tester review. This does not authorize import.

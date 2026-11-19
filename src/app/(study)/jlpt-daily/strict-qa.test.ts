@@ -16,7 +16,7 @@ test('independent solve hides key/explanation and rejects wrong solve, unnatural
 });
 test('verifier always uses a different actual model, even after generation fallback',async t=>{
  const dir=fs.mkdtempSync(path.join(os.tmpdir(),'jlpt-independent-'));t.after(()=>fs.rmSync(dir,{recursive:true,force:true}));
- const base={requestsPerMinute:60000000,dailyBudget:400,timeoutMs:1000,maxOutputTokens:100};const profiles=['gemini-3.5-flash-lite','gemini-3.1-flash-lite'].map(model=>({...base,model,verifierModel:model}));let calls=0;const actual:string[]=[];
- const provider=independentProvider(profiles,path.join(dir,'ledger.json'),'fake',{sleep:async()=>{},fetcher:async url=>{calls++;return calls<=3?new Response('busy',{status:503}):Response.json({candidates:[{finishReason:'STOP',content:{parts:[{text:'[]'}]}}]});},onAttempt:e=>{if(e.status==='ok')actual.push(e.model);}});
- await provider('generate','',{},{});await provider('verify','',{},{});assert.deepEqual(actual,['gemini-3.1-flash-lite','gemini-3.5-flash-lite']);
+ const base={requestsPerMinute:60000000,dailyBudget:200,timeoutMs:1000,maxOutputTokens:100};const profiles=['gemini-3.6-flash','gemini-4-carbon'].map(model=>({...base,model,verifierModel:model}));let calls=0;const actual:string[]=[];
+ const provider=independentProvider(profiles,path.join(dir,'ledger.json'),'fake',{sleep:async()=>{},fetcher:async url=>{calls++;return calls===1?new Response('busy',{status:503}):Response.json({candidates:[{finishReason:'STOP',content:{parts:[{text:'[]'}]}}]});},onAttempt:e=>{if(e.status==='ok')actual.push(e.model);}});
+ await provider('generate','',{},{});await provider('verify','',{},{});assert.deepEqual(actual,['gemini-4-carbon','gemini-3.6-flash']);
 });

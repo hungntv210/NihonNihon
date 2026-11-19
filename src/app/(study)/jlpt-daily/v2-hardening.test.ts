@@ -1,5 +1,5 @@
 import test from 'node:test';import assert from 'node:assert/strict';
-import {hardeningIssues,orderBoundaries,provenMeaning,standardMeanings,translationSenseEvidence} from './v2-hardening.ts';
+import {hardeningIssues,orderBoundaries,provenMeaning,standardMeanings,translationSenseEvidence,grammarLevelMatches} from './v2-hardening.ts';
 import {phrases} from './deterministic.ts';
 import type {V2Context,V2Source} from './v2-data.ts';import type {V2Question} from './deterministic.ts';
 // All sentences and records here are authored fixtures, not bank/source questions.
@@ -59,4 +59,40 @@ test('grammar level is checked against the full OpenJLPT grammar catalog, with a
  }
  const q=question(c,'本を買って帰ります。',['は','が','を','で']);assert.ok(!hardeningIssues(q,c).includes('GRAMMAR_ABOVE_N4'),'A verb te-form must not be confused with a standalone upper-level quotative');
  const formal=question(context(),'そのわけは雨だからである。',['は','が','を','で']);assert.ok(hardeningIssues(formal,context()).includes('GRAMMAR_LEVEL_UNPROVEN'),'No <=N4 source label means quarantine, not an invented source level');
+});
+test('order keeps auxiliaries and polite inflections indivisible, including negative and explanatory chains',()=>{
+ const c=context();for(const form of ['でしょう','だろう','でした','です','ではありません','じゃありません','ます','ました','ません','ましょう','のです','んです','ではありませんでした','ませんでした']){
+  const text='明日は休み'+form+'。',start=text.indexOf(form),b=orderBoundaries(text,c);
+  for(let cut=start+1;cut<start+form.length;cut++)assert.equal(b.has(cut),false,form+':'+cut);
+ }
+ const q=question(c,'＿ ★ ＿ ＿',['明日は','たぶん','休みで','しょう。'],'order');q.sentence=q.choices.join('');
+ assert.ok(hardeningIssues(q,c).includes('ORDER_WORD_BOUNDARY'));
+});
+test('order keeps embedded-question no-ka chains in one fragment',()=>{
+ const c=context();for(const form of ['のか','のかは','のかどうか']){
+  const text='弟が来る'+form+'まだ知りません。',start=text.indexOf(form),b=orderBoundaries(text,c);
+  for(let cut=start+1;cut<start+form.length;cut++)assert.equal(b.has(cut),false,form);
+ }
+ const q=question(c,'＿ ★ ＿ ＿',['弟が','来るの','かは','まだ知りません。'],'order');q.sentence=q.choices.join('');
+ assert.ok(hardeningIssues(q,c).includes('ORDER_WORD_BOUNDARY'));
+});
+test('limiting-particle distractors before a predicate cannot leave a second valid answer',()=>{
+ const c=context();for(const particle of ['だけ','も','しか']){
+  const q=question(c,'なぜこの町＿静かですか。',['が',particle,'を','で']);
+  assert.ok(hardeningIssues(q,c).includes('GRAMMAR_LIMITING_PARTICLE_AMBIGUITY'),particle);
+ }
+ const q=question(c,'妹は学生＿。',['です','が','を','で']);assert.ok(!hardeningIssues(q,c).includes('GRAMMAR_LIMITING_PARTICLE_AMBIGUITY'));
+});
+test('upper-level matching respects complete tokens and sourced lower-level functions, never blanket surface exemptions',()=>{
+ const c=context(),lower=['〜まで','〜までに','〜くらい','〜こと','〜ことができる','〜ことにする','〜ので','〜のに','あまり〜ない'].map(t=>source(t,'',[],'grammar','N4'));
+ c.boundaryWords!.push(source('金曜日','きんようび',['n-t']));
+ c.grammarCatalog=[...lower,...['〜まで','〜くらい','〜こと','〜ことに','〜って'].map(t=>source(t,'',[],'grammar','N3')),{...source('〜あまり','',[],'grammar','N2'),id:'upper-adverb'}];
+ for(const sentence of ['金曜日まで待ちます。','三時間くらい読みます。','読むことを選びました。','日本語を話すことができます。','明日出ることにしました。','私はあまり泳ぎません。','本を買って帰りました。']){
+  assert.deepEqual(grammarLevelMatches(sentence,c),[],sentence);
+ }
+ assert.ok(grammarLevelMatches('先生まで来ました。',c).some(m=>m.uncertain),'A polysemous surface without lower evidence stays quarantined');
+ assert.ok(grammarLevelMatches('心配のあまり眠れません。',c).some(m=>m.level==='N2'&&!m.uncertain));
+ const upper=c.grammarCatalog.find(s=>s.title==='〜まで'&&s.level==='N3')!,e={id:'authored-upper',targetId:upper.id,text:'先生まで笑いました。',notation:null,english:'Authored even-use fixture',sourceId:'fixture',releaseId:'fixture',attribution:'Authored'};
+ c.examples=[e];assert.ok(grammarLevelMatches(e.text,c,e).some(m=>!m.uncertain));
+ const q=question(c,'先生＿来ました。',['が','を','で','に']);q.sentence='先生まで来ました。';assert.ok(hardeningIssues(q,c).includes('GRAMMAR_LEVEL_UNPROVEN'));
 });
