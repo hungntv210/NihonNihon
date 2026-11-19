@@ -7,10 +7,10 @@
       "source": "VT323-Regular.ttf",
       "source_sha256": "cf4de751ada78ceac033dbe16a687742939995b77bc2a052ae17a4957958594d",
       "file": "VT323-Regular-Subset.woff2",
-      "sha256": "a4d2e70687089e449e2d7aa169b1eff7f11bc96151dfdb94913db5258962e39f",
+      "sha256": "2dc12c80dcdab8c0f376f8bd1c4ee80841cd2f95b469b42f856885267cc32942",
       "source_bytes": 153116,
-      "bytes": 26832,
-      "unicode_count": 516
+      "bytes": 26852,
+      "unicode_count": 517
     },
     {
       "source": "BeVietnamPro-Regular.ttf",
@@ -34,10 +34,10 @@
       "source": "ShipporiMincho-Regular.ttf",
       "source_sha256": "769b5269f0f9bc6534b352c0e6bd856a566e03ff788f107191c2d835863570b2",
       "file": "ShipporiMincho-Regular-Subset.woff2",
-      "sha256": "9ea5c5380cd0d226289bc1f815605687fae3e34336e30067add96bbe76bbf465",
+      "sha256": "85f22729b23b5eb04942494748988b66917cfa87ad946b7cfb08c13826def8f4",
       "source_bytes": 8677284,
-      "bytes": 587716,
-      "unicode_count": 3168
+      "bytes": 587624,
+      "unicode_count": 3169
     }
   ],
   "fallback": "Unmodified original local TTF for characters outside subsets"

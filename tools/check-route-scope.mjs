@@ -23,6 +23,8 @@ ownership.set('login-festivals', ['src/app/login/', 'src/components/pixel-scenes
 ownership.set('pixel-scenes-next', ['src/components/pixel-scenes/', 'src/app/(study)/vocab/page.tsx', 'src/app/(study)/grammar/page.tsx', 'src/app/(study)/jlpt-daily/page.tsx', 'src/app/(study)/jlpt-daily/practice.tsx', 'src/app/(study)/today-roadmap/page.tsx', 'src/app/(study)/appearance/', 'tests/pixel-scenes.test.ts', 'tests/pixel-scenes-next.test.ts', 'tools/check-route-scope.mjs']);
 ownership.set('mobile-perf', ['tools/perf-mobile.mjs', 'package.json', 'tools/check-route-scope.mjs']);
 ownership.set('naetoru/mobile-perf', ownership.get('mobile-perf'));
+ownership.set('font-perf', ['tools/subset-fonts.py', 'public/fonts/', 'src/styles/tokens.css', 'src/components/pixel-scenes/engine.js', 'tests/pixel-scenes.test.ts', 'tools/check-route-scope.mjs']);
+ownership.set('naetoru/font-perf', ownership.get('font-perf'));
 ownership.set('ui-motion', ['src/components/motion/', 'src/components/route-presentation.tsx', 'src/components/nav.tsx', 'src/components/add-to-review.tsx', 'src/components/route-heading.tsx', 'src/components/pixel-scenes/', 'src/app/layout.tsx', 'src/app/(study)/srs/page.tsx', 'src/app/(study)/srs/review-session.tsx', 'src/app/(study)/jlpt-daily/practice.tsx', 'src/app/(study)/shadowing/player.tsx', 'src/app/(study)/shadowing/voice-meter.tsx', 'src/app/(study)/common-tools/progress/page.tsx', 'src/app/(study)/today-roadmap/today.tsx', 'src/app/(study)/appearance/', 'tests/pixel-scenes.test.ts', 'tests/ui-motion.test.ts', 'tools/check-route-scope.mjs']);
 ownership.set('foundation', ['src/app/(study)/settings/', 'public/fonts/']);
 ownership.set('ui-phase1', ['src/app/(study)/settings/', 'public/fonts/', 'src/components/town/', 'src/app/(study)/appearance/', 'src/app/(study)/today-roadmap/page.tsx', 'src/app/(study)/today-roadmap/today.module.css', 'src/core/day-period.ts', 'src/components/time-provider.tsx', 'tools/ui-test-clock.mjs', 'tests/day-period.test.ts']);
@@ -65,4 +67,3 @@ if (files.includes(verification)) {
 }
 if (outside.length) { console.error('Files outside route ownership:\n' + outside.join('\n')); process.exitCode = 1; }
 else console.log(`PASS: ${files.length} changed files stay in ${route} ownership or the append-only verification log`);
-
