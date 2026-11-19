@@ -14,22 +14,28 @@ import css from './srs.module.css';
 import {remainingDue} from '../../../components/pixel-scenes/model.ts';
 import {Mascot} from '../../../components/mascot.tsx';
 const labels = ['Quên', 'Khó', 'Được', 'Dễ'];
+export function dispatchSceneDueIfChanged(tracker:{initial:{due:number;cards:{cardId:string}[]};due:number},initial:{due:number;cards:{cardId:string}[]},seen:string[],target:Pick<EventTarget,'dispatchEvent'>=window){
+  if(tracker.initial!==initial){tracker.initial=initial;tracker.due=remainingDue(initial,[]);}
+  const remaining=remainingDue(initial,seen);
+  if(remaining===tracker.due)return false;
+  tracker.due=remaining;target.dispatchEvent(new CustomEvent('nihon-scene-due',{detail:remaining}));return true;
+}
 
 export function ReviewSession({ initial }: { initial: StudySession }) {
   const [session,setSession] = useState(initial), [seen,setSeen] = useState<string[]>([]), [revealed,setRevealed] = useState(false), [answer,setAnswer] = useState(''), [engine,setEngine] = useState<Engine>(), [ready,setReady] = useState(false), [busy,setBusy] = useState(false), [pendingCount,setPendingCount] = useState(0), [message,setMessage] = useState(''), [online,setOnline] = useState(true), [paused,setPaused] = useState(false), [voice,setVoice] = useState<SpeechSynthesisVoice>();
   const [gestures,setGestures] = useState(false);
   const [conflicts,setConflicts] = useState<ReviewEvent[]>([]);
-  const syncing=useRef(false), touch=useRef<{ x:number;y:number }|null>(null), offset=useRef(Date.parse(initial.serverNow)-Date.now()), started=useRef(Date.now());
+  const syncing=useRef(false), touch=useRef<{ x:number;y:number }|null>(null), offset=useRef(Date.parse(initial.serverNow)-Date.now()), started=useRef(Date.now()), sceneDue=useRef({initial,due:remainingDue(initial,[])});
   const article=useRef<HTMLElement>(null),oldCard=useRef<HTMLElement|null>(null),inputKeyboard=useRef(false),answerPointer=useRef(false);
   const cacheKey='nihon:srs:session:'+initial.mode;
   useEffect(()=>{let alive=true;offset.current=Date.parse(initial.serverNow)-Date.now();setGestures(false);void scheduler().then(s=>{if(alive)setEngine(s);}).catch(()=>setMessage('Chưa khởi tạo được lịch ôn. Hãy tải lại khi có mạng.'));
-    void pendingReviews().then(events=>{if(!alive)return;setPendingCount(events.length);try{const saved=JSON.parse(localStorage.getItem(cacheKey)||'null');if(saved?.version===1&&saved.session?.mode===initial.mode&&Array.isArray(saved.session.cards)&&Array.isArray(saved.seen)&&saved.seen.length<saved.session.cards.length){setSession(saved.session);setSeen([...new Set([...saved.seen,...events.map(e=>e.cardId)])] as string[]);}else{setSession(initial);setSeen(events.map(e=>e.cardId));}}catch{setSession(initial);setMessage('Không khôi phục được phiên cũ; các lượt đã chấm vẫn được giữ trong hàng đồng bộ.');}setReady(true);}).catch(()=>setMessage('Trình duyệt chưa cho phép lưu lượt ôn trên thiết bị.'));
+    void pendingReviews().then(events=>{if(!alive)return;setPendingCount(events.length);try{const saved=JSON.parse(localStorage.getItem(cacheKey)||'null');if(saved?.version===1&&saved.session?.mode===initial.mode&&Array.isArray(saved.session.cards)&&Array.isArray(saved.seen)&&saved.seen.length<saved.session.cards.length){setSession(saved.session);setSeen([...new Set([...saved.seen,...events.map(e=>e.cardId)])] as string[]);}else{setSession(initial);const next=events.map(e=>e.cardId);setSeen(prev=>next.length===0&&prev.length===0?prev:next);}}catch{setSession(initial);setMessage('Không khôi phục được phiên cũ; các lượt đã chấm vẫn được giữ trong hàng đồng bộ.');}setReady(true);}).catch(()=>setMessage('Trình duyệt chưa cho phép lưu lượt ôn trên thiết bị.'));
     const connection=()=>setOnline(navigator.onLine);connection();window.addEventListener('online',connection);window.addEventListener('offline',connection);
     const voices=()=>setVoice(window.speechSynthesis?.getVoices().find(v=>v.lang.startsWith('ja')&&v.localService));voices();window.speechSynthesis?.addEventListener('voiceschanged',voices);
     return()=>{alive=false;window.removeEventListener('online',connection);window.removeEventListener('offline',connection);window.speechSynthesis?.removeEventListener('voiceschanged',voices);window.speechSynthesis?.cancel();};
   },[cacheKey,initial]);
   useEffect(()=>{if(ready){try{localStorage.setItem(cacheKey,JSON.stringify({version:1,session,seen}));}catch{/* The durable review outbox is separate from the optional session snapshot. */}}},[cacheKey,ready,session,seen]);
-  useEffect(()=>{const remaining=remainingDue(initial,seen);window.dispatchEvent(new CustomEvent('nihon-scene-due',{detail:remaining}));},[initial,seen]);
+  useEffect(()=>{dispatchSceneDueIfChanged(sceneDue.current,initial,seen);},[initial,seen]);
   async function sync() {
     if(syncing.current||!navigator.onLine)return;syncing.current=true;
     try{const result=await syncReviews(await pendingReviews(),event=>fetch('/srs/review',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(event)}),acknowledge);setConflicts(result.conflicts);if(result.stopped==='auth')setMessage('Đăng nhập lại để đồng bộ; lượt ôn vẫn được giữ trên thiết bị.');else if(result.conflicts.length)setMessage('Có lượt cần kiểm tra; các thẻ độc lập vẫn tiếp tục đồng bộ.');else if(result.stopped)setMessage('Chưa đồng bộ được; lượt ôn vẫn được giữ trên thiết bị.');
@@ -48,7 +54,7 @@ export function ReviewSession({ initial }: { initial: StudySession }) {
   function speak(){if(!card||!voice)return;const utterance=new SpeechSynthesisUtterance(card.reading||card.title);utterance.lang='ja-JP';utterance.voice=voice;speechSynthesis.cancel();speechSynthesis.speak(utterance);}
   const readingMode=card?.type==='reading'&&card.kind==='vocab'&&session.mode==='full';
   const correct=card?.reading&&toHiragana(answer.trim().normalize('NFC'))===toHiragana(card.reading);
-  return <section className={css.root} data-srs-session><div className={css.toolbar}><nav aria-label="Chế độ ôn"><Link href="/srs?mode=full" aria-current={initial.mode==='full'?'page':undefined}>Buổi ôn · 20 thẻ</Link><Link href="/srs?mode=quick" aria-current={initial.mode==='quick'?'page':undefined}>Ôn nhanh · 15 thẻ</Link></nav><span>{online?'Có mạng':'Đang offline'} · {pendingCount} lượt chờ đồng bộ</span></div>
+  return <section className={css.root} data-srs-session><div className={css.toolbar}><nav aria-label="Chế độ ôn"><Link href="/srs?mode=full" prefetch={false} aria-current={initial.mode==='full'?'page':undefined}>Buổi ôn · 20 thẻ</Link><Link href="/srs?mode=quick" prefetch={false} aria-current={initial.mode==='quick'?'page':undefined}>Ôn nhanh · 15 thẻ</Link></nav><span>{online?'Có mạng':'Đang offline'} · {pendingCount} lượt chờ đồng bộ</span></div>
     {initial.mode==='quick'&&<button className="button button-small" aria-pressed={gestures} onClick={()=>setGestures(g=>!g)}>{gestures?'Tắt vuốt một tay':'Bật vuốt một tay'}</button>}
     {session.unsupported>0&&<p className={css.notice}>{session.unsupported} thẻ có loại hoặc trạng thái lịch chưa được hỗ trợ; lịch cũ được giữ nguyên.</p>}
     {session.due>200&&<p className={css.notice}>Hàng ôn đang nhiều. Nên giảm một nửa bài mới đến khi còn dưới 150 thẻ; bạn vẫn luôn ôn được.</p>}
