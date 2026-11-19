@@ -4,14 +4,20 @@ import {toHiragana,toRomaji} from 'wanakana';
 
 export const plainJapanese=(s:string)=>s.normalize('NFC').split(/\s*[\/／]\s*/u)[0].replace(/[（(][^）)]*[）)]/gu,'').replace(/[〜～~]/gu,'').trim();
 export const baseStem=(s:string)=>s.normalize('NFKC').replace(/\(\s*\)|[【】\s_＿★]/gu,'');
+export const grammarQuestion=(q:Draft)=>q.type==='grammar'||q.type==='order';
+export function sentenceKeys(q:Draft & {example?:{text:string}}){
+ const sentence=q.type==='order'?orderedSentence(q):q.stem.replace(/＿+|\(\s*\)|（\s*）/u,q.choices[q.correct]);
+ return [sentence,...q.example?[q.example.text]:[]].map(baseStem);
+}
 export function draftCollisionIssues(q:Draft,history:Draft[],catalog:Source[]){
  const issues:string[]=[];
  const words=(s:string)=>[...new Intl.Segmenter('ja',{granularity:'word'}).segment(s.normalize('NFKC'))].filter(t=>t.isWordLike).map(t=>t.segment);
  const stemWords=new Set(words(q.stem));
  if(q.choices.some(c=>q.stem.normalize('NFKC').includes(c.normalize('NFKC'))||words(c).some(w=>stemWords.has(w))))issues.push('OPTION_WORD_IN_STEM');
  if(history.some(old=>baseStem(old.stem)===baseStem(q.stem)))issues.push('DUPLICATE_BASE_STEM');
+ if(['grammar','order','context'].includes(q.type)&&history.some(old=>['grammar','order','context'].includes(old.type)&&(grammarQuestion(q)||grammarQuestion(old))&&sentenceKeys(old).some(key=>sentenceKeys(q).includes(key))))issues.push('DUPLICATE_SENTENCE');
  const word=(row:Draft)=>plainJapanese(catalog.find(s=>s.id===row.targetId)?.title??row.targetId);
- if(history.some(old=>word(old)===word(q)))issues.push('REPEATED_TARGET_WORD');
+ if(!grammarQuestion(q)&&history.some(old=>word(old)===word(q)))issues.push('REPEATED_TARGET_WORD');
  if(['reading','spelling'].includes(q.type)&&history.some(old=>['reading','spelling'].includes(old.type)&&old.type!==q.type&&word(old)===word(q)))issues.push('READING_SPELLING_SAME_WORD');
  return issues;
 }

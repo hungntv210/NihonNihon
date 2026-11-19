@@ -44,10 +44,18 @@ export function spellingNoise(source:V2Source,c:V2Context):Distractor[]{
 }
 const lexicons=new WeakMap<V2Context,Set<string>>();
 const meaning=(s:V2Source)=>s.vietnamese?`${s.vietnamese.text} [${s.vietnamese.sourceId}${s.vietnamese.model?' · '+s.vietnamese.model:''}]`:`${s.english.join('; ')} [OpenJLPT · EN]`;
+function explanation(q:Pick<V2Question,'type'|'correct'|'choices'|'order'|'sentence'|'example'>,s:V2Source){
+ const label=`${s.title}${s.reading?' — '+s.reading:''}: ${meaning(s)}.`;
+ // A borrowed example attests the sentence, not the function of a matching particle.
+ const grammarLabel=q.example?.targetId===s.id?` ${label}`:'';
+ if(q.type==='order')return `Thứ tự: ${q.order.map(i=>i+1).join('→')}. ★=${q.correct+1}. Câu: 「${q.sentence}」${grammarLabel}`;
+ if(q.type==='grammar')return `Đáp án ${q.correct+1}: 「${q.choices[q.correct]}」. Câu: 「${q.sentence}」${grammarLabel}`;
+ return `Đáp án ${q.correct+1}: 「${q.choices[q.correct]}」. ${label}`;
+}
 function make(c:V2Context,s:V2Source,type:QuestionType,stem:string,answer:string,noise:Distractor[],extra:Partial<V2Question>={}):V2Question{
  const ranks:Record<string,number>={'long-vowel':0,'same-sound':0,'similar-shape':1,'sokuon':1,'other-on':1,'dakuten-handakuten':2,'shared-kanji':2,'one-known-kanji':3};const picked=stable(distinct(noise,answer),c.date+s.id+type,r=>r.rule+':'+r.value).sort((a,b)=>(ranks[a.rule]??0)-(ranks[b.rule]??0)).slice(0,3);requireValue(picked.length===3,'INSUFFICIENT_DISTRACTORS');
  const choices=stable([answer,...picked.map(r=>r.value)],c.date+s.id+stem,v=>v),correct=choices.indexOf(answer),fp=fingerprint(stem);
- return {version:2,mode:c.mode,id:hash({date:c.date,type,target:s.id,fp}).slice(0,32),date:c.date,fingerprint:fp,day:0,position:0,type,targetId:s.id,stem,choices,correct,explanation:`Đáp án ${correct+1}: 「${answer}」. ${s.title}${s.reading?' — '+s.reading:''}: ${meaning(s)}.`,order:[],starSlot:0,distractors:picked,sourceHash:s.hash,...extra};
+ const q:V2Question={version:2,mode:c.mode,id:hash({date:c.date,type,target:s.id,fp}).slice(0,32),date:c.date,fingerprint:fp,day:0,position:0,type,targetId:s.id,stem,choices,correct,explanation:'',order:[],starSlot:0,distractors:picked,sourceHash:s.hash,...extra};q.explanation=explanation(q,s);return q;
 }
 // Boundaries follow source phrases (particles terminate a phrase); no sentence
 // or inflection is generated. Order windows leave attested fixed context visible.
@@ -66,6 +74,7 @@ export function phrases(text:string){
 }
 export function validateV2(q:V2Question,c:V2Context,history:Question[]=[]){
  const s=c.catalog.find(s=>s.id===q.targetId);requireValue(s&&s.level===c.level&&s.hash===q.sourceHash,'SOURCE_NOT_LEARNED_OR_CHANGED');
+ requireValue(!s.translationReported,'TRANSLATION_REPORTED_OPEN');
  requireValue(Number.isInteger(q.day)&&q.day>=0&&q.day<7&&Number.isInteger(q.position)&&q.position>=0&&q.position<10,'INVALID_DAY_POSITION');
  requireValue(supportedTypes.includes(q.type as any),'UNSUPPORTED_DATA_TYPE');requireValue(q.version===2&&q.mode===c.mode&&q.date===c.date&&q.stem.trim()&&q.stem.length<=2200&&q.explanation.trim()&&q.explanation.length<=1600,'INVALID_QUESTION');
  requireValue(q.choices.length===4&&q.choices.every(v=>typeof v==='string'&&v.trim()&&v.length<=350&&/[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}]/u.test(v)&&v===v.normalize('NFC'))&&new Set(q.choices.map(v=>v.normalize('NFKC').trim())).size===4&&Number.isInteger(q.correct)&&q.correct>=0&&q.correct<4,'ONE_DISTINCT_ANSWER_REQUIRED');
@@ -74,7 +83,7 @@ export function validateV2(q:V2Question,c:V2Context,history:Question[]=[]){
  requireValue(q.type==='order'||q.choices[q.correct]===(q.type==='reading'?s.reading:plainJapanese(s.title)),'ANSWER_SOURCE_EVIDENCE');
  // V2's two source-derived noise gates replace the legacy nearby-dictionary
  // restrictions; every other hard gate stays shared and unchanged.
- const expectedExplanation=q.type==='order'?`Thứ tự: ${q.order.map(i=>i+1).join('→')}. ★=${q.correct+1}. Câu: 「${q.sentence}」 ${s.title}: ${meaning(s)}.`:`Đáp án ${q.correct+1}: 「${q.choices[q.correct]}」. ${s.title}${s.reading?' — '+s.reading:''}: ${meaning(s)}.`;requireValue(q.explanation===expectedExplanation,'EXPLANATION_SOURCE_MISMATCH');
+ requireValue(q.explanation===explanation(q,s),'EXPLANATION_SOURCE_MISMATCH');
  const issues=hardQuestionIssues(q,s,c.catalog).filter(i=>!(q.type==='reading'&&i==='READING_NEAR_SAME_LEVEL_DISTRACTORS')&&!(q.type==='spelling'&&i==='SPELLING_NEAR_DISTRACTORS'));
  requireValue(!issues.length,'HARD_QA_'+issues.join(','));
  if(q.type==='reading'||q.type==='spelling'){
@@ -120,7 +129,7 @@ export function candidates(c:V2Context,report?: (row:CandidateDiagnostic)=>void)
    }).find(m=>m.index>=0):undefined;
    if(orderMatch){
     const parts=phrases(sentence);for(let from=0;from+4<=parts.length;from++)if(parts.length>=4){const fragments=parts.slice(from,from+4);const offset=parts.slice(0,from).join('').length;if(orderMatch.index<offset||orderMatch.index+orderMatch.value.length>offset+fragments.join('').length)continue;
-     attempt(()=>{const choices=stable(fragments,c.date+example.id,v=>v),order=fragments.map(f=>choices.indexOf(f)),starSlot=1,stem=parts.slice(0,from).join('')+'＿ ★ ＿ ＿'+parts.slice(from+4).join(''),correct=order[starSlot],fp=fingerprint(stem);return {version:2,mode:c.mode,id:hash({date:c.date,target:s.id,fp}).slice(0,32),date:c.date,fingerprint:fp,day:0,position:0,type:'order',targetId:s.id,stem,choices,correct,order,starSlot,distractors:[],sourceHash:s.hash,example,sentence,explanation:`Thứ tự: ${order.map(i=>i+1).join('→')}. ★=${correct+1}. Câu: 「${sentence}」 ${s.title}: ${meaning(s)}.`};});
+     attempt(()=>{const choices=stable(fragments,c.date+example.id,v=>v),order=fragments.map(f=>choices.indexOf(f)),starSlot=1,stem=parts.slice(0,from).join('')+'＿ ★ ＿ ＿'+parts.slice(from+4).join(''),correct=order[starSlot],fp=fingerprint(stem);const q:V2Question={version:2,mode:c.mode,id:hash({date:c.date,target:s.id,fp}).slice(0,32),date:c.date,fingerprint:fp,day:0,position:0,type:'order',targetId:s.id,stem,choices,correct,order,starSlot,distractors:[],sourceHash:s.hash,example,sentence,explanation:''};q.explanation=explanation(q,s);return q;});
     }
    }
   }
