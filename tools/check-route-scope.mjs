@@ -27,6 +27,8 @@ ownership.set('mobile-perf', ['tools/perf-mobile.mjs', 'package.json', 'tools/ch
 ownership.set('naetoru/mobile-perf', ownership.get('mobile-perf'));
 ownership.set('font-perf', ['tools/subset-fonts.py', 'public/fonts/', 'src/styles/tokens.css', 'src/components/pixel-scenes/engine.js', 'tests/pixel-scenes.test.ts', 'tools/check-route-scope.mjs']);
 ownership.set('naetoru/font-perf', ownership.get('font-perf'));
+ownership.set('font-split', ['tools/subset-fonts.py', 'public/fonts/', 'src/styles/tokens.css', 'tests/font-split.test.ts', 'tools/check-route-scope.mjs']);
+ownership.set('naetoru/font-split', ownership.get('font-split'));
 ownership.set('roadmap-perf', ['src/components/pixel-scenes/roadmap-journey.js', 'src/components/pixel-scenes/scene.module.css', 'src/app/(study)/today-roadmap/', 'tests/pixel-scenes-next.test.ts', 'tools/check-route-scope.mjs']);
 ownership.set('naetoru/roadmap-perf', ownership.get('roadmap-perf'));
 ownership.set('srs-perf', ['src/app/(study)/srs/review-session.tsx', 'tests/srs-perf.test.ts', 'tools/check-route-scope.mjs']);
