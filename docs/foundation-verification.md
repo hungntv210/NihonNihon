@@ -801,3 +801,10 @@ Regression coverage: live translation reports quarantine the exact Frozen meanin
 Checked implementation 48523389b62473c3d2ba9722f16f6f5465a9e22a on Windows / Node24 / Chrome headless. Full check 2026-11-19T10:00:27.5167284+07:00 through 2026-11-19T10:02:03.0223112+07:00: typecheck PASS, 22/22 prototype and189/189 core-route tests PASS, build PASS, 16/16 app gates PASS. Authenticated JLPT browser check 2026-11-19T10:02:05.2535645+07:00 through 2026-11-19T10:02:19.7773760+07:00 PASS. Route scope pokabu/jlpt-verifier-count PASS.
 
 Both blind passes now state expectedResultCount and expectedIndexes, without disclosing keys or explanations. Regression covers a three-question batch receiving only index0 and an isolated twelve-candidate batch receiving one row: both remain rejected without automatic retry. Wire schema, strict cardinality, option evidence and timeouts unchanged. No real API calls or imports for this change; provider-format acceptance still requires a private post-deploy run. Only this audit follows the checked implementation.
+
+
+## Pokabu JLPT QA hardening ? 2026-11-19
+
+Checked implementation: `eb9caeaf00bbf8b1896aba3e52c3c14f641e337c`. Windows local environment, Node v24.10.0; start 2026-11-19T11:45:16.945+07:00, end 2026-11-19T11:46:43.747+07:00. Complete `npm run check`: typecheck PASS; prototype tests 22/22, core/route tests 195/195; production build PASS; app gate PASS (16 checks). Authenticated route browser check PASS (2026-11-19T11:48:40.718+07:00?2026-11-19T11:48:55.129+07:00); no external API. Route scope guard against origin/master PASS.
+
+Adds deterministic word-boundary, scrambling, ambiguous distractor, restricted-sense and grammar-level rejection with authored fixtures. Existing collision and permutation assertions retained; the former free-argument order fixture is explicitly rejected. Full checks ran on the implementation commit above; this append-only audit is the sole subsequent public change. No private bank, source questions or raw logs committed.
