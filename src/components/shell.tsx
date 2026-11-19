@@ -9,7 +9,7 @@ export function Shell({ children, reviewCount }: { children: ReactNode; reviewCo
         Đến nội dung chính
       </a>
       <aside className="sidebar">
-        <Link className="brand" href="/" aria-label="Nihon Nihon — Hôm nay">
+        <Link className="brand" href="/" prefetch={false} aria-label="Nihon Nihon — Hôm nay">
           <span className="brand-mark" lang="ja">
             日
           </span>
@@ -24,7 +24,7 @@ export function Shell({ children, reviewCount }: { children: ReactNode; reviewCo
           Không gian học riêng tư<small>Đi chậm, nhưng đều đặn.</small>
         </div>
         <div className="sidebar-footer">
-          <Link href="/settings">Cài đặt</Link><Link href="/sources">Nguồn dữ liệu ↗</Link>
+          <Link href="/settings" prefetch={false}>Cài đặt</Link><Link href="/sources" prefetch={false}>Nguồn dữ liệu ↗</Link>
           <form action="/api/logout" method="post">
             <button className="quiet-button">Đăng xuất</button>
           </form>
@@ -33,11 +33,11 @@ export function Shell({ children, reviewCount }: { children: ReactNode; reviewCo
       <div className="main-sheet">
         <header className="topbar">
           <span className="topbar-label">Nihon Nihon<small>Tiếng Nhật · N5 → N2</small></span>
-          <div className="topbar-links"><Link href="/settings">Cài đặt</Link>
-            <Link href="/sources" className="mobile-source">
+          <div className="topbar-links"><Link href="/settings" prefetch={false}>Cài đặt</Link>
+            <Link href="/sources" prefetch={false} className="mobile-source">
               Nguồn dữ liệu
             </Link>
-            <Link href="/srs" className="review-pill">
+            <Link href="/srs" prefetch={false} className="review-pill">
               <span className="status-dot" />
               {reviewCount} thẻ trong hàng ôn
             </Link>
@@ -55,9 +55,9 @@ export function Shell({ children, reviewCount }: { children: ReactNode; reviewCo
             </div>
           </form>
           <nav className="shared-tool-links" aria-label="Công cụ học tập">
-            <Link href="/shadowing">Shadowing</Link>
-            <Link href="/common-tools/reports">Báo sai</Link>
-            <Link href="/common-tools/progress">Tiến độ</Link>
+            <Link href="/shadowing" prefetch={false}>Shadowing</Link>
+            <Link href="/common-tools/reports" prefetch={false}>Báo sai</Link>
+            <Link href="/common-tools/progress" prefetch={false}>Tiến độ</Link>
           </nav>
         </div>
         <main id="main" tabIndex={-1}>
@@ -71,4 +71,3 @@ export function Shell({ children, reviewCount }: { children: ReactNode; reviewCo
     </div>
   );
 }
-
