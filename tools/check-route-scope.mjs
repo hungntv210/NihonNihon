@@ -35,6 +35,8 @@ ownership.set('roadmap-perf', ['src/components/pixel-scenes/roadmap-journey.js',
 ownership.set('naetoru/roadmap-perf', ownership.get('roadmap-perf'));
 ownership.set('srs-perf', ['src/app/(study)/srs/review-session.tsx', 'tests/srs-perf.test.ts', 'tools/check-route-scope.mjs']);
 ownership.set('naetoru/srs-perf', ownership.get('srs-perf'));
+ownership.set('srs-lazy-wanakana', ['src/app/(study)/srs/review-session.tsx', 'tests/srs-lazy-wanakana.test.ts', 'tools/check-route-scope.mjs']);
+ownership.set('naetoru/srs-lazy-wanakana', ownership.get('srs-lazy-wanakana'));
 ownership.set('nav-prefetch', ['src/components/shell.tsx', 'tests/nav-prefetch.test.ts', 'tools/check-route-scope.mjs']);
 ownership.set('naetoru/nav-prefetch', ownership.get('nav-prefetch'));
 ownership.set('ui-motion', ['src/components/motion/', 'src/components/route-presentation.tsx', 'src/components/nav.tsx', 'src/components/add-to-review.tsx', 'src/components/route-heading.tsx', 'src/components/pixel-scenes/', 'src/app/layout.tsx', 'src/app/(study)/srs/page.tsx', 'src/app/(study)/srs/review-session.tsx', 'src/app/(study)/jlpt-daily/practice.tsx', 'src/app/(study)/shadowing/player.tsx', 'src/app/(study)/shadowing/voice-meter.tsx', 'src/app/(study)/common-tools/progress/page.tsx', 'src/app/(study)/today-roadmap/today.tsx', 'src/app/(study)/appearance/', 'tests/pixel-scenes.test.ts', 'tests/ui-motion.test.ts', 'tools/check-route-scope.mjs']);
