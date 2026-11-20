@@ -842,3 +842,12 @@ Checked implementation `ac73fc16e710e9ca7f4a9f56ae0226f880898c49` on branch `nae
 - `npx tsx src/app/(study)/srs/browser-check.ts`: PASS.
 - Mobile perf on `/srs` (390x844 DPR 3, 4x CPU, Fast 4G, cache disabled, 3 runs median): `staticBuilds` 2 -> 1 (redundant `nihon-scene-due` events on load 2 -> 0); TTI 1364.7 -> 1317.2 ms (-3.5%); TBT 199.0 -> 185.0 ms (-7.0%); LCP 520.0 -> 500.0 ms (-3.8%); CLS 0 -> 0; requests 34 -> 32 (-2 mode RSC prefetches).
 - Route scope guard `node tools/check-route-scope.mjs origin/master naetoru/srs-perf`: PASS.
+
+## Naetoru Shell menu prefetch deduplication — 2026-11-19
+
+Checked implementation `331f39f9fa8fb4cfb6b08f56901cd65a0f09f17b` on branch `naetoru/nav-prefetch` (base `7ae4a98908cc526b781e3152b0f1f38441ff0f61`; Windows, Node v24.10.0, headless Chrome, production Next build, disposable OpenJLPT fixture).
+- `src/components/shell.tsx`: added `prefetch={false}` to all 9 menu `<Link>` elements (`/`, `/settings` x2, `/sources` x2, `/srs`, `/shadowing`, `/common-tools/reports`, `/common-tools/progress`) while preserving all `href` targets, labels, and DOM structure.
+- `tests/nav-prefetch.test.ts`: added 2 unit tests asserting that every `<Link>` rendered by `Shell` passes `prefetch={false}` with exact expected `href`/label and that no `<Link>` in `src/components/shell.tsx` omits `prefetch={false}`.
+- `npm run check`: PASS — typecheck PASS; 22/22 prototype + 214/214 core/route tests PASS (zero failures/skips); production build PASS; `test:app` 16/16 checks PASS.
+- Mobile perf on `/` (390x844 DPR 3, 4x CPU, Fast 4G, cache disabled, 3 runs median, paired before/after): `?_rsc=` requests 8 -> 0 (-100%, eliminating duplicate prefetches for `/settings`, `/shadowing`, `/common-tools/reports`, `/common-tools/progress`); total requests 31 -> 23 (-8); TTI 1886.6 -> 1693.3 ms (-10.2%); TBT 339.0 -> 284.0 ms (-16.2%); LCP 748.0 -> 748.0 ms; CLS 0 -> 0; JS gzip 158.85 -> 158.85 KB.
+- Route scope guard `node tools/check-route-scope.mjs origin/master naetoru/nav-prefetch`: PASS. Only this append-only audit entry follows the checked implementation commit.
