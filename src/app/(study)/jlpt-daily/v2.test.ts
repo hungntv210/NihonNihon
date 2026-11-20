@@ -3,6 +3,7 @@ import {readingNoise,spellingNoise,candidates,validateV2,phrases,dailyMix} from 
 import {draftCollisionIssues,sentenceKeys} from './hard-qa.ts';
 import {contextAt} from './v2-data.ts';import {japaneseWordEvidence,roadmapLexicon} from './word-evidence.ts';import {reviewHtml,main} from './generate-v2.ts';
 import {verifierWireSchema} from './v2-verifier.ts';import {independentSchema,choiceSentence} from './independent-qa.ts';
+import {matchesGrammarFunction} from './grammar-function.ts';
 const source=(title:string,reading:string,kind:V2Source['kind']='vocab',pos=['n']):V2Source=>({id:'openjlpt:'+kind+':fixture-'+title,title,reading,kind,pos,level:'N5',hash:hash(title),english:['self-authored fixture'],vietnamese:null,on:[]});
 export function context():V2Context{
  const words=[source('私','わたし','vocab',['pn']),source('毎日','まいにち','vocab',['adv']),source('学校','がっこう'),source('日本語','にほんご'),source('勉強','べんきょう','vocab',['vs']),source('校長','こうちょう'),source('日本','にほん'),source('曰本','にほん'),source('本','ほん'),source('名前','なまえ'),source('はし','はし'),source('行','こう')];
@@ -178,4 +179,77 @@ test('model chain exhaustion persists a stopped checkpoint without accepting the
  const contexts=Array.from({length:7},(_,day)=>({...context(),date:plusDays('2026-11-16',day)}));let last:any;
  const run=await runDeterministic(contexts,[],{provider:async()=>{throw Error('DRAFT_MODELS_EXHAUSTED');},checkpoint:r=>{last=r;}});
  assert.equal(run.status,'stopped:DRAFT_MODELS_EXHAUSTED');assert.equal(last.status,run.status);assert.equal(run.questions.length,0);assert.equal(last.days.length,7);
+});
+
+const grammarSource=(id:string,surface:string)=>({...source(surface,'','grammar',[]),id:'openjlpt:grammar:'+id});
+const matches=(id:string,surface:string,before:string,after:string)=>
+ matchesGrammarFunction(grammarSource(id,surface),surface,before+surface+after,before.length);
+
+test('が distinguishes existential subjects from contrasting clauses and skips unknown functions',()=>{
+ assert.ok(matches('ga-subject','が','まどのそばにいす','あります。'));
+ assert.equal(matches('ga-but','が','まどのそばにいす','あります。'),false);
+ assert.ok(matches('ga-but','が','いそぎます','、すぐにでません。'));
+ assert.equal(matches('ga-subject','が','いそぎます','、すぐにでません。'),false);
+ assert.equal(matches('ga-subject','が','この学校','いい。'),false);
+});
+
+test('か distinguishes final questions from an explicit choice and skips an uncertain function',()=>{
+ assert.ok(matches('ka-question','か','おちゃをのみます','？'));
+ assert.equal(matches('ka-or','か','おちゃをのみます','？'),false);
+ assert.ok(matches('ka-or','か','おちゃ','みずのどちらがいいですか。'));
+ assert.equal(matches('ka-question','か','おちゃ','みずのどちらがいいですか。'),false);
+ assert.equal(matches('ka-or','か','おちゃ','どうかわかりません。'),false);
+ const c=context();
+ const question=grammarSource('ka-question','か'), alternative=grammarSource('ka-or','か');
+ c.catalog.push(question,alternative);
+ c.examples=[{...c.examples[0],targetId:c.catalog.find(s=>s.title==='学校')!.id,text:'学校はどこですか。'}];
+ const rows=candidates(c).questions;
+ assert.ok(rows.some(q=>q.type==='grammar'&&q.targetId===question.id));
+ assert.ok(rows.every(q=>q.targetId!==alternative.id));
+});
+
+test('まで does not match the prefix of a までに deadline',()=>{
+ assert.ok(matches('made','まで','三時','まちます。'));
+ assert.equal(matches('made','まで','三時','にでます。'),false);
+ assert.ok(matches('made-ni','までに','三時','でます。'));
+});
+
+test('context plausibility rejects a viable distractor even when both ordinary grades favor the key',async()=>{
+ const base=candidates(context()).questions.find(q=>q.type==='reading')!;
+ const q={...base,type:'context' as const,stem:'かばんに＿を入れます。',choices:['本','ノート','あした','みぎ'],correct:0};
+ const flags=(pass:boolean)=>({grammatical:pass,formCorrect:pass,natural:pass,meaningFits:pass,reason:'Self-authored fixture'});
+ const solver={index:0,possibleAnswers:[0],independentAnswer:0,natural:true,knowledgeCorrect:true,
+  optionGrades:q.choices.map((_,i)=>({choiceIndex:i,completedSentence:choiceSentence(q,i),candidateOrder:[],acceptable:i===0,...flags(i===0)}))};
+ for(const [distractorFits,expected] of [[true,'OPTION_ACCEPTANCE_NOT_UNIQUE'],[false,''],[undefined,'CONTEXT_OPTION_EVIDENCE_MISSING']] as const){
+  let calls=0;
+  const [audit]=await verifyDeterministic(async(_phase,prompt,payload:any)=>{
+   if(++calls===1)return [solver];
+   assert.match(prompt,/ANY ordinary situation/);
+   assert.deepEqual(payload.sentences.map((r:any)=>r.completedSentence),q.choices.map((_,i)=>choiceSentence(q,i)));
+   assert.ok(payload.sentences.every((r:any)=>!('correct' in r)&&!('targetId' in r)));
+   return q.choices.map((_,index)=>({index,...flags(index===0),contextFits:index===1?distractorFits:index===0}));
+  },[q]);
+  assert.equal(calls,2);
+  assert.equal(audit.reason,expected);
+  assert.equal(audit.accepted,expected==='');
+ }
+});
+
+test('the isolated wire schema requires contextFits only in batches containing context',async()=>{
+ const reading=candidates(context()).questions.find(q=>q.type==='reading')!;
+ const contextItem={...reading,type:'context' as const,stem:'＿をみます。',choices:['本','ノート','あした','みぎ'],correct:0};
+ const isCorrect=(correct:boolean)=>({grammatical:correct,formCorrect:correct,natural:correct,meaningFits:correct,reason:'Self-authored fixture'});
+ for(const questions of [[reading],[reading,contextItem]]){
+  const hasContext=questions.length===2;
+  let calls=0;
+  const audits=await verifyDeterministic(async(_phase,prompt,_payload,schema:any)=>{
+   if(++calls===1)return questions.map((q,index)=>({index,independentAnswer:q.correct,possibleAnswers:[q.correct],natural:true,knowledgeCorrect:true,optionGrades:q.choices.map((_,i)=>({choiceIndex:i,candidateOrder:[],completedSentence:choiceSentence(q,i),...isCorrect(i===q.correct),acceptable:i===q.correct}))}));
+   assert.equal(schema.items.required.includes('contextFits'),hasContext);
+   assert.equal(Object.hasOwn(schema.items.properties,'contextFits'),hasContext);
+   assert.equal(prompt.includes('Include contextFits for every candidate'),hasContext);
+   return questions.flatMap((q,n)=>q.choices.map((_,i)=>({index:4*n+i,...isCorrect(i===q.correct),...(hasContext?{contextFits:q.type==='context'&&i===q.correct}:{})})));
+  },questions);
+  assert.equal(calls,2);
+  assert.ok(audits.every(a=>a.accepted));
+ }
 });
