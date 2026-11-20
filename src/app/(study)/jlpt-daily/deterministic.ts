@@ -6,6 +6,7 @@ import {confusionGroups,learnedGrammarForms} from './confusion-groups.ts';
 import {safeExample,exampleEvidence,type V2Context,type V2Source,type Example} from './v2-data.ts';
 import {hardeningIssues,orderBoundaries,provenMeaning,standardMeanings} from './v2-hardening.ts';
 import {matchesGrammarFunction} from './grammar-function.ts';
+import {contextMeaning} from './context-sense.ts';
 import type {QuestionProvenance} from './draft-provider.ts';
 export type Distractor={value:string;rule:string;sourceIds:string[]};
 export type V2Question=Question&{mode:V2Context['mode'];version:2;example?:Example;sentence?:string;distractors:Distractor[];sourceHash:string;provenance?:QuestionProvenance};
@@ -56,7 +57,10 @@ export function spellingNoise(source:V2Source,c:V2Context):Distractor[]{
 const lexicons=new WeakMap<V2Context,Set<string>>();
 const meaning=(s:V2Source)=>provenMeaning(s)?`${s.vietnamese!.text} [${s.vietnamese!.sourceId}${s.vietnamese!.model?' · '+s.vietnamese!.model:''}]`:`${standardMeanings(s).join('; ')} [OpenJLPT · EN]`;
 function explanation(q:Pick<V2Question,'type'|'correct'|'choices'|'order'|'sentence'|'example'>,s:V2Source){
- const label=`${s.title}${s.reading?' — '+s.reading:''}: ${meaning(s)}.`;
+ const sense=q.type==='context'?contextMeaning(s,q.example):null;
+ requireValue(q.type!=='context'||sense,'CONTEXT_EXPLANATION_SENSE_UNPROVEN');
+ const explained=sense?`${sense.text} [${sense.source}${sense.model?' · '+sense.model:''}]`:meaning(s);
+ const label=`${s.title}${s.reading?' — '+s.reading:''}: ${explained}.`;
  // A borrowed example attests the sentence, not the function of a matching particle.
  const grammarLabel=q.example?.targetId===s.id?` ${label}`:'';
  if(q.type==='order')return `Thứ tự: ${q.order.map(i=>i+1).join('→')}. ★=${q.correct+1}. Câu: 「${q.sentence}」${grammarLabel}`;
