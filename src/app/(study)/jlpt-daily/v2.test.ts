@@ -234,3 +234,22 @@ test('context plausibility rejects a viable distractor even when both ordinary g
   assert.equal(audit.accepted,expected==='');
  }
 });
+
+test('the isolated wire schema requires contextFits only in batches containing context',async()=>{
+ const reading=candidates(context()).questions.find(q=>q.type==='reading')!;
+ const contextItem={...reading,type:'context' as const,stem:'＿をみます。',choices:['本','ノート','あした','みぎ'],correct:0};
+ const isCorrect=(correct:boolean)=>({grammatical:correct,formCorrect:correct,natural:correct,meaningFits:correct,reason:'Self-authored fixture'});
+ for(const questions of [[reading],[reading,contextItem]]){
+  const hasContext=questions.length===2;
+  let calls=0;
+  const audits=await verifyDeterministic(async(_phase,prompt,_payload,schema:any)=>{
+   if(++calls===1)return questions.map((q,index)=>({index,independentAnswer:q.correct,possibleAnswers:[q.correct],natural:true,knowledgeCorrect:true,optionGrades:q.choices.map((_,i)=>({choiceIndex:i,candidateOrder:[],completedSentence:choiceSentence(q,i),...isCorrect(i===q.correct),acceptable:i===q.correct}))}));
+   assert.equal(schema.items.required.includes('contextFits'),hasContext);
+   assert.equal(Object.hasOwn(schema.items.properties,'contextFits'),hasContext);
+   assert.equal(prompt.includes('Include contextFits for every candidate'),hasContext);
+   return questions.flatMap((q,n)=>q.choices.map((_,i)=>({index:4*n+i,...isCorrect(i===q.correct),...(hasContext?{contextFits:q.type==='context'&&i===q.correct}:{})})));
+  },questions);
+  assert.equal(calls,2);
+  assert.ok(audits.every(a=>a.accepted));
+ }
+});
