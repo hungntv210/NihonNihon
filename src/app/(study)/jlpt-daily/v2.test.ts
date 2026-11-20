@@ -4,12 +4,41 @@ import {draftCollisionIssues,sentenceKeys} from './hard-qa.ts';
 import {contextAt} from './v2-data.ts';import {japaneseWordEvidence,roadmapLexicon} from './word-evidence.ts';import {reviewHtml,main} from './generate-v2.ts';
 import {verifierWireSchema} from './v2-verifier.ts';import {independentSchema,choiceSentence} from './independent-qa.ts';
 import {matchesGrammarFunction} from './grammar-function.ts';
+import {contextMeaning} from './context-sense.ts';
 const source=(title:string,reading:string,kind:V2Source['kind']='vocab',pos=['n']):V2Source=>({id:'openjlpt:'+kind+':fixture-'+title,title,reading,kind,pos,level:'N5',hash:hash(title),english:['self-authored fixture'],vietnamese:null,on:[]});
 export function context():V2Context{
  const words=[source('私','わたし','vocab',['pn']),source('毎日','まいにち','vocab',['adv']),source('学校','がっこう'),source('日本語','にほんご'),source('勉強','べんきょう','vocab',['vs']),source('校長','こうちょう'),source('日本','にほん'),source('曰本','にほん'),source('本','ほん'),source('名前','なまえ'),source('はし','はし'),source('行','こう')];
  const characters=[...new Set(words.flatMap(w=>[...w.title]).filter(c=>/\p{Script=Han}/u.test(c)))];characters.push('木','人','国','未','末','目','白');const catalog=[...words,...characters.map(k=>({...source(k,'こう','kanji'),on:k==='行'?['コウ','ギョウ','アン']:k==='本'||k==='書'?['ホン']:k==='日'||k==='人'?['ジツ']:[]})),...['は','が','を','に','で','へ','と','の','だけ','です','だ','でした','ではありません'].map(s=>source(s,s,'grammar',[]))];
  const target=catalog.find(s=>s.kind==='grammar'&&s.title==='で')!;return{mode:'draft_roadmap',date:'2026-11-16',level:'N5',catalog,dictionary:catalog,knownKanji:characters,examples:[{id:'fixture:sentence:1',targetId:target.id,text:'私は毎日学校で日本語を勉強しています。',english:'Self-authored test only.',notation:null,sourceId:'openjlpt',releaseId:'fixture',attribution:'Self-authored test'},{id:'fixture:sentence:modifiers',targetId:catalog.find(s=>s.kind==='grammar'&&s.title==='です')!.id,text:'私の学校の日本語の本です。',english:'Self-authored plumbing fixture; not semantic approval.',notation:null,sourceId:'openjlpt',releaseId:'fixture',attribution:'Self-authored test'}]};
 }
+test('context explanations choose only the supported gloss and keep Vietnamese tied to that gloss',()=>{
+ const book=source('本','ほん');
+ book.english=['book','volume'];
+ book.vietnamese={text:'quyển sách',sourceId:'fixture',sourceName:'fixture',releaseId:'fixture',method:'dictionary',model:null,promptVersion:null,autoSelected:false};
+ book.translationSenseProven=true;
+ book.translationSenseGloss='book';
+ const example={...context().examples[0],targetId:book.id,english:'I borrowed this volume.'};
+ assert.deepEqual(contextMeaning(book,example),{text:'volume',source:'OpenJLPT · EN',model:null});
+ assert.equal(contextMeaning(book,{...example,english:'I borrowed this book.'})?.text,'quyển sách');
+ assert.equal(contextMeaning(book,{...example,english:'The bookseller opened a shop.'}),null);
+ assert.equal(contextMeaning(book,{...example,english:'The volume is a book.'}),null);
+ assert.equal(contextMeaning(book,{...example,targetId:'another-lesson'}),null);
+});
+test('candidate generation and validation reject an unproven contextual sense',()=>{
+ const c=context(),book=c.catalog.find(s=>s.title==='本')!;
+ book.english=['book','volume'];
+ c.examples=[{...c.examples[0],targetId:book.id,text:'本をよみます。',english:'I read a volume.'}];
+ c.catalog.push(source('よみます','よみます','vocab',['v5m']));
+ const pool=candidates(c);
+ const q=pool.questions.find(q=>q.type==='context'&&q.targetId===book.id);
+ assert.ok(q,JSON.stringify(pool.rejected));
+ assert.match(q.explanation,/volume \[OpenJLPT/);
+ assert.throws(()=>validateV2({...q,explanation:q.explanation.replace('volume','book')},c),/EXPLANATION_SOURCE_MISMATCH/);
+ c.examples[0].english='I read something.';
+ const rejected=candidates(c);
+ assert.ok(!rejected.questions.some(q=>q.type==='context'));
+ assert.equal(rejected.rejected.CONTEXT_EXPLANATION_SENSE_UNPROVEN,1);
+});
 test('v2 reading distractors prove long vowels,sokuon,voicing,other On and shared-kanji readings',()=>{
  const c=context(),school=c.catalog.find(s=>s.title==='学校')!,rows=readingNoise(school,c);assert.ok(rows.some(r=>r.rule==='long-vowel'&&r.value==='がっこお'));assert.ok(rows.some(r=>r.rule==='sokuon'&&r.value==='がこう'));assert.ok(rows.some(r=>r.rule==='shared-kanji'&&r.value==='こうちょう'));const voiced=readingNoise(c.catalog.find(s=>s.title==='はし')!,c);assert.ok(voiced.some(r=>r.value==='ばし'));assert.ok(voiced.some(r=>r.value==='ぱし'));assert.ok(readingNoise(c.catalog.find(s=>s.kind==='vocab'&&s.title==='行')!,c).some(r=>r.rule==='other-on'&&r.value==='ぎょう'));assert.ok(rows.every(r=>/^[\p{Script=Hiragana}\p{Script=Katakana}ー]+$/u.test(r.value)&&r.value!==school.reading&&!r.value.includes('っっ')));
 });

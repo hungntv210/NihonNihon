@@ -5,7 +5,7 @@ import {allocateRoadmap,defaults} from '../today-roadmap/model.ts';
 import {hash,type Source,type Level,requireValue} from './model.ts';
 import {translationSenseEvidence} from './v2-hardening.ts';
 export type LearningMode='srs'|'draft_roadmap';
-export type V2Source=Source&{vietnamese:Translation|null;translationReported?:boolean;translationSenseProven?:boolean;on:string[];kun?:string[]};
+export type V2Source=Source&{vietnamese:Translation|null;translationReported?:boolean;translationSenseProven?:boolean;translationSenseGloss?:string;on:string[];kun?:string[]};
 export type Example={id:string;targetId:string;text:string;english:string;notation:string|null;sourceId:string;releaseId:string;attribution:string};
 export type V2Context={mode:LearningMode;date:string;level:Level;catalog:V2Source[];dictionary:Source[];boundaryWords?:Source[];grammarCatalog?:Source[];examples:Example[];knownKanji:string[]};
 export function contextAt(content:DatabaseSync,learning:DatabaseSync,date:string,mode:LearningMode,start=defaults.startDate,level:Level='N5'):V2Context{
@@ -24,10 +24,10 @@ export function contextAt(content:DatabaseSync,learning:DatabaseSync,date:string
  const catalog=all.filter(s=>allowed.has(s.id)&&s.level===level).map(s=>{
   const vietnamese=selectedTranslation(content,s.id,'meaning');
   const translationReported=!!vietnamese&&reports.some(r=>r.item_id===s.id&&r.base_content_hash===s.hash&&String(r.text_vi).normalize('NFC')===vietnamese.text&&r.source_id===vietnamese.sourceId&&r.release_id===vietnamese.releaseId);
-  const row=vietnamese?content.prepare("SELECT context_json FROM vi_translations WHERE item_id=? AND field='meaning' AND status='selected' AND base_content_hash=? AND source_id=? AND release_id=? AND text_vi=?").get(s.id,s.hash,vietnamese.sourceId,vietnamese.releaseId,vietnamese.text):null;
+  const row=vietnamese?content.prepare("SELECT context_json FROM vi_translations WHERE item_id=? AND field='meaning' AND status='selected' AND needs_refresh=0 AND base_content_hash=? AND source_id=? AND release_id=? AND text_vi=?").get(s.id,s.hash,vietnamese.sourceId,vietnamese.releaseId,vietnamese.text):null;
   const evidence=row?JSON.parse(String(row.context_json)):null;
   const translationSenseProven=translationSenseEvidence(s,evidence);
-  return {...s,vietnamese,translationReported,translationSenseProven,kun:s.kind==='kanji'?JSON.parse(String(content.prepare('SELECT kunyomi FROM kanji WHERE item_id=?').get(s.id)!.kunyomi)):[],on:s.kind==='kanji'?JSON.parse(String(content.prepare('SELECT onyomi FROM kanji WHERE item_id=?').get(s.id)!.onyomi)):[]};
+  return {...s,vietnamese,translationReported,translationSenseProven,translationSenseGloss:translationSenseProven?evidence.gloss_en:undefined,kun:s.kind==='kanji'?JSON.parse(String(content.prepare('SELECT kunyomi FROM kanji WHERE item_id=?').get(s.id)!.kunyomi)):[],on:s.kind==='kanji'?JSON.parse(String(content.prepare('SELECT onyomi FROM kanji WHERE item_id=?').get(s.id)!.onyomi)):[]};
  });
  const examples=content.prepare(`SELECT s.item_id id,l.item_id targetId,s.text_ja text,COALESCE(s.text_en,'') english,s.furigana_notation notation,l.source_id sourceId,l.release_id releaseId,s.author_attribution attribution FROM sentences s JOIN content_items i USING(item_id) JOIN item_sentences l ON l.sentence_id=s.item_id WHERE i.is_active=1 AND l.source_id IN ('openjlpt','tatoeba') ORDER BY l.item_id,l.position`).all().filter(r=>allowed.has(String(r.targetId))).map(r=>({id:String(r.id),targetId:String(r.targetId),text:String(r.text),english:String(r.english),notation:r.notation==null?null:String(r.notation),sourceId:String(r.sourceId),releaseId:String(r.releaseId),attribution:String(r.attribution)}));
  return {mode,date,level,catalog,dictionary:all.filter(s=>s.level===level),boundaryWords:all.filter(s=>s.kind==='vocab'),grammarCatalog:all.filter(s=>s.kind==='grammar'),examples,knownKanji:[...new Set(catalog.flatMap(s=>[...s.title,...s.reading??'']).filter(ch=>/\p{Script=Han}/u.test(ch)))]};
