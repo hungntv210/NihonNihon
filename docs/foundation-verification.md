@@ -867,3 +867,12 @@ Checked implementation `bd874c942cfb849c554724559e406141d04cb3b2` on base `0bfe9
 - `npm run check` passed typecheck, 22/22 prototype tests and 223/223 core/route tests (245 total), production build, and 16/16 app checks.
 - Five self-authored regression tests cover subject vs connective, question vs disjunction, the deadline suffix, rejection of plausible or unevaluated context alternatives, and the required `contextFits` wire field in batches containing context. The suite uses fake verifier responses.
 - The revised verifier fingerprint requires new verification for checkpoints made under the prior rules. Route scope verified before push.
+
+
+## Pokabu JLPT V2 context explanation sense
+
+Checked implementation 05c2dd039b0011911c89e86db08ff0080dcc8b52 on base e7326266ca679c4dda97af3d57b758407f5f3659 with Windows, Node v24.10.0, a disposable OpenJLPT fixture, and local Chromium. The check ran from 13:19:58.740 to 13:21:45.218 on 2026-11-20 (UTC+07:00).
+- npm run check passed typecheck, 22/22 prototype tests, 225/225 core and route tests, production build, and 16/16 app checks.
+- Two self-authored regressions cover exact sense matching, rejection without evidence, and keeping Vietnamese explanations tied to the validated gloss. General naturalness continues to be evaluated by the existing verifier.
+- The verifier fingerprint invalidates prior checkpoints for the changed explanation rule. Route scope checked before push.
+- Offline on the same frozen snapshot, 30 November through 6 December: context candidates 366 to 197 before history filtering and 234 to 140 after history filtering. Other types stayed constant. The minimum daily history-eligible pool was 11 grammar and 7 order across the week. No dailyMix claim after verifier.
