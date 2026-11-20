@@ -2,6 +2,11 @@ import fs from 'node:fs';import path from 'node:path';import { parseArgs } from 
 import { openContentDatabase } from '../../../core/content.ts';import { databasePath } from '../../../core/config.ts';import { validatePreferences,DEFAULT_PREFERENCES } from '../../../core/preferences.ts';
 import { readProgress } from '../today-roadmap/repository.ts';import { learnedCatalog,learnerLevel } from './catalog.ts';import { generateWeek,type Provider } from './generation.ts';import { publishBank,savedBanks,storeDirectory,withStoreLock } from './repository.ts';import { requireValue,hash } from './model.ts';
 type Config={model:string;verifierModel:string;requestsPerMinute:number;dailyBudget:number;timeoutMs:number;maxOutputTokens:number;sharedDailyBudget?:number};
+export class GeminiHttpError extends Error {
+ constructor(public readonly status:number,message:string,public readonly retryAfter:string|null){
+  super(`AI_HTTP_${status}: ${message}`);
+ }
+}
 export function geminiProvider(config:Config,ledgerFile:string,key:string,fetcher:typeof fetch=fetch):Provider{
  requireValue(key&&[config.model,config.verifierModel].every(s=>/^gemini-[a-zA-Z0-9._-]+$/.test(s))&&Number.isInteger(config.requestsPerMinute)&&config.requestsPerMinute>0&&Number.isInteger(config.dailyBudget)&&config.dailyBudget>=2&&Number.isInteger(config.timeoutMs)&&config.timeoutMs>0&&Number.isInteger(config.maxOutputTokens)&&config.maxOutputTokens>0,'EXPLICIT_AI_CONFIG_REQUIRED');
  return async(phase,prompt,payload,schema)=>{
@@ -9,7 +14,7 @@ export function geminiProvider(config:Config,ledgerFile:string,key:string,fetche
   let wait=0;withStoreLock(directory,()=>{const ledger=fs.existsSync(ledgerFile)?JSON.parse(fs.readFileSync(ledgerFile,'utf8')):{models:{}};const entry=ledger.models[model]??={day,count:0,last:0};if(entry.day!==day){entry.day=day;entry.count=0;}requireValue(!config.sharedDailyBudget||Object.values(ledger.models).reduce((n:number,e:any)=>n+(e.day===day?e.count:0),0)<config.sharedDailyBudget,'SHARED_DAILY_BUDGET_REACHED');requireValue(entry.count<config.dailyBudget,'DAILY_BUDGET_REACHED');wait=Math.max(0,entry.last+Math.ceil(60000/config.requestsPerMinute)-Date.now());entry.count++;entry.last=Date.now()+wait;fs.writeFileSync(ledgerFile,JSON.stringify(ledger),{mode:0o600});});
   if(wait)await new Promise(r=>setTimeout(r,wait));
   const response=await fetcher(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,{method:'POST',headers:{'content-type':'application/json','x-goog-api-key':key},signal:AbortSignal.timeout(config.timeoutMs),body:JSON.stringify({systemInstruction:{parts:[{text:prompt}]},contents:[{role:'user',parts:[{text:JSON.stringify(payload)}]}],generationConfig:{temperature:0,maxOutputTokens:config.maxOutputTokens,responseMimeType:'application/json',responseJsonSchema:schema}})});
-  if(!response.ok){const body=(await response.text()).replaceAll(key,'[REDACTED]').replace(/AIza[\w-]+/g,'[REDACTED]').slice(0,2000);throw Error(`AI_HTTP_${response.status}: ${body}`);}const data=await response.json();requireValue(data.candidates?.[0]?.finishReason==='STOP','AI_OUTPUT_INCOMPLETE');return JSON.parse(data.candidates[0].content.parts.filter((p:{text?:string;thought?:boolean})=>p.text&&!p.thought).map((p:{text:string})=>p.text).join(''));
+  if(!response.ok){const body=(await response.text()).replaceAll(key,'[REDACTED]').replace(/AIza[\w-]+/g,'[REDACTED]').slice(0,2000);throw new GeminiHttpError(response.status,body,response.headers.get('retry-after'));}const data=await response.json();requireValue(data.candidates?.[0]?.finishReason==='STOP','AI_OUTPUT_INCOMPLETE');return JSON.parse(data.candidates[0].content.parts.filter((p:{text?:string;thought?:boolean})=>p.text&&!p.thought).map((p:{text:string})=>p.text).join(''));
  };
 }
 export async function generateFromDatabase(week:string,config:Config,file=databasePath(),directory=storeDirectory(),provider?:Provider){
