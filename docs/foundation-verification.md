@@ -859,3 +859,11 @@ Checked implementation `c078862cd456e1b0ba5ea0180b53b26639c6ae40` on `pokabu/jlp
 - `npm run check`: typecheck PASS, prototype 22/22 and core/route 218/218 PASS, production build PASS, app gate 16/16 PASS.
 - Four fake-fetch and fake-clock tests verify full-chain 503 recovery and quota accounting, Retry-After in both formats, bounded exhaustion, and shared-budget enforcement during recovery. The over-cap fixture keeps its original assertions and supplies Retry-After 61 seconds. The fallback and V2 verifier tests pass unchanged.
 - `node tools/check-route-scope.mjs origin/master pokabu/jlpt-provider-cooldown`: PASS. This append-only entry follows the checked implementation commit.
+
+
+## Pokabu JLPT V2 grammar functions and context alternatives
+
+Checked implementation $pokabuSha on base 0bfe99df71d483304eb9d9be88c00be96140ec6f, Windows, Node $pokabuNode, disposable OpenJLPT fixture and local Chromium. Check log opened $pokabuStart and command ended $pokabuEnd (Vietnam time).
+- npm run check PASS: typecheck, 22/22 prototype and 222/222 core/route tests, production build, 16/16 app checks.
+- Four self-authored regression tests cover subject vs connective, question vs disjunction, the deadline suffix, and context rejection with plausible or unevaluated alternatives. No live provider calls.
+- The revised verifier fingerprint requires new verification for checkpoints made under the prior rules. Route scope verified before push.
