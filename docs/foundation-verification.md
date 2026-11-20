@@ -851,3 +851,11 @@ Checked implementation `331f39f9fa8fb4cfb6b08f56901cd65a0f09f17b` on branch `nae
 - `npm run check`: PASS — typecheck PASS; 22/22 prototype + 214/214 core/route tests PASS (zero failures/skips); production build PASS; `test:app` 16/16 checks PASS.
 - Mobile perf on `/` (390x844 DPR 3, 4x CPU, Fast 4G, cache disabled, 3 runs median, paired before/after): `?_rsc=` requests 8 -> 0 (-100%, eliminating duplicate prefetches for `/settings`, `/shadowing`, `/common-tools/reports`, `/common-tools/progress`); total requests 31 -> 23 (-8); TTI 1886.6 -> 1693.3 ms (-10.2%); TBT 339.0 -> 284.0 ms (-16.2%); LCP 748.0 -> 748.0 ms; CLS 0 -> 0; JS gzip 158.85 -> 158.85 KB.
 - Route scope guard `node tools/check-route-scope.mjs origin/master naetoru/nav-prefetch`: PASS. Only this append-only audit entry follows the checked implementation commit.
+
+
+## Pokabu JLPT provider cooldown — 2026-11-20
+
+Checked implementation `c078862cd456e1b0ba5ea0180b53b26639c6ae40` on `pokabu/jlpt-provider-cooldown` (base `47ea3bc95581ecc2a4c9d2e8ccbd69110bc810a3`). Windows, Node v24.10.0, production Next build, disposable OpenJLPT fixture. Check window 2026-11-20 11:11:25.755–11:12:46.265 ICT (UTC+07:00).
+- `npm run check`: typecheck PASS, prototype 22/22 and core/route 218/218 PASS, production build PASS, app gate 16/16 PASS.
+- Four fake-fetch and fake-clock tests verify full-chain 503 recovery and quota accounting, Retry-After in both formats, bounded exhaustion, and shared-budget enforcement during recovery. The over-cap fixture keeps its original assertions and supplies Retry-After 61 seconds. The fallback and V2 verifier tests pass unchanged.
+- `node tools/check-route-scope.mjs origin/master pokabu/jlpt-provider-cooldown`: PASS. This append-only entry follows the checked implementation commit.
