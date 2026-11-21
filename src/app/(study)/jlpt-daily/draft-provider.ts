@@ -32,7 +32,7 @@ export function draftProvider(profiles:Profile[],ledger:string,key:string,option
  const cap=Math.min(200,...profiles.map(p=>p.dailyBudget)),providers=profiles.map(p=>geminiProvider({...p,dailyBudget:Math.min(p.dailyBudget,200),sharedDailyBudget:cap},ledger,key,options.fetcher));
  const keys=options.freeKeys??{},status=freeProviderStatus(keys);
  const completion=(provider:FreeProvider,model:string)=>status[provider]==='enabled'
-  ?freeCompletion({...profiles[0],provider,model,key:keys[provider]!,ledger,groqFreeTier:keys.groqFreeTier,fetcher:options.fetcher})
+  ?freeCompletion({...profiles[0],provider,model,key:keys[provider]!,ledger,groqFreeTier:keys.groqFreeTier,fetcher:options.fetcher,sleep:options.sleep})
   :undefined;
  const groqSolver=completion('groq',freeModels.groqSolver);
  const groqReview=completion('groq',freeModels.groqReview);
