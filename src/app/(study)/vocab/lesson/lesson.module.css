@@ -1,0 +1,237 @@
+.root [data-lesson-progress] {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  font-size: 12px;
+  color: var(--color-muted);
+  margin-bottom: 20px;
+}
+
+.root [data-lesson-progress] progress {
+  flex: 1;
+  height: 6px;
+  accent-color: var(--color-accent);
+}
+
+.root [data-lesson-card] {
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  padding: 36px 24px;
+  margin-bottom: 24px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-top: 5px solid var(--color-accent);
+  border-radius: 4px;
+  box-shadow: 0 3px 0 var(--theme-shadow);
+}
+
+.root [data-lesson-word] {
+  font-family: var(--font-ja) !important;
+  font-size: clamp(40px, 6vw, 64px);
+  font-weight: 400;
+  line-height: 1.8;
+  overflow-wrap: anywhere;
+}
+
+.root [data-lesson-word] rt {
+  font-size: 0.3em;
+  color: var(--color-muted);
+}
+
+.root [data-lesson-meaning] {
+  max-width: 500px;
+}
+
+.root [data-lesson-meaning] :global(.review-control) {
+  margin: 0 auto 12px;
+}
+
+.root [data-lesson-meaning] :global(.source-label) {
+  margin-bottom: 8px;
+}
+
+.root [data-lesson-translation] {
+  font-size: 20px;
+  line-height: 1.8;
+  margin: 12px 0;
+}
+
+.root [data-lesson-muted] {
+  font-size: 12px;
+  line-height: 1.8;
+  color: var(--color-muted);
+  margin-top: 14px;
+}
+
+.root [data-lesson-links] {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 20px;
+  margin: 0 0 24px;
+}
+
+.root [data-lesson-english] {
+  margin-top: 14px;
+  font-size: 12px;
+  color: var(--color-muted);
+}
+
+.root [data-lesson-english] summary {
+  cursor: pointer;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  list-style: revert;
+}
+
+.root [data-lesson-english] p {
+  margin: 4px 0 12px;
+}
+
+.root [data-lesson-word-audio] small {
+  display: block;
+  margin-top: 6px;
+  color: var(--color-muted);
+}
+
+.root [data-lesson-examples] {
+  width: 100%;
+  max-width: 560px;
+  text-align: left;
+  border-top: 1px solid var(--color-border);
+  padding-top: 18px;
+  margin-top: 4px;
+}
+
+.root [data-lesson-examples-title] {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-muted);
+  margin: 0 0 12px;
+}
+
+.root [data-lesson-example-list] {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.root [data-lesson-example] {
+  background: var(--theme-raised);
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  padding: 16px;
+}
+
+.root [data-lesson-example-body] {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.root [data-lesson-example-number] {
+  font-size: 11px;
+  color: var(--color-muted);
+  padding-top: 8px;
+}
+
+.root [data-lesson-example-text] {
+  flex: 1;
+  min-width: 0;
+}
+
+.root [data-lesson-sentence] {
+  font-size: 20px;
+  line-height: 2.3;
+  margin: 0 0 6px;
+  overflow-wrap: anywhere;
+}
+
+.root [data-lesson-sentence] rt {
+  font-size: 0.52em;
+  color: var(--color-muted);
+}
+
+.root [data-lesson-example-meaning] {
+  font-size: 15px;
+  line-height: 1.7;
+  margin: 0 0 8px;
+  overflow-wrap: anywhere;
+}
+
+.root [data-lesson-example-actions] {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.root [data-lesson-read-done] {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-accent);
+}
+
+.root [data-lesson-read-aloud] {
+  margin-top: 12px;
+  padding: 12px 14px;
+  background: var(--color-accent-soft);
+  border-left: 3px solid var(--color-accent);
+  border-radius: 4px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.root [data-lesson-read-aloud] p {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.root [data-lesson-audio-note] {
+  display: block;
+  margin-top: 10px;
+  font-size: 12px;
+  color: var(--color-muted);
+}
+
+.root [data-lesson-empty-examples] {
+  margin: 0;
+}
+
+@media (max-width: 600px) {
+  .root [data-lesson-card] {
+    padding: 28px 18px;
+  }
+
+  .root [data-lesson-translation] {
+    font-size: 18px;
+  }
+
+  .root [data-lesson-links] {
+    gap: 12px;
+  }
+
+  .root [data-lesson-example] {
+    padding: 14px 12px;
+  }
+
+  .root [data-lesson-example-body] {
+    gap: 8px;
+  }
+
+  .root [data-lesson-sentence] {
+    font-size: 18px;
+  }
+}

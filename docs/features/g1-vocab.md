@@ -20,7 +20,7 @@ Học 4.741 từ N5–N2 theo thứ tự lộ trình, nghĩa tiếng Việt từ
 - [ ] 1–2 câu ví dụ có furigana, audio, bản dịch (Tatoeba tiếng Việt nếu có, còn lại dịch máy kèm tiếng Anh)
 - [x] Liên kết sang từng kanji cấu thành
 - [x] **Từ cùng chữ khác cách đọc** (22 từ, ví dụ 方 かた/ほう): nghĩa dịch máy theo đúng cách đọc + cảnh báo "còn cách đọc khác"
-- [ ] Bài học từ mới buổi tối; nghe audio, đọc to câu ví dụ
+- [x] Bài học từ mới buổi tối; nghe audio, đọc to câu ví dụ
 - [ ] Sổ từ cá nhân: từ thêm từ Reader, phụ đề, tra cứu, đề thi kèm câu gốc và nguồn
 
 ## Dữ liệu
