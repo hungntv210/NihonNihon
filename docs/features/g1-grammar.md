@@ -15,7 +15,7 @@ Mỗi tối học 1–2 mẫu ngữ pháp và làm bài tập ngay; 403 mẫu N5
 ## Chức năng
 
 - [x] Trang mẫu câu: tên mẫu, nghĩa tiếng Việt, cấp
-- [ ] Công thức nối dạng khối màu (V-て + いく)
+- [x] Công thức nối dạng khối màu (V-て + いく) (xác minh 21/11: `src/app/(study)/grammar/formula.ts:1-327`, `src/app/(study)/grammar/[id]/page.tsx:75-122`, `src/app/(study)/grammar/grammar.test.ts:202-313`)
 - [ ] 2–3 câu ví dụ có furigana, audio, bản dịch; phần mẫu câu được tô màu (DB G0 đóng băng còn 16/1.160 câu ví dụ thiếu furigana)
 - [ ] Ghi chú phân biệt mẫu dễ nhầm, có link sang mẫu kia
 - [ ] Câu trong clip shadowing có dùng mẫu này (nếu có)

@@ -34,7 +34,7 @@ SRS, Từ vựng, Kanji và Ngữ pháp trong thư mục tuyến tương ứng; 
 - [x] **Triển khai:** VPS nhỏ hoặc máy nhà + Tailscale (không mở cổng ra Internet khi dùng Tailscale)
 - [ ] **PWA:** cài lên màn hình điện thoại; service worker cache để ôn SRS, xem thẻ, đọc bài đã tải khi offline; đồng bộ khi có mạng
 - [x] **Sao lưu:** tự động sao lưu database và bản ghi âm mỗi ngày; nút tải về một file (xác minh 21/11: `tests/backup.test.ts:10-39`, `tools/test-app.ts:183-184`)
-- [ ] **Cài đặt:** giờ học, ngày shadowing, số thẻ mới/ngày, mức ghi nhớ FSRS, furigana mặc định, giọng TTS, sáng/tối
+- [x] **Cài đặt:** giờ học, ngày shadowing, số thẻ mới/ngày, mức ghi nhớ FSRS, furigana mặc định, giọng TTS, sáng/tối (xác minh 21/11: `tests/preferences.test.ts:10-29`, `tests/srs-settings.test.ts:17-294`, `tools/test-app.ts:177-180`)
 - [x] Trang **Nguồn dữ liệu** ghi công theo giấy phép
 
 ## Dữ liệu
