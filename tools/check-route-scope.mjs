@@ -21,6 +21,7 @@ ownership.set('pokabu/jlpt-qa-hardening-2', ['src/app/(study)/jlpt-daily/', 'too
 ownership.set('pokabu/jlpt-provider-cooldown', ['src/app/(study)/jlpt-daily/draft-provider.ts', 'src/app/(study)/jlpt-daily/generate-week.ts', 'src/app/(study)/jlpt-daily/draft-provider.test.ts', 'tools/check-route-scope.mjs']);
 ownership.set('pokabu/jlpt-quality-gates', ['src/app/(study)/jlpt-daily/confusion-groups.ts', 'src/app/(study)/jlpt-daily/deterministic.ts', 'src/app/(study)/jlpt-daily/grammar-function.ts', 'src/app/(study)/jlpt-daily/v2-verifier.ts', 'src/app/(study)/jlpt-daily/v2.test.ts', 'tools/check-route-scope.mjs']);
 ownership.set('pokabu/jlpt-explanation-sense', ['src/app/(study)/jlpt-daily/deterministic.ts', 'src/app/(study)/jlpt-daily/context-sense.ts', 'src/app/(study)/jlpt-daily/v2-data.ts', 'src/app/(study)/jlpt-daily/v2-verifier.ts', 'src/app/(study)/jlpt-daily/v2.test.ts', 'tools/check-route-scope.mjs']);
+ownership.set('pokabu/g1-tick-a', ['docs/features/g1-foundation.md', 'docs/features/g1-grammar.md', 'docs/features/g1-kanji.md', 'docs/features/g1-vocab.md', 'tools/check-route-scope.mjs']);
 ownership.set('rain-clarity', ['src/components/pixel-scenes/', 'src/app/(study)/appearance/daily-weather/', 'tests/daily-weather.test.ts', 'tools/check-route-scope.mjs']);
 ownership.set('daily-weather', ['src/components/pixel-scenes/', 'src/app/login/', 'src/app/(study)/appearance/', 'tests/daily-weather.test.ts', 'tools/ui-test-clock.mjs', 'tools/check-route-scope.mjs']);
 ownership.set('login-portrait', ['src/app/login/login.module.css', 'src/components/pixel-scenes/', 'src/app/(study)/appearance/login-festivals/', 'tests/login-portrait.test.ts', 'tools/check-route-scope.mjs']);
@@ -38,6 +39,8 @@ ownership.set('srs-perf', ['src/app/(study)/srs/review-session.tsx', 'tests/srs-
 ownership.set('naetoru/srs-perf', ownership.get('srs-perf'));
 ownership.set('srs-lazy-wanakana', ['src/app/(study)/srs/review-session.tsx', 'tests/srs-lazy-wanakana.test.ts', 'tools/check-route-scope.mjs']);
 ownership.set('naetoru/srs-lazy-wanakana', ownership.get('srs-lazy-wanakana'));
+ownership.set('srs-settings', ['src/app/(study)/settings/', 'src/app/api/settings/', 'src/core/preferences.ts', 'src/server/preferences.ts', 'src/app/(study)/srs/', 'src/app/(study)/appearance/browser-check.ts', 'tests/preferences.test.ts', 'tests/srs-settings.test.ts', 'tools/check-route-scope.mjs']);
+ownership.set('naetoru/srs-settings', ownership.get('srs-settings'));
 ownership.set('nav-prefetch', ['src/components/shell.tsx', 'tests/nav-prefetch.test.ts', 'tools/check-route-scope.mjs']);
 ownership.set('naetoru/nav-prefetch', ownership.get('nav-prefetch'));
 ownership.set('shadowing-preload', ['src/app/(study)/shadowing/player.tsx', 'tests/shadowing-preload.test.ts', 'tools/check-route-scope.mjs']);
