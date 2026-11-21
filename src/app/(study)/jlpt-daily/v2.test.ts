@@ -225,9 +225,12 @@ test('が distinguishes existential subjects from contrasting clauses and skips 
 test('か distinguishes final questions from an explicit choice and skips an uncertain function',()=>{
  assert.ok(matches('ka-question','か','おちゃをのみます','？'));
  assert.equal(matches('ka-or','か','おちゃをのみます','？'),false);
- assert.ok(matches('ka-or','か','おちゃ','みずのどちらがいいですか。'));
- assert.equal(matches('ka-question','か','おちゃ','みずのどちらがいいですか。'),false);
+ assert.ok(matches('ka-or','か','日本','中国のどちらがいいですか。'));
+ assert.equal(matches('ka-question','か','日本','中国のどちらがいいですか。'),false);
  assert.equal(matches('ka-or','か','おちゃ','どうかわかりません。'),false);
+ assert.equal(matches('ka-or','か','おちゃ','みずのどちらがいいですか。'),false);
+ assert.equal(matches('ka-question','か','行くの','は分かりません。'),true);
+ assert.equal(matches('ka-or','か','行くの','は分かりません。'),false);
  const c=context();
  const question=grammarSource('ka-question','か'), alternative=grammarSource('ka-or','か');
  c.catalog.push(question,alternative);
@@ -241,6 +244,31 @@ test('まで does not match the prefix of a までに deadline',()=>{
  assert.ok(matches('made','まで','三時','まちます。'));
  assert.equal(matches('made','まで','三時','にでます。'),false);
  assert.ok(matches('made-ni','までに','三時','でます。'));
+ assert.equal(matches('made-ni','まで','三時','まちます。'),false);
+});
+
+test('the locative or instrumental で excludes the copular reading',()=>{
+ assert.equal(matches('de-place','で','これは本','ある。'),false);
+ assert.equal(matches('de-place','で','本を学校','読みます。'),true);
+ assert.equal(matches('de-means','で','バス','行きます。'),true);
+});
+
+test('grammar and order blanks must align with the IPADIC token boundaries',()=>{
+ const c=context(),target=c.catalog.find(s=>s.title==='だけ')!;
+ c.catalog.push(source('よみます','よみます','vocab',['v5m']));
+ const valid={...c.examples[0],targetId:target.id,text:'本だけをよみます。'};
+ const invalid={...valid,id:'authored-verb-tail',text:'本をいただけます。'};
+ c.examples=[valid,invalid];
+ const rows=candidates(c).questions.filter(q=>q.targetId===target.id&&q.type==='grammar');
+ assert.deepEqual(rows.map(q=>q.example?.id),[valid.id]);
+ const question=rows[0];
+ assert.doesNotThrow(()=>validateV2(question,c));
+ const stem='本をいた＿ます。';
+ const grammar={...question,example:invalid,stem,sentence:invalid.text,fingerprint:fingerprint(stem),explanation:question.explanation.replace(valid.text,invalid.text)};
+ assert.throws(()=>validateV2(grammar,c),/BLANK_SPLITS_TOKEN/);
+ const order={...grammar,type:'order' as const,stem:'本をいた＿ ★ ＿ ＿。',choices:['だけ','ます','でしょう','か'],
+  order:[0,1,2,3],correct:1,sentence:'本をいただけますでしょうか。'};
+ assert.throws(()=>validateV2(order,c),/BLANK_SPLITS_TOKEN/);
 });
 
 test('context plausibility rejects a viable distractor even when both ordinary grades favor the key',async()=>{

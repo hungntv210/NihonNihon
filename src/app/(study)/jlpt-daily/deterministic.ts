@@ -6,6 +6,7 @@ import {confusionGroups,learnedGrammarForms} from './confusion-groups.ts';
 import {safeExample,exampleEvidence,type V2Context,type V2Source,type Example} from './v2-data.ts';
 import {hardeningIssues,orderBoundaries,provenMeaning,standardMeanings} from './v2-hardening.ts';
 import {matchesGrammarFunction} from './grammar-function.ts';
+import {grammarTokens,tokenEdges,type GrammarToken} from './tokenizer.ts';
 import {contextMeaning} from './context-sense.ts';
 import type {QuestionProvenance} from './draft-provider.ts';
 export type Distractor={value:string;rule:string;sourceIds:string[]};
@@ -14,10 +15,10 @@ const kana=(s:string)=>/^[\p{Script=Hiragana}\p{Script=Katakana}ー]+$/u.test(s)
 const containsHan=(s:string)=>/\p{Script=Han}/u.test(s);
 const charsKnown=(s:string,c:V2Context)=>[...s].filter(containsHan).every(k=>c.knownKanji.includes(k));
 const wordEdges=(sentence:string)=>new Set([...new Intl.Segmenter('ja',{granularity:'word'}).segment(sentence)].flatMap(t=>[t.index,t.index+t.segment.length]));
-function grammarOccurrence(source:V2Source,surface:string,sentence:string,edges:Set<number>,from=0,to=sentence.length){
+function grammarOccurrence(source:V2Source,surface:string,sentence:string,edges:Set<number>,tokens:GrammarToken[],from=0,to=sentence.length){
  if(!surface)return -1;
  for(let start=sentence.indexOf(surface,from);start>=0&&start+surface.length<=to;start=sentence.indexOf(surface,start+1)){
-  if(edges.has(start)&&edges.has(start+surface.length)&&matchesGrammarFunction(source,surface,sentence,start))return start;
+  if(edges.has(start)&&edges.has(start+surface.length)&&matchesGrammarFunction(source,surface,sentence,start,tokens))return start;
  }
  return -1;
 }
@@ -98,6 +99,20 @@ export function validateV2(q:V2Question,c:V2Context,history:Question[]=[]){
  requireValue(q.type==='order'||q.choices[q.correct]===(q.type==='reading'?s.reading:plainJapanese(s.title)),'ANSWER_SOURCE_EVIDENCE');
  // V2's two source-derived noise gates replace the legacy nearby-dictionary
  // restrictions; every other hard gate stays shared and unchanged.
+ const grammarTask=q.type==='grammar'||q.type==='order';
+ const tokens=grammarTask&&q.sentence?grammarTokens(q.sentence):[];
+ if(grammarTask&&q.sentence){
+  const marker=q.stem.match(q.type==='grammar'?/＿+/u:/(?:＿|★)(?:\s+(?:＿|★)){3}/u);
+  if(marker?.index!==undefined){
+   const fragments=q.type==='grammar'?[q.choices[q.correct]]:q.order.map(i=>q.choices[i]);
+   if(fragments.every(fragment=>typeof fragment==='string')){
+    let offset=marker.index;
+    const cuts=[offset,...fragments.map(fragment=>offset+=fragment.length)];
+    const edges=tokenEdges(tokens);
+    requireValue(cuts.every(cut=>edges.has(cut)),'BLANK_SPLITS_TOKEN');
+   }
+  }
+ }
  const hardened=hardeningIssues(q,c);requireValue(!hardened.length,'HARDENING_'+hardened.join(','));
  requireValue(q.explanation===explanation(q,s),'EXPLANATION_SOURCE_MISMATCH');
  const issues=hardQuestionIssues(q,s,c.catalog).filter(i=>!(q.type==='reading'&&i==='READING_NEAR_SAME_LEVEL_DISTRACTORS')&&!(q.type==='spelling'&&i==='SPELLING_NEAR_DISTRACTORS'));
@@ -115,7 +130,7 @@ export function validateV2(q:V2Question,c:V2Context,history:Question[]=[]){
   const start=q.stem.search(q.type==='grammar'?/＿/u:/＿|★/u);
   const length=q.type==='grammar'?q.choices[q.correct].length:q.order.map(i=>q.choices[i]).join('').length;
   const forms=q.type==='grammar'?[q.choices[q.correct]]:learnedGrammarForms([s]).map(f=>f.surface);
-  requireValue(start>=0&&forms.some(form=>grammarOccurrence(s,form,sentence,edges,start,start+length)>=0),'GRAMMAR_FUNCTION_UNPROVEN');
+  requireValue(start>=0&&forms.some(form=>grammarOccurrence(s,form,sentence,edges,tokens,start,start+length)>=0),'GRAMMAR_LABEL_UNCERTAIN');
  }
  if(!lexicons.has(c))lexicons.set(c,draftContextLexicon(c.catalog,c.dictionary));const lexical=strictDraftIssues(q,lexicons.get(c)!);requireValue(!lexical.length,'STRICT_QA_'+lexical.join(','));
  const collisions=draftCollisionIssues(q,history.filter(h=>Math.abs(Date.parse(h.date)-Date.parse(q.date))<=30*86400000),c.catalog);requireValue(!collisions.length,'COLLISION_'+collisions.join(','));
@@ -136,7 +151,8 @@ export function candidates(c:V2Context,report?: (row:CandidateDiagnostic)=>void)
   const examples=c.examples.filter(e=>e.targetId===s.id||(s.kind==='grammar'&&parents.has(e.targetId)&&surfaces.some(v=>e.text.includes(v))));
   for(const example of examples){
    const sentence=safeExample(example,c);if(!sentence)continue;const surface=plainJapanese(s.title),boundaries=wordEdges(sentence);
-   const start=grammarOccurrence(s,surface,sentence,boundaries);
+   const tokens=s.kind==='grammar'?grammarTokens(sentence):[];
+   const start=grammarOccurrence(s,surface,sentence,boundaries,tokens);
    if(start>=0&&surface&&charsKnown(surface,c)){
     const stem=sentence.slice(0,start)+'＿'+sentence.slice(start+surface.length),group=confusionGroups.find(g=>g.surfaces.includes(surface));
     const noise=s.kind==='grammar' ? forms.filter(o=>o.id!==s.id && group?.surfaces.includes(o.surface) && !stem.includes(o.surface) && charsKnown(o.surface,c)).map(o=>({value:o.surface,rule:'confusion-group',sourceIds:[o.id]}))
@@ -146,9 +162,10 @@ export function candidates(c:V2Context,report?: (row:CandidateDiagnostic)=>void)
    }
    // Order can use any explicitly taught spelling of the pattern in a sourced sentence.
    // Do not infer an isolated particle from inside a composite pattern.
-   const orderMatch=s.kind==='grammar'?surfaces.map(value=>({index:grammarOccurrence(s,value,sentence,boundaries),value})).find(m=>m.index>=0):undefined;
+   const orderMatch=s.kind==='grammar'?surfaces.map(value=>({index:grammarOccurrence(s,value,sentence,boundaries,tokens),value})).find(m=>m.index>=0):undefined;
    if(orderMatch){
-    const parts=phrases(sentence,orderBoundaries(sentence,c,example));for(let from=0;from+4<=parts.length;from++)if(parts.length>=4){const fragments=parts.slice(from,from+4);const offset=parts.slice(0,from).join('').length;if(orderMatch.index<offset||orderMatch.index+orderMatch.value.length>offset+fragments.join('').length)continue;
+    const edges=tokenEdges(tokens),allowed=orderBoundaries(sentence,c,example);
+    const parts=phrases(sentence,new Set([...allowed].filter(cut=>edges.has(cut))));for(let from=0;from+4<=parts.length;from++)if(parts.length>=4){const fragments=parts.slice(from,from+4);const offset=parts.slice(0,from).join('').length;if(orderMatch.index<offset||orderMatch.index+orderMatch.value.length>offset+fragments.join('').length)continue;
      attempt(()=>{const choices=stable(fragments,c.date+example.id,v=>v),order=fragments.map(f=>choices.indexOf(f)),starSlot=1,stem=parts.slice(0,from).join('')+'＿ ★ ＿ ＿'+parts.slice(from+4).join(''),correct=order[starSlot],fp=fingerprint(stem);const q:V2Question={version:2,mode:c.mode,id:hash({date:c.date,target:s.id,fp}).slice(0,32),date:c.date,fingerprint:fp,day:0,position:0,type:'order',targetId:s.id,stem,choices,correct,order,starSlot,distractors:[],sourceHash:s.hash,example,sentence,explanation:''};q.explanation=explanation(q,s);return q;});
     }
    }

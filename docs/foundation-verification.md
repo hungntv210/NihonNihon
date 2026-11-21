@@ -938,3 +938,12 @@ Checked implementation `f3e5d3188e4a862a462b329bd35ff76e96a3bc14` on branch `nae
 - `daily-weather` JS gzip budget: 473,289 B vs baseline 468,494 B (+4,795 B <= 5,000 B limit, +205 B margin) after moving server-only deep-link selection to `query.ts`, playback helpers to `playback.ts`, and static notices to `page.tsx`.
 - `shadowing` browser-check covers `?clip=<id>&segment=<n>` deep-link + invalid-query fallback, `1.2x` speed + pause-to-shadow `x1.2`, desktop shortcuts (`Space`/`Left`/`Right`/`R`/`L`) with editable-target focus guard, and `Th?m c?u v?o SRS` via `/api/review/cards` (idempotent duplicate handling, zero DB schema changes).
 - `node tools/check-route-scope.mjs origin/master naetoru/shadowing-controls`: PASS. Only this append-only audit entry follows `f3e5d31`.
+
+
+## Pokabu JLPT IPADIC tokenizer
+
+Checked implementation `1b2e14e097cc5fe8ed4c98364525a6334756e066` on base `6b0a110029c91a49b841315fe3bce4f9c07bce25` with Windows, Node v24.10.0, a disposable OpenJLPT fixture, and local Chromium. The check ran from `2026-11-21T12:22:13.4549588+07:00` through `2026-11-21T12:23:46.9005706+07:00`.
+- `npm run check` passed typecheck, 22/22 prototype tests, 236/236 core and route tests, production build, and 16/16 app checks.
+- Authored fixtures cover split verb tokens in grammar and order, case and conjunctive particles, embedded and final questions versus alternatives, deadline versus duration, and the copular reading.
+- Same-path production builds emitted identical browser chunk hashes and route references (79 JavaScript chunks, 1,385,672 bytes, and 39 route manifests). Route scope passed before push.
+- Frozen offline audit confirmed a valid 10-candidate daily mix independently for each of seven dates. The draft recheck retained 33 of 35 questions. The new fingerprint prevents older checkpoints from bypassing the gate.
