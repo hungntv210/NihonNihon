@@ -26,6 +26,9 @@ export default async function VocabPage({
         <Link href="/vocab/lesson" className="button button-primary">
           Học 5 từ mới →
         </Link>
+        <Link href="/vocab/notebook" className="text-link">
+          Sổ từ cá nhân
+        </Link>
         <Link href={result.search.saved ? '/vocab' : '/vocab?saved=1'} className="text-link">
           {result.search.saved ? 'Tất cả từ vựng' : 'Từ đã vào hàng ôn'}
         </Link>

@@ -68,6 +68,7 @@ ownership.set('search-fts5', ['src/app/(study)/common-tools/repository.ts', 'src
 ownership.set('naetoru/search-fts5', ownership.get('search-fts5'));
 ownership.set('g1-ticks', ['docs/features/g1-foundation.md', 'docs/features/g1-grammar.md', 'tools/check-route-scope.mjs', 'docs/foundation-verification.md']);
 ownership.set('naetoru/g1-ticks', ownership.get('g1-ticks'));
+ownership.set('naetoru/vocab-notebook', ['src/app/(study)/vocab/', 'tests/vocab-notebook.test.ts', 'tools/check-route-scope.mjs']);
 ownership.set('naetoru/shadowing-history', ['src/app/(study)/shadowing/', 'src/app/api/shadowing/', 'src/core/backup.ts', 'tests/shadowing-history.test.ts', 'docs/features/g1-shadowing.md', 'tools/check-route-scope.mjs']);
 ownership.set('ui-motion', ['src/components/motion/', 'src/components/route-presentation.tsx', 'src/components/nav.tsx', 'src/components/add-to-review.tsx', 'src/components/route-heading.tsx', 'src/components/pixel-scenes/', 'src/app/layout.tsx', 'src/app/(study)/srs/page.tsx', 'src/app/(study)/srs/review-session.tsx', 'src/app/(study)/jlpt-daily/practice.tsx', 'src/app/(study)/shadowing/player.tsx', 'src/app/(study)/shadowing/voice-meter.tsx', 'src/app/(study)/common-tools/progress/page.tsx', 'src/app/(study)/today-roadmap/today.tsx', 'src/app/(study)/appearance/', 'tests/pixel-scenes.test.ts', 'tests/ui-motion.test.ts', 'tools/check-route-scope.mjs']);
 ownership.set('foundation', ['src/app/(study)/settings/', 'public/fonts/']);
