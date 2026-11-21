@@ -16,7 +16,7 @@ Mỗi tối học 1–2 mẫu ngữ pháp và làm bài tập ngay; 403 mẫu N5
 
 - [x] Trang mẫu câu: tên mẫu, nghĩa tiếng Việt, cấp
 - [ ] Công thức nối dạng khối màu (V-て + いく)
-- [ ] 2–3 câu ví dụ có furigana, audio, bản dịch; phần mẫu câu được tô màu
+- [ ] 2–3 câu ví dụ có furigana, audio, bản dịch; phần mẫu câu được tô màu (DB G0 đóng băng còn 16/1.160 câu ví dụ thiếu furigana)
 - [ ] Ghi chú phân biệt mẫu dễ nhầm, có link sang mẫu kia
 - [ ] Câu trong clip shadowing có dùng mẫu này (nếu có)
 - [x] Bài tập **chọn đáp án** (dạng 文法 JLPT)
@@ -37,7 +37,7 @@ Mỗi tối học 1–2 mẫu ngữ pháp và làm bài tập ngay; 403 mẫu N5
 
 ## Tiêu chí hoàn thành
 
-- [ ] 403 mẫu N5–N2 có trang đầy đủ
+- [x] 403 mẫu N5–N2 có trang đầy đủ (xác minh 21/11: 403/403 trên DB G0 đóng băng, `src/app/(study)/grammar/grammar.test.ts:63-75`)
 - [ ] Mỗi mẫu có ít nhất 3 câu bài tập mỗi dạng
 
 ## Câu hỏi còn mở
