@@ -4,6 +4,9 @@ import {
   type Translation,
   type TranslationField,
 } from '../../../core/content.ts';
+import { getGrammarConfusables, type GrammarConfusable } from './confusables.ts';
+
+export type { GrammarConfusable };
 
 export const pageSize = 12;
 export const levels = ['N5', 'N4', 'N3', 'N2', 'N1'] as const;
@@ -30,6 +33,7 @@ export type GrammarDetail = GrammarSummary & {
   formationVi: GrammarTranslation | null;
   notesEn: string | null;
   notesVi: GrammarTranslation | null;
+  confusables: GrammarConfusable[];
   examples: Example[];
   related: GrammarSummary[];
   clips: { id: string; position: number }[];
@@ -145,12 +149,14 @@ export function getGrammar(db: DatabaseSync, key: string): GrammarDetail | null 
     )
     .all(id)
     .map((r) => ({ id: String(r.clip_id), position: Number(r.position) }));
+  const confusables = getGrammarConfusables(db, id, translation, grammarHref);
   return {
     ...base,
     formationEn: String(row.formation_en),
     formationVi: translation(db, id, 'formation'),
     notesEn: row.notes_en == null ? null : String(row.notes_en),
     notesVi: translation(db, id, 'notes'),
+    confusables,
     examples,
     related,
     clips,

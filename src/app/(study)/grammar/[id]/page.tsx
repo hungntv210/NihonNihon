@@ -155,6 +155,35 @@ export default async function GrammarDetailPage({ params }: { params: Promise<{ 
           )}
         </section>
       )}
+      {item.confusables.length > 0 && (
+        <section className={styles.confusables} aria-labelledby="confusables-title">
+          <h2 id="confusables-title">Dễ nhầm với</h2>
+          <ul className={styles.confusableList}>
+            {item.confusables.map((entry) => (
+              <li key={entry.targetId} className={styles.confusableItem}>
+                <div className={styles.confusableHeader}>
+                  <Link href={entry.href} className={styles.confusableLink}>
+                    <JaText>{entry.targetPattern}</JaText>
+                  </Link>
+                  <span className="level">{entry.targetLevel}</span>
+                </div>
+                {entry.noteVi && (
+                  <ViText as="p" className={styles.confusableVi}>
+                    {entry.noteVi.text}
+                  </ViText>
+                )}
+                <p lang="en" className={styles.original}>
+                  <SourceText text={entry.noteEn} />
+                </p>
+                <div className={styles.confusableMeta}>
+                  <SourceLabel translation={entry.noteVi} fallback={entry.sourceName} />
+                  {entry.noteVi && <span className={styles.help}>Bản gốc: {entry.sourceName}</span>}
+                </div>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
       <section className="section-block" aria-labelledby="examples-title">
         <div className="section-heading">
           <div>
