@@ -920,3 +920,12 @@ Checked implementation `06fbe2c3008f59d5110d26e886b9e4654cf9e63f` on branch `nae
 - `npm run check`: PASS -- typecheck PASS; prototype 22/22 and core/route 240/240 PASS (262 total, 0 failures/skips, including 2 new regression tests in `tests/srs-settings.test.ts` for quick 15-card sessions and `isCompatibleSessionCache()`); production build PASS; `test:app` 16/16 checks PASS.
 - Route browser checks on `06fbe2c`: `appearance/motion/browser-check.ts` PASS (100-card stress, first20Median 226.2ms / last20Median 227.2ms, swap 180ms); `appearance/browser-check.ts` PASS (4 themes x 2 widths x 19 screens + 15-card SRS quick session); `srs/browser-check.ts` PASS.
 - `node tools/check-route-scope.mjs origin/master naetoru/srs-settings`: PASS (13 files, including `src/app/(study)/appearance/browser-check.ts`). Only this append-only audit entry follows the checked implementation commit.
+
+## Naetoru SRS settings full browser-suite and scope restore -- 2026-11-21
+
+Checked implementation `b29e0538bfec9c1944008963d9c535c11888c60d` on branch `naetoru/srs-settings` (merged `origin/master` `f9883771a9ff9a3b049f5ba823cb877a95c8007e` without force push) on Windows with Node v24.10.0, clean `.next` build, disposable OpenJLPT fixture, and local headless Chrome. Check window: `2026-11-21T12:49:36.6042631+07:00` through `2026-11-21T12:57:34.1343702+07:00` (UTC+07:00).
+- Restored verbatim `ownership.set('pokabu/g1-tick-a', ...)` entry directly before `'rain-clarity'` in `tools/check-route-scope.mjs` (accidentally dropped in #84).
+- Deleted `.next` before running full gates to avoid stale chunk inflation in `daily-weather` gzip budget.
+- `npm run check`: PASS -- typecheck PASS; prototype 22/22 and core/route 241/241 PASS (263 total, 0 failures/skips); clean `next build --webpack` PASS; `test:app` 16/16 checks PASS.
+- `npm run test:browser`: PASS 14/14 (`appearance`, `daily-weather`, `login-festivals`, `motion`, `pixel-scenes-next`, `pixel-scenes`, `common-tools`, `grammar`, `jlpt-daily`, `kanji`, `shadowing`, `srs`, `today-roadmap`, `vocab`).
+- `node tools/check-route-scope.mjs origin/master naetoru/srs-settings`: PASS (13 files). Only this append-only audit entry follows `b29e053`.
