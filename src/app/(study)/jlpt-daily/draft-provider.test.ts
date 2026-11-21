@@ -1,9 +1,78 @@
 import test,{type TestContext} from 'node:test';import assert from 'node:assert/strict';import fs from 'node:fs';import os from 'node:os';import path from 'node:path';
-import {draftProvider,type DraftAttempt} from './draft-provider.ts';
+import {draftProvider,modelEvidence,type DraftAttempt} from './draft-provider.ts';
+import {freeCompletion,freeModels,freeProviderStatus,groqRateLimitUntil,readFreeKeys} from './free-provider.ts';
 const primary={model:'gemini-3.6-flash',verifierModel:'gemini-3.6-flash',requestsPerMinute:60000000,dailyBudget:200,timeoutMs:1000,maxOutputTokens:100};
 const fallback={...primary,model:'gemini-4-carbon',verifierModel:'gemini-4-carbon'};
 function setup(t:{after:(fn:()=>void)=>void}){const dir=fs.mkdtempSync(path.join(os.tmpdir(),'nihon-draft-retry-'));t.after(()=>fs.rmSync(dir,{recursive:true,force:true}));return path.join(dir,'quota.json');}
 const success=()=>Response.json({candidates:[{finishReason:'STOP',content:{parts:[{text:'[]'}]}}]});
+const freeSuccess=()=>Response.json({choices:[{finish_reason:'stop',message:{content:'{"result":[]}'}}]});
+test('OpenRouter rejects every model without the free suffix before using the network',t=>{
+ const fetcher=async()=>{assert.fail('non-free model must never reach fetch');};
+ for(const model of ['google/gemma-4-31b-it','openrouter/auto','openrouter/free','google/gemma-4-31b-it:free ']){
+  assert.throws(()=>freeCompletion({...primary,provider:'openrouter',model,key:'fake',ledger:setup(t),fetcher}),/OPENROUTER_FREE_MODEL_REQUIRED/);
+ }
+});
+test('Groq quota is shared across both models and preserves the Gemini ledger',async t=>{
+ const {start}=fakeClock(t),ledger=setup(t),day=start.toISOString().slice(0,10);
+ fs.writeFileSync(ledger,JSON.stringify({models:{[primary.model]:{day,count:11,last:0}},providers:{groq:{day,count:199}}}));
+ let calls=0;
+ const config={...primary,provider:'groq' as const,key:'fake',groqFreeTier:true,ledger,fetcher:async()=>{calls++;return freeSuccess();}};
+ await freeCompletion({...config,model:freeModels.groqSolver})('',{},{});
+ await assert.rejects(freeCompletion({...config,model:freeModels.groqReview})('',{},{}),/FREE_PROVIDER_DAILY_BUDGET_REACHED/);
+ assert.equal(calls,1);
+ assert.equal(JSON.parse(fs.readFileSync(ledger,'utf8')).models[primary.model].count,11);
+});
+test('OpenRouter checks the key before completion and enforces 50 completions until UTC midnight',async t=>{
+ const {start}=fakeClock(t),ledger=setup(t),day=start.toISOString().slice(0,10),paths:string[]=[];
+ fs.writeFileSync(ledger,JSON.stringify({models:{},providers:{openrouter:{day,count:49}}}));
+ const complete=freeCompletion({...primary,provider:'openrouter',model:freeModels.openrouter,key:'fake',ledger,fetcher:async(url,init)=>{
+  const pathname=new URL(String(url)).pathname;
+  paths.push(pathname);
+  if(pathname.endsWith('/key'))return Response.json({data:{limit_remaining:0}});
+  assert.equal(JSON.parse(String(init?.body)).provider.max_price.completion,0);
+  return freeSuccess();
+ }});
+ await complete('',{},{});
+ await assert.rejects(complete('',{},{}),/FREE_PROVIDER_DAILY_BUDGET_REACHED/);
+ assert.deepEqual(paths,['/api/v1/key','/api/v1/chat/completions']);
+ t.mock.timers.tick(4*3600000);
+ await complete('',{},{});
+ assert.equal(JSON.parse(fs.readFileSync(ledger,'utf8')).providers.openrouter.count,1);
+});
+test('Groq rate-limit headers block both Groq models until the longest exhausted window resets',async t=>{
+ const {start}=fakeClock(t),ledger=setup(t),headers=new Headers({'x-ratelimit-remaining-requests':'0','x-ratelimit-reset-requests':'2m59.56s','x-ratelimit-remaining-tokens':'0','x-ratelimit-reset-tokens':'7.66s'});
+ assert.equal(groqRateLimitUntil(headers,+start),+start+179560);
+ assert.equal(groqRateLimitUntil(new Headers(),+start),0);
+ let calls=0;
+ const config={...primary,provider:'groq' as const,key:'fake',groqFreeTier:true,ledger,fetcher:async()=>{
+  calls++;
+  return new Response(freeSuccess().body,{headers});
+ }};
+ await freeCompletion({...config,model:freeModels.groqSolver})('',{},{});
+ await assert.rejects(freeCompletion({...config,model:freeModels.groqReview})('',{},{}),/FREE_PROVIDER_RATE_LIMITED/);
+ assert.equal(calls,1);
+});
+test('missing keys are reported and Groq requires free-tier confirmation',t=>{
+ assert.deepEqual(freeProviderStatus(readFreeKeys(setup(t))),{groq:'MISSING_GROQ_API_KEY',openrouter:'MISSING_OPENROUTER_API_KEY'});
+ assert.equal(freeProviderStatus({groq:'fake'}).groq,'GROQ_FREE_TIER_UNCONFIRMED');
+ assert.throws(()=>freeCompletion({...primary,provider:'groq',model:freeModels.groqSolver,key:'fake',ledger:setup(t)}),/FREE_PROVIDER_NOT_ENABLED/);
+});
+test('Gemini 429 falls through to Groq and Groq 429 switches to OpenRouter without retrying',async t=>{
+ const requests:string[]=[],ledger=setup(t);
+ const provider=draftProvider([primary],ledger,'fake',{freeKeys:{groq:'fake',groqFreeTier:true,openrouter:'fake'},sleep:async()=>assert.fail('free fallback should be immediate'),fetcher:async(url,init)=>{
+  const {hostname,pathname}=new URL(String(url));
+  requests.push(init?.body&&hostname!=='generativelanguage.googleapis.com'?JSON.parse(String(init.body)).model:hostname+pathname);
+  if(hostname==='generativelanguage.googleapis.com'||hostname==='api.groq.com')return new Response(null,{status:429,headers:{'Retry-After':'90'}});
+  return pathname.endsWith('/key')?Response.json({data:{limit_remaining:null}}):freeSuccess();
+ }});
+ const output=await provider('verify','',{},{},{openjlptOnly:true});
+ assert.equal(modelEvidence(output).fallbackProvider,'openrouter');
+ assert.equal(modelEvidence(output).model,freeModels.openrouter);
+ assert.deepEqual(requests.slice(1),[freeModels.groqSolver,'openrouter.ai/api/v1/key',freeModels.openrouter]);
+ const counts=JSON.parse(fs.readFileSync(ledger,'utf8')).providers;
+ assert.equal(counts.groq.count,1);
+ assert.equal(counts.openrouter.count,1);
+});
 test('503 switches immediately, stays on fallback, records actual model and charges every attempt',async t=>{
  const ledger=setup(t),waits:number[]=[],events:DraftAttempt[]=[],models:string[]=[];
  const provider=draftProvider([primary,fallback],ledger,'secret',{sleep:async ms=>{waits.push(ms);},onAttempt:e=>{events.push(e);},fetcher:async url=>{models.push(String(url));return models.length===1?new Response('busy secret',{status:503}):success();}});
