@@ -893,3 +893,12 @@ Checked implementation `6b70eceb7b2bb121f37429fab7861af1204a085e` on `naetoru/sc
 - 32-frame static canvas pixel comparison (2 scenes x 4 seasons x 4 times in headless Chromium): 0 differing pixels across all 32 composited frames and all 32 layer-1 frames.
 - Paired mobile A/B measurement (390x844 DPR 3, 4x CPU, Fast 4G, cache disabled, 3-run median): `/kanji` TBT 240 -> 219 ms (-8.7%), TTI 1378.5 -> 1389.7 ms (+0.8%), LCP 596 -> 604 ms; `/grammar` TBT 269 -> 222 ms (-17.5%), TTI 1617.8 -> 1306.3 ms (-19.3%), LCP 784 -> 584 ms.
 - `node tools/check-route-scope.mjs origin/master naetoru/scene-reflection`: PASS. Append-only entry recorded after the checked implementation commit.
+
+
+## Pokabu JLPT IPADIC tokenizer
+
+Checked implementation `1b2e14e097cc5fe8ed4c98364525a6334756e066` on base `6b0a110029c91a49b841315fe3bce4f9c07bce25` with Windows, Node v24.10.0, a disposable OpenJLPT fixture, and local Chromium. The check ran from `2026-11-21T12:22:13.4549588+07:00` through `2026-11-21T12:23:46.9005706+07:00`.
+- `npm run check` passed typecheck, 22/22 prototype tests, 236/236 core and route tests, production build, and 16/16 app checks.
+- Authored fixtures cover split verb tokens in grammar and order, case and conjunctive particles, embedded and final questions versus alternatives, deadline versus duration, and the copular reading.
+- Same-path production builds emitted identical browser chunk hashes and route references (79 JavaScript chunks, 1,385,672 bytes, and 39 route manifests). Route scope passed before push.
+- Frozen offline audit confirmed a valid 10-candidate daily mix independently for each of seven dates. The draft recheck retained 33 of 35 questions. The new fingerprint prevents older checkpoints from bypassing the gate.
