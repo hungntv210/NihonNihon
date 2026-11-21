@@ -991,3 +991,10 @@ Checked implementation `9c926245cbb228dcdfd9ea4bd2e4279cc9beea28` against `41ba4
 - `npm run check` (2026-11-21T17:47:48.8198271+07:00 to 2026-11-21T17:49:40.0596694+07:00) passed typecheck, 22/22 prototype tests, 269/269 core and route tests, the production build, and 16/16 app checks.
 - The full check includes 10 new offline routing regressions. All 17 existing provider tests and 4 existing Gemini fallback tests pass. The regressions use mock Gemini, Groq, and OpenRouter responses.
 - `node tools/check-route-scope.mjs origin/master pokabu/jlpt-free-roles` passed. A credential-pattern scan of additions found zero matches. Only this append-only entry follows the checked implementation.
+
+## Naetoru G1 checklist verification ticks -- 2026-11-21
+
+Checked implementation `d8ed617f35d0305d7e79bb125a73b7984ae20494` on branch `naetoru/g1-ticks` (base `origin/master` `133b0068aeac08d3989a5e6c5d959ab60589e157`) on Windows with Node v24.10.0, npm 11.6.1, clean `.next` build, disposable OpenJLPT fixture, and local headless Chrome.
+- Scope: docs-only ticks on verified items (`docs/features/g1-foundation.md:37` and `docs/features/g1-grammar.md:18`) plus 2-line registry entry in `tools/check-route-scope.mjs`. `docs/features/g1-shadowing.md` and `docs/features/g1-common-tools.md` left untouched while PR #91 is open; no app code, tests, or gates edited.
+- `npm run check` (`2026-11-21T19:20:21+07:00` to `2026-11-21T19:21:46+07:00`): PASS -- `typecheck` PASS; `test` PASS (22/22 prototype + 272/272 core/route = 294/294, 0 failures/skips); `build` PASS (`next build --webpack`); `test:app` PASS (16/16 checks). Docs-only PR, so browser suite was not required.
+- `node tools/check-route-scope.mjs origin/master naetoru/g1-ticks`: PASS (4 files including this append-only audit entry). Only this append-only audit entry follows `d8ed617`.
