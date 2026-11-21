@@ -14,6 +14,7 @@ ownership.set('jlpt-deterministic', ['src/app/(study)/jlpt-daily/', 'src/app/(st
 ownership.set('jlpt-approved-v2', ownership.get('jlpt-deterministic'));
 ownership.set('jlpt-generator-balance', ownership.get('jlpt-deterministic'));
 ownership.set('jlpt-verifier-schema', ownership.get('jlpt-deterministic'));
+ownership.set('pokabu/jlpt-tokenizer', ['src/app/(study)/jlpt-daily/', 'package.json', 'package-lock.json', 'tools/check-route-scope.mjs']);
 ownership.set('pokabu/jlpt-week30-fix', ['src/app/(study)/jlpt-daily/', 'tools/check-route-scope.mjs']);
 ownership.set('pokabu/jlpt-verifier-count', ['src/app/(study)/jlpt-daily/', 'tools/check-route-scope.mjs']);
 ownership.set('pokabu/jlpt-qa-hardening', ['src/app/(study)/jlpt-daily/', 'tools/check-route-scope.mjs']);
