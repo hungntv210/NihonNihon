@@ -12,9 +12,9 @@ export function backupPaths() {
  const db=databasePath(), root=path.dirname(db);
  // Explicit opt-in is required for a separately supplied snapshot, never a G0 worker database.
  if(path.basename(db)!=='demo.sqlite' && process.env.NIHON_DB_ROLE!=='snapshot') throw Error('BACKUP_REQUIRES_G1_SNAPSHOT');
- const paths = {db,root,jlpt:path.resolve(process.env.NIHON_JLPT_PATH||path.join(root,'private','jlpt-daily')),backups:path.resolve(process.env.NIHON_BACKUP_DIR||path.join(root,'backups')),recordings:path.resolve(process.env.NIHON_RECORDINGS_DIR||path.join(root,'recordings')),settings:path.resolve(process.env.NIHON_SETTINGS_PATH||path.join(root,'settings.json')),roadmap:path.resolve(process.env.NIHON_ROADMAP_PATH||path.join(root,'private','today-roadmap.json')),lookupSentences:path.resolve(process.env.NIHON_LOOKUP_CONTEXT_PATH||path.join(root,'private','lookup-sentences.json')),lock:path.join(root,'maintenance.lock')};
- for(const key of ['backups','recordings','settings','roadmap','lookupSentences','jlpt'] as const){const relative=path.relative(root,paths[key]);if(!relative||relative.startsWith('..')||path.isAbsolute(relative))throw Error('PRIVATE_PATH_OUTSIDE_G1_ROOT');if(fs.existsSync(paths[key])&&fs.lstatSync(paths[key]).isSymbolicLink())throw Error('SYMLINK_FORBIDDEN');}
- for(const target of [paths.jlpt,paths.lookupSentences])for(let cursor=target;cursor!==root;cursor=path.dirname(cursor)){if(fs.existsSync(cursor)&&fs.lstatSync(cursor).isSymbolicLink())throw Error('SYMLINK_FORBIDDEN');}
+ const paths = {db,root,jlpt:path.resolve(process.env.NIHON_JLPT_PATH||path.join(root,'private','jlpt-daily')),backups:path.resolve(process.env.NIHON_BACKUP_DIR||path.join(root,'backups')),recordings:path.resolve(process.env.NIHON_RECORDINGS_DIR||path.join(root,'recordings')),settings:path.resolve(process.env.NIHON_SETTINGS_PATH||path.join(root,'settings.json')),roadmap:path.resolve(process.env.NIHON_ROADMAP_PATH||path.join(root,'private','today-roadmap.json')),lookupSentences:path.resolve(process.env.NIHON_LOOKUP_CONTEXT_PATH||path.join(root,'private','lookup-sentences.json')),shadowingHistory:path.resolve(process.env.NIHON_SHADOWING_HISTORY_PATH||path.join(root,'private','shadowing-history.json')),lock:path.join(root,'maintenance.lock')};
+ for(const key of ['backups','recordings','settings','roadmap','lookupSentences','shadowingHistory','jlpt'] as const){const relative=path.relative(root,paths[key]);if(!relative||relative.startsWith('..')||path.isAbsolute(relative))throw Error('PRIVATE_PATH_OUTSIDE_G1_ROOT');if(fs.existsSync(paths[key])&&fs.lstatSync(paths[key]).isSymbolicLink())throw Error('SYMLINK_FORBIDDEN');}
+ for(const target of [paths.jlpt,paths.lookupSentences,paths.shadowingHistory])for(let cursor=target;cursor!==root;cursor=path.dirname(cursor)){if(fs.existsSync(cursor)&&fs.lstatSync(cursor).isSymbolicLink())throw Error('SYMLINK_FORBIDDEN');}
  return paths;
 }
 export function maintenanceActive() { return fs.existsSync(path.join(path.dirname(databasePath()),'maintenance.lock')); }
@@ -38,7 +38,7 @@ async function createBackupUnlocked(p:ReturnType<typeof backupPaths>):Promise<Bu
  const snapshot=path.join(p.backups,randomUUID()+'.sqlite'),jlptSnapshot=path.join(p.backups,randomUUID()+'.sqlite');
  try {const db=new DatabaseSync(p.db,{readOnly:true});try{await backup(db,snapshot);}finally{db.close();}checkDatabase(snapshot);
  const file=(name:string,f:string)=>{const b=fs.readFileSync(f);return {name,bytes:b.toString('base64'),sha256:digest(b)};};
- const files=[file('database.sqlite',snapshot),...walk(p.recordings),...([['settings.json',p.settings],['roadmap.json',p.roadmap],['lookup-sentences.json',p.lookupSentences]] as const).filter(([,target])=>fs.existsSync(target)).map(([name,target])=>{if(!fs.statSync(target).isFile())throw Error('INVALID_BACKUP_FILE');return file(name,target);})];
+ const files=[file('database.sqlite',snapshot),...walk(p.recordings),...([['settings.json',p.settings],['roadmap.json',p.roadmap],['lookup-sentences.json',p.lookupSentences],['shadowing-history.json',p.shadowingHistory]] as const).filter(([,target])=>fs.existsSync(target)).map(([name,target])=>{if(!fs.statSync(target).isFile())throw Error('INVALID_BACKUP_FILE');return file(name,target);})];
  for(const name of ['approved.sqlite','attempts.json']){const source=path.join(p.jlpt,name);if(!fs.existsSync(source))continue;if(fs.lstatSync(source).isSymbolicLink()||!fs.statSync(source).isFile())throw Error('INVALID_JLPT_FILE');if(name==='approved.sqlite'){const db=new DatabaseSync(source,{readOnly:true});try{await backup(db,jlptSnapshot);}finally{db.close();}checkJlptDatabase(jlptSnapshot);files.push(file('jlpt/'+name,jlptSnapshot));}else{validateAttempts(fs.readFileSync(source));files.push(file('jlpt/'+name,source));}}
  const result=Buffer.from(JSON.stringify({version:1,createdAt:new Date().toISOString(),jlptIncluded:true,files}));if(result.length>MAX)throw Error('BACKUP_TOO_LARGE');return result;
  }finally{if(fs.existsSync(snapshot))fs.unlinkSync(snapshot);if(fs.existsSync(jlptSnapshot))fs.unlinkSync(jlptSnapshot);}
@@ -48,11 +48,11 @@ export function validateBackup(bytes:Buffer):Archive {
  if(bytes.length>MAX)throw Error('BACKUP_TOO_LARGE');const a=JSON.parse(bytes.toString('utf8')) as Archive;
  if(a.version!==1||!Array.isArray(a.files)||!a.files.length||a.files.length>10000||typeof a.createdAt!=='string')throw Error('INVALID_BACKUP');
  const seen=new Set<string>();let total=0;
- for(const f of a.files){if(typeof f.name!=='string'||!( ['database.sqlite','settings.json','roadmap.json','lookup-sentences.json','jlpt/approved.sqlite','jlpt/attempts.json'].includes(f.name)||safeRecordingPath(f.name))||seen.has(f.name)||typeof f.bytes!=='string'||!/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(f.bytes))throw Error('INVALID_BACKUP_PATH');seen.add(f.name);const b=Buffer.from(f.bytes,'base64');total+=b.length;if(total>MAX||digest(b)!==f.sha256)throw Error('BACKUP_INTEGRITY');}
+ for(const f of a.files){if(typeof f.name!=='string'||!( ['database.sqlite','settings.json','roadmap.json','lookup-sentences.json','shadowing-history.json','jlpt/approved.sqlite','jlpt/attempts.json'].includes(f.name)||safeRecordingPath(f.name))||seen.has(f.name)||typeof f.bytes!=='string'||!/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(f.bytes))throw Error('INVALID_BACKUP_PATH');seen.add(f.name);const b=Buffer.from(f.bytes,'base64');total+=b.length;if(total>MAX||digest(b)!==f.sha256)throw Error('BACKUP_INTEGRITY');}
  if(a.jlptIncluded!==undefined&&a.jlptIncluded!==true||a.files.some(f=>f.name.startsWith('jlpt/'))&&a.jlptIncluded!==true)throw Error('INVALID_JLPT_MARKER');
  for(const f of a.files)if(f.name==='jlpt/attempts.json')validateAttempts(Buffer.from(f.bytes,'base64'));
  if(!seen.has('database.sqlite'))throw Error('DATABASE_MISSING');
- for(const f of a.files){if(f.name==='settings.json')validatePreferences(JSON.parse(Buffer.from(f.bytes,'base64').toString('utf8')));if(f.name==='roadmap.json')validateRoadmap(JSON.parse(Buffer.from(f.bytes,'base64').toString('utf8')));if(f.name==='lookup-sentences.json')validateLookupSentences(Buffer.from(f.bytes,'base64'));}
+ for(const f of a.files){if(f.name==='settings.json')validatePreferences(JSON.parse(Buffer.from(f.bytes,'base64').toString('utf8')));if(f.name==='roadmap.json')validateRoadmap(JSON.parse(Buffer.from(f.bytes,'base64').toString('utf8')));if(f.name==='lookup-sentences.json')validateLookupSentences(Buffer.from(f.bytes,'base64'));if(f.name==='shadowing-history.json')validateShadowingHistory(Buffer.from(f.bytes,'base64'));}
  return a;
 }
 export function pruneDailyBackups(now=new Date()) {
@@ -104,6 +104,32 @@ function validateLookupSentences(bytes:Buffer) {
   if(typeof e.cardId!=='string'||!e.cardId||e.cardId.length>256||e.cardId!==key||typeof e.itemId!=='string'||!e.itemId||e.itemId.length>256||typeof e.sentenceJa!=='string'||!e.sentenceJa.trim()||e.sentenceJa.length>500||!(e.sentenceVi===null||(typeof e.sentenceVi==='string'&&e.sentenceVi.length<=500))||!(e.sourceClipId===null||(typeof e.sourceClipId==='string'&&e.sourceClipId.length<=128))||typeof e.savedAt!=='string'||!e.savedAt||e.savedAt.length>64||!Number.isFinite(Date.parse(e.savedAt)))throw Error('INVALID_LOOKUP_SENTENCES');
  }
 }
+function validateShadowingHistory(bytes:Buffer) {
+ if(bytes.length>2_000_000)throw Error('INVALID_SHADOWING_HISTORY');
+ let parsed:unknown;
+ try{parsed=JSON.parse(bytes.toString('utf8'));}catch{throw Error('INVALID_SHADOWING_HISTORY');}
+ const v=parsed as Record<string,unknown>;
+ const safeAudio=(x:unknown)=>typeof x==='string'&&/^shadowing\/[a-zA-Z0-9._-]{1,120}\.(webm|m4a|ogg)$/.test(x);
+ const safeMime=(x:unknown)=>x==='audio/webm'||x==='audio/mp4'||x==='audio/ogg';
+ if(!v||typeof v!=='object'||Array.isArray(v)||v.version!==1||!Array.isArray(v.turns)||v.turns.length>10000||!v.pinned||typeof v.pinned!=='object'||Array.isArray(v.pinned))throw Error('INVALID_SHADOWING_HISTORY');
+ for(const row of v.turns){
+  if(!row||typeof row!=='object'||Array.isArray(row))throw Error('INVALID_SHADOWING_HISTORY');
+  const t=row as Record<string,unknown>;
+  if(typeof t.id!=='string'||!t.id||t.id.length>128||typeof t.clipId!=='string'||!t.clipId||t.clipId.length>256||!(t.segmentId===null||(typeof t.segmentId==='string'&&t.segmentId.length>0&&t.segmentId.length<=256))||typeof t.practicedAt!=='string'||t.practicedAt.length>64||!Number.isFinite(Date.parse(t.practicedAt))||typeof t.date!=='string'||!/^\d{4}-\d{2}-\d{2}$/.test(t.date)||!Number.isSafeInteger(t.durationMs)||Number(t.durationMs)<0||Number(t.durationMs)>3_600_000||!Number.isSafeInteger(t.recordedSegments)||Number(t.recordedSegments)<0||Number(t.recordedSegments)>500||!Number.isSafeInteger(t.totalSegments)||Number(t.totalSegments)<0||Number(t.totalSegments)>500||!(t.audioFile===null||safeAudio(t.audioFile))||!(t.audioMime===null||safeMime(t.audioMime))||!(t.audioBytes===null||(Number.isSafeInteger(t.audioBytes)&&Number(t.audioBytes)>0&&Number(t.audioBytes)<=2*1024*1024)))throw Error('INVALID_SHADOWING_HISTORY');
+ }
+ const clipPairs=Object.entries(v.pinned as Record<string,unknown>);
+ if(clipPairs.length>500)throw Error('INVALID_SHADOWING_HISTORY');
+ for(const [clipId,segMap] of clipPairs){
+  if(!clipId||clipId.length>256||clipId==='__proto__'||clipId==='constructor'||clipId==='prototype'||!segMap||typeof segMap!=='object'||Array.isArray(segMap))throw Error('INVALID_SHADOWING_HISTORY');
+  const segPairs=Object.entries(segMap as Record<string,unknown>);
+  if(segPairs.length>200)throw Error('INVALID_SHADOWING_HISTORY');
+  for(const [segId,pin] of segPairs){
+   if(!segId||segId.length>256||segId==='__proto__'||segId==='constructor'||segId==='prototype'||!pin||typeof pin!=='object'||Array.isArray(pin))throw Error('INVALID_SHADOWING_HISTORY');
+   const e=pin as Record<string,unknown>;
+   if(typeof e.id!=='string'||!e.id||e.id.length>128||e.clipId!==clipId||e.segmentId!==segId||typeof e.pinnedAt!=='string'||e.pinnedAt.length>64||!Number.isFinite(Date.parse(e.pinnedAt))||!Number.isSafeInteger(e.durationMs)||Number(e.durationMs)<=0||Number(e.durationMs)>60_000||!safeAudio(e.audioFile)||!safeMime(e.audioMime)||!Number.isSafeInteger(e.audioBytes)||Number(e.audioBytes)<=0||Number(e.audioBytes)>2*1024*1024)throw Error('INVALID_SHADOWING_HISTORY');
+  }
+ }
+}
 function removePrivate(target:string,root:string){const relative=path.relative(path.resolve(root),path.resolve(target));if(!relative||relative.startsWith('..')||path.isAbsolute(relative))throw Error('UNSAFE_CLEANUP');fs.rmSync(target,{recursive:true,force:true});}
 export async function restoreBackup(bytes:Buffer){const p=backupPaths();return withJlptLock(p,()=>restoreBackupUnlocked(bytes,p));}
 async function restoreBackupUnlocked(bytes:Buffer,p:ReturnType<typeof backupPaths>) {
@@ -121,7 +147,7 @@ async function restoreBackupUnlocked(bytes:Buffer,p:ReturnType<typeof backupPath
   for(const table of tables)db.exec('DELETE FROM main.'+quote(table));
   for(const table of tables)db.exec('INSERT INTO main.'+quote(table)+' SELECT * FROM restored.'+quote(table));
   if(db.prepare('PRAGMA main.foreign_key_check').all().length)throw Error('FOREIGN_KEY_VIOLATION');
-  const mappings=[['recordings',p.recordings],['settings.json',p.settings],['roadmap.json',p.roadmap],['lookup-sentences.json',p.lookupSentences],...(a.jlptIncluded?['approved.sqlite','attempts.json','approved.sqlite-wal','approved.sqlite-shm'].map(name=>['jlpt/'+name,path.join(p.jlpt,name)]):[])];
+  const mappings=[['recordings',p.recordings],['settings.json',p.settings],['roadmap.json',p.roadmap],['lookup-sentences.json',p.lookupSentences],['shadowing-history.json',p.shadowingHistory],...(a.jlptIncluded?['approved.sqlite','attempts.json','approved.sqlite-wal','approved.sqlite-shm'].map(name=>['jlpt/'+name,path.join(p.jlpt,name)]):[])];
   for(const [name,target] of mappings){const old=target+'.pre-restore-'+randomUUID(),had=fs.existsSync(target);if(had)fs.renameSync(target,old);replaced.push({target,old,had});const next=path.join(stage,name);if(fs.existsSync(next)){fs.mkdirSync(path.dirname(target),{recursive:true});fs.renameSync(next,target);}}
   db.exec('COMMIT');committed=true;
  }catch(error){try{db?.exec('ROLLBACK');}catch{}const failures:unknown[]=[];for(const r of [...replaced].reverse()){try{if(fs.existsSync(r.target))removePrivate(r.target,p.root);if(r.had)fs.renameSync(r.old,r.target);}catch(failure){rollbackFailed=true;failures.push(failure);}}if(failures.length)throw new AggregateError([error,...failures],'RESTORE_ROLLBACK_FAILED_RECOVERY_FILES_RETAINED');throw error;}

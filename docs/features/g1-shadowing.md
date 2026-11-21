@@ -20,7 +20,7 @@ Tính năng chủ lực: luyện nói theo từng câu của đoạn hội tho�
 - [ ] Còn thiếu clip từ file phim/anime cá nhân để đủ ba nguồn nghiệm thu.
 - [ ] Bổ sung IRODORI và mở rộng kho theo cấp.
 - [ ] Mỗi clip: tiêu đề, nguồn, cấp, chủ đề, tốc độ nói, số câu, % từ đã biết
-- [ ] Lịch sử luyện, bản ghi tốt nhất
+- [x] Lịch sử luyện, bản ghi tốt nhất
 
 **Công cụ tạo clip** (mục tiêu < 15 phút/clip)
 - [ ] Tải file lên máy chủ riêng hoặc dán link YouTube
@@ -90,5 +90,6 @@ Các dấu tick xác nhận phần code đã chạy qua test/fixture; không tha
 - Bằng chứng: `tests/shadowing-controls.test.ts`.
 - Bằng chứng: `src/app/(study)/shadowing/browser-check.ts`.
 - Bằng chứng (2026-11-21): `src/app/(study)/common-tools/lookup-popup.tsx`, `tests/lookup-popup.test.ts`.
+- Bằng chứng (2026-11-21): `src/app/(study)/shadowing/history-store.ts`, `src/app/api/shadowing/history/handler.ts`, `src/core/backup.ts`, `tests/shadowing-history.test.ts` (lịch sử luyện theo từng clip xếp mới nhất lên trên, ghim/bỏ ghim bản ghi tốt nhất thủ công không chấm điểm AI, nghe lại qua `/api/shadowing/history`, lưu riêng ngoài repo, bản ghi ghim không bị dọn theo lịch và nằm trong sao lưu/khôi phục).
 
 Bốn điều kiện giữ nguyên. API progress lưu metadata theo hash phiên đăng nhập/ngày trong roadmap JSON với khóa nguyên tử; không nhận audio. Bộ đếm chỉ nhận tab hiện, phát có tiến triển hoặc ghi âm; server chặn cộng thời gian song song/replay bằng đồng hồ server. Cùng ngày (kể cả đã ghi tay) không thêm buổi tự động. Ghi tay vẫn dự phòng. Đã bổ sung tốc độ phát 1.2× cùng chế độ dừng để nói theo (độ dài câu × 1.2), phím tắt máy tính (`Space`, `←`, `→`, `R`, `L` có chặn vùng nhập liệu), nút thêm câu vào SRS dùng lại `/api/review/cards` + `enqueueCard()` (không tạo thẻ trùng, không đổi schema), deep-link `?clip=<id>&segment=<n>`, và chạm từ trên phụ đề (chế độ đầy đủ / tiếng Nhật / kana, tách từ `kuromoji` phía server) để mở popup tra từ tại chỗ + Thêm vào ôn kèm câu gốc. Chưa có clip file cá nhân, editor sóng âm hay so sánh sóng âm; các mục ghép tương ứng giữ trống.
