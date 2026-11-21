@@ -50,7 +50,10 @@ export default {crop:0.5,id:'kanji-himeji',title:'Himeji · Kanji',description:'
   const a=document.createElement('canvas');a.width=384;a.height=216;const ac=a.getContext('2d');architecture(ac);c.drawImage(a,0,0);
   // Palette-indexed reflected masonry, broken by water. Sampling only happens on a static rebuild.
   const pixels=ac.getImageData(0,0,384,216).data,rand=api.random(925);
-  for(let y=159;y<194;y++){if(y%4===0)continue;const sy=Math.floor(152-(y-159)*2.9),wave=Math.round(Math.sin(y*.8)*2);for(let x=97;x<286;x++){const at=(sy*384+x)*4;if(pixels[at+3]&&rand()>.3){const bright=pixels[at]+pixels[at+1]+pixels[at+2];r(c,x+wave,y,1,1,bright>520?16:bright>330?17:7)}}}
+  const b=document.createElement('canvas');b.width=384;b.height=216;const bc=b.getContext('2d'),img=bc.createImageData(384,216),out=img.data;
+  const rgb=i=>{const n=parseInt(api.palette[i].slice(1),16);return[(n>>16)&255,(n>>8)&255,n&255]};const c16=rgb(16),c17=rgb(17),c7=rgb(7);
+  for(let y=159;y<194;y++){if(y%4===0)continue;const sy=Math.floor(152-(y-159)*2.9),wave=Math.round(Math.sin(y*.8)*2);for(let x=97;x<286;x++){const at=(sy*384+x)*4;if(pixels[at+3]&&rand()>.3){const dx=x+wave;if(dx<0||dx>=384)continue;const bright=pixels[at]+pixels[at+1]+pixels[at+2],col=bright>520?c16:bright>330?c17:c7,o=(y*384+dx)*4;out[o]=col[0];out[o+1]=col[1];out[o+2]=col[2];out[o+3]=255}}}
+  bc.putImageData(img,0,0);c.drawImage(b,0,0);
   for(let i=0;i<22;i++){const x=120+(i*37)%150,y=161+(i*11)%30;l(c,x,y,x+3+i%5,y,i%3?8:33)}
  }
  function garden(c){

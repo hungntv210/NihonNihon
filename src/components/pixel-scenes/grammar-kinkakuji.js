@@ -30,10 +30,13 @@ export default {crop:.5,id:'grammar-kinkakuji',title:'Kinkaku-ji · Ngữ pháp'
   C.roof(ac,173,48,77,13);r(ac,180,77,64,2,30);for(let x=181;x<244;x+=5)r(ac,x,73,1,5,31);l(ac,180,72,244,72,31);
   // Phoenix ornament is attached to the roof ridge.
   r(ac,212,44,1,5,30);p(ac,[[212,43],[205,39],[208,39],[213,41],[216,38],[217,41],[222,40],[216,44]],31);r(ac,216,37,2,2,30);
-  c.drawImage(a,0,0);const pixels=ac.getImageData(0,0,384,216).data,lookup=new Map(api.palette.map((v,i)=>[parseInt(v.slice(1),16),i]));
+  c.drawImage(a,0,0);const pixels=ac.getImageData(0,0,384,216).data,lookup=new Map(),rgb=new Uint8Array(api.palette.length*3);
+  for(let i=0;i<api.palette.length;i++){const n=parseInt(api.palette[i].slice(1),16);lookup.set(n,i);rgb[i*3]=(n>>16)&255;rgb[i*3+1]=(n>>8)&255;rgb[i*3+2]=n&255}
   // Solid inverted silhouette, compressed slightly vertically. Only a one-pixel horizontal ripple.
   const reflected={39:16,13:16,25:17,24:20,21:8,23:8,7:20,18:20,6:7,29:29,30:29,31:30,35:30};
-  for(let y=142;y<216;y++){const sy=Math.floor(137-(y-142)*1.38),wave=Math.round(Math.sin(y*.21));for(let x=138;x<283;x++){const at=(sy*384+x)*4;if(pixels[at+3]){const index=lookup.get((pixels[at]<<16)|(pixels[at+1]<<8)|pixels[at+2]);r(c,x+wave,y,1,1,reflected[index]??20)}}}
+  const b=document.createElement('canvas');b.width=384;b.height=216;const bc=b.getContext('2d'),img=bc.createImageData(384,216),out=img.data;
+  for(let y=142;y<216;y++){const sy=Math.floor(137-(y-142)*1.38),wave=Math.round(Math.sin(y*.21));for(let x=138;x<283;x++){const at=(sy*384+x)*4;if(pixels[at+3]){const dx=x+wave;if(dx<0||dx>=384)continue;const ci=reflected[lookup.get((pixels[at]<<16)|(pixels[at+1]<<8)|pixels[at+2])]??20,p3=ci*3,o=(y*384+dx)*4;out[o]=rgb[p3];out[o+1]=rgb[p3+1];out[o+2]=rgb[p3+2];out[o+3]=255}}}
+  bc.putImageData(img,0,0);c.drawImage(b,0,0);
   for(let x=148;x<279;x+=13)C.rock(c,x,139,8,3);
  }
  function islands(c){
