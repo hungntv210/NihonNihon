@@ -876,3 +876,12 @@ Checked implementation 05c2dd039b0011911c89e86db08ff0080dcc8b52 on base e7326266
 - Two self-authored regressions cover exact sense matching, rejection without evidence, and keeping Vietnamese explanations tied to the validated gloss. General naturalness continues to be evaluated by the existing verifier.
 - The verifier fingerprint invalidates prior checkpoints for the changed explanation rule. Route scope checked before push.
 - Offline on the same frozen snapshot, 30 November through 6 December: context candidates 366 to 197 before history filtering and 234 to 140 after history filtering. Other types stayed constant. The minimum daily history-eligible pool was 11 grammar and 7 order across the week. No dailyMix claim after verifier.
+
+
+## Naetoru pixel-scenes offscreen water reflection -- 2026-11-21
+
+Checked implementation `6b70eceb7b2bb121f37429fab7861af1204a085e` on `naetoru/scene-reflection` (base `285c8a4c5d181699d5b8c64b49a0282d27a61183`) on Windows with Node v24.10.0, disposable OpenJLPT fixture, and local Chromium. Check window 2026-11-21 11:21:48.608-11:23:14.023 +07:00.
+- `npm run check`: typecheck PASS, prototype 22/22 and core/route 228/228 PASS (250 total, including 3 new tests in `tests/scene-reflection.test.ts`), production build PASS, app gate 16/16 PASS.
+- 32-frame static canvas pixel comparison (2 scenes x 4 seasons x 4 times in headless Chromium): 0 differing pixels across all 32 composited frames and all 32 layer-1 frames.
+- Paired mobile A/B measurement (390x844 DPR 3, 4x CPU, Fast 4G, cache disabled, 3-run median): `/kanji` TBT 240 -> 219 ms (-8.7%), TTI 1378.5 -> 1389.7 ms (+0.8%), LCP 596 -> 604 ms; `/grammar` TBT 269 -> 222 ms (-17.5%), TTI 1617.8 -> 1306.3 ms (-19.3%), LCP 784 -> 584 ms.
+- `node tools/check-route-scope.mjs origin/master naetoru/scene-reflection`: PASS. Append-only entry recorded after the checked implementation commit.
