@@ -16,7 +16,7 @@ Học 1.038 kanji N5–N2 qua âm Hán Việt và luôn đi kèm 2–3 từ dùn
 
 - [x] Thẻ chi tiết: chữ lớn, **âm Hán Việt in đậm** (働 – ĐỘNG), nghĩa tiếng Việt theo cách dùng tiếng Nhật (働 = làm việc)
 - [ ] Dòng phụ "nghĩa Hán Việt gốc" từ KanjiDictVN
-- [ ] On/Kun có audio, số nét, cấp JLPT, cấu tạo và bộ thủ (chạm xem chữ cùng bộ)
+- [x] On/Kun có audio, số nét, cấp JLPT, cấu tạo và bộ thủ (chạm xem chữ cùng bộ) (xác minh 21/11: `src/app/(study)/kanji/repository.test.ts:70-86,122-146`, `src/app/(study)/kanji/reading-tools.tsx:33-65`)
 - [x] Animation thứ tự nét (KanjiVG), phát lại từng nét
 - [x] Từ chứa chữ: ưu tiên từ đã học, cùng cấp
 - [x] Ô mẹo nhớ tự viết (tuỳ chọn)

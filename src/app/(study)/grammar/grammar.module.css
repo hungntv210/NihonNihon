@@ -83,6 +83,176 @@
   font-size: 40px;
   letter-spacing: 0;
 }
+.formulaBox {
+  margin-top: 14px;
+  padding: 14px 16px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  box-shadow: 0 3px 0 var(--theme-shadow);
+  max-width: 100%;
+}
+.formulaLines {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.formulaRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+.formulaBlock {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  padding: 6px 10px;
+  border-radius: 4px;
+  border: 1px solid var(--formula-border);
+  background: var(--formula-bg);
+  color: var(--formula-ink);
+  max-width: 100%;
+  min-width: 0;
+}
+.formulaTag {
+  font-family: var(--font-vi);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  line-height: 1.25;
+  color: var(--formula-tag);
+}
+.formulaText,
+.formulaJaText {
+  line-height: 1.35;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+  max-width: 100%;
+}
+.formulaText {
+  font-family: var(--font-vi);
+  font-size: 14px;
+}
+.formulaJaText {
+  font-family: var(--font-ja);
+  font-size: 17px;
+}
+.formulaPlus,
+.formulaSlash {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-vi);
+  font-weight: 700;
+  color: var(--color-muted);
+  user-select: none;
+}
+.formulaPlus {
+  font-size: 16px;
+  padding: 0 2px;
+}
+.formulaSlash {
+  font-size: 14px;
+  padding: 0 1px;
+  opacity: 0.85;
+}
+.formulaVerb {
+  --formula-bg: #e6f2e8;
+  --formula-border: #5d8f6b;
+  --formula-ink: #164628;
+  --formula-tag: #1e5633;
+}
+.formulaIAdj {
+  --formula-bg: #fcebe2;
+  --formula-border: #c97851;
+  --formula-ink: #6d280c;
+  --formula-tag: #7d3111;
+}
+.formulaNaAdj {
+  --formula-bg: #f4e9f2;
+  --formula-border: #a06a99;
+  --formula-ink: #52214c;
+  --formula-tag: #612a5b;
+}
+.formulaNoun {
+  --formula-bg: #fbf1d8;
+  --formula-border: #b88c34;
+  --formula-ink: #543905;
+  --formula-tag: #654609;
+}
+.formulaFixed {
+  --formula-bg: #e5eff6;
+  --formula-border: #5d86a8;
+  --formula-ink: #143d59;
+  --formula-tag: #1b4c6e;
+}
+.formulaNeutral {
+  --formula-bg: #f1ede6;
+  --formula-border: #968d80;
+  --formula-ink: #3a342c;
+  --formula-tag: #4d453b;
+}
+:global(html[data-theme='dark']) .formulaVerb,
+:global(html[data-time='night']:not([data-theme='light'])) .formulaVerb {
+  --formula-bg: #18362a;
+  --formula-border: #5ea37c;
+  --formula-ink: #d3f5df;
+  --formula-tag: #a6e3be;
+}
+:global(html[data-theme='dark']) .formulaIAdj,
+:global(html[data-time='night']:not([data-theme='light'])) .formulaIAdj {
+  --formula-bg: #42251d;
+  --formula-border: #d88c6a;
+  --formula-ink: #ffe2d4;
+  --formula-tag: #ffc4aa;
+}
+:global(html[data-theme='dark']) .formulaNaAdj,
+:global(html[data-time='night']:not([data-theme='light'])) .formulaNaAdj {
+  --formula-bg: #39233e;
+  --formula-border: #b884c2;
+  --formula-ink: #f7dff9;
+  --formula-tag: #e6bef0;
+}
+:global(html[data-theme='dark']) .formulaNoun,
+:global(html[data-time='night']:not([data-theme='light'])) .formulaNoun {
+  --formula-bg: #3d3017;
+  --formula-border: #cfa555;
+  --formula-ink: #ffefc7;
+  --formula-tag: #f6d88b;
+}
+:global(html[data-theme='dark']) .formulaFixed,
+:global(html[data-time='night']:not([data-theme='light'])) .formulaFixed {
+  --formula-bg: #19314a;
+  --formula-border: #6ea4cf;
+  --formula-ink: #d8eeff;
+  --formula-tag: #add6f7;
+}
+:global(html[data-theme='dark']) .formulaNeutral,
+:global(html[data-time='night']:not([data-theme='light'])) .formulaNeutral {
+  --formula-bg: #283247;
+  --formula-border: #8c98b0;
+  --formula-ink: #eef2fa;
+  --formula-tag: #cdd6e8;
+}
+.formulaLegend {
+  margin-top: 10px;
+  padding-top: 8px;
+  border-top: 1px dashed var(--color-border);
+  font-size: 11px;
+  color: var(--color-muted);
+  line-height: 1.7;
+}
+.formulaLegendItem {
+  white-space: nowrap;
+}
+.formulaLegend strong {
+  color: var(--color-ink);
+  font-weight: 600;
+}
 .detailGrid {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -333,6 +503,15 @@
   }
   .title h1 {
     font-size: 34px;
+  }
+  .formulaBox {
+    padding: 12px;
+  }
+  .formulaBlock {
+    padding: 5px 8px;
+  }
+  .formulaJaText {
+    font-size: 16px;
   }
   .example {
     padding: 18px;

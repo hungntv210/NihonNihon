@@ -894,6 +894,16 @@ Checked implementation `6b70eceb7b2bb121f37429fab7861af1204a085e` on `naetoru/sc
 - Paired mobile A/B measurement (390x844 DPR 3, 4x CPU, Fast 4G, cache disabled, 3-run median): `/kanji` TBT 240 -> 219 ms (-8.7%), TTI 1378.5 -> 1389.7 ms (+0.8%), LCP 596 -> 604 ms; `/grammar` TBT 269 -> 222 ms (-17.5%), TTI 1617.8 -> 1306.3 ms (-19.3%), LCP 784 -> 584 ms.
 - `node tools/check-route-scope.mjs origin/master naetoru/scene-reflection`: PASS. Append-only entry recorded after the checked implementation commit.
 
+## Naetoru grammar formula blocks -- 2026-11-21
+
+Checked implementation `8b16df7cd8f56b00bdcb0a23bd9de8c38e4a6da5` on branch `naetoru/grammar-formula` (base `6b0a110029c91a49b841315fe3bce4f9c07bce25`) on Windows with Node v24.10.0, disposable OpenJLPT fixture, and local headless Chrome. Check window: 2026-11-21T12:28:31+07:00 through 2026-11-21T12:29:48+07:00 (UTC+07:00).
+- `npm run check`: PASS -- typecheck PASS; prototype 22/22 and core/route 235/235 PASS (257 total, 0 failures/skips, including `parseGrammarFormula` coverage in `src/app/(study)/grammar/grammar.test.ts` and `tests/font-split.test.ts`); production build PASS; `test:app` 16/16 checks PASS.
+- Route browser check `node --import tsx src/app/(study)/grammar/browser-check.ts`: PASS (18 listing/related clicks across 1440px and 390px viewports, shortId PASS, malformedIds 404, 0 browser errors).
+- Read-only offline audit against the frozen local 403-pattern G0 grammar dataset (uncommitted): 403/403 patterns render >= 1 typed formula block (387/403 with >= 1 POS block for verb/i-adj/na-adj/noun, 16/403 fixed-only, 0/403 neutral-only; 23 neutral tokens kept verbatim without fabricated POS labels).
+- Production `/grammar/[id]` initial JS gzip (server-rendered component, zero client JS logic added): 147,511 B -> 147,778 B (+267 B / +0.26 KiB from CSS module class map); 360px and 390px viewports have zero horizontal overflow; live computed contrast on formula blocks is 9.25-10.58:1 (text) and 7.49-8.93:1 (tags) in light mode, 11.14-11.37:1 (text) and 8.70-9.25:1 (tags) in dark mode.
+- Limitations: no physical-phone or production home-host deployment verification claimed; original `formationEn` text remains verbatim in the detail panel.
+- `node tools/check-route-scope.mjs origin/master naetoru/grammar-formula`: PASS. Only this append-only audit entry follows the checked implementation commit.
+
 ## Naetoru SRS settings (newCardsPerDay + fsrsRetention) -- 2026-11-21
 
 Checked implementation `426dad5f42df12e65a344b701304ac51e726f4e3` on `naetoru/srs-settings` (base `1de1ca6dde2773aac17b36b4169a7ee5b6ce0a7f`) on Windows with Node v24.10.0, disposable OpenJLPT fixture, production Next build, and local headless Chromium. Check window 2026-11-21 12:06:27-12:08:04 +07:00.
