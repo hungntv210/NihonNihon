@@ -976,6 +976,14 @@ Checked implementation `588876c354ccc88fe8bf9f78a01bff40dc5770b1` on branch `nae
 - Top 3 largest `page-*.js` chunks (gzip): `today-roadmap` `12,108 B -> 8,655 B`, `shadowing` `11,495 B -> 8,575 B`, `srs` `11,064 B -> 7,567 B`.
 - `node tools/check-route-scope.mjs origin/master naetoru/shared-chunk-dedup`: PASS (3 files: `next.config.ts`, `tools/check-route-scope.mjs`, `docs/foundation-verification.md`). Only this append-only audit entry follows `588876c`.
 
+## Naetoru evening kanji lesson (PR-B5) -- 2026-11-21
+
+Checked implementation `4571e88d335ab93c18eff64e11da12efc8899cbd` on branch `naetoru/kanji-lesson` (rebased onto `origin/master` `41ba4ef18b1f3ac7ba8a61dcd94b7db9e11db6ab` including #88) on Windows with Node v24.10.0, clean `.next` build, disposable OpenJLPT fixture, and local headless Chrome.
+- `npm run check` (clean `.next`, `2026-11-21T17:31:18+07:00` to `2026-11-21T17:32:53+07:00`): PASS -- typecheck PASS; prototype 22/22 and core/route 262/262 PASS (284 total, 0 failures/skips, including `tests/kanji-lesson.test.ts`); clean `next build --webpack` PASS; `test:app` 16/16 checks PASS.
+- Clean `.next` -> `npm run build` -> `npm run test:browser` (`2026-11-21T17:33:06+07:00` to `2026-11-21T17:41:01+07:00`): PASS 14/14 (`appearance`, `daily-weather`, `login-festivals`, `motion`, `pixel-scenes-next`, `pixel-scenes`, `common-tools`, `grammar`, `jlpt-daily`, `kanji`, `shadowing`, `srs`, `today-roadmap`, `vocab`).
+- `daily-weather` JS gzip budget (`data/reports/daily-weather/budget.json`, `next.config.ts` and baseline/limit unchanged): `437,454 B` vs baseline `468,494 B` (`added: -31,040 B <= 5,000 B` limit; `36,040 B` under the `473,494 B` ceiling; `+1,854 B` vs clean `origin/master` #88 `435,600 B`).
+- Production browser check on `/vocab/lesson` -> `/vocab/lesson/kanji` with unmodified OpenJLPT fixture (`seedDemo`, zero hardcoded translations): 0 page errors, `Shippori Mincho` kanji font, zero horizontal overflow at 390px mobile width, `srs_cards` stays 0 until explicit `Th?m v?o ?n` click (then increments to 1 while staying on card), done screen links back to `/vocab/lesson`.
+- `node tools/check-route-scope.mjs origin/master naetoru/kanji-lesson`: PASS (9 files including this append-only audit entry). Only this append-only audit entry follows `4571e88`.
 
 ## Pokabu JLPT free verifier roles -- 2026-11-21
 

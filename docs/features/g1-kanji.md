@@ -20,7 +20,7 @@ Học 1.038 kanji N5–N2 qua âm Hán Việt và luôn đi kèm 2–3 từ dùn
 - [x] Animation thứ tự nét (KanjiVG), phát lại từng nét
 - [x] Từ chứa chữ: ưu tiên từ đã học, cùng cấp
 - [x] Ô mẹo nhớ tự viết (tuỳ chọn)
-- [ ] Bài học kanji mới buổi tối: kanji → từ đi kèm → vào hàng ôn
+- [x] Bài học kanji mới buổi tối: kanji → từ đi kèm → vào hàng ôn
 - [x] Tra kanji theo chữ, Hán Việt, On/Kun, nghĩa Việt, bộ thủ (chọn nhiều bộ), số nét
 
 ## Dữ liệu

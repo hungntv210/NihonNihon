@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { withContentDatabase } from '../../../../server/dal.ts';
 import { RouteHeading } from '../../../../components/route-heading.tsx';
 import { newLessonVocabulary } from './model.ts';
@@ -35,6 +36,7 @@ export default async function LessonPage() {
       <RouteHeading title="Từ vựng" species="cat">
         <h2 className="welcome-subtitle">Gặp những từ mới</h2>
         <p>Nghe, đọc to câu ví dụ rồi mở nghĩa để đối chiếu. Bạn có thể dừng bất cứ lúc nào.</p>
+        <p><Link className="text-link" href="/vocab/lesson/kanji" prefetch={false}>Học kanji mới →</Link></p>
       </RouteHeading>
       {items.length ? (
         <Lesson
