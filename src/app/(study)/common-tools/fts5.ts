@@ -8,6 +8,9 @@ export const FTS5_TOKENIZER = 'trigram' as const;
 const INDEX_VERSION = 'fts5-trigram-v1';
 const FIELD_SEPARATOR = '\u001f';
 
+export const GROUPED_CONTENT_KINDS = ['vocab', 'kanji', 'grammar'] as const;
+export type GroupedContentKind = (typeof GROUPED_CONTENT_KINDS)[number];
+
 export type SearchIndexOptions = {
   indexPath?: string;
   force?: boolean;
@@ -22,6 +25,11 @@ export type SearchIndexRow = {
   english: string;
   source: string;
 };
+
+export type GroupedSearchIndexResult = Record<
+  GroupedContentKind,
+  { total: number; rows: SearchIndexRow[] }
+>;
 
 export type RebuildResult = {
   indexPath: string;
@@ -89,7 +97,7 @@ const SCHEMA_SQL = `
   );
 `;
 
-function resolveMainFile(db: DatabaseSync): string {
+export function resolveMainFile(db: DatabaseSync): string {
   const rows = db.prepare('PRAGMA database_list').all() as Array<{ name?: unknown; file?: unknown }>;
   const main = rows.find((row) => row.name === 'main');
   return typeof main?.file === 'string' ? main.file : '';
@@ -517,13 +525,99 @@ function queryOpenIndex(
   return { total, rows };
 }
 
-export function querySearchIndex(
-  db: DatabaseSync,
+function emptyGroupedResult(): GroupedSearchIndexResult {
+  return {
+    vocab: { total: 0, rows: [] },
+    kanji: { total: 0, rows: [] },
+    grammar: { total: 0, rows: [] },
+  };
+}
+
+function queryOpenIndexGrouped(
+  indexDb: DatabaseSync,
   needle: string,
-  limit: number,
-  offset: number,
-  options?: SearchIndexOptions,
-): { total: number; rows: SearchIndexRow[] } {
+  limitPerKind: number,
+): GroupedSearchIndexResult {
+  const limit = Math.max(0, Math.min(Math.trunc(limitPerKind), 100));
+  const result = emptyGroupedResult();
+  if (needle.includes(FIELD_SEPARATOR)) {
+    return result;
+  }
+
+  const applyCounts = (rows: Array<{ kind?: unknown; n?: unknown }>) => {
+    for (const row of rows) {
+      const kind = String(row.kind);
+      if (kind === 'vocab' || kind === 'kanji' || kind === 'grammar') {
+        result[kind].total = Number(row.n ?? 0);
+      }
+    }
+  };
+
+  if (!needle) {
+    applyCounts(
+      indexDb.prepare('SELECT kind, count(*) n FROM search_items GROUP BY kind').all() as Array<{
+        kind?: unknown;
+        n?: unknown;
+      }>,
+    );
+    if (limit > 0) {
+      const stmt = indexDb.prepare(
+        'SELECT id,kind,title,reading,level,english,source FROM search_items WHERE kind=? ORDER BY rowid LIMIT ?',
+      );
+      for (const kind of GROUPED_CONTENT_KINDS) {
+        if (result[kind].total > 0) {
+          result[kind].rows = stmt.all(kind, limit) as SearchIndexRow[];
+        }
+      }
+    }
+    return result;
+  }
+
+  if (Array.from(needle).length >= 3 && !needle.includes('\0')) {
+    const phrase = `"${needle.replaceAll('"', '""')}"`;
+    applyCounts(
+      indexDb
+        .prepare(
+          'SELECT i.kind, count(*) n FROM search_fts f JOIN search_items i ON i.rowid=f.rowid WHERE f.search_text MATCH ? AND instr(i.search_text, ?)>0 GROUP BY i.kind',
+        )
+        .all(phrase, needle) as Array<{ kind?: unknown; n?: unknown }>,
+    );
+    if (limit > 0) {
+      const stmt = indexDb.prepare(
+        'SELECT i.id,i.kind,i.title,i.reading,i.level,i.english,i.source FROM search_fts f JOIN search_items i ON i.rowid=f.rowid WHERE f.search_text MATCH ? AND instr(i.search_text, ?)>0 AND i.kind=? ORDER BY i.rowid LIMIT ?',
+      );
+      for (const kind of GROUPED_CONTENT_KINDS) {
+        if (result[kind].total > 0) {
+          result[kind].rows = stmt.all(phrase, needle, kind, limit) as SearchIndexRow[];
+        }
+      }
+    }
+    return result;
+  }
+
+  applyCounts(
+    indexDb
+      .prepare('SELECT kind, count(*) n FROM search_items WHERE instr(search_text, ?)>0 GROUP BY kind')
+      .all(needle) as Array<{ kind?: unknown; n?: unknown }>,
+  );
+  if (limit > 0) {
+    const stmt = indexDb.prepare(
+      'SELECT id,kind,title,reading,level,english,source FROM search_items WHERE instr(search_text, ?)>0 AND kind=? ORDER BY rowid LIMIT ?',
+    );
+    for (const kind of GROUPED_CONTENT_KINDS) {
+      if (result[kind].total > 0) {
+        result[kind].rows = stmt.all(needle, kind, limit) as SearchIndexRow[];
+      }
+    }
+  }
+  return result;
+}
+
+function withOpenSearchIndex<T>(
+  db: DatabaseSync,
+  options: SearchIndexOptions | undefined,
+  run: (indexDb: DatabaseSync) => T,
+): T {
   const mainFile = resolveMainFile(db);
   const indexPath = resolveSearchIndexPath(db, options);
   const stamp = computeFileStamp(mainFile);
@@ -543,7 +637,7 @@ export function querySearchIndex(
       const meta = readMetaFromConnection(reader);
       if (meta && meta.stamp === stamp) {
         connectionStates.set(db, { indexPath, totalChanges, stamp });
-        return queryOpenIndex(reader, needle, limit, offset);
+        return run(reader);
       }
     } catch {
       // Fall through to rebuild below if sidecar is corrupt or locked.
@@ -556,12 +650,33 @@ export function querySearchIndex(
   if (status.indexPath === ':memory:') {
     const mem = memoryIndexes.get(db);
     if (!mem) throw new Error('SEARCH_FTS5_UNAVAILABLE');
-    return queryOpenIndex(mem.indexDb, needle, limit, offset);
+    return run(mem.indexDb);
   }
   const reader = new DatabaseSync(status.indexPath, { readOnly: true, timeout: 5000 });
   try {
-    return queryOpenIndex(reader, needle, limit, offset);
+    return run(reader);
   } finally {
     reader.close();
   }
+}
+
+export function querySearchIndex(
+  db: DatabaseSync,
+  needle: string,
+  limit: number,
+  offset: number,
+  options?: SearchIndexOptions,
+): { total: number; rows: SearchIndexRow[] } {
+  return withOpenSearchIndex(db, options, (indexDb) => queryOpenIndex(indexDb, needle, limit, offset));
+}
+
+export function querySearchIndexGrouped(
+  db: DatabaseSync,
+  needle: string,
+  limitPerKind = 10,
+  options?: SearchIndexOptions,
+): GroupedSearchIndexResult {
+  return withOpenSearchIndex(db, options, (indexDb) =>
+    queryOpenIndexGrouped(indexDb, needle, limitPerKind),
+  );
 }
