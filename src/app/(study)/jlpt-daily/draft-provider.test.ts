@@ -7,7 +7,7 @@ function setup(t:{after:(fn:()=>void)=>void}){const dir=fs.mkdtempSync(path.join
 const success=()=>Response.json({candidates:[{finishReason:'STOP',content:{parts:[{text:'[]'}]}}]});
 const freeSuccess=()=>Response.json({choices:[{finish_reason:'stop',message:{content:'{"result":[]}'}}]});
 test('Qwen reviews the proposed meaning and grammar separately from the blind payload',async t=>{
- const claim={index:0,type:'grammar',sentence:'例文',explanation:'Đề xuất'};
+ const claim={index:0,type:'grammar',sentence:'fixture sentence',explanation:'Đề xuất'};
  const review=[{index:0,meaningCorrect:false,grammarLabelCorrect:true}];
  const seen:unknown[]=[];
  const provider=draftProvider([primary],setup(t),'fake',{freeKeys:{groq:'fake',groqFreeTier:true},fetcher:async(url,init)=>{

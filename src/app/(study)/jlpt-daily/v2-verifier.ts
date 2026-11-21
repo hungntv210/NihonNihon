@@ -54,8 +54,6 @@ async function verifyPair(provider:Provider,questions:V2Question[],excludeModels
     requireValue(grades.find(g=>g.choiceIndex===q.correct)?.contextFits===true,'OPTION_KEY_NOT_ACCEPTABLE');
    }
    requireValue(solver.natural===true&&solver.knowledgeCorrect===true,'INDEPENDENT_SOLVE_REJECTED');
-   const review=modelEvidence(isolated).semanticReview?.find(r=>r.index===index);
-   requireValue(!review||review.meaningCorrect&&review.grammarLabelCorrect,'FALLBACK_SEMANTIC_REVIEW_REJECTED');
   }catch(e){reason=e instanceof Error?e.message:'SEMANTIC_QA_REJECTED';}
   return {id:q.id,accepted:!reason,reason,models:{solver:modelEvidence(first).model,isolated:modelEvidence(isolated).model},passes:[modelEvidence(first),modelEvidence(isolated)],solver,isolatedOptionGrades:grades};
  });
@@ -80,7 +78,9 @@ export async function verifyDeterministic(originalProvider:Provider,questions:V2
  return rows.map((row,i)=>{
   const q=questions[i],fallback=!!q.provenance?.fallback||attemptedRounds.some(p=>p.fallback),origin=excluded.length?q.provenance?.generationModel:initial.model;
   const cross=!fallback||row.passes.length===2&&row.passes.every(p=>p.model!=='fixture'&&p.model!==origin);
+  const semanticRejected=attemptedRounds.some(p=>p.semanticReview?.some(r=>r.index===i&&(!r.meaningCorrect||!r.grammarLabelCorrect)));
   const provenance:QuestionProvenance={generationModel:q.provenance?.generationModel??'deterministic',initialSolverModel:initial.model,fallback,...fallbackProvider(),verificationRounds:row.passes,attemptedRounds,switches:attemptedRounds.flatMap(p=>p.switches)};
-  const {passes,...audit}=row;return {...audit,accepted:row.accepted&&cross,reason:cross?row.reason:'FALLBACK_CROSS_VERIFICATION_REQUIRED',provenance};
+  const reason=!cross?'FALLBACK_CROSS_VERIFICATION_REQUIRED':semanticRejected?'FALLBACK_SEMANTIC_REVIEW_REJECTED':row.reason;
+  const {passes,...audit}=row;return {...audit,accepted:row.accepted&&cross&&!semanticRejected,reason,provenance};
  });
 }
