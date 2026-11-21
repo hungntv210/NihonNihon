@@ -1,6 +1,7 @@
 import test,{type TestContext} from 'node:test';import assert from 'node:assert/strict';import fs from 'node:fs';import os from 'node:os';import path from 'node:path';
 import {draftProvider,modelEvidence,semanticSchema,validateSemanticReview,type DraftAttempt} from './draft-provider.ts';
 import {freeCompletion,freeModels,freeProviderStatus,groqRateLimitUntil,readFreeKeys} from './free-provider.ts';
+import {logRateLimitedRequest} from './generate-v2.ts';
 import {verifyDeterministic} from './v2-verifier.ts';
 import {choiceSentence} from './independent-qa.ts';
 import type {V2Question} from './deterministic.ts';
@@ -206,15 +207,17 @@ const roleFixture:V2Question={version:2,mode:'draft_roadmap',id:'roles-fixture',
  stem:'[fixture]',choices:['one','two','three','four'],correct:0,order:[],starSlot:0,explanation:'Authored fixture',distractors:[]};
 const flags=(correct:boolean)=>({grammatical:correct,formCorrect:correct,natural:correct,meaningFits:correct});
 function roleProvider(t:TestContext,config:{geminiCap?:boolean;groqLimit?:'model'|'shared';router?:boolean;
- reject?:'meaningCorrect'|'grammarLabelCorrect';reviewMissing?:boolean;groqError?:number}={}){
- const ledger=setup(t),seen:string[]=[];
+ reject?:'meaningCorrect'|'grammarLabelCorrect';reviewMissing?:boolean;groqError?:number;shortIsolatedLimit?:boolean;longTokenReset?:boolean}={}){
+ const ledger=setup(t),seen:string[]=[],waits:number[]=[];
+ if(config.shortIsolatedLimit)fakeClock(t);
+ let throttled=false;
  if(config.geminiCap){
   const day=new Intl.DateTimeFormat('en-CA',{timeZone:'America/Los_Angeles'}).format(new Date());
   fs.writeFileSync(ledger,JSON.stringify({models:{[primary.model]:{day,count:200,last:0}}}));
  }
  const provider=draftProvider([primary],ledger,'fake',{
   freeKeys:{groq:'fake',groqFreeTier:true,...(config.router?{openrouter:'fake'}:{})},
-  sleep:async()=>assert.fail('fallback must not wait'),
+  sleep:async ms=>{assert.ok(config.shortIsolatedLimit,'fallback must not wait');waits.push(ms);t.mock.timers.tick(ms);},
   fetcher:async(url,init)=>{
    const {hostname,pathname}=new URL(String(url));
    if(hostname==='generativelanguage.googleapis.com'){
@@ -228,6 +231,13 @@ function roleProvider(t:TestContext,config:{geminiCap?:boolean;groqLimit?:'model
    const body=JSON.parse(String(init?.body)),payload=JSON.parse(body.messages[1].content);
    const role=payload.claims?'semantic':payload.questions?'blind':'isolated';
    seen.push(body.model+':'+role);
+   if(config.shortIsolatedLimit&&body.model===freeModels.groqSolver&&role==='isolated'&&!throttled){
+    throttled=true;
+    return new Response(null,{status:429,headers:{'Retry-After':'5'}});
+   }
+   if(config.longTokenReset&&body.model===freeModels.groqSolver){
+    return new Response(null,{status:429,headers:{'x-ratelimit-reset-tokens':'120s','x-ratelimit-remaining-tokens':'20'}});
+   }
    if(body.model===freeModels.groqSolver&&(config.groqLimit||config.groqError)){
     return new Response(null,{status:config.groqError??429,headers:{'Retry-After':'90',
      ...(config.groqLimit==='shared'?{'x-ratelimit-remaining-requests':'0','x-ratelimit-reset-requests':'90s'}:{})}});
@@ -246,7 +256,7 @@ function roleProvider(t:TestContext,config:{geminiCap?:boolean;groqLimit?:'model
     :payload.sentences.map(({index}:{index:number})=>({index,...flags(index===0),reason:'Fixture'})));
   },
  });
- return {provider,seen};
+ return {provider,seen,waits,ledger};
 }
 const groqRoleCalls=[freeModels.groqSolver+':blind',freeModels.groqSolver+':isolated',freeModels.groqReview+':semantic'];
 for(const geminiCap of [true,false]){
@@ -314,4 +324,97 @@ test('Groq server errors do not activate OpenRouter',async t=>{
  const {provider,seen}=roleProvider(t,{groqError:503,router:true});
  await assert.rejects(provider('verify','',{},{},{openjlptOnly:true}),/DRAFT_MODELS_EXHAUSTED/);
  assert.deepEqual(seen,['Gemini',freeModels.groqSolver+':isolated']);
+});
+
+const ledgerCount=(file:string,provider:'groq'|'openrouter')=>JSON.parse(fs.readFileSync(file,'utf8')).providers[provider].count;
+const groqConfig=(ledger:string)=>({...primary,provider:'groq' as const,model:freeModels.groqSolver,key:'mock-credential',groqFreeTier:true,ledger});
+const throttle=(seconds:number)=>new Response(null,{status:429,headers:{'retry-after':String(seconds)}});
+
+test('Groq retries isolated verification after five seconds and completes both passes and Qwen review',async t=>{
+ const {provider,seen,waits,ledger}=roleProvider(t,{geminiCap:true,shortIsolatedLimit:true});
+ const [row]=await verifyDeterministic(provider,[roleFixture]);
+ assert.equal(row.accepted,true);
+ assert.deepEqual(seen,[groqRoleCalls[0],groqRoleCalls[1],groqRoleCalls[1],groqRoleCalls[2]]);
+ assert.deepEqual(waits,[5000]);
+ assert.equal(ledgerCount(ledger,'groq'),4);
+});
+
+test('Groq skips a 120-second token reset and OpenRouter solves while Qwen still reviews',async t=>{
+ const {provider,seen,waits,ledger}=roleProvider(t,{geminiCap:true,longTokenReset:true,router:true});
+ const [row]=await verifyDeterministic(provider,[roleFixture]);
+ assert.equal(row.accepted,true);
+ assert.deepEqual(waits,[]);
+ assert.deepEqual(seen,[groqRoleCalls[0],'OpenRouter key',freeModels.openrouter+':blind',
+  'OpenRouter key',freeModels.openrouter+':isolated',groqRoleCalls[2]]);
+ assert.equal(ledgerCount(ledger,'groq'),2);
+ assert.equal(ledgerCount(ledger,'openrouter'),2);
+});
+
+test('three consecutive Groq 429 responses stop the completion and all three count',async t=>{
+ const {start}=fakeClock(t),ledger=setup(t),waits:number[]=[];
+ const complete=freeCompletion({...groqConfig(ledger),
+  sleep:async ms=>{waits.push(ms);t.mock.timers.tick(ms);},fetcher:async()=>throttle(5)});
+ await assert.rejects(complete('',{},{}),/FREE_PROVIDER_HTTP_429/);
+ assert.deepEqual(waits,[5000,5000]);
+ assert.equal(Date.now(),+start+10000);
+ assert.equal(ledgerCount(ledger,'groq'),3);
+});
+
+test('Groq does not wait or send a retry after its daily cap is reached',async t=>{
+ const {start}=fakeClock(t),ledger=setup(t),day=start.toISOString().slice(0,10);
+ fs.writeFileSync(ledger,JSON.stringify({models:{},providers:{groq:{day,count:199}}}));
+ let calls=0;
+ const complete=freeCompletion({...groqConfig(ledger),sleep:async()=>assert.fail('cap stops before waiting'),
+  fetcher:async()=>{calls++;return throttle(5);}});
+ await assert.rejects(complete('',{},{}),/FREE_PROVIDER_DAILY_BUDGET_REACHED/);
+ assert.equal(calls,1);
+ assert.equal(ledgerCount(ledger,'groq'),200);
+});
+
+test('Groq waits for token reset before sending the next request when previous usage exceeds remaining tokens',async t=>{
+ const {start}=fakeClock(t),ledger=setup(t),times:number[]=[];
+ const complete=freeCompletion({...groqConfig(ledger),sleep:async ms=>{t.mock.timers.tick(ms);},
+  fetcher:async()=>{
+   times.push(Date.now());
+   return Response.json({usage:{total_tokens:600},choices:[{finish_reason:'stop',message:{content:'{"result":[]}'}}]},
+    {headers:{'x-ratelimit-remaining-tokens':'599','x-ratelimit-reset-tokens':'4.5s'}});
+  }});
+ await complete('',{},{});
+ await complete('',{},{});
+ assert.deepEqual(times,[+start,+start+4500]);
+ assert.equal(ledgerCount(ledger,'groq'),2);
+});
+
+test('OpenRouter retries once after Retry-After and repeats the free-model key preflight',async t=>{
+ const {start}=fakeClock(t),ledger=setup(t),seen:string[]=[];
+ const complete=freeCompletion({...primary,provider:'openrouter',model:freeModels.openrouter,key:'mock-credential',ledger,
+  sleep:async ms=>{t.mock.timers.tick(ms);},fetcher:async (url,init)=>{
+   if(String(url).endsWith('/key')){seen.push('key');return Response.json({data:{limit_remaining:null}});}
+   const request=JSON.parse(String(init?.body));
+   assert.equal(request.model,freeModels.openrouter);
+   assert.equal(request.provider.max_price.request,0);
+   seen.push('completion');
+   return throttle(5);
+  }});
+ await assert.rejects(complete('',{},{}),/FREE_PROVIDER_HTTP_429/);
+ assert.deepEqual(seen,['key','completion','key','completion']);
+ assert.equal(Date.now(),+start+5000);
+ assert.equal(ledgerCount(ledger,'openrouter'),2);
+});
+
+test('requests log records only allowed rate headers and never authorization, URL credentials or response body',t=>{
+ const out=path.dirname(setup(t)),secret='mock-credential';
+ logRateLimitedRequest(out,'https://api.groq.com/openai/v1/chat/completions?key='+secret,new Response(secret,{status:429,headers:{
+  authorization:'Bearer '+secret,'set-cookie':secret,'retry-after':'5',
+  'x-ratelimit-limit-tokens':'1000','x-ratelimit-limit-requests':'200',
+  'x-ratelimit-remaining-requests':'198','x-ratelimit-reset-requests':'1m',
+  'x-ratelimit-remaining-tokens':'55','x-ratelimit-reset-tokens':'5s','x-ratelimit-debug':secret,
+ }}));
+ logRateLimitedRequest(out,'https://openrouter.ai/api/v1/key',new Response(null,{status:429,headers:{'retry-after':secret}}));
+ const log=fs.readFileSync(path.join(out,'requests.jsonl'),'utf8');
+ const [first,second]=log.trim().split('\n').map(line=>JSON.parse(line));
+ assert.deepEqual(first.headers,{'retry-after':'5','x-ratelimit-limit-requests':'200','x-ratelimit-remaining-requests':'198',
+  'x-ratelimit-reset-requests':'1m','x-ratelimit-limit-tokens':'1000','x-ratelimit-remaining-tokens':'55','x-ratelimit-reset-tokens':'5s'});
+ assert.deepEqual(second.headers,{});
+ assert.ok(!log.includes(secret));
 });
