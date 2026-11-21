@@ -991,3 +991,10 @@ Checked implementation `9c926245cbb228dcdfd9ea4bd2e4279cc9beea28` against `41ba4
 - `npm run check` (2026-11-21T17:47:48.8198271+07:00 to 2026-11-21T17:49:40.0596694+07:00) passed typecheck, 22/22 prototype tests, 269/269 core and route tests, the production build, and 16/16 app checks.
 - The full check includes 10 new offline routing regressions. All 17 existing provider tests and 4 existing Gemini fallback tests pass. The regressions use mock Gemini, Groq, and OpenRouter responses.
 - `node tools/check-route-scope.mjs origin/master pokabu/jlpt-free-roles` passed. A credential-pattern scan of additions found zero matches. Only this append-only entry follows the checked implementation.
+
+## Pokabu JLPT free-provider rate pacing -- 2026-11-21
+
+Checked implementation `d6ccb01b54d2c76ab0de7ad5c91527e11d18a111` against `133b0068aeac08d3989a5e6c5d959ab60589e157` on Windows, Node v24.10.0 and npm 11.6.1. Build started without .next and the app gate used a disposable OpenJLPT fixture. Check window: 2026-11-21T19:43:33.1636447+07:00 through 2026-11-21T19:45:05.2099562+07:00.
+- `npm run check` passed typecheck, 22/22 prototype tests, 279/279 core/route tests, production build, and 16/16 app checks.
+- Seven new mock regressions cover Groq retry, long-reset fallback, consecutive 429s, day cap, token pacing, OpenRouter retry and preflight, and rate-limit log redaction. Focused provider suite passed 34/34.
+- Route-scope and diff checks passed. No live model calls. The prior campaign explicitly excluded Gemini in its invocation; default model routing is unchanged.
