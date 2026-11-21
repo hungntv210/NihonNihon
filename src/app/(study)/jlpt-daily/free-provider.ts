@@ -23,7 +23,7 @@ export function freeProviderStatus(keys:FreeKeys){
   openrouter:keys.openrouter?'enabled':'MISSING_OPENROUTER_API_KEY'};
 }
 
-type Quota={day:string;count:number;blockedUntil?:number};
+type Quota={day:string;count:number;blockedUntil?:number;modelBlockedUntil?:Record<string,number>};
 const dayMs=86_400_000;
 const nextUtcDay=(now:number)=>(Math.floor(now/dayMs)+1)*dayMs;
 const quotaDay=(now:number)=>new Date(now).toISOString().slice(0,10);
@@ -75,7 +75,7 @@ export function freeCompletion(config:{provider:FreeProvider;model:string;key:st
  const cap=router?50:200;
  const check=(entry:Quota,now:number)=>{
   requireValue(entry.count<cap,'FREE_PROVIDER_DAILY_BUDGET_REACHED');
-  requireValue((entry.blockedUntil??0)<=now,'FREE_PROVIDER_RATE_LIMITED');
+  requireValue(Math.max(entry.blockedUntil??0,entry.modelBlockedUntil?.[model]??0)<=now,'FREE_PROVIDER_RATE_LIMITED');
  };
  const block=(until:number)=>withQuota(ledger,provider,entry=>{entry.blockedUntil=Math.max(entry.blockedUntil??0,until);});
  return async(prompt:string,payload:unknown,schema:unknown)=>{
@@ -100,9 +100,18 @@ export function freeCompletion(config:{provider:FreeProvider;model:string;key:st
    }),
   });
   const now=Date.now();
-  const until=Math.max(router?0:groqRateLimitUntil(response.headers,now),
-   response.status===429?retryUntil(response.headers,now):0);
-  if(until>now)block(until);
+  const sharedUntil=router?0:groqRateLimitUntil(response.headers,now);
+  const retry=response.status===429?retryUntil(response.headers,now):0;
+  if(router||sharedUntil>now){
+   const until=Math.max(sharedUntil,retry);
+   if(until>now)block(until);
+  }else if(retry>now){
+   // Keep model-specific Retry-After separate from organization-wide headers.
+   withQuota(ledger,provider,entry=>{
+    const blocked=entry.modelBlockedUntil??={};
+    blocked[model]=Math.max(blocked[model]??0,retry);
+   });
+  }
   requireValue(response.ok,'FREE_PROVIDER_HTTP_'+response.status);
   const choice=(await response.json()).choices?.[0];
   requireValue(choice?.finish_reason==='stop'&&typeof choice.message?.content==='string','FREE_PROVIDER_OUTPUT_INCOMPLETE');

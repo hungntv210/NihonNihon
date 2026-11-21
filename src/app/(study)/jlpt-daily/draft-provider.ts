@@ -12,7 +12,7 @@ export function validateSemanticReview(review:unknown,indexes:number[]):Semantic
   review.every(r=>indexes.includes(r?.index)&&typeof r.meaningCorrect==='boolean'&&typeof r.grammarLabelCorrect==='boolean'),'FREE_PROVIDER_INVALID_SEMANTIC_REVIEW');
  return review;
 }
-export type ModelEvidence={model:string;fallback:boolean;fallbackProvider?:FreeProvider;semanticReview?:SemanticReview[];switches:{from:string;to:string;reason:string}[]};
+export type ModelEvidence={model:string;fallback:boolean;fallbackProvider?:FreeProvider;semanticReview?:SemanticReview[];semanticReviewerModel?:string;switches:{from:string;to:string;reason:string}[]};
 export type QuestionProvenance={generationModel:string;initialSolverModel:string;fallback:boolean;fallbackProvider?:FreeProvider[];verificationRounds:ModelEvidence[];attemptedRounds?:ModelEvidence[];switches:ModelEvidence['switches']};
 export function modelEvidence(output:unknown):ModelEvidence{return (output as any)?.modelEvidence??{model:(output as any)?.verifierModel??'fixture',fallback:false,switches:[]};}
 export type DraftAttempt={at:string;phase:'generate'|'verify';model:string;attempt:number;status:'ok'|'error';error?:string;outputHash?:string};
@@ -31,25 +31,24 @@ export function draftProvider(profiles:Profile[],ledger:string,key:string,option
  requireValue(profiles.length>0&&new Set(profiles.map(p=>p.model)).size===profiles.length&&profiles.every(p=>p.model===p.verifierModel&&!/lite|nano/iu.test(p.model)),'EXPLICIT_NON_LITE_MODEL_CHAIN_REQUIRED');
  const cap=Math.min(200,...profiles.map(p=>p.dailyBudget)),providers=profiles.map(p=>geminiProvider({...p,dailyBudget:Math.min(p.dailyBudget,200),sharedDailyBudget:cap},ledger,key,options.fetcher));
  const keys=options.freeKeys??{},status=freeProviderStatus(keys);
- const external=([
-  ['groq',freeModels.groqSolver],['groq',freeModels.groqReview],['openrouter',freeModels.openrouter],
- ] as const).filter(([name])=>status[name]==='enabled').map(([name,model])=>({
-  name,model,complete:freeCompletion({...profiles[0],provider:name,model,key:keys[name]!,ledger,groqFreeTier:keys.groqFreeTier,fetcher:options.fetcher}),
- }));
+ const completion=(provider:FreeProvider,model:string)=>status[provider]==='enabled'
+  ?freeCompletion({...profiles[0],provider,model,key:keys[provider]!,ledger,groqFreeTier:keys.groqFreeTier,fetcher:options.fetcher})
+  :undefined;
+ const groqSolver=completion('groq',freeModels.groqSolver);
+ const groqReview=completion('groq',freeModels.groqReview);
+ const routerSolver=completion('openrouter',freeModels.openrouter);
  const sleep=options.sleep??(ms=>new Promise<void>(resolve=>setTimeout(resolve,ms)));
  const cooldowns=profiles.map(()=>0);
  let current=0;const switches:ModelEvidence['switches']=[];
  return async(phase,prompt,payload,schema,routing)=>{
   const eligible=profiles.map((_,i)=>i).filter(i=>!routing?.excludeModels?.includes(profiles[i].model));
-  const free=phase==='verify'&&routing?.openjlptOnly
-   ?external.filter(p=>!routing.excludeModels?.includes(p.model)).sort((a,b)=>
-    Number(b.model===(routing.semanticReview?freeModels.groqReview:freeModels.groqSolver))-
-    Number(a.model===(routing.semanticReview?freeModels.groqReview:freeModels.groqSolver)))
-   :[];
-  requireValue(eligible.length||free.length,'NO_DIFFERENT_VERIFIER');
+  const useGroq=phase==='verify'&&routing?.openjlptOnly&&groqSolver&&!routing.excludeModels?.includes(freeModels.groqSolver);
+  const useRouter=useGroq&&routerSolver&&!routing.excludeModels?.includes(freeModels.openrouter);
+  requireValue(eligible.length||useGroq,'NO_DIFFERENT_VERIFIER');
   const order=routing?.excludeModels?.length?eligible:[...eligible.filter(i=>i>=current),...eligible.filter(i=>i<current)];
   let previous:{index:number;reason:string}|undefined;
-  const record=(output:unknown,model:string,fallback:boolean,attempt:number,extra:Pick<ModelEvidence,'fallbackProvider'|'semanticReview'>={})=>{
+  let noDifferentSolver=false;
+  const record=(output:unknown,model:string,fallback:boolean,attempt:number,extra:Pick<ModelEvidence,'fallbackProvider'|'semanticReview'|'semanticReviewerModel'>={})=>{
    const evidence:ModelEvidence={model,fallback,switches:structuredClone(switches),...extra};
    if(output&&typeof output==='object'){Object.defineProperty(output,'modelEvidence',{value:evidence});Object.defineProperty(output,'verifierModel',{value:model});}
    options.onAttempt?.({at:new Date().toISOString(),phase,model,attempt,status:'ok',outputHash:hash(output)},payload,output);
@@ -73,7 +72,8 @@ export function draftProvider(profiles:Profile[],ledger:string,key:string,option
      options.onAttempt?.({at:new Date().toISOString(),phase,model:profiles[index].model,attempt,status:'error',error},payload);
      const overload=e instanceof GeminiHttpError&&(e.status===503||e.status===429),temporary=e instanceof Error&&e.name==='TimeoutError'||e instanceof TypeError&&e.message==='fetch failed';
      const capReached=error==='SHARED_DAILY_BUDGET_REACHED'||error==='DAILY_BUDGET_REACHED';
-     if(capReached&&free.length&&!recovery){previous={index,reason:error};break;}
+     if(capReached&&useGroq&&!recovery){previous={index,reason:error};break;}
+     if(capReached&&(noDifferentSolver||routing?.excludeModels?.length))throw Error('NO_DIFFERENT_VERIFIER');
      if(!overload&&!temporary)throw Error(error);
      previous={index,reason:overload?error.split(':')[0]:e instanceof Error?e.name:'NETWORK_ERROR'};
      if(overload||attempt===2){
@@ -83,28 +83,45 @@ export function draftProvider(profiles:Profile[],ledger:string,key:string,option
      await sleep(MODEL_COOLDOWN_MS);
     }
    }
-   if(!recovery){
-    let from=previous&&{model:profiles[previous.index].model,reason:previous.reason};
-    for(const candidate of free)try{
-     if(from)switches.push({from:from.model,to:candidate.model,reason:from.reason});
-     const output=await candidate.complete(prompt,payload,schema);
-     const claims=routing?.semanticReview;
-     const extra:Pick<ModelEvidence,'fallbackProvider'|'semanticReview'>={fallbackProvider:candidate.name};
-     if(claims?.length&&candidate.model===freeModels.groqReview){
-      const review=validateSemanticReview(await candidate.complete(semanticPrompt,{claims},semanticSchema),claims.map(c=>c.index));
-      options.onAttempt?.({at:new Date().toISOString(),phase,model:candidate.model,attempt:1,status:'ok',outputHash:hash(review)},{claims},review);
-      extra.semanticReview=review;
+   if(!recovery&&useGroq){
+    const complete=async(model:string,call:NonNullable<typeof groqSolver>,systemPrompt:string,input:unknown,outputSchema:unknown)=>{
+     try{return await call(systemPrompt,input,outputSchema);}
+     catch(e){
+      const message=e instanceof Error?e.message:'';
+      const error=/^(?:FREE_PROVIDER|OPENROUTER)_[A-Z0-9_]+$/u.test(message)?message:
+       e instanceof Error&&e.name==='TimeoutError'?'FREE_PROVIDER_TIMEOUT':'FREE_PROVIDER_REQUEST_FAILED';
+      options.onAttempt?.({at:new Date().toISOString(),phase,model,attempt:1,status:'error',error},input);
+      throw Error(error);
      }
-     return record(output,candidate.model,true,1,extra);
-    }catch(e){
-     const message=e instanceof Error?e.message:'';
-     const error=/^(?:FREE_PROVIDER|OPENROUTER)_[A-Z0-9_]+$/u.test(message)?message:
-      e instanceof Error&&e.name==='TimeoutError'?'FREE_PROVIDER_TIMEOUT':'FREE_PROVIDER_REQUEST_FAILED';
-     from={model:candidate.model,reason:error};
-     options.onAttempt?.({at:new Date().toISOString(),phase,model:candidate.model,attempt:1,status:'error',error},payload);
+    };
+    let model:string=freeModels.groqSolver,fallbackProvider:FreeProvider='groq';
+    if(previous)switches.push({from:profiles[previous.index].model,to:model,reason:previous.reason});
+    let output:unknown;
+    try{output=await complete(model,groqSolver,prompt,payload,schema);}
+    catch(e){
+     const reason=(e as Error).message;
+     if(!['FREE_PROVIDER_HTTP_429','FREE_PROVIDER_RATE_LIMITED','FREE_PROVIDER_DAILY_BUDGET_REACHED'].includes(reason))continue;
+     if(!useRouter){noDifferentSolver=true;continue;}
+     switches.push({from:model,to:freeModels.openrouter,reason});
+     model=freeModels.openrouter;
+     fallbackProvider='openrouter';
+     try{output=await complete(model,routerSolver,prompt,payload,schema);}
+     catch{noDifferentSolver=true;continue;}
     }
+    const extra:Pick<ModelEvidence,'fallbackProvider'|'semanticReview'|'semanticReviewerModel'>={fallbackProvider};
+    const claims=routing.semanticReview;
+    if(claims?.length&&groqReview){
+     try{
+      const input={claims};
+      const review=validateSemanticReview(await complete(freeModels.groqReview,groqReview,semanticPrompt,input,semanticSchema),claims.map(c=>c.index));
+      options.onAttempt?.({at:new Date().toISOString(),phase,model:freeModels.groqReview,attempt:1,status:'ok',outputHash:hash(review)},input,review);
+      extra.semanticReview=review;
+      extra.semanticReviewerModel=freeModels.groqReview;
+     }catch{/* The verifier rejects missing review evidence. */}
+    }
+    return record(output,model,true,1,extra);
    }
   }
-  throw Error('DRAFT_MODELS_EXHAUSTED');
+  throw Error(noDifferentSolver||routing?.excludeModels?.length?'NO_DIFFERENT_VERIFIER':'DRAFT_MODELS_EXHAUSTED');
  };
 }
