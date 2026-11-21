@@ -1,4 +1,5 @@
 import {demo} from './demo.ts';
+export {SEEK_TOLERANCE,playbackTime,updatePlayback,type PlaybackSession} from './playback.ts';
 export type ClipSegment={id:string;start:number;end:number;ja:string;kana:string|null;speaker:string|null;vi:string|null};
 export type Clip={id:string;title:string;level:string;topic:string;duration:number;start:number;end:number;isDemo:boolean;attribution:string;license:string;mediaUrl:string|null;youtubeId:string|null;segments:ClipSegment[]};
 export const syntheticClip:Clip={...demo,start:0,end:demo.duration,id:'demo',level:'N5',topic:'Thử thao tác',isDemo:true,attribution:'Video tổng hợp tự tạo',license:'Original synthetic fixture',mediaUrl:'/shadowing/media',youtubeId:null,segments:demo.segments.map((s,i)=>({...s,id:'demo-'+i,kana:null,speaker:null}))};
@@ -17,32 +18,4 @@ export function parseYoutubeClip(metadata:unknown):Clip{
  let previous=m.clip_start_ms;const seen=new Set<string>();
  const segments=m.segments.map(s=>{if(!s.id||seen.has(s.id)||!s.ja?.trim()||!s.kana?.trim()||!s.vi?.trim()||!Number.isSafeInteger(s.start_ms)||!Number.isSafeInteger(s.end_ms)||s.start_ms<previous||s.end_ms<=s.start_ms||s.end_ms>m.clip_end_ms)throw Error('INVALID_CLIP_TIMING');seen.add(s.id);previous=s.end_ms;return {id:s.id,start:s.start_ms/1000,end:s.end_ms/1000,ja:s.ja,kana:s.kana,speaker:null,vi:s.vi};});
  return {id:m.id,title:m.title,level:m.level??'',topic:m.topic??'',duration:m.duration_ms/1000,start:m.clip_start_ms/1000,end:m.clip_end_ms/1000,isDemo:false,attribution:m.origin.attribution,license:m.origin.license,mediaUrl:null,youtubeId:m.origin.video_id,segments};
-}
-export const SEEK_TOLERANCE=0.25;
-export function playbackTime(time:number,clip:Clip,skipGaps:boolean){
- const bounded=time<clip.start&&time>=clip.start-SEEK_TOLERANCE?time:Math.max(clip.start,Math.min(clip.end,time));
- if(skipGaps)for(let i=1;i<clip.segments.length;i++){const previous=clip.segments[i-1],next=clip.segments[i];if(next.start-previous.end>3&&bounded>=previous.end&&bounded<next.start)return next.start;}
- return bounded;
-}
-
-export type PlaybackSession={selected:number;limit:number;count:number;active:boolean;whole:boolean;entered:boolean};
-type PlaybackMedia={currentTime:number;seeking:boolean;paused:boolean;pause():void};
-export function updatePlayback(media:PlaybackMedia,clip:Clip,loop:PlaybackSession){
- // Safari can expose the OLD time during a seek, or land slightly before the target keyframe.
- if(media.seeking)return null;
- const now=media.currentTime,bounded=playbackTime(now,clip,loop.whole);
- const result={time:bounded,finished:false,repeat:false};
- if(Math.abs(now-bounded)>SEEK_TOLERANCE){
-  if(bounded>=clip.end-0.02){media.pause();loop.whole=false;}
-  media.currentTime=bounded;return result;
- }
- if(!loop.active){if(bounded>=clip.end-0.02){media.pause();loop.whole=false;}return result;}
- if(media.paused)return result;
- const sentence=clip.segments[loop.selected];
- if(now>=sentence.start&&now<sentence.end-0.04)loop.entered=true;
- if(!loop.entered||now<sentence.end-0.04)return result;
- loop.entered=false;loop.count++;
- if(loop.limit===0||loop.count<loop.limit){media.currentTime=sentence.start;result.repeat=true;}
- else{loop.active=false;media.pause();result.finished=true;}
- return result;
 }
