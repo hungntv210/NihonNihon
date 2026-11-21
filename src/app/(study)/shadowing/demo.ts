@@ -1,3 +1,5 @@
+import {segmentAtIn,shouldRepeat} from './playback.ts';
+export {segmentAtIn,shouldRepeat};
 export const demo = {
   title: 'Nhịp thử · 3 đoạn',
   duration: 9,
@@ -8,14 +10,7 @@ export const demo = {
   ],
 } as const;
 
-export function segmentAtIn(time: number,segments:readonly {start:number;end:number}[]) {
-  return segments.findIndex((segment) => time >= segment.start && time < segment.end);
-}
 export const segmentAt=(time:number)=>segmentAtIn(time,demo.segments);
-
-export function shouldRepeat(completed: number, limit: number) {
-  return limit === 0 || completed < limit;
-}
 
 export function mediaRange(header: string | null, size: number) {
   if (!header) return null;
