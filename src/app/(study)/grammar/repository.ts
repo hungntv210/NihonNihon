@@ -57,6 +57,8 @@ const tags = (value: unknown) => {
 };
 export const grammarId = (id: string) => (id.includes(':') ? id : `openjlpt:grammar:${id}`);
 export const grammarHref = (id: string) => '/grammar/' + encodeURIComponent(id);
+export const grammarClipHref = (clipId: string, position: number) =>
+  '/shadowing?clip=' + encodeURIComponent(clipId) + '&segment=' + Math.max(1, Math.trunc(position) + 1);
 
 export function translation(
   db: DatabaseSync,
@@ -145,7 +147,7 @@ export function getGrammar(db: DatabaseSync, key: string): GrammarDetail | null 
     .map((r) => summary(db, r));
   const clips = db
     .prepare(
-      `SELECT DISTINCT c.clip_id,c.position FROM clip_segments c JOIN item_sentences l ON l.sentence_id=c.sentence_id JOIN content_items i ON i.item_id=c.clip_id WHERE l.item_id=? AND i.is_active=1 ORDER BY c.clip_id,c.position LIMIT 12`,
+      `SELECT DISTINCT c.clip_id,c.position FROM clip_segments c JOIN item_sentences l ON l.sentence_id=c.sentence_id JOIN content_items si ON si.item_id=c.sentence_id JOIN content_items i ON i.item_id=c.clip_id JOIN media_assets m ON m.item_id=c.clip_id WHERE l.item_id=? AND si.is_active=1 AND i.kind='clip' AND i.is_active=1 AND m.asset_kind='video' ORDER BY c.clip_id,c.position LIMIT 12`,
     )
     .all(id)
     .map((r) => ({ id: String(r.clip_id), position: Number(r.position) }));
