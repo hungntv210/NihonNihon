@@ -893,3 +893,11 @@ Checked implementation `6b70eceb7b2bb121f37429fab7861af1204a085e` on `naetoru/sc
 - 32-frame static canvas pixel comparison (2 scenes x 4 seasons x 4 times in headless Chromium): 0 differing pixels across all 32 composited frames and all 32 layer-1 frames.
 - Paired mobile A/B measurement (390x844 DPR 3, 4x CPU, Fast 4G, cache disabled, 3-run median): `/kanji` TBT 240 -> 219 ms (-8.7%), TTI 1378.5 -> 1389.7 ms (+0.8%), LCP 596 -> 604 ms; `/grammar` TBT 269 -> 222 ms (-17.5%), TTI 1617.8 -> 1306.3 ms (-19.3%), LCP 784 -> 584 ms.
 - `node tools/check-route-scope.mjs origin/master naetoru/scene-reflection`: PASS. Append-only entry recorded after the checked implementation commit.
+
+## Naetoru SRS settings (newCardsPerDay + fsrsRetention) -- 2026-11-21
+
+Checked implementation `426dad5f42df12e65a344b701304ac51e726f4e3` on `naetoru/srs-settings` (base `1de1ca6dde2773aac17b36b4169a7ee5b6ce0a7f`) on Windows with Node v24.10.0, disposable OpenJLPT fixture, production Next build, and local headless Chromium. Check window 2026-11-21 12:06:27-12:08:04 +07:00.
+- `npm run check`: typecheck PASS, prototype 22/22 and core/route 238/238 PASS (260 total, including 3 new tests in `tests/srs-settings.test.ts` and expanded validation/fallback coverage in `tests/preferences.test.ts`), production build PASS, app gate 16/16 PASS.
+- `node --import tsx "src/app/(study)/srs/browser-check.ts"`: PASS.
+- Production browser/API verification (isolated fixture, 390x844 mobile viewport): 6 out-of-range/invalid `/api/settings` payloads rejected with HTTP 400; `/settings` edits for `newCardsPerDay` (0-100) and `fsrsRetention` (0.80-0.97) persist across reload with zero horizontal overflow; `/srs` enforces the daily new-card cap without blocking due reviews, updates client preview/header retention dynamically, and persists matching FSRS scheduler version (`ts-fsrs@6.0.0/FSRS-6/r85`) without DB schema changes.
+- `node tools/check-route-scope.mjs origin/master naetoru/srs-settings`: PASS. Append-only entry recorded after the checked implementation commit.
