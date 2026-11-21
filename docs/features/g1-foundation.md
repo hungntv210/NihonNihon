@@ -33,7 +33,7 @@ SRS, Từ vựng, Kanji và Ngữ pháp trong thư mục tuyến tương ứng; 
 - [x] **Đăng nhập:** một tài khoản, mật khẩu hoặc passkey; mọi trang yêu cầu đăng nhập; `robots` chặn công cụ tìm kiếm
 - [x] **Triển khai:** VPS nhỏ hoặc máy nhà + Tailscale (không mở cổng ra Internet khi dùng Tailscale)
 - [ ] **PWA:** cài lên màn hình điện thoại; service worker cache để ôn SRS, xem thẻ, đọc bài đã tải khi offline; đồng bộ khi có mạng
-- [ ] **Sao lưu:** tự động sao lưu database và bản ghi âm mỗi ngày; nút tải về một file
+- [x] **Sao lưu:** tự động sao lưu database và bản ghi âm mỗi ngày; nút tải về một file (xác minh 21/11: `tests/backup.test.ts:10-39`, `tools/test-app.ts:183-184`)
 - [ ] **Cài đặt:** giờ học, ngày shadowing, số thẻ mới/ngày, mức ghi nhớ FSRS, furigana mặc định, giọng TTS, sáng/tối
 - [x] Trang **Nguồn dữ liệu** ghi công theo giấy phép
 
@@ -65,7 +65,7 @@ SRS, Từ vựng, Kanji và Ngữ pháp trong thư mục tuyến tương ứng; 
 
 - [x] Đăng nhập được trên điện thoại qua Tailscale hoặc VPS; không đăng nhập thì không xem được trang nào
 - [ ] Cài PWA lên màn hình Android và iOS
-- [ ] Tắt mạng vẫn mở được app và các trang đã cache
+- [x] Tắt mạng vẫn mở được app và các trang đã cache (xác minh 21/11: `tools/test-app.ts:264-301`)
 - [ ] Bộ chữ thử Ộ Ệ Ờ Ữ Ỹ Đ 働 返 直 骨 hiển thị đúng trên Chrome Android, Safari iOS
 - [x] Khôi phục được từ file sao lưu
 
