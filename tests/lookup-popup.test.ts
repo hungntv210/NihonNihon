@@ -2,8 +2,10 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
+import { createHash } from 'node:crypto';
 import { DatabaseSync } from 'node:sqlite';
 import { fixture } from './helpers.ts';
+import { createBackup, restoreBackup, validateBackup } from '../src/core/backup.ts';
 import { tokenizeJapaneseSentence, tokenizeClipSegments } from '../src/app/(study)/common-tools/tokenize.ts';
 import { lookupWord, isDisallowedMeaningSource } from '../src/app/(study)/common-tools/lookup.ts';
 import {
@@ -12,6 +14,7 @@ import {
   type LookupHandlerDeps,
 } from '../src/app/(study)/common-tools/lookup-handler.ts';
 import {
+  lookupContextPath,
   readLookupSentenceStore,
   saveLookupItemToSrs,
 } from '../src/app/(study)/common-tools/lookup-store.ts';
@@ -320,6 +323,188 @@ test('POST /api/common-tools/lookup saves to SRS with original sentence ONLY whe
   const afterData = await afterGet.json();
   assert.equal(afterData.item.inSrs, true);
   assert.equal(afterData.item.savedSentence.sentenceJa, '学生が本を読みます。');
+});
+
+test('backup and restore preserve lookup-sentences.json, accept legacy archives without it, and reject corrupted stores', async (t) => {
+  const envKeys = [
+    'NIHON_DB_PATH',
+    'NIHON_DB_ROLE',
+    'NIHON_SETTINGS_PATH',
+    'NIHON_ROADMAP_PATH',
+    'NIHON_LOOKUP_CONTEXT_PATH',
+    'NIHON_RECORDINGS_DIR',
+    'NIHON_BACKUP_DIR',
+    'NIHON_JLPT_PATH',
+  ] as const;
+  const savedEnv = Object.fromEntries(envKeys.map((k) => [k, process.env[k]]));
+  t.after(() => {
+    for (const k of envKeys) {
+      if (savedEnv[k] === undefined) delete process.env[k];
+      else process.env[k] = savedEnv[k];
+    }
+  });
+
+  const sha = (buf: Buffer) => createHash('sha256').update(buf).digest('hex');
+  const { file, itemId } = fixture(t);
+  const root = path.dirname(file);
+  process.env.NIHON_DB_PATH = file;
+  process.env.NIHON_DB_ROLE = 'snapshot';
+  for (const k of envKeys.slice(2)) delete process.env[k];
+
+  // 1. Missing lookup-sentences.json skips cleanly without error (legacy-style archive)
+  const legacyBytes = await createBackup();
+  const legacyArchive = validateBackup(legacyBytes);
+  assert.equal(legacyArchive.files.some((f) => f.name === 'lookup-sentences.json'), false);
+
+  // 2. Save original sentence at default <dbDir>/private/lookup-sentences.json and back up
+  const defaultLookupFile = lookupContextPath();
+  assert.equal(defaultLookupFile, path.join(root, 'private', 'lookup-sentences.json'));
+  const saved = saveLookupItemToSrs({
+    dbPath: file,
+    itemId,
+    cardType: 'recognition',
+    sentenceJa: '私は学生です。',
+    sentenceVi: 'Tôi là học sinh.',
+    sourceClipId: 'erin-1',
+    now: new Date('2026-11-21T10:30:00.000Z'),
+  });
+  const fullBytes = await createBackup();
+  const fullArchive = validateBackup(fullBytes);
+  assert.ok(fullArchive.files.some((f) => f.name === 'lookup-sentences.json'));
+
+  // 3. Overwrite & remove lookup-sentences.json, then restore -> exact original sentence returns
+  fs.rmSync(defaultLookupFile, { force: true });
+  assert.equal(fs.existsSync(defaultLookupFile), false);
+  await restoreBackup(fullBytes);
+  assert.equal(fs.existsSync(defaultLookupFile), true);
+  const restoredStore = readLookupSentenceStore(defaultLookupFile);
+  assert.deepEqual(restoredStore.entries[saved.cardId], {
+    cardId: saved.cardId,
+    itemId,
+    sentenceJa: '私は学生です。',
+    sentenceVi: 'Tôi là học sinh.',
+    sourceClipId: 'erin-1',
+    savedAt: '2026-11-21T10:30:00.000Z',
+  });
+
+  // 4. Custom NIHON_LOOKUP_CONTEXT_PATH inside root also backs up and restores cleanly
+  const customLookupFile = path.join(root, 'private', 'custom-lookup.json');
+  process.env.NIHON_LOOKUP_CONTEXT_PATH = customLookupFile;
+  const customSaved = saveLookupItemToSrs({
+    dbPath: file,
+    itemId,
+    cardType: 'recognition',
+    sentenceJa: '毎日日本語を勉強します。',
+    sentenceVi: 'Mỗi ngày tôi học tiếng Nhật.',
+    sourceClipId: 'clip-custom',
+    now: new Date('2026-11-21T11:00:00.000Z'),
+  });
+  const customBytes = await createBackup();
+  fs.writeFileSync(customLookupFile, JSON.stringify({ version: 1, entries: {} }));
+  await restoreBackup(customBytes);
+  assert.equal(
+    readLookupSentenceStore(customLookupFile).entries[customSaved.cardId].sentenceJa,
+    '毎日日本語を勉強します。',
+  );
+  delete process.env.NIHON_LOOKUP_CONTEXT_PATH;
+
+  // 5. Legacy backup without lookup-sentences.json still restores cleanly without error
+  await restoreBackup(legacyBytes);
+  assert.equal(fs.existsSync(defaultLookupFile), false);
+  // Restoring a second time when file is already absent also succeeds
+  await restoreBackup(legacyBytes);
+  assert.equal(fs.existsSync(defaultLookupFile), false);
+
+  // Restore valid lookup state before testing rejection cases
+  await restoreBackup(fullBytes);
+
+  // 6. Corrupted lookup-sentences.json payloads and integrity failures are rejected
+  const withLookupPayload = (payload: Buffer) => {
+    const clone = structuredClone(legacyArchive);
+    clone.files.push({
+      name: 'lookup-sentences.json',
+      bytes: payload.toString('base64'),
+      sha256: sha(payload),
+    });
+    return Buffer.from(JSON.stringify(clone));
+  };
+
+  // Invalid JSON
+  assert.throws(() => validateBackup(withLookupPayload(Buffer.from('{not-json'))), /INVALID_LOOKUP_SENTENCES/);
+  // Wrong version
+  assert.throws(
+    () => validateBackup(withLookupPayload(Buffer.from(JSON.stringify({ version: 2, entries: {} })))),
+    /INVALID_LOOKUP_SENTENCES/,
+  );
+  // Array entries
+  assert.throws(
+    () => validateBackup(withLookupPayload(Buffer.from(JSON.stringify({ version: 1, entries: [] })))),
+    /INVALID_LOOKUP_SENTENCES/,
+  );
+  // Empty sentenceJa
+  assert.throws(
+    () =>
+      validateBackup(
+        withLookupPayload(
+          Buffer.from(
+            JSON.stringify({
+              version: 1,
+              entries: {
+                'card-1': {
+                  cardId: 'card-1',
+                  itemId,
+                  sentenceJa: '   ',
+                  sentenceVi: null,
+                  sourceClipId: null,
+                  savedAt: '2026-11-21T10:30:00.000Z',
+                },
+              },
+            }),
+          ),
+        ),
+      ),
+    /INVALID_LOOKUP_SENTENCES/,
+  );
+  // Mismatched cardId key
+  assert.throws(
+    () =>
+      validateBackup(
+        withLookupPayload(
+          Buffer.from(
+            JSON.stringify({
+              version: 1,
+              entries: {
+                'card-1': {
+                  cardId: 'card-other',
+                  itemId,
+                  sentenceJa: '私は学生です。',
+                  sentenceVi: null,
+                  sourceClipId: null,
+                  savedAt: '2026-11-21T10:30:00.000Z',
+                },
+              },
+            }),
+          ),
+        ),
+      ),
+    /INVALID_LOOKUP_SENTENCES/,
+  );
+  // Bad sha256 on lookup-sentences.json
+  const badSha = structuredClone(fullArchive);
+  badSha.files.find((f) => f.name === 'lookup-sentences.json')!.sha256 = '0'.repeat(64);
+  assert.throws(() => validateBackup(Buffer.from(JSON.stringify(badSha))), /BACKUP_INTEGRITY/);
+
+  // Bad archive path for lookup-sentences.json
+  const badPath = structuredClone(fullArchive);
+  badPath.files.find((f) => f.name === 'lookup-sentences.json')!.name = 'private/lookup-sentences.json';
+  assert.throws(() => validateBackup(Buffer.from(JSON.stringify(badPath))), /INVALID_BACKUP_PATH/);
+
+  // restoreBackup rejects corrupted payload and leaves existing valid lookup-sentences.json untouched
+  await assert.rejects(
+    restoreBackup(withLookupPayload(Buffer.from(JSON.stringify({ version: 99, entries: {} })))),
+    /INVALID_LOOKUP_SENTENCES/,
+  );
+  assert.equal(readLookupSentenceStore(defaultLookupFile).entries[saved.cardId].sentenceJa, '私は学生です。');
 });
 
 test('popup client model handles focus trap, source labels, fallback segmentation, and zero server-only imports', () => {
