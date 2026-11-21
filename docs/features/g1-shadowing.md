@@ -32,7 +32,7 @@ Tính năng chủ lực: luyện nói theo từng câu của đoạn hội tho�
 - [x] Danh sách câu, câu đang phát được làm nổi
 - [x] Lặp 1/3/5/∞, A–B; tốc độ 0.5×–1.25× giữ cao độ
 - [x] Dừng để nói theo (độ dài câu × 1.2)
-- [ ] Phụ đề 4 chế độ: đầy đủ / tiếng Nhật / kana / ẩn; chạm từ để tra
+- [x] Phụ đề 4 chế độ: đầy đủ / tiếng Nhật / kana / ẩn; chạm từ để tra
 - [x] Phím tắt máy tính: Space, ← →, R, L
 
 **Ghi âm và so sánh**
@@ -89,5 +89,6 @@ Các dấu tick xác nhận phần code đã chạy qua test/fixture; không tha
 - Bằng chứng: `src/app/(study)/shadowing/practice.test.ts`.
 - Bằng chứng: `tests/shadowing-controls.test.ts`.
 - Bằng chứng: `src/app/(study)/shadowing/browser-check.ts`.
+- Bằng chứng (2026-11-21): `src/app/(study)/common-tools/lookup-popup.tsx`, `tests/lookup-popup.test.ts`.
 
-Bốn điều kiện giữ nguyên. API progress lưu metadata theo hash phiên đăng nhập/ngày trong roadmap JSON với khóa nguyên tử; không nhận audio. Bộ đếm chỉ nhận tab hiện, phát có tiến triển hoặc ghi âm; server chặn cộng thời gian song song/replay bằng đồng hồ server. Cùng ngày (kể cả đã ghi tay) không thêm buổi tự động. Ghi tay vẫn dự phòng. Đã bổ sung tốc độ phát 1.2× cùng chế độ dừng để nói theo (độ dài câu × 1.2), phím tắt máy tính (`Space`, `←`, `→`, `R`, `L` có chặn vùng nhập liệu), nút thêm câu vào SRS dùng lại `/api/review/cards` + `enqueueCard()` (không tạo thẻ trùng, không đổi schema), và deep-link `?clip=<id>&segment=<n>`. Chưa có clip file cá nhân, editor sóng âm, chạm từ hay so sánh sóng âm; các mục ghép tương ứng giữ trống.
+Bốn điều kiện giữ nguyên. API progress lưu metadata theo hash phiên đăng nhập/ngày trong roadmap JSON với khóa nguyên tử; không nhận audio. Bộ đếm chỉ nhận tab hiện, phát có tiến triển hoặc ghi âm; server chặn cộng thời gian song song/replay bằng đồng hồ server. Cùng ngày (kể cả đã ghi tay) không thêm buổi tự động. Ghi tay vẫn dự phòng. Đã bổ sung tốc độ phát 1.2× cùng chế độ dừng để nói theo (độ dài câu × 1.2), phím tắt máy tính (`Space`, `←`, `→`, `R`, `L` có chặn vùng nhập liệu), nút thêm câu vào SRS dùng lại `/api/review/cards` + `enqueueCard()` (không tạo thẻ trùng, không đổi schema), deep-link `?clip=<id>&segment=<n>`, và chạm từ trên phụ đề (chế độ đầy đủ / tiếng Nhật / kana, tách từ `kuromoji` phía server) để mở popup tra từ tại chỗ + Thêm vào ôn kèm câu gốc. Chưa có clip file cá nhân, editor sóng âm hay so sánh sóng âm; các mục ghép tương ứng giữ trống.

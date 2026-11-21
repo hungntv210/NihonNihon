@@ -14,7 +14,7 @@ Ba công cụ có mặt ở mọi màn hình.
 
 ## Chức năng
 
-- [ ] **Popup tra từ:** chạm từ tiếng Nhật bất kỳ → cách đọc, Hán Việt, nghĩa Việt (nhãn nguồn), cấp, nút Thêm vào ôn (kèm câu gốc)
+- [x] **Popup tra từ:** chạm từ tiếng Nhật bất kỳ → cách đọc, Hán Việt, nghĩa Việt (nhãn nguồn), cấp, nút Thêm vào ôn (kèm câu gốc)
 - [x] **Thanh tìm kiếm chung:** kanji, kana, romaji, Hán Việt, tiếng Việt; **gõ không dấu vẫn tìm ra** ("lam viec" → "làm việc")
 - [ ] Kết quả gồm từ, kanji, mẫu ngữ pháp, câu trong clip
 - [ ] Từ ngoài JLPT tra qua JMdict + tu-dien-nhat-viet
@@ -57,5 +57,6 @@ Các dấu tick xác nhận phần code đã chạy qua test/fixture; không tha
 - Bằng chứng: `src/app/(study)/common-tools/repository.ts`.
 - Bằng chứng: `src/app/(study)/common-tools/repository.test.ts`.
 - Bằng chứng: `src/app/(study)/common-tools/browser-check.ts`.
+- Bằng chứng (2026-11-21): `src/app/(study)/common-tools/lookup-popup.tsx`, `src/app/(study)/common-tools/lookup.ts`, `src/app/(study)/common-tools/tokenize.ts`, `src/app/api/common-tools/lookup/route.ts`, `tests/lookup-popup.test.ts`.
 
-Tìm chung đã có từ/kanji/ngữ pháp; popup mọi văn bản, câu trong clip và từ điển ngoài JLPT chưa có. Báo sai hiện có ở vocab/kanji/grammar, chưa phải mọi dòng Việt. Chưa đo mục tiêu200ms trên dữ liệu thật.
+Tìm chung đã có từ/kanji/ngữ pháp; popup tra từ tại chỗ (tách từ `kuromoji` phía server, `/api/common-tools/lookup`, dialog có focus trap + `Esc`/click ngoài + nút Thêm vào ôn kèm câu gốc, không lấy nghĩa từ KanjiDictVN) đã triển khai và gắn trên phụ đề shadowing. Câu trong clip ở tìm chung, từ điển ngoài JLPT, Báo sai trên mọi dòng Việt và đo mục tiêu 200ms trên dữ liệu thật vẫn giữ trống.
