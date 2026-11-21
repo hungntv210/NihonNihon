@@ -5,7 +5,12 @@ import { withContentDatabase } from '../../../../server/dal.ts';
 import { SourceLabel } from '../../../../components/source-label.tsx';
 import { AddToReview } from '../../../../components/add-to-review.tsx';
 import { JaText, ViText } from '../../../../components/text.tsx';
-import { grammarHref, getGrammar, type GrammarTranslation } from '../repository.ts';
+import {
+  grammarClipHref,
+  grammarHref,
+  getGrammar,
+  type GrammarTranslation,
+} from '../repository.ts';
 import { decodeGrammarRouteId } from '../route-id.ts';
 import { focusOf, choiceQuestions, orderingQuestions } from '../practice.ts';
 import { FORMULA_LEGEND, parseGrammarFormula, type FormulaKind } from '../formula.ts';
@@ -248,17 +253,14 @@ export default async function GrammarDetailPage({ params }: { params: Promise<{ 
         </section>
       )}
       {item.clips.length > 0 && (
-        <section className="section-block">
-          <h2 className={styles.sectionTitle}>Câu này trong clip của bạn</h2>
+        <section className="section-block" aria-labelledby="clips-title">
+          <h2 id="clips-title" className={styles.sectionTitle}>
+            Câu này trong clip của bạn
+          </h2>
           <ul>
             {item.clips.map((clip) => (
               <li key={clip.id + ':' + clip.position}>
-                <Link
-                  className="text-link"
-                  href={
-                    '/shadowing?clip=' + encodeURIComponent(clip.id) + '&segment=' + clip.position
-                  }
-                >
+                <Link className="text-link" href={grammarClipHref(clip.id, clip.position)}>
                   Clip · câu {clip.position + 1} →
                 </Link>
               </li>
