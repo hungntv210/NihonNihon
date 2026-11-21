@@ -24,7 +24,7 @@ const port = await new Promise<number>(resolve => {
 });
 const origin = `http://127.0.0.1:${port}`, password = randomBytes(24).toString('hex');
 const child = spawn(process.execPath, ['node_modules/next/dist/bin/next', 'start', '--hostname', '127.0.0.1', '--port', String(port)], {
-  env: { ...process.env, APP_ORIGIN: origin, NIHON_DB_PATH: dbPath, NIHON_YOUTUBE_CLIP_PATH: youtubeFile, NIHON_DB_ROLE: 'snapshot', NIHON_PASSWORD_HASH: hashPassword(password), SESSION_SECRET: randomBytes(32).toString('hex'), NIHON_SETTINGS_PATH: path.join(directory, 'settings.json'), NIHON_ROADMAP_PATH: path.join(directory, 'roadmap.json'), NIHON_RECORDINGS_DIR: path.join(directory, 'recordings'), NIHON_BACKUP_DIR: path.join(directory, 'backups'), NODE_ENV: 'production', NEXT_TELEMETRY_DISABLED: '1' }, stdio: ['ignore', 'pipe', 'pipe'], windowsHide: true,
+  env: { ...process.env, APP_ORIGIN: origin, NIHON_DB_PATH: dbPath, NIHON_YOUTUBE_CLIP_PATH: youtubeFile, NIHON_DB_ROLE: 'snapshot', NIHON_PASSWORD_HASH: hashPassword(password), SESSION_SECRET: randomBytes(32).toString('hex'), NIHON_SETTINGS_PATH: path.join(directory, 'settings.json'), NIHON_ROADMAP_PATH: path.join(directory, 'roadmap.json'), NIHON_LOOKUP_CONTEXT_PATH: path.join(directory, 'lookup-sentences.json'), NIHON_RECORDINGS_DIR: path.join(directory, 'recordings'), NIHON_BACKUP_DIR: path.join(directory, 'backups'), NODE_ENV: 'production', NEXT_TELEMETRY_DISABLED: '1' }, stdio: ['ignore', 'pipe', 'pipe'], windowsHide: true,
 });
 let log = ''; child.stdout.on('data', data => log += data); child.stderr.on('data', data => log += data);
 const chrome = process.env.CHROME_PATH ?? (process.platform === 'win32' ? 'C:/Program Files/Google/Chrome/Application/chrome.exe' : undefined);
@@ -202,6 +202,38 @@ try {
   await page.getByRole('status').filter({hasText:'Câu này đã có trong thẻ ôn.'}).waitFor();
   await page.goto(origin+'/shadowing?clip=invalid-id&segment=999');
   await page.getByText(/Câu 1 · Đã phát 0 lượt/).waitFor();checks++;
+  // In-place lookup popup: auth gate, click word in subtitle, focus trap, Esc close, save with original sentence only on click, mobile 390px no overflow.
+  const unauthLookup = await fetch(origin + '/api/common-tools/lookup?q=' + encodeURIComponent('日'));
+  assert.equal(unauthLookup.status, 401); assert.equal(unauthLookup.headers.get('set-cookie'), null);
+  const lookupMiss = await context.request.get(origin + '/api/common-tools/lookup?q=' + encodeURIComponent('あいうえおかきく'));
+  assert.equal(lookupMiss.status(), 200); assert.equal((await lookupMiss.json()).found, false);
+  await page.goto(origin + '/shadowing?clip=demo&segment=2');
+  await page.getByText(/Câu 2 · Đã phát 0 lượt/).waitFor();
+  const wordButton = page.getByLabel('Phụ đề mẫu', { exact: true }).getByRole('button', { name: 'Tra từ 今日', exact: true });
+  await wordButton.click();
+  const dialog = page.getByRole('dialog');
+  await dialog.waitFor();
+  assert.equal(await dialog.getAttribute('aria-modal'), 'true');
+  await dialog.getByText('Bản Anh · OpenJLPT', { exact: true }).waitFor();
+  await dialog.getByText('今日はいい天気ですね。', { exact: true }).waitFor();
+  assert.equal(fs.existsSync(path.join(directory, 'lookup-sentences.json')), false);
+  for (let i = 0; i < 6; i++) {
+    await page.keyboard.press('Tab');
+    assert.equal(await page.evaluate(() => Boolean(document.querySelector('[role=dialog]')?.contains(document.activeElement))), true);
+  }
+  await dialog.getByRole('button', { name: 'Thêm vào ôn', exact: true }).click();
+  await dialog.getByRole('status').filter({ hasText: 'Đã thêm vào ôn kèm câu gốc.' }).waitFor();
+  assert.ok(fs.existsSync(path.join(directory, 'lookup-sentences.json')));
+  assert.match(fs.readFileSync(path.join(directory, 'lookup-sentences.json'), 'utf8'), /今日はいい天気ですね。/);
+  await page.setViewportSize({ width: 390, height: 844 });
+  assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
+  await page.setViewportSize({ width: 1440, height: 1080 });
+  await page.keyboard.press('Escape');
+  assert.equal(await page.getByRole('dialog').count(), 0);
+  assert.equal(await wordButton.evaluate((el) => document.activeElement === el), true);
+  await wordButton.click(); await dialog.waitFor();
+  await page.locator('[data-lookup-backdrop]').click({ position: { x: 4, y: 4 } });
+  assert.equal(await page.getByRole('dialog').count(), 0); checks++;
   assert.deepEqual(errors, []); assert.deepEqual(outside, []); checks++;
   const result = { status: 'PASS', passed: checks, total: checks, media: 'public synthetic canvas + tones only; six private-fixture kana/speakers, no Erin in CI', microphone: 'native MediaRecorder with Chrome fake device; real hardware not verified', noExternalRequests: true };
   fs.writeFileSync('data/reports/shadowing-check.json', JSON.stringify(result, null, 2)); console.log(JSON.stringify(result));
