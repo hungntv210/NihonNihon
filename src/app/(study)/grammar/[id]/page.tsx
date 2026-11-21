@@ -8,12 +8,23 @@ import { JaText, ViText } from '../../../../components/text.tsx';
 import { grammarHref, getGrammar, type GrammarTranslation } from '../repository.ts';
 import { decodeGrammarRouteId } from '../route-id.ts';
 import { focusOf, choiceQuestions, orderingQuestions } from '../practice.ts';
+import { FORMULA_LEGEND, parseGrammarFormula, type FormulaKind } from '../formula.ts';
 import { Furigana } from '../furigana.tsx';
 import { PracticePanel } from '../practice-panel.tsx';
 import { Speak } from '../speak.tsx';
 import { ReportForm } from '../report-form.tsx';
 import { SourceText, hasJapanese } from '../source-text.tsx';
 import styles from '../grammar.module.css';
+
+const FORMULA_BLOCK_CLASS: Record<Exclude<FormulaKind, 'connector'>, string> = {
+  verb: styles.formulaVerb,
+  'i-adj': styles.formulaIAdj,
+  'na-adj': styles.formulaNaAdj,
+  noun: styles.formulaNoun,
+  fixed: styles.formulaFixed,
+  neutral: styles.formulaNeutral,
+};
+
 function Vietnamese({ value, grammarId }: { value: GrammarTranslation | null; grammarId: string }) {
   return value ? (
     <div>
@@ -45,6 +56,7 @@ export default async function GrammarDetailPage({ params }: { params: Promise<{ 
   if (!data) notFound();
   const { item, patterns } = data,
     focus = focusOf(item.pattern),
+    formula = parseGrammarFormula(item.formationEn, item.pattern),
     choices = choiceQuestions(item.pattern, item.examples, patterns),
     ordering = orderingQuestions(item.examples);
   return (
@@ -60,6 +72,55 @@ export default async function GrammarDetailPage({ params }: { params: Promise<{ 
           <span className="level">{item.level}</span>
         </div>
         <p lang="en">{item.romaji}</p>
+        {formula.lines.length > 0 && (
+          <div className={styles.formulaBox} role="region" aria-label="Công thức nối">
+            <div className={styles.formulaLines}>
+              {formula.lines.map((line, lineIndex) => (
+                <div className={styles.formulaRow} key={lineIndex}>
+                  {line.map((block, blockIndex) =>
+                    block.kind === 'connector' ? (
+                      <span
+                        key={blockIndex}
+                        className={
+                          block.text === '+' ? styles.formulaPlus : styles.formulaSlash
+                        }
+                        aria-hidden="true"
+                      >
+                        {block.text}
+                      </span>
+                    ) : (
+                      <span
+                        key={blockIndex}
+                        className={`${styles.formulaBlock} ${FORMULA_BLOCK_CLASS[block.kind]}`}
+                        data-formula-kind={block.kind}
+                      >
+                        <span className={styles.formulaTag} data-formula-tag="">
+                          {block.tag}
+                        </span>
+                        <span
+                          className={
+                            block.lang === 'ja' ? styles.formulaJaText : styles.formulaText
+                          }
+                          lang={block.lang}
+                        >
+                          {block.text}
+                        </span>
+                      </span>
+                    ),
+                  )}
+                </div>
+              ))}
+            </div>
+            <p className={styles.formulaLegend}>
+              {FORMULA_LEGEND.map((entry, idx) => (
+                <span key={entry.kind} className={styles.formulaLegendItem}>
+                  {idx > 0 && <span aria-hidden="true"> · </span>}
+                  <strong>{entry.code}</strong> = {entry.label}
+                </span>
+              ))}
+            </p>
+          </div>
+        )}
       </div>
       <div className={styles.detailGrid}>
         <section className={styles.panel} aria-labelledby="meaning-title">

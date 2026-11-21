@@ -40,12 +40,16 @@ ownership.set('srs-perf', ['src/app/(study)/srs/review-session.tsx', 'tests/srs-
 ownership.set('naetoru/srs-perf', ownership.get('srs-perf'));
 ownership.set('srs-lazy-wanakana', ['src/app/(study)/srs/review-session.tsx', 'tests/srs-lazy-wanakana.test.ts', 'tools/check-route-scope.mjs']);
 ownership.set('naetoru/srs-lazy-wanakana', ownership.get('srs-lazy-wanakana'));
+ownership.set('srs-settings', ['src/app/(study)/settings/', 'src/app/api/settings/', 'src/core/preferences.ts', 'src/server/preferences.ts', 'src/app/(study)/srs/', 'src/app/(study)/appearance/browser-check.ts', 'tests/preferences.test.ts', 'tests/srs-settings.test.ts', 'tools/check-route-scope.mjs']);
+ownership.set('naetoru/srs-settings', ownership.get('srs-settings'));
 ownership.set('nav-prefetch', ['src/components/shell.tsx', 'tests/nav-prefetch.test.ts', 'tools/check-route-scope.mjs']);
 ownership.set('naetoru/nav-prefetch', ownership.get('nav-prefetch'));
 ownership.set('shadowing-preload', ['src/app/(study)/shadowing/player.tsx', 'tests/shadowing-preload.test.ts', 'tools/check-route-scope.mjs']);
 ownership.set('naetoru/shadowing-preload', ownership.get('shadowing-preload'));
 ownership.set('scene-reflection', ['src/components/pixel-scenes/kanji-himeji.js', 'src/components/pixel-scenes/grammar-kinkakuji.js', 'tests/scene-reflection.test.ts', 'tools/check-route-scope.mjs']);
 ownership.set('naetoru/scene-reflection', ownership.get('scene-reflection'));
+ownership.set('grammar-formula', ['src/app/(study)/grammar/formula.ts', 'src/app/(study)/grammar/[id]/page.tsx', 'src/app/(study)/grammar/grammar.module.css', 'src/app/(study)/grammar/grammar.test.ts', 'tools/check-route-scope.mjs']);
+ownership.set('naetoru/grammar-formula', ownership.get('grammar-formula'));
 ownership.set('ui-motion', ['src/components/motion/', 'src/components/route-presentation.tsx', 'src/components/nav.tsx', 'src/components/add-to-review.tsx', 'src/components/route-heading.tsx', 'src/components/pixel-scenes/', 'src/app/layout.tsx', 'src/app/(study)/srs/page.tsx', 'src/app/(study)/srs/review-session.tsx', 'src/app/(study)/jlpt-daily/practice.tsx', 'src/app/(study)/shadowing/player.tsx', 'src/app/(study)/shadowing/voice-meter.tsx', 'src/app/(study)/common-tools/progress/page.tsx', 'src/app/(study)/today-roadmap/today.tsx', 'src/app/(study)/appearance/', 'tests/pixel-scenes.test.ts', 'tests/ui-motion.test.ts', 'tools/check-route-scope.mjs']);
 ownership.set('foundation', ['src/app/(study)/settings/', 'public/fonts/']);
 ownership.set('ui-phase1', ['src/app/(study)/settings/', 'public/fonts/', 'src/components/town/', 'src/app/(study)/appearance/', 'src/app/(study)/today-roadmap/page.tsx', 'src/app/(study)/today-roadmap/today.module.css', 'src/core/day-period.ts', 'src/components/time-provider.tsx', 'tools/ui-test-clock.mjs', 'tests/day-period.test.ts']);

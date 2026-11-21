@@ -894,6 +894,42 @@ Checked implementation `6b70eceb7b2bb121f37429fab7861af1204a085e` on `naetoru/sc
 - Paired mobile A/B measurement (390x844 DPR 3, 4x CPU, Fast 4G, cache disabled, 3-run median): `/kanji` TBT 240 -> 219 ms (-8.7%), TTI 1378.5 -> 1389.7 ms (+0.8%), LCP 596 -> 604 ms; `/grammar` TBT 269 -> 222 ms (-17.5%), TTI 1617.8 -> 1306.3 ms (-19.3%), LCP 784 -> 584 ms.
 - `node tools/check-route-scope.mjs origin/master naetoru/scene-reflection`: PASS. Append-only entry recorded after the checked implementation commit.
 
+## Naetoru grammar formula blocks -- 2026-11-21
+
+Checked implementation `8b16df7cd8f56b00bdcb0a23bd9de8c38e4a6da5` on branch `naetoru/grammar-formula` (base `6b0a110029c91a49b841315fe3bce4f9c07bce25`) on Windows with Node v24.10.0, disposable OpenJLPT fixture, and local headless Chrome. Check window: 2026-11-21T12:28:31+07:00 through 2026-11-21T12:29:48+07:00 (UTC+07:00).
+- `npm run check`: PASS -- typecheck PASS; prototype 22/22 and core/route 235/235 PASS (257 total, 0 failures/skips, including `parseGrammarFormula` coverage in `src/app/(study)/grammar/grammar.test.ts` and `tests/font-split.test.ts`); production build PASS; `test:app` 16/16 checks PASS.
+- Route browser check `node --import tsx src/app/(study)/grammar/browser-check.ts`: PASS (18 listing/related clicks across 1440px and 390px viewports, shortId PASS, malformedIds 404, 0 browser errors).
+- Read-only offline audit against the frozen local 403-pattern G0 grammar dataset (uncommitted): 403/403 patterns render >= 1 typed formula block (387/403 with >= 1 POS block for verb/i-adj/na-adj/noun, 16/403 fixed-only, 0/403 neutral-only; 23 neutral tokens kept verbatim without fabricated POS labels).
+- Production `/grammar/[id]` initial JS gzip (server-rendered component, zero client JS logic added): 147,511 B -> 147,778 B (+267 B / +0.26 KiB from CSS module class map); 360px and 390px viewports have zero horizontal overflow; live computed contrast on formula blocks is 9.25-10.58:1 (text) and 7.49-8.93:1 (tags) in light mode, 11.14-11.37:1 (text) and 8.70-9.25:1 (tags) in dark mode.
+- Limitations: no physical-phone or production home-host deployment verification claimed; original `formationEn` text remains verbatim in the detail panel.
+- `node tools/check-route-scope.mjs origin/master naetoru/grammar-formula`: PASS. Only this append-only audit entry follows the checked implementation commit.
+
+## Naetoru SRS settings (newCardsPerDay + fsrsRetention) -- 2026-11-21
+
+Checked implementation `426dad5f42df12e65a344b701304ac51e726f4e3` on `naetoru/srs-settings` (base `1de1ca6dde2773aac17b36b4169a7ee5b6ce0a7f`) on Windows with Node v24.10.0, disposable OpenJLPT fixture, production Next build, and local headless Chromium. Check window 2026-11-21 12:06:27-12:08:04 +07:00.
+- `npm run check`: typecheck PASS, prototype 22/22 and core/route 238/238 PASS (260 total, including 3 new tests in `tests/srs-settings.test.ts` and expanded validation/fallback coverage in `tests/preferences.test.ts`), production build PASS, app gate 16/16 PASS.
+- `node --import tsx "src/app/(study)/srs/browser-check.ts"`: PASS.
+- Production browser/API verification (isolated fixture, 390x844 mobile viewport): 6 out-of-range/invalid `/api/settings` payloads rejected with HTTP 400; `/settings` edits for `newCardsPerDay` (0-100) and `fsrsRetention` (0.80-0.97) persist across reload with zero horizontal overflow; `/srs` enforces the daily new-card cap without blocking due reviews, updates client preview/header retention dynamically, and persists matching FSRS scheduler version (`ts-fsrs@6.0.0/FSRS-6/r85`) without DB schema changes.
+- `node tools/check-route-scope.mjs origin/master naetoru/srs-settings`: PASS. Append-only entry recorded after the checked implementation commit.
+
+## Naetoru SRS settings CI browser-check fixes -- 2026-11-21
+
+Checked implementation `06fbe2c3008f59d5110d26e886b9e4654cf9e63f` on branch `naetoru/srs-settings` (follow-up on `bf560deb3aa72b8a5c12f2497026a09448c8ab7c`, base `1de1ca6dde2773aac17b36b4169a7ee5b6ce0a7f`) on Windows with Node v24.10.0, disposable OpenJLPT fixture, and local headless Chrome. Check window: `2026-11-21T12:41:01.1236020+07:00` through `2026-11-21T12:44:12.8784578+07:00` (UTC+07:00).
+- Root cause 1 (`appearance/motion/browser-check.ts:24` timeout): `src/app/(study)/srs/review-session.tsx:64` strictly compared `(saved.session?.newCardsPerDay ?? null) === (initial.newCardsPerDay ?? null)`, discarding any legacy or unoptioned cached session lacking `newCardsPerDay` when preferences were at default `10`. Fixed by extracting `isCompatibleSessionCache()` in `src/app/(study)/srs/model.ts` using `normalizeNewCardsPerDay()` alongside `normalizeRetention()` (zero edits to `appearance/motion/browser-check.ts`).
+- Root cause 2 (`appearance/browser-check.ts:77` timeout): `fixtureCatalog(db)` left all `srs_cards` in `pending:g1/srs` new-card state, so enforcing default `newCardsPerDay = 10` capped `/srs?mode=quick` at 10 cards before iteration 11 of the 15-card quick review loop. Updated fixture setup in `src/app/(study)/appearance/browser-check.ts` to seed due reviewed FSRS cards (`reps = 1`, `VERSION`, `due_at = 2026-11-14T00:00:00.000Z`) while keeping the 15-card loop, assertions, timeouts, and default `newCardsPerDay = 10` unchanged.
+- `npm run check`: PASS -- typecheck PASS; prototype 22/22 and core/route 240/240 PASS (262 total, 0 failures/skips, including 2 new regression tests in `tests/srs-settings.test.ts` for quick 15-card sessions and `isCompatibleSessionCache()`); production build PASS; `test:app` 16/16 checks PASS.
+- Route browser checks on `06fbe2c`: `appearance/motion/browser-check.ts` PASS (100-card stress, first20Median 226.2ms / last20Median 227.2ms, swap 180ms); `appearance/browser-check.ts` PASS (4 themes x 2 widths x 19 screens + 15-card SRS quick session); `srs/browser-check.ts` PASS.
+- `node tools/check-route-scope.mjs origin/master naetoru/srs-settings`: PASS (13 files, including `src/app/(study)/appearance/browser-check.ts`). Only this append-only audit entry follows the checked implementation commit.
+
+## Naetoru SRS settings full browser-suite and scope restore -- 2026-11-21
+
+Checked implementation `b29e0538bfec9c1944008963d9c535c11888c60d` on branch `naetoru/srs-settings` (merged `origin/master` `f9883771a9ff9a3b049f5ba823cb877a95c8007e` without force push) on Windows with Node v24.10.0, clean `.next` build, disposable OpenJLPT fixture, and local headless Chrome. Check window: `2026-11-21T12:49:36.6042631+07:00` through `2026-11-21T12:57:34.1343702+07:00` (UTC+07:00).
+- Restored verbatim `ownership.set('pokabu/g1-tick-a', ...)` entry directly before `'rain-clarity'` in `tools/check-route-scope.mjs` (accidentally dropped in #84).
+- Deleted `.next` before running full gates to avoid stale chunk inflation in `daily-weather` gzip budget.
+- `npm run check`: PASS -- typecheck PASS; prototype 22/22 and core/route 241/241 PASS (263 total, 0 failures/skips); clean `next build --webpack` PASS; `test:app` 16/16 checks PASS.
+- `npm run test:browser`: PASS 14/14 (`appearance`, `daily-weather`, `login-festivals`, `motion`, `pixel-scenes-next`, `pixel-scenes`, `common-tools`, `grammar`, `jlpt-daily`, `kanji`, `shadowing`, `srs`, `today-roadmap`, `vocab`).
+- `node tools/check-route-scope.mjs origin/master naetoru/srs-settings`: PASS (13 files). Only this append-only audit entry follows `b29e053`.
+
 
 ## Pokabu JLPT IPADIC tokenizer
 
