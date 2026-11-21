@@ -930,6 +930,15 @@ Checked implementation `b29e0538bfec9c1944008963d9c535c11888c60d` on branch `nae
 - `npm run test:browser`: PASS 14/14 (`appearance`, `daily-weather`, `login-festivals`, `motion`, `pixel-scenes-next`, `pixel-scenes`, `common-tools`, `grammar`, `jlpt-daily`, `kanji`, `shadowing`, `srs`, `today-roadmap`, `vocab`).
 - `node tools/check-route-scope.mjs origin/master naetoru/srs-settings`: PASS (13 files). Only this append-only audit entry follows `b29e053`.
 
+## Naetoru shadowing controls (1.2x speed/pause, shortcuts, SRS add, deep-link) -- 2026-11-21
+
+Checked implementation `f3e5d3188e4a862a462b329bd35ff76e96a3bc14` on branch `naetoru/shadowing-controls` (base `0f7cc42276d5b6842050ce183acbb8d39d99ea42`) on Windows with Node v24.10.0, clean `.next` build, disposable OpenJLPT fixture, and local headless Chrome.
+- `npm run check`: PASS -- typecheck PASS; prototype 22/22 and core/route 245/245 PASS (267 total, 0 failures/skips, including 4 new tests in `tests/shadowing-controls.test.ts`); clean `next build --webpack` PASS; `test:app` 16/16 checks PASS.
+- `npm run test:browser`: PASS 14/14 (`appearance`, `daily-weather`, `login-festivals`, `motion`, `pixel-scenes-next`, `pixel-scenes`, `common-tools`, `grammar`, `jlpt-daily`, `kanji`, `shadowing` 27/27, `srs`, `today-roadmap`, `vocab`).
+- `daily-weather` JS gzip budget: 473,289 B vs baseline 468,494 B (+4,795 B <= 5,000 B limit, +205 B margin) after moving server-only deep-link selection to `query.ts`, playback helpers to `playback.ts`, and static notices to `page.tsx`.
+- `shadowing` browser-check covers `?clip=<id>&segment=<n>` deep-link + invalid-query fallback, `1.2x` speed + pause-to-shadow `x1.2`, desktop shortcuts (`Space`/`Left`/`Right`/`R`/`L`) with editable-target focus guard, and `Th?m c?u v?o SRS` via `/api/review/cards` (idempotent duplicate handling, zero DB schema changes).
+- `node tools/check-route-scope.mjs origin/master naetoru/shadowing-controls`: PASS. Only this append-only audit entry follows `f3e5d31`.
+
 
 ## Pokabu JLPT IPADIC tokenizer
 

@@ -183,6 +183,25 @@ try {
   await page.reload();await page.getByRole('button',{name:/Clip riêng tổng hợp/}).click();await page.getByText('Đã ghi nhận buổi shadowing hôm nay.',{exact:true}).waitFor();assert.equal(readProgress(progressFile).shadow.filter(s=>s.date===date).length,1);
   const other=await browser.newContext();await other.request.post(origin+'/api/session',{headers:{origin},form:{password},maxRedirects:0});const separate=await other.request.get(origin+'/shadowing/progress');assert.equal((await separate.json()).practiceMs,0);await other.close();
   await page.goto(origin+'/today-roadmap');const count=new Set(saved.shadow.filter(s=>s.kind==='regular').map(s=>s.date)).size;await page.getByText('Shadowing tuần này · '+count+'/2',{exact:true}).waitFor();checks++;
+  // Deep-link, 1.2x speed, desktop shortcuts and SRS card creation/deduplication.
+  await page.goto(origin+'/shadowing?clip='+encodeURIComponent(privateFixture.id)+'&segment=2');
+  await page.getByText(/Câu 2 · Đã phát 0 lượt/).waitFor();
+  await page.getByLabel('Tốc độ',{exact:true}).selectOption('1.2');
+  assert.equal(await page.locator('video').evaluate(m=>(m as HTMLVideoElement).playbackRate),1.2);
+  await page.getByLabel('Tốc độ',{exact:true}).focus();
+  await page.keyboard.press('l');
+  assert.equal(await page.getByLabel('Lặp đoạn',{exact:true}).inputValue(),'1');
+  await page.getByRole('heading',{name:'Shadowing',exact:true}).click();
+  await page.keyboard.press('ArrowRight');await page.getByText(/Câu 3 · Đã phát 0 lượt/).waitFor();
+  await page.keyboard.press('ArrowLeft');await page.getByText(/Câu 2 · Đã phát 0 lượt/).waitFor();
+  await page.keyboard.press('l');assert.equal(await page.getByLabel('Lặp đoạn',{exact:true}).inputValue(),'0');
+  await page.keyboard.press('L');assert.equal(await page.getByLabel('Lặp đoạn',{exact:true}).inputValue(),'1');
+  await page.getByRole('button',{name:'Thêm câu vào SRS',exact:true}).click();
+  await page.getByRole('status').filter({hasText:'Đã thêm câu vào thẻ ôn SRS.'}).waitFor();
+  await page.getByRole('button',{name:'Thêm câu vào SRS',exact:true}).click();
+  await page.getByRole('status').filter({hasText:'Câu này đã có trong thẻ ôn.'}).waitFor();
+  await page.goto(origin+'/shadowing?clip=invalid-id&segment=999');
+  await page.getByText(/Câu 1 · Đã phát 0 lượt/).waitFor();checks++;
   assert.deepEqual(errors, []); assert.deepEqual(outside, []); checks++;
   const result = { status: 'PASS', passed: checks, total: checks, media: 'public synthetic canvas + tones only; six private-fixture kana/speakers, no Erin in CI', microphone: 'native MediaRecorder with Chrome fake device; real hardware not verified', noExternalRequests: true };
   fs.writeFileSync('data/reports/shadowing-check.json', JSON.stringify(result, null, 2)); console.log(JSON.stringify(result));
@@ -191,4 +210,3 @@ try {
   await new Promise<void>(resolve => { if (child.exitCode !== null) resolve(); else child.once('exit', () => resolve()); });
   assert.equal(path.dirname(directory), base); fs.rmSync(directory, { recursive: true, force: true, maxRetries: 3, retryDelay: 100 });
 }
-

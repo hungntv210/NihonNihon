@@ -31,13 +31,13 @@ Tính năng chủ lực: luyện nói theo từng câu của đoạn hội tho�
 **Player**
 - [x] Danh sách câu, câu đang phát được làm nổi
 - [x] Lặp 1/3/5/∞, A–B; tốc độ 0.5×–1.25× giữ cao độ
-- [ ] Dừng để nói theo (độ dài câu × 1.2)
+- [x] Dừng để nói theo (độ dài câu × 1.2)
 - [ ] Phụ đề 4 chế độ: đầy đủ / tiếng Nhật / kana / ẩn; chạm từ để tra
-- [ ] Phím tắt máy tính: Space, ← →, R, L
+- [x] Phím tắt máy tính: Space, ← →, R, L
 
 **Ghi âm và so sánh**
 - [ ] Ghi từng câu hoặc cả clip; nghe gốc / giọng mình / xen kẽ; sóng âm xếp chồng
-- [ ] Thêm câu vào SRS
+- [x] Thêm câu vào SRS
 
 **Buổi hợp lệ** (tính vào hạn mức tuần khi đủ cả 4):
 - [x] Luyện thực tế ≥ 15 phút
@@ -85,7 +85,9 @@ Tính năng chủ lực: luyện nói theo từng câu của đoạn hội tho�
 Các dấu tick xác nhận phần code đã chạy qua test/fixture; không thay cho nghiệm thu độ phủ dữ liệu hay benchmark thiết bị. Các mục ghép chỉ hoàn thành một phần vẫn để [ ]. Không đổi tiêu chí/luật học.
 
 - Bằng chứng: `src/app/(study)/shadowing/player.tsx`.
+- Bằng chứng: `src/app/(study)/shadowing/controls.ts`.
 - Bằng chứng: `src/app/(study)/shadowing/practice.test.ts`.
+- Bằng chứng: `tests/shadowing-controls.test.ts`.
 - Bằng chứng: `src/app/(study)/shadowing/browser-check.ts`.
 
-Bốn điều kiện giữ nguyên. API progress lưu metadata theo hash phiên đăng nhập/ngày trong roadmap JSON với khóa nguyên tử; không nhận audio. Bộ đếm chỉ nhận tab hiện, phát có tiến triển hoặc ghi âm; server chặn cộng thời gian song song/replay bằng đồng hồ server. Cùng ngày (kể cả đã ghi tay) không thêm buổi tự động. Ghi tay vẫn dự phòng. Chưa có clip file cá nhân, editor sóng âm, phím tắt, tự dừng×1.2, chạm từ hay so sánh sóng âm; các mục ghép tương ứng giữ trống.
+Bốn điều kiện giữ nguyên. API progress lưu metadata theo hash phiên đăng nhập/ngày trong roadmap JSON với khóa nguyên tử; không nhận audio. Bộ đếm chỉ nhận tab hiện, phát có tiến triển hoặc ghi âm; server chặn cộng thời gian song song/replay bằng đồng hồ server. Cùng ngày (kể cả đã ghi tay) không thêm buổi tự động. Ghi tay vẫn dự phòng. Đã bổ sung tốc độ phát 1.2× cùng chế độ dừng để nói theo (độ dài câu × 1.2), phím tắt máy tính (`Space`, `←`, `→`, `R`, `L` có chặn vùng nhập liệu), nút thêm câu vào SRS dùng lại `/api/review/cards` + `enqueueCard()` (không tạo thẻ trùng, không đổi schema), và deep-link `?clip=<id>&segment=<n>`. Chưa có clip file cá nhân, editor sóng âm, chạm từ hay so sánh sóng âm; các mục ghép tương ứng giữ trống.
