@@ -1037,3 +1037,10 @@ Checked implementation `5f89c3cc379df77eb7bb3be558317f0e11c2bb64` on branch `nae
 - `npm run test:browser` (`2026-11-21T20:00:50+07:00` to `2026-11-21T20:07:59+07:00`): PASS 14/14 (`appearance`, `daily-weather`, `login-festivals`, `motion`, `pixel-scenes-next`, `pixel-scenes`, `common-tools`, `grammar`, `jlpt-daily`, `kanji`, `shadowing`, `srs`, `today-roadmap`, `vocab`).
 - `daily-weather` JS gzip budget (`data/reports/daily-weather/budget.json`, baseline/limit unchanged): `437,469 B` vs baseline `468,494 B` (`added: -31,025 B <= 5,000 B` limit; ceiling `473,494 B`).
 - `node tools/check-route-scope.mjs origin/master naetoru/search-fts5`: PASS (5 files including this append-only audit entry; `tools/check-route-scope.mjs` `+2/-0`). Checklist ticks for `docs/features/g1-foundation.md:31` (PR #92 open) and `docs/features/g1-common-tools.md:37` (PR #91 open) deferred to avoid overlapping open PRs. Only this append-only audit entry follows `5f89c3c`.
+
+## Naetoru G1 checklist verification ticks -- 2026-11-21
+
+Checked implementation `d8ed617f35d0305d7e79bb125a73b7984ae20494` on branch `naetoru/g1-ticks` (base `origin/master` `133b0068aeac08d3989a5e6c5d959ab60589e157`) on Windows with Node v24.10.0, npm 11.6.1, clean `.next` build, disposable OpenJLPT fixture, and local headless Chrome.
+- Scope: docs-only ticks on verified items (`docs/features/g1-foundation.md:37` and `docs/features/g1-grammar.md:18`) plus 2-line registry entry in `tools/check-route-scope.mjs`. `docs/features/g1-shadowing.md` and `docs/features/g1-common-tools.md` left untouched while PR #91 is open; no app code, tests, or gates edited.
+- `npm run check` (`2026-11-21T19:20:21+07:00` to `2026-11-21T19:21:46+07:00`): PASS -- `typecheck` PASS; `test` PASS (22/22 prototype + 272/272 core/route = 294/294, 0 failures/skips); `build` PASS (`next build --webpack`); `test:app` PASS (16/16 checks). Docs-only PR, so browser suite was not required.
+- `node tools/check-route-scope.mjs origin/master naetoru/g1-ticks`: PASS (4 files including this append-only audit entry). Only this append-only audit entry follows `d8ed617`.
