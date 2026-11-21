@@ -1,7 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import {parseEnv} from 'node:util';
-import {fileURLToPath} from 'node:url';
 import {requireValue} from './model.ts';
 import {withStoreLock} from './repository.ts';
 
@@ -13,7 +12,7 @@ export const freeModels={
 export type FreeProvider='groq'|'openrouter';
 export type FreeKeys={groq?:string;groqFreeTier?:boolean;openrouter?:string};
 
-export function readFreeKeys(file=fileURLToPath(new URL('../../../../.env.local',import.meta.url))):FreeKeys{
+export function readFreeKeys(file=path.resolve('.env.local')):FreeKeys{
  if(!fs.existsSync(file))return {};
  const env=parseEnv(fs.readFileSync(file,'utf8'));
  return {groq:env.GROQ_API_KEY?.trim(),groqFreeTier:env.GROQ_FREE_TIER==='true',openrouter:env.OPENROUTER_API_KEY?.trim()};
