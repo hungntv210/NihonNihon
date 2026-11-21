@@ -6,6 +6,7 @@ import { fixture } from '../../../../tests/helpers.ts';
 import { getGrammar, listGrammar, fold, grammarHref } from './repository.ts';
 import { decodeGrammarRouteId } from './route-id.ts';
 import { choiceQuestions, orderingQuestions, correctOrder, focusOf } from './practice.ts';
+import { FORMULA_LEGEND, FORMULA_TAGS, parseGrammarFormula } from './formula.ts';
 import { rubySegments, Furigana } from './furigana.tsx';
 import { saveGrammarReport } from './report-repository.ts';
 import { SourceText } from './source-text.tsx';
@@ -196,4 +197,117 @@ test('selected grammar translations carry model and reports only accept fresh se
     /NOT_FOUND/,
   );
   assert.equal(db.prepare('PRAGMA foreign_key_check').all().length, 0);
+});
+
+test('parseGrammarFormula classifies real grammar patterns, preserves parenthetical notes, falls back to pattern, and leaves unknowns neutral', () => {
+  // 1. V-て + いく (both OpenJLPT English and shorthand)
+  const teIku = parseGrammarFormula('Verb-te + いく', '〜ていく');
+  assert.equal(teIku.source, 'formation');
+  assert.equal(teIku.hasTypedBlock, true);
+  assert.deepEqual(
+    teIku.blocks.map((b) => [b.kind, b.text, b.tag]),
+    [
+      ['verb', 'V-て', FORMULA_TAGS.verb],
+      ['connector', '+', undefined],
+      ['fixed', 'いく', FORMULA_TAGS.fixed],
+    ],
+  );
+  const teIkuShort = parseGrammarFormula('V-て + いく');
+  assert.deepEqual(
+    teIkuShort.blocks.map((b) => [b.kind, b.text]),
+    [
+      ['verb', 'V-て'],
+      ['connector', '+'],
+      ['fixed', 'いく'],
+    ],
+  );
+
+  // 2. N + の + あいだ (and OpenJLPT 〜間 / 〜間に)
+  const aida = parseGrammarFormula('N + の + あいだ', '〜あいだ');
+  assert.deepEqual(
+    aida.blocks.map((b) => [b.kind, b.text, b.tag]),
+    [
+      ['noun', 'N', FORMULA_TAGS.noun],
+      ['connector', '+', undefined],
+      ['fixed', 'の', FORMULA_TAGS.fixed],
+      ['connector', '+', undefined],
+      ['fixed', 'あいだ', FORMULA_TAGS.fixed],
+    ],
+  );
+  const aidaOpen = parseGrammarFormula('Verb-te + いる / Verb-dict / Noun + の + 間（に）', '〜間 / 〜間に');
+  assert.deepEqual(aidaOpen.usedKinds, ['verb', 'noun', 'fixed']);
+
+  // 3. Aい / Aな (shorthand + OpenJLPT multi-variant splitting)
+  const adjShort = parseGrammarFormula('Aい / Aな + そうだ');
+  assert.deepEqual(
+    adjShort.blocks.map((b) => [b.kind, b.text]),
+    [
+      ['i-adj', 'Aい'],
+      ['connector', '/'],
+      ['na-adj', 'Aな'],
+      ['connector', '+'],
+      ['fixed', 'そうだ'],
+    ],
+  );
+  const kuteDe = parseGrammarFormula('i-Adj-ku + て / na-Adj + で / Noun + で', '〜くて / 〜で');
+  assert.equal(kuteDe.lines.length, 3);
+  assert.deepEqual(
+    kuteDe.lines.map((line) => line.map((b) => `${b.kind}:${b.text}`)),
+    [
+      ['i-adj:Aい-く', 'connector:+', 'fixed:て'],
+      ['na-adj:Aな', 'connector:+', 'fixed:で'],
+      ['noun:N', 'connector:+', 'fixed:で'],
+    ],
+  );
+
+  // 4. Parenthesized '+' stays intact inside Noun token
+  const okini = parseGrammarFormula('Noun (number + counter) + おきに', '〜おきに');
+  assert.deepEqual(
+    okini.blocks.map((b) => [b.kind, b.text]),
+    [
+      ['noun', 'N (number + counter)'],
+      ['connector', '+'],
+      ['fixed', 'おきに'],
+    ],
+  );
+
+  // 5. Fixed-only pattern and fallback to pattern when formation is missing
+  const fixedOnly = parseGrammarFormula('ここ / そこ / あそこ / どこ', 'ここ / そこ / あそこ / どこ');
+  assert.equal(fixedOnly.hasTypedBlock, true);
+  assert.deepEqual(fixedOnly.usedKinds, ['fixed']);
+  assert.deepEqual(
+    fixedOnly.blocks.filter((b) => b.kind !== 'connector').map((b) => b.text),
+    ['ここ', 'そこ', 'あそこ', 'どこ'],
+  );
+  const patternFallback = parseGrammarFormula('   ', '〜は');
+  assert.equal(patternFallback.source, 'pattern');
+  assert.equal(patternFallback.hasTypedBlock, true);
+  assert.deepEqual(
+    patternFallback.blocks.map((b) => [b.kind, b.text, b.tag]),
+    [['fixed', '〜は', FORMULA_TAGS.fixed]],
+  );
+
+  // 6. Unparseable / unknown inputs stay neutral without fabricating a grammatical class
+  const unparseable = parseGrammarFormula('Follows topic clause / ???');
+  assert.equal(unparseable.hasTypedBlock, false);
+  assert.deepEqual(unparseable.usedKinds, []);
+  assert.deepEqual(
+    unparseable.blocks.map((b) => [b.kind, b.text, b.tag]),
+    [
+      ['neutral', 'Follows topic clause', FORMULA_TAGS.neutral],
+      ['connector', '/', undefined],
+      ['neutral', '???', FORMULA_TAGS.neutral],
+    ],
+  );
+  const sentenceKara = parseGrammarFormula('Sentence + から', '〜から（reason）');
+  assert.deepEqual(
+    sentenceKara.blocks.map((b) => [b.kind, b.text, b.tag]),
+    [
+      ['neutral', 'Sentence', FORMULA_TAGS.neutral],
+      ['connector', '+', undefined],
+      ['fixed', 'から', FORMULA_TAGS.fixed],
+    ],
+  );
+  assert.equal(parseGrammarFormula('', '').source, 'none');
+  assert.equal(FORMULA_LEGEND.length, 5);
 });
