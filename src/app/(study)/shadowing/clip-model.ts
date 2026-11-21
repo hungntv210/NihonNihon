@@ -1,6 +1,7 @@
 import {demo} from './demo.ts';
+import type {SentenceToken} from '../common-tools/lookup-popup-model.ts';
 export {SEEK_TOLERANCE,playbackTime,updatePlayback,type PlaybackSession} from './playback.ts';
-export type ClipSegment={id:string;start:number;end:number;ja:string;kana:string|null;speaker:string|null;vi:string|null};
+export type ClipSegment={id:string;start:number;end:number;ja:string;kana:string|null;speaker:string|null;vi:string|null;tokens?:SentenceToken[];kanaTokens?:SentenceToken[]};
 export type Clip={id:string;title:string;level:string;topic:string;duration:number;start:number;end:number;isDemo:boolean;attribution:string;license:string;mediaUrl:string|null;youtubeId:string|null;segments:ClipSegment[]};
 export const syntheticClip:Clip={...demo,start:0,end:demo.duration,id:'demo',level:'N5',topic:'Thử thao tác',isDemo:true,attribution:'Video tổng hợp tự tạo',license:'Original synthetic fixture',mediaUrl:'/shadowing/media',youtubeId:null,segments:demo.segments.map((s,i)=>({...s,id:'demo-'+i,kana:null,speaker:null}))};
 export function parsePrivateClip(id:string,metadata:unknown):Clip{

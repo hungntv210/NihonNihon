@@ -16,6 +16,7 @@ ownership.set('jlpt-generator-balance', ownership.get('jlpt-deterministic'));
 ownership.set('jlpt-verifier-schema', ownership.get('jlpt-deterministic'));
 ownership.set('pokabu/jlpt-free-providers', ['src/app/(study)/jlpt-daily/draft-provider.ts', 'src/app/(study)/jlpt-daily/draft-provider.test.ts', 'src/app/(study)/jlpt-daily/free-provider.ts', 'src/app/(study)/jlpt-daily/generate-v2.ts', 'src/app/(study)/jlpt-daily/v2-verifier.ts', 'src/app/(study)/jlpt-daily/generation.ts', 'tools/jlpt-free-provider-benchmark.ts', 'tools/check-route-scope.mjs']);
 ownership.set('pokabu/jlpt-free-roles', ['src/app/(study)/jlpt-daily/draft-provider.ts', 'src/app/(study)/jlpt-daily/draft-provider.test.ts', 'src/app/(study)/jlpt-daily/free-provider.ts', 'src/app/(study)/jlpt-daily/v2-verifier.ts', 'tools/check-route-scope.mjs']);
+ownership.set('pokabu/jlpt-rate-pacing', ['src/app/(study)/jlpt-daily/free-provider.ts', 'src/app/(study)/jlpt-daily/draft-provider.ts', 'src/app/(study)/jlpt-daily/draft-provider.test.ts', 'src/app/(study)/jlpt-daily/generate-v2.ts', 'tools/check-route-scope.mjs']);
 ownership.set('pokabu/jlpt-tokenizer', ['src/app/(study)/jlpt-daily/', 'package.json', 'package-lock.json', 'tools/check-route-scope.mjs']);
 ownership.set('pokabu/jlpt-week30-fix', ['src/app/(study)/jlpt-daily/', 'tools/check-route-scope.mjs']);
 ownership.set('pokabu/jlpt-verifier-count', ['src/app/(study)/jlpt-daily/', 'tools/check-route-scope.mjs']);
@@ -60,6 +61,9 @@ ownership.set('shared-chunk-dedup', ['next.config.ts', 'tools/check-route-scope.
 ownership.set('naetoru/shared-chunk-dedup', ownership.get('shared-chunk-dedup'));
 ownership.set('kanji-lesson', ['src/app/(study)/vocab/lesson/kanji/', 'src/app/(study)/vocab/lesson/page.tsx', 'tests/kanji-lesson.test.ts', 'docs/features/g1-kanji.md', 'tools/check-route-scope.mjs']);
 ownership.set('naetoru/kanji-lesson', ownership.get('kanji-lesson'));
+ownership.set('lookup-popup', ['src/app/(study)/common-tools/', 'src/app/api/common-tools/lookup/', 'src/app/(study)/shadowing/', 'src/core/backup.ts', 'tests/lookup-popup.test.ts', 'docs/features/g1-common-tools.md', 'docs/features/g1-shadowing.md', 'tools/check-route-scope.mjs']);
+ownership.set('naetoru/lookup-popup', ownership.get('lookup-popup'));
+ownership.set('naetoru/grammar-confusables', ['src/app/(study)/grammar/', 'tests/grammar-confusables.test.ts', 'tools/check-route-scope.mjs']);
 ownership.set('search-fts5', ['src/app/(study)/common-tools/repository.ts', 'src/app/(study)/common-tools/fts5.ts', 'tests/search-fts5.test.ts', 'tools/check-route-scope.mjs']);
 ownership.set('naetoru/search-fts5', ownership.get('search-fts5'));
 ownership.set('ui-motion', ['src/components/motion/', 'src/components/route-presentation.tsx', 'src/components/nav.tsx', 'src/components/add-to-review.tsx', 'src/components/route-heading.tsx', 'src/components/pixel-scenes/', 'src/app/layout.tsx', 'src/app/(study)/srs/page.tsx', 'src/app/(study)/srs/review-session.tsx', 'src/app/(study)/jlpt-daily/practice.tsx', 'src/app/(study)/shadowing/player.tsx', 'src/app/(study)/shadowing/voice-meter.tsx', 'src/app/(study)/common-tools/progress/page.tsx', 'src/app/(study)/today-roadmap/today.tsx', 'src/app/(study)/appearance/', 'tests/pixel-scenes.test.ts', 'tests/ui-motion.test.ts', 'tools/check-route-scope.mjs']);

@@ -1,11 +1,13 @@
 'use client';
-import { useEffect, useRef, useState, type ReactNode } from 'react';
-import type { Clip } from './clip-model.ts';
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
+import type { Clip, ClipSegment } from './clip-model.ts';
 import { segmentAtIn, shouldRepeat, updatePlayback, SEEK_TOLERANCE } from './playback.ts';
 import {PLAYBACK_SPEEDS,DEFAULT_PLAYBACK_SPEED,clampSegmentIndex,shadowPauseDurationMs,resolveShadowingShortcut,toggleLoopLimit,addShadowingClipToSrs} from './controls.ts';
 import styles from './shadowing.module.css';
 import {VoiceMeter} from './voice-meter.tsx';
 import {usePractice} from './use-practice.ts';
+import {LookupPopup} from '../common-tools/lookup-popup.tsx';
+import {fallbackSegmentTokens,type LookupTarget,type SentenceToken} from '../common-tools/lookup-popup-model.ts';
 
 type Take = { url: string; segment: number; seconds: number; extension: string };
 type YoutubePlayer={destroy():void;getCurrentTime():number;pauseVideo():void;playVideo():void;seekTo(seconds:number,allowSeekAhead:boolean):void;setPlaybackRate(rate:number):void};
@@ -45,8 +47,11 @@ export function ShadowingPlayer({clip,initialSegment=0,notice,practiceNote,recor
   const take=takes[selected]??null;
   const [supported, setSupported] = useState(false);
   const [youtubeLoaded,setYoutubeLoaded]=useState(false);
+  const [lookupTarget, setLookupTarget] = useState<LookupTarget | null>(null);
+  const lookupTrigger = useRef<HTMLElement | null>(null);
   const pending = useRef(false);
   const keyHandler = useRef<(event: KeyboardEvent) => void>(() => {});
+  const closeLookup = useCallback(() => setLookupTarget(null), []);
   const practice=usePractice(clip.id,!clip.isDemo,()=>{const audio=replay.current,recording=recorder.current?.state==='recording';if(audio&&!audio.paused)return {recording,playing:true,seeking:audio.seeking,mediaTime:audio.currentTime};return {recording,playing:clip.youtubeId?playing:Boolean(video.current&&!video.current.paused),seeking:clip.youtubeId?false:Boolean(video.current?.seeking),mediaTime:clip.youtubeId?(youtube.current?.getCurrentTime()??0):(video.current?.currentTime??0)};});
 
   const clearShadowPause = () => { if (ctrl.current.timer) { clearTimeout(ctrl.current.timer); ctrl.current.timer = null; } setPausing(false); };
@@ -112,6 +117,35 @@ export function ShadowingPlayer({clip,initialSegment=0,notice,practiceNote,recor
     youtube.current?.pauseVideo();
     replay.current?.pause();
   }
+  function openLookup(token: SentenceToken, sentence: ClipSegment, trigger: HTMLElement) {
+    stopPlayback();
+    lookupTrigger.current = trigger;
+    setLookupTarget({
+      surface: token.surface,
+      base: token.base,
+      sentenceJa: sentence.ja,
+      sentenceVi: sentence.vi,
+      sourceClipId: clip.id,
+    });
+  }
+  function renderTokens(text: string, precomputed: SentenceToken[] | undefined, sentence: ClipSegment) {
+    const tokens = precomputed && precomputed.length ? precomputed : fallbackSegmentTokens(text);
+    return tokens.map((token, index) =>
+      token.clickable ? (
+        <button
+          key={index}
+          type="button"
+          className={styles.wordToken}
+          aria-label={`Tra từ ${token.surface}`}
+          onClick={(event) => openLookup(token, sentence, event.currentTarget)}
+        >
+          {token.surface}
+        </button>
+      ) : (
+        <span key={index}>{token.surface}</span>
+      ),
+    );
+  }
   function choose(index: number) {
     stopPlayback(); ctrl.current.seeked = true;
     resetSession(index, limit, false, false);
@@ -147,7 +181,7 @@ export function ShadowingPlayer({clip,initialSegment=0,notice,practiceNote,recor
     if (!disposed.current) { setSrsSaving(false); setStatus(res.message); }
   }
   keyHandler.current = (e: KeyboardEvent) => {
-    const act = recording || requesting ? null : resolveShadowingShortcut(e);
+    const act = lookupTarget || recording || requesting ? null : resolveShadowingShortcut(e);
     if (!act) return;
     e.preventDefault();
     if (act === 'toggle-play') (playing || pausing ? stopPlayback() : void play());
@@ -207,6 +241,7 @@ export function ShadowingPlayer({clip,initialSegment=0,notice,practiceNote,recor
     setTakes(values=>{const next={...values};delete next[selected];return next;});setStatus('Đã xóa bản ghi của câu này.');
   }
   const active = segmentAtIn(time,clip.segments),caption=clip.segments[active>=0?active:selected],clipStart=clip.start,clipEnd=clip.end,locked=recording||requesting||Boolean(clip.youtubeId&&!youtubeLoaded);
+  const canLookupCaption = subtitles === 'both' || subtitles === 'ja' || (subtitles === 'kana' && Boolean(caption.kana));
   return <div className={styles.root}>
     {notice && <aside className={styles.notice}>{notice}</aside>}
     {!clip.isDemo&&<aside aria-label="Buổi shadowing tự động"><p>{practice.status?.awarded?'Đã ghi nhận buổi shadowing hôm nay.':'Thời gian luyện đã lưu: '+Math.floor((practice.status?.practiceMs??0)/60000)+'/15 phút · Câu ghi đủ độ dài: '+(practice.status?.clips[clip.id]?.recorded??0)+'/'+clip.segments.length}</p>{practiceNote}{practice.error&&<p role="status">Chưa lưu được tiến độ. Đang thử lại; có thể dùng ghi tay dự phòng.</p>}</aside>}
@@ -216,10 +251,11 @@ export function ShadowingPlayer({clip,initialSegment=0,notice,practiceNote,recor
         {clip.youtubeId?(youtubeLoaded?<div className={styles.youtubeFrame}><div ref={youtubeHost} aria-label={clip.title}/></div>:<div className={styles.youtubeGate}><p>Video chưa được nhúng. Khi mở, YouTube sẽ nhận yêu cầu phát.</p><button className="button primary" onClick={()=>setYoutubeLoaded(true)}>Mở trình phát YouTube</button></div>):<video ref={video} className={styles.video} src={clip.mediaUrl??undefined} playsInline preload="metadata" onLoadedMetadata={()=>{const media=video.current;if(!media||media.seeking)return;if(!ctrl.current.seeked){ctrl.current.seeked=true;media.currentTime=clip.segments[session.current.selected].start;return;}if(media.currentTime<clipStart-SEEK_TOLERANCE||media.currentTime>clipEnd+SEEK_TOLERANCE)media.currentTime=clipStart;}} onSeeking={updateTime} onSeeked={updateTime} onTimeUpdate={updateTime} onEnded={updateTime} onPlay={() => setPlaying(true)} onPause={() => setPlaying(false)} onError={() => setStatus('Không tải được clip. Kiểm tra tệp trên máy chủ rồi tải lại trang.')} aria-label={clip.isDemo?'Video tổng hợp chỉ có tiếng bíp':clip.title} />}
         <div className={styles.captions} aria-label="Phụ đề mẫu">
           {caption.speaker&&subtitles!=='off'&&<small lang="ja">{caption.speaker}</small>}
-          {(subtitles === 'both' || subtitles === 'ja') && <p lang="ja">{caption.ja}</p>}
-          {subtitles==='kana'&&<p lang={caption.kana?'ja':'vi'}>{caption.kana??'Chưa có phụ đề kana.'}</p>}
+          {(subtitles === 'both' || subtitles === 'ja') && <p lang="ja">{renderTokens(caption.ja, caption.tokens, caption)}</p>}
+          {subtitles==='kana'&&<p lang={caption.kana?'ja':'vi'}>{caption.kana?renderTokens(caption.kana, caption.kanaTokens, caption):'Chưa có phụ đề kana.'}</p>}
           {(subtitles === 'both' || subtitles === 'vi') && <p lang="vi">{caption.vi??'Chưa có bản dịch Việt.'}</p>}
           {subtitles === 'off' && <p>Đã ẩn phụ đề</p>}
+          {canLookupCaption && <p className={styles.lookupHint}>Chạm vào từ tiếng Nhật để tra nhanh</p>}
         </div>
         <p className={styles.progress}>{Math.max(0,time-clipStart).toFixed(1)} / {(clipEnd-clipStart).toFixed(1)} giây · Câu {selected + 1} · Đã phát {count} lượt</p>
         <div className={styles.actions}>
@@ -244,5 +280,6 @@ export function ShadowingPlayer({clip,initialSegment=0,notice,practiceNote,recor
     </div>{recording&&<VoiceMeter analyser={analyser.current}/>}<span className="record-state" aria-hidden="true">{recording?'●':''}</span>{!supported && <p>Micro cần trình duyệt hỗ trợ MediaRecorder và kết nối HTTPS (hoặc localhost).</p>}
     {take && !recording && <div className={styles.take}><p>Câu {take.segment + 1} · {take.seconds.toFixed(1)} giây · bản ghi thử</p><audio ref={replay} src={take.url} controls onPlay={() => {video.current?.pause();youtube.current?.pauseVideo();}} onError={() => setStatus('Trình duyệt không phát được định dạng bản ghi này. Thử tải xuống.')} aria-label="Nghe lại giọng của bạn" /></div>}
     </section><p role="status" className={styles.status}>{status}</p>
+    <LookupPopup target={lookupTarget} triggerEl={lookupTrigger.current} onClose={closeLookup} />
   </div>;
 }
