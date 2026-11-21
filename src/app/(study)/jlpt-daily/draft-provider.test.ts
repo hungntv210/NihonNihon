@@ -1,11 +1,14 @@
 import test,{type TestContext} from 'node:test';import assert from 'node:assert/strict';import fs from 'node:fs';import os from 'node:os';import path from 'node:path';
 import {draftProvider,modelEvidence,semanticSchema,validateSemanticReview,type DraftAttempt} from './draft-provider.ts';
 import {freeCompletion,freeModels,freeProviderStatus,groqRateLimitUntil,readFreeKeys} from './free-provider.ts';
+import {verifyDeterministic} from './v2-verifier.ts';
+import {choiceSentence} from './independent-qa.ts';
+import type {V2Question} from './deterministic.ts';
 const primary={model:'gemini-3.6-flash',verifierModel:'gemini-3.6-flash',requestsPerMinute:60000000,dailyBudget:200,timeoutMs:1000,maxOutputTokens:100};
 const fallback={...primary,model:'gemini-4-carbon',verifierModel:'gemini-4-carbon'};
 function setup(t:{after:(fn:()=>void)=>void}){const dir=fs.mkdtempSync(path.join(os.tmpdir(),'nihon-draft-retry-'));t.after(()=>fs.rmSync(dir,{recursive:true,force:true}));return path.join(dir,'quota.json');}
 const success=()=>Response.json({candidates:[{finishReason:'STOP',content:{parts:[{text:'[]'}]}}]});
-const freeSuccess=()=>Response.json({choices:[{finish_reason:'stop',message:{content:'{"result":[]}'}}]});
+const freeSuccess=(result:unknown=[])=>Response.json({choices:[{finish_reason:'stop',message:{content:JSON.stringify({result})}}]});
 test('Qwen reviews the proposed meaning and grammar separately from the blind payload',async t=>{
  const claim={index:0,type:'grammar',sentence:'fixture sentence',explanation:'Đề xuất'};
  const review=[{index:0,meaningCorrect:false,grammarLabelCorrect:true}];
@@ -13,7 +16,7 @@ test('Qwen reviews the proposed meaning and grammar separately from the blind pa
  const provider=draftProvider([primary],setup(t),'fake',{freeKeys:{groq:'fake',groqFreeTier:true},fetcher:async(url,init)=>{
   if(String(url).includes('googleapis'))return new Response(null,{status:429});
   const body=JSON.parse(String(init?.body));
-  assert.equal(body.model,freeModels.groqReview);
+  assert.equal(body.model,seen.length===0?freeModels.groqSolver:freeModels.groqReview);
   seen.push(JSON.parse(body.messages[1].content));
   if(seen.length===1)return freeSuccess();
   assert.ok(body.messages[0].content.includes(JSON.stringify(semanticSchema)));
@@ -196,4 +199,119 @@ test('the shared ledger cap blocks network calls in the recovery sweep',async t=
  await assert.rejects(provider('verify','',{},{}),/SHARED_DAILY_BUDGET_REACHED/);
  assert.equal(calls,2);
  assert.deepEqual(waits,[30_000]);
+});
+
+const roleFixture:V2Question={version:2,mode:'draft_roadmap',id:'roles-fixture',date:'2026-11-30',
+ day:0,position:0,fingerprint:'fixture',type:'reading',targetId:'fixture',sourceHash:'fixture',
+ stem:'[fixture]',choices:['one','two','three','four'],correct:0,order:[],starSlot:0,explanation:'Authored fixture',distractors:[]};
+const flags=(correct:boolean)=>({grammatical:correct,formCorrect:correct,natural:correct,meaningFits:correct});
+function roleProvider(t:TestContext,config:{geminiCap?:boolean;groqLimit?:'model'|'shared';router?:boolean;
+ reject?:'meaningCorrect'|'grammarLabelCorrect';reviewMissing?:boolean;groqError?:number}={}){
+ const ledger=setup(t),seen:string[]=[];
+ if(config.geminiCap){
+  const day=new Intl.DateTimeFormat('en-CA',{timeZone:'America/Los_Angeles'}).format(new Date());
+  fs.writeFileSync(ledger,JSON.stringify({models:{[primary.model]:{day,count:200,last:0}}}));
+ }
+ const provider=draftProvider([primary],ledger,'fake',{
+  freeKeys:{groq:'fake',groqFreeTier:true,...(config.router?{openrouter:'fake'}:{})},
+  sleep:async()=>assert.fail('fallback must not wait'),
+  fetcher:async(url,init)=>{
+   const {hostname,pathname}=new URL(String(url));
+   if(hostname==='generativelanguage.googleapis.com'){
+    seen.push('Gemini');
+    return new Response(null,{status:429,headers:{'Retry-After':'90'}});
+   }
+   if(pathname.endsWith('/key')){
+    seen.push('OpenRouter key');
+    return Response.json({data:{limit_remaining:null}});
+   }
+   const body=JSON.parse(String(init?.body)),payload=JSON.parse(body.messages[1].content);
+   const role=payload.claims?'semantic':payload.questions?'blind':'isolated';
+   seen.push(body.model+':'+role);
+   if(body.model===freeModels.groqSolver&&(config.groqLimit||config.groqError)){
+    return new Response(null,{status:config.groqError??429,headers:{'Retry-After':'90',
+     ...(config.groqLimit==='shared'?{'x-ratelimit-remaining-requests':'0','x-ratelimit-reset-requests':'90s'}:{})}});
+   }
+   if(role==='semantic'){
+    assert.equal(body.model,freeModels.groqReview);
+    assert.deepEqual(Object.keys(payload),['claims']);
+    return freeSuccess(config.reviewMissing?[]:[{index:0,meaningCorrect:config.reject!=='meaningCorrect',
+     grammarLabelCorrect:config.reject!=='grammarLabelCorrect'}]);
+   }
+   assert.notEqual(body.model,freeModels.groqReview);
+   assert.ok(!JSON.stringify(payload).includes(roleFixture.explanation));
+   return freeSuccess(role==='blind'?[{index:0,independentAnswer:0,possibleAnswers:[0],natural:true,knowledgeCorrect:true,
+    optionGrades:roleFixture.choices.map((_,choiceIndex)=>({choiceIndex,completedSentence:choiceSentence(roleFixture,choiceIndex),
+     candidateOrder:[],...flags(choiceIndex===0),acceptable:choiceIndex===0,reason:'Fixture'}))}]
+    :payload.sentences.map(({index}:{index:number})=>({index,...flags(index===0),reason:'Fixture'})));
+  },
+ });
+ return {provider,seen};
+}
+const groqRoleCalls=[freeModels.groqSolver+':blind',freeModels.groqSolver+':isolated',freeModels.groqReview+':semantic'];
+for(const geminiCap of [true,false]){
+ test('Gemini '+(geminiCap?'at 200 calls':'HTTP 429')+' uses GPT-OSS for both passes and Qwen only for semantic review',async t=>{
+  const {provider,seen}=roleProvider(t,{geminiCap});
+  const question={...roleFixture,provenance:{generationModel:primary.model,initialSolverModel:'none',
+   fallback:false,verificationRounds:[],switches:[]}};
+  const [row]=await verifyDeterministic(provider,[question]);
+  assert.equal(row.accepted,true);
+  assert.deepEqual(row.models,{solver:freeModels.groqSolver,isolated:freeModels.groqSolver});
+  assert.deepEqual(seen,geminiCap?groqRoleCalls:['Gemini',...groqRoleCalls]);
+ });
+}
+for(const reject of ['meaningCorrect','grammarLabelCorrect'] as const){
+ test('Qwen rejection of '+reject+' fails closed',async t=>{
+  const {provider,seen}=roleProvider(t,{geminiCap:true,reject});
+  const [row]=await verifyDeterministic(provider,[roleFixture]);
+  assert.equal(row.accepted,false);
+  assert.equal(row.reason,'FALLBACK_SEMANTIC_REVIEW_REJECTED');
+  assert.deepEqual(seen,groqRoleCalls);
+ });
+}
+test('GPT-OSS cannot verify a draft it generated',async t=>{
+ const {provider,seen}=roleProvider(t,{});
+ const born={...roleFixture,provenance:{generationModel:freeModels.groqSolver,initialSolverModel:'none',
+  fallback:true,verificationRounds:[],switches:[]}};
+ await assert.rejects(provider('verify','',{},{},{openjlptOnly:true,excludeModels:[primary.model,freeModels.groqSolver]}),
+  /NO_DIFFERENT_VERIFIER/);
+ const [row]=await verifyDeterministic(provider,[born]);
+ assert.equal(row.accepted,false);
+ assert.equal(row.reason,'FALLBACK_CROSS_VERIFICATION_REQUIRED');
+ assert.deepEqual(seen,['Gemini']);
+});
+test('GPT-OSS HTTP 429 promotes OpenRouter only to solver and preserves Qwen as reviewer',async t=>{
+ const {provider,seen}=roleProvider(t,{geminiCap:true,groqLimit:'model',router:true});
+ const [row]=await verifyDeterministic(provider,[roleFixture]);
+ assert.equal(row.accepted,true);
+ assert.deepEqual(row.models,{solver:freeModels.openrouter,isolated:freeModels.openrouter});
+ assert.deepEqual(seen,[freeModels.groqSolver+':blind','OpenRouter key',freeModels.openrouter+':blind',
+  'OpenRouter key',freeModels.openrouter+':isolated',freeModels.groqReview+':semantic']);
+});
+test('Groq HTTP 429 without another solver rejects without asking Qwen to solve',async t=>{
+ const {provider,seen}=roleProvider(t,{geminiCap:true,groqLimit:'model'});
+ const [row]=await verifyDeterministic(provider,[roleFixture]);
+ assert.equal(row.accepted,false);
+ assert.equal(row.reason,'FALLBACK_CROSS_VERIFICATION_REQUIRED');
+ assert.deepEqual(seen,[freeModels.groqSolver+':blind']);
+});
+test('shared Groq rate limits preserve the review guard when OpenRouter solves',async t=>{
+ const {provider,seen}=roleProvider(t,{geminiCap:true,groqLimit:'shared',router:true});
+ const [row]=await verifyDeterministic(provider,[roleFixture]);
+ assert.equal(row.accepted,false);
+ assert.equal(row.reason,'FALLBACK_SEMANTIC_REVIEW_REJECTED');
+ assert.deepEqual(seen,[freeModels.groqSolver+':blind','OpenRouter key',freeModels.openrouter+':blind',
+  'OpenRouter key',freeModels.openrouter+':isolated']);
+});
+test('missing Qwen verdict fails closed without sending claims to another provider',async t=>{
+ const {provider,seen}=roleProvider(t,{geminiCap:true,reviewMissing:true,router:true});
+ const [row]=await verifyDeterministic(provider,[roleFixture]);
+ assert.equal(row.accepted,false);
+ assert.equal(row.reason,'FALLBACK_SEMANTIC_REVIEW_REJECTED');
+ assert.deepEqual(seen,groqRoleCalls);
+});
+test('Groq server errors do not activate OpenRouter',async t=>{
+ const {provider,seen}=roleProvider(t,{groqError:503,router:true});
+ await assert.rejects(provider('verify','',{},{},{openjlptOnly:true}),/DRAFT_MODELS_EXHAUSTED/);
+ assert.deepEqual(seen,['Gemini',freeModels.groqSolver+':isolated']);
 });

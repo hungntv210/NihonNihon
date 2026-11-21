@@ -985,6 +985,13 @@ Checked implementation `4571e88d335ab93c18eff64e11da12efc8899cbd` on branch `nae
 - Production browser check on `/vocab/lesson` -> `/vocab/lesson/kanji` with unmodified OpenJLPT fixture (`seedDemo`, zero hardcoded translations): 0 page errors, `Shippori Mincho` kanji font, zero horizontal overflow at 390px mobile width, `srs_cards` stays 0 until explicit `Th?m v?o ?n` click (then increments to 1 while staying on card), done screen links back to `/vocab/lesson`.
 - `node tools/check-route-scope.mjs origin/master naetoru/kanji-lesson`: PASS (9 files including this append-only audit entry). Only this append-only audit entry follows `4571e88`.
 
+## Pokabu JLPT free verifier roles -- 2026-11-21
+
+Checked implementation `9c926245cbb228dcdfd9ea4bd2e4279cc9beea28` against `41ba4ef18b1f3ac7ba8a61dcd94b7db9e11db6ab` on Windows with Node v24.10.0 and npm 11.6.1. The worktree started without a .next directory. The check shell used eight logical CPUs and the app gate used a disposable OpenJLPT fixture.
+- `npm run check` (2026-11-21T17:47:48.8198271+07:00 to 2026-11-21T17:49:40.0596694+07:00) passed typecheck, 22/22 prototype tests, 269/269 core and route tests, the production build, and 16/16 app checks.
+- The full check includes 10 new offline routing regressions. All 17 existing provider tests and 4 existing Gemini fallback tests pass. The regressions use mock Gemini, Groq, and OpenRouter responses.
+- `node tools/check-route-scope.mjs origin/master pokabu/jlpt-free-roles` passed. A credential-pattern scan of additions found zero matches. Only this append-only entry follows the checked implementation.
+
 ## Naetoru in-place word lookup popup and shadowing tap-to-lookup (PR-B13 part 1) -- 2026-11-21
 
 Checked implementation `c915a6d31ea254fe391cf3e30c5d8afefdb87597` on branch `naetoru/lookup-popup` (base `4950c46baac8ac37be79c91603bf04e81598c2bf` including #89) on Windows with Node v24.10.0, clean `.next` build, disposable OpenJLPT fixture, and local headless Chrome.
