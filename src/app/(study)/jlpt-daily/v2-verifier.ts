@@ -34,7 +34,8 @@ async function verifyPair(provider:Provider,questions:V2Question[],excludeModels
  const hasContext=questions.some(q=>q.type==='context');
  const flags=['grammatical','formCorrect','natural','meaningFits',...(hasContext?['contextFits']:[])];
  const schema={type:'array',minItems:candidates.length,maxItems:candidates.length,items:{type:'object',properties:{index:{type:'integer'},...Object.fromEntries(flags.map(k=>[k,{type:'boolean'}])),reason:{type:'string'}},required:['index',...flags,'reason'],additionalProperties:false}};
- const isolated=await provider('verify',isolatedPrompt+(hasContext?contextRubric:''),{expectedResultCount:candidates.length,expectedIndexes:candidates.map((_,index)=>index),sentences:candidates.map((r,index)=>({index,task:r.task,stem:r.stem,choice:r.choice,completedSentence:r.completedSentence}))},verifierWireSchema(schema),{excludeModels,...sourceRouting(questions),semanticReview:true});
+ const semanticReview=questions.map((q,index)=>({index,type:q.type,sentence:choiceSentence(q,q.correct,q.order),explanation:q.explanation.replace(/ \[[^\]]*\]/gu,'')}));
+ const isolated=await provider('verify',isolatedPrompt+(hasContext?contextRubric:''),{expectedResultCount:candidates.length,expectedIndexes:candidates.map((_,index)=>index),sentences:candidates.map((r,index)=>({index,task:r.task,stem:r.stem,choice:r.choice,completedSentence:r.completedSentence}))},verifierWireSchema(schema),{excludeModels,...sourceRouting(questions),semanticReview});
  requireValue(Array.isArray(isolated)&&isolated.length===candidates.length&&new Set(isolated.map(a=>a.index)).size===candidates.length&&isolated.every(a=>Number.isInteger(a.index)&&candidates[a.index]),'INVALID_ISOLATED_QA_INDEX');
  return questions.map((q,index)=>{
   const solver=first.find(a=>a.index===index);
@@ -53,6 +54,8 @@ async function verifyPair(provider:Provider,questions:V2Question[],excludeModels
     requireValue(grades.find(g=>g.choiceIndex===q.correct)?.contextFits===true,'OPTION_KEY_NOT_ACCEPTABLE');
    }
    requireValue(solver.natural===true&&solver.knowledgeCorrect===true,'INDEPENDENT_SOLVE_REJECTED');
+   const review=modelEvidence(isolated).semanticReview?.find(r=>r.index===index);
+   requireValue(!review||review.meaningCorrect&&review.grammarLabelCorrect,'FALLBACK_SEMANTIC_REVIEW_REJECTED');
   }catch(e){reason=e instanceof Error?e.message:'SEMANTIC_QA_REJECTED';}
   return {id:q.id,accepted:!reason,reason,models:{solver:modelEvidence(first).model,isolated:modelEvidence(isolated).model},passes:[modelEvidence(first),modelEvidence(isolated)],solver,isolatedOptionGrades:grades};
  });

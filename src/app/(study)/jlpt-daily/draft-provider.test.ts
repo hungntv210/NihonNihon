@@ -1,11 +1,36 @@
 import test,{type TestContext} from 'node:test';import assert from 'node:assert/strict';import fs from 'node:fs';import os from 'node:os';import path from 'node:path';
-import {draftProvider,modelEvidence,type DraftAttempt} from './draft-provider.ts';
+import {draftProvider,modelEvidence,semanticSchema,validateSemanticReview,type DraftAttempt} from './draft-provider.ts';
 import {freeCompletion,freeModels,freeProviderStatus,groqRateLimitUntil,readFreeKeys} from './free-provider.ts';
 const primary={model:'gemini-3.6-flash',verifierModel:'gemini-3.6-flash',requestsPerMinute:60000000,dailyBudget:200,timeoutMs:1000,maxOutputTokens:100};
 const fallback={...primary,model:'gemini-4-carbon',verifierModel:'gemini-4-carbon'};
 function setup(t:{after:(fn:()=>void)=>void}){const dir=fs.mkdtempSync(path.join(os.tmpdir(),'nihon-draft-retry-'));t.after(()=>fs.rmSync(dir,{recursive:true,force:true}));return path.join(dir,'quota.json');}
 const success=()=>Response.json({candidates:[{finishReason:'STOP',content:{parts:[{text:'[]'}]}}]});
 const freeSuccess=()=>Response.json({choices:[{finish_reason:'stop',message:{content:'{"result":[]}'}}]});
+test('Qwen reviews the proposed meaning and grammar separately from the blind payload',async t=>{
+ const claim={index:0,type:'grammar',sentence:'例文',explanation:'Đề xuất'};
+ const review=[{index:0,meaningCorrect:false,grammarLabelCorrect:true}];
+ const seen:unknown[]=[];
+ const provider=draftProvider([primary],setup(t),'fake',{freeKeys:{groq:'fake',groqFreeTier:true},fetcher:async(url,init)=>{
+  if(String(url).includes('googleapis'))return new Response(null,{status:429});
+  const body=JSON.parse(String(init?.body));
+  assert.equal(body.model,freeModels.groqReview);
+  seen.push(JSON.parse(body.messages[1].content));
+  if(seen.length===1)return freeSuccess();
+  assert.ok(body.messages[0].content.includes(JSON.stringify(semanticSchema)));
+  return Response.json({choices:[{finish_reason:'stop',message:{content:JSON.stringify({result:review})}}]});
+ }});
+ const output=await provider('verify','',{blind:true},{},{openjlptOnly:true,semanticReview:[claim]});
+ assert.deepEqual(seen,[{blind:true},{claims:[claim]}]);
+ assert.deepEqual(modelEvidence(output).semanticReview,review);
+});
+test('semantic review rejects incorrect types, omitted indexes and duplicate indexes',()=>{
+ const verdict={index:0,meaningCorrect:true,grammarLabelCorrect:false};
+ for(const bad of [{result:[verdict]},[],[null],[{...verdict,meaningCorrect:'true'}],[{...verdict,index:1}],[{index:0,meaningCorrect:true}]]){
+  assert.throws(()=>validateSemanticReview(bad,[0]),/FREE_PROVIDER_INVALID_SEMANTIC_REVIEW/);
+ }
+ assert.throws(()=>validateSemanticReview([verdict,verdict],[0,1]),/FREE_PROVIDER_INVALID_SEMANTIC_REVIEW/);
+ assert.deepEqual(validateSemanticReview([verdict],[0]),[verdict]);
+});
 test('OpenRouter rejects every model without the free suffix before using the network',t=>{
  const fetcher=async()=>{assert.fail('non-free model must never reach fetch');};
  for(const model of ['google/gemma-4-31b-it','openrouter/auto','openrouter/free','google/gemma-4-31b-it:free ']){
