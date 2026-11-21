@@ -38,6 +38,8 @@ ownership.set('srs-perf', ['src/app/(study)/srs/review-session.tsx', 'tests/srs-
 ownership.set('naetoru/srs-perf', ownership.get('srs-perf'));
 ownership.set('srs-lazy-wanakana', ['src/app/(study)/srs/review-session.tsx', 'tests/srs-lazy-wanakana.test.ts', 'tools/check-route-scope.mjs']);
 ownership.set('naetoru/srs-lazy-wanakana', ownership.get('srs-lazy-wanakana'));
+ownership.set('srs-settings', ['src/app/(study)/settings/', 'src/app/api/settings/', 'src/core/preferences.ts', 'src/server/preferences.ts', 'src/app/(study)/srs/', 'tests/preferences.test.ts', 'tests/srs-settings.test.ts', 'tools/check-route-scope.mjs']);
+ownership.set('naetoru/srs-settings', ownership.get('srs-settings'));
 ownership.set('nav-prefetch', ['src/components/shell.tsx', 'tests/nav-prefetch.test.ts', 'tools/check-route-scope.mjs']);
 ownership.set('naetoru/nav-prefetch', ownership.get('nav-prefetch'));
 ownership.set('shadowing-preload', ['src/app/(study)/shadowing/player.tsx', 'tests/shadowing-preload.test.ts', 'tools/check-route-scope.mjs']);
