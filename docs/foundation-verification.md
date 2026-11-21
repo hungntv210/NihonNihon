@@ -975,3 +975,11 @@ Checked implementation `588876c354ccc88fe8bf9f78a01bff40dc5770b1` on branch `nae
 - `daily-weather` JS gzip budget (`data/reports/daily-weather/budget.json`, baseline/limit unchanged): `435,600 B` vs baseline `468,494 B` (`added: -32,894 B <= 5,000 B` limit; down `37,633 B` from `473,233 B` on clean `origin/master` `fde286d`). Zero `.next/static/chunks/**/*.js` files contain `node:sqlite` or `better-sqlite`.
 - Top 3 largest `page-*.js` chunks (gzip): `today-roadmap` `12,108 B -> 8,655 B`, `shadowing` `11,495 B -> 8,575 B`, `srs` `11,064 B -> 7,567 B`.
 - `node tools/check-route-scope.mjs origin/master naetoru/shared-chunk-dedup`: PASS (3 files: `next.config.ts`, `tools/check-route-scope.mjs`, `docs/foundation-verification.md`). Only this append-only audit entry follows `588876c`.
+
+
+## Pokabu JLPT free verifier roles -- 2026-11-21
+
+Checked implementation `9c926245cbb228dcdfd9ea4bd2e4279cc9beea28` against `41ba4ef18b1f3ac7ba8a61dcd94b7db9e11db6ab` on Windows with Node v24.10.0 and npm 11.6.1. The worktree started without a .next directory. The check shell used eight logical CPUs and the app gate used a disposable OpenJLPT fixture.
+- `npm run check` (2026-11-21T17:47:48.8198271+07:00 to 2026-11-21T17:49:40.0596694+07:00) passed typecheck, 22/22 prototype tests, 269/269 core and route tests, the production build, and 16/16 app checks.
+- The full check includes 10 new offline routing regressions. All 17 existing provider tests and 4 existing Gemini fallback tests pass. The regressions use mock Gemini, Groq, and OpenRouter responses.
+- `node tools/check-route-scope.mjs origin/master pokabu/jlpt-free-roles` passed. A credential-pattern scan of additions found zero matches. Only this append-only entry follows the checked implementation.
