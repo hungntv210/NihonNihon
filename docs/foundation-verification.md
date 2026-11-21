@@ -1009,3 +1009,10 @@ Checked implementation `9a1fed48cd98d5c025f1aecaf5d6d3f0a494a026` on branch `nae
 - `npm run test:browser` (`2026-11-21T19:00:57+07:00` to `2026-11-21T19:08:10+07:00`): PASS 14/14 (`appearance`, `daily-weather`, `login-festivals`, `motion`, `pixel-scenes-next`, `pixel-scenes`, `common-tools`, `grammar`, `jlpt-daily`, `kanji`, `shadowing` 28/28, `srs`, `today-roadmap`, `vocab`).
 - `daily-weather` JS gzip budget (`data/reports/daily-weather/budget.json`, baseline/limit unchanged): `440,581 B` vs baseline `468,494 B` (`added: -27,913 B <= 5,000 B` limit; `32,913 B` under `473,494 B`). Zero `.next/static/chunks/**/*.js` files contain `node:sqlite`, `better-sqlite`, or `kuromoji`.
 - `node tools/check-route-scope.mjs origin/master naetoru/lookup-popup`: PASS (19 files including this append-only audit entry; `tools/check-route-scope.mjs` diff `+2/-0`). Only this append-only audit entry follows `9a1fed4`.
+
+## Pokabu JLPT free-provider rate pacing -- 2026-11-21
+
+Checked implementation `d6ccb01b54d2c76ab0de7ad5c91527e11d18a111` against `133b0068aeac08d3989a5e6c5d959ab60589e157` on Windows, Node v24.10.0 and npm 11.6.1. Build started without .next and the app gate used a disposable OpenJLPT fixture. Check window: 2026-11-21T19:43:33.1636447+07:00 through 2026-11-21T19:45:05.2099562+07:00.
+- `npm run check` passed typecheck, 22/22 prototype tests, 279/279 core/route tests, production build, and 16/16 app checks.
+- Seven new mock regressions cover Groq retry, long-reset fallback, consecutive 429s, day cap, token pacing, OpenRouter retry and preflight, and rate-limit log redaction. Focused provider suite passed 34/34.
+- Route-scope and diff checks passed. No live model calls. The prior campaign explicitly excluded Gemini in its invocation; default model routing is unchanged.
