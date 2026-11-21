@@ -4,7 +4,7 @@ import {plainJapanese,hardQuestionIssues,strictDraftIssues,draftCollisionIssues,
 import {draftContextLexicon} from './word-evidence.ts';
 import {confusionGroups,learnedGrammarForms} from './confusion-groups.ts';
 import {safeExample,exampleEvidence,type V2Context,type V2Source,type Example} from './v2-data.ts';
-import {hardeningIssues,orderBoundaries,provenMeaning,standardMeanings} from './v2-hardening.ts';
+import {hardeningIssues,motionDestination,orderBoundaries,provenMeaning,standardMeanings,timeNoun} from './v2-hardening.ts';
 import {matchesGrammarFunction} from './grammar-function.ts';
 import {grammarTokens,tokenEdges,type GrammarToken} from './tokenizer.ts';
 import {contextMeaning} from './context-sense.ts';
@@ -113,7 +113,7 @@ export function validateV2(q:V2Question,c:V2Context,history:Question[]=[]){
    }
   }
  }
- const hardened=hardeningIssues(q,c);requireValue(!hardened.length,'HARDENING_'+hardened.join(','));
+ const hardened=hardeningIssues(q,c,tokens);requireValue(!hardened.length,'HARDENING_'+hardened.join(','));
  requireValue(q.explanation===explanation(q,s),'EXPLANATION_SOURCE_MISMATCH');
  const issues=hardQuestionIssues(q,s,c.catalog).filter(i=>!(q.type==='reading'&&i==='READING_NEAR_SAME_LEVEL_DISTRACTORS')&&!(q.type==='spelling'&&i==='SPELLING_NEAR_DISTRACTORS'));
  requireValue(!issues.length,'HARD_QA_'+issues.join(','));
@@ -155,8 +155,10 @@ export function candidates(c:V2Context,report?: (row:CandidateDiagnostic)=>void)
    const start=grammarOccurrence(s,surface,sentence,boundaries,tokens);
    if(start>=0&&surface&&charsKnown(surface,c)){
     const stem=sentence.slice(0,start)+'＿'+sentence.slice(start+surface.length),group=confusionGroups.find(g=>g.surfaces.includes(surface));
-    const noise=s.kind==='grammar' ? forms.filter(o=>o.id!==s.id && group?.surfaces.includes(o.surface) && !stem.includes(o.surface) && charsKnown(o.surface,c)).map(o=>({value:o.surface,rule:'confusion-group',sourceIds:[o.id]}))
-     : c.catalog.filter(o=>o.kind==='vocab'&&o.id!==s.id&&charsKnown(o.title,c)&&!stem.includes(plainJapanese(o.title))&&samePartOfSpeech(s,o)).map(o=>({value:plainJapanese(o.title),rule:'same-pos',sourceIds:[o.id]}));
+    const motion=s.kind==='grammar'&&motionDestination(surface,start+surface.length,tokens);
+    const temporal=timeNoun(s);
+    const noise=s.kind==='grammar' ? forms.filter(o=>o.id!==s.id && group?.surfaces.includes(o.surface) && !(motion&&o.surface==='まで') && !stem.includes(o.surface) && charsKnown(o.surface,c)).map(o=>({value:o.surface,rule:'confusion-group',sourceIds:[o.id]}))
+     : c.catalog.filter(o=>o.kind==='vocab'&&o.id!==s.id&&!(temporal&&timeNoun(o))&&charsKnown(o.title,c)&&!stem.includes(plainJapanese(o.title))&&samePartOfSpeech(s,o)).map(o=>({value:plainJapanese(o.title),rule:'same-pos',sourceIds:[o.id]}));
     if(report && group && s.kind==='grammar' && distinct(noise,surface).length<3)report({date:c.date,type:'grammar',reason:'INSUFFICIENT_DISTRACTORS',stem,answer:surface,targetId:s.id,group:group.surfaces,learned:forms.filter(o=>group.surfaces.includes(o.surface)),eligible:distinct(noise,surface).map(n=>n.value)});
     if(s.kind==='grammar'&&group||s.kind==='vocab')attempt(()=>make(c,s,s.kind==='grammar'?'grammar':'context',stem,surface,noise,{example,sentence}));
    }

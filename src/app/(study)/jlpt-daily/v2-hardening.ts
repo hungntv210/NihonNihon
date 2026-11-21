@@ -2,6 +2,8 @@ import type {V2Context,V2Source,Example} from './v2-data.ts';
 import type {V2Question} from './deterministic.ts';
 import {roadmapLexicon} from './word-evidence.ts';
 import {learnedGrammarForms} from './confusion-groups.ts';
+import {plainJapanese} from './hard-qa.ts';
+import {grammarTokens,type GrammarToken} from './tokenizer.ts';
 const restricted=/\b(?:dialect(?:al)?|archaic|obsolete|rare|regional|dated|Izumo)\b/iu;
 const restrictedMeaning=(text:string)=>[...text.matchAll(/\(([^)]*)\)|\[([^\]]*)\]/gu)].some(m=>restricted.test(m[1]??m[2]))||/^(?:dialect(?:al)?|archaic|obsolete|rare|regional|dated|Izumo)\s*:/iu.test(text);
 export const standardMeanings=(s:Pick<V2Source,'english'>)=>s.english.filter(v=>!restrictedMeaning(v));
@@ -91,7 +93,19 @@ export function grammarLevelMatches(sentence:string,c:V2Context,example?:Example
   return matches;
  });
 }
-export function hardeningIssues(q:V2Question,c:V2Context){
+export function motionDestination(answer:string,end:number,tokens:GrammarToken[]){
+ if(answer!=='へ'&&answer!=='に')return false;
+ const predicate=tokens.findLast(token=>token.pos==='\u52d5\u8a5e'&&token.pos_detail_1==='\u81ea\u7acb');
+ return !!predicate&&predicate.start>=end&&['帰る','かえる','行く','いく','ゆく','来る','くる'].includes(predicate.basic_form);
+}
+export function timeNoun(source:Pick<V2Source,'kind'|'pos'|'english'>){
+ if(source.kind!=='vocab')return false;
+ if(source.pos.includes('n-t'))return true;
+ // OpenJLPT also supplies plain noun tags with explicit calendar glosses.
+ const timeGloss=/^(?:yesterday|today|tomorrow|the day (?:before yesterday|after tomorrow)|(?:last|this|next|every) (?:night|morning|evening|day|week|month|year)|(?:one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|[0-9]+) (?:seconds?|minutes?|hours?|days?|weeks?|months?|years?)|january|february|march|april|may|june|july|august|september|october|november|december|monday|tuesday|wednesday|thursday|friday|saturday|sunday)$/iu;
+ return source.pos.includes('n')&&standardMeanings(source).length>0&&standardMeanings(source).every(gloss=>timeGloss.test(gloss.trim()));
+}
+export function hardeningIssues(q:V2Question,c:V2Context,tokens?:GrammarToken[]){
  const issues:string[]=[],source=c.catalog.find(s=>s.id===q.targetId);if(!source)return issues;
  if(!standardMeanings(source).length)issues.push('NO_STANDARD_MEANING');
  if(source.vietnamese&&!provenMeaning(source)&&q.explanation.includes(`${source.vietnamese.text} [${source.vietnamese.sourceId}`))issues.push('TRANSLATION_SENSE_UNPROVEN');
@@ -118,8 +132,11 @@ export function hardeningIssues(q:V2Question,c:V2Context){
   if(/^[かねよの。？！!?\s]*$/u.test(after)&&q.choices.some((v,i)=>i!==q.correct&&['じゃない','でした','でしょう'].includes(v)))issues.push('GRAMMAR_COPULA_AMBIGUITY');
   if(q.choices.includes('から')&&/(?:ます|ました|ません)$/u.test(before)&&/^[。？！!?\s]*$/u.test(after))issues.push('GRAMMAR_FINAL_KARA_AMBIGUITY');
   if(q.choices.includes('だけ')&&/^(?:ある|あります|です|だ)[。？！!?\s]*$/u.test(after))issues.push('GRAMMAR_DAKE_AMBIGUITY');
+  const answer=q.choices[q.correct];
+  if(hole>=0&&q.choices.some((value,i)=>i!==q.correct&&value==='まで')&&motionDestination(answer,hole+answer.length,tokens??grammarTokens(q.stem.replace(/＿+/u,answer))))issues.push('GRAMMAR_MOTION_MADE_AMBIGUITY');
   if(q.choices.includes('から')&&/^[^。？！!?]*(?:買[ういっ]|か(?:う|いたい|います|いました))/u.test(after))issues.push('GRAMMAR_BUY_KARA_AMBIGUITY');
  }
  if(q.type==='context'&&source.pos.some(p=>p.startsWith('adv'))&&q.choices.some((v,i)=>i!==q.correct&&c.catalog.some(s=>s.kind==='vocab'&&s.title===v&&s.pos.some(p=>p.startsWith('adv')))))issues.push('CONTEXT_ADVERB_AMBIGUITY');
+ if(q.type==='context'&&timeNoun(source)&&q.choices.some((value,i)=>i!==q.correct&&c.catalog.some(other=>plainJapanese(other.title)===value&&timeNoun(other))))issues.push('CONTEXT_TIME_NOUN_AMBIGUITY');
  return [...new Set(issues)];
 }
