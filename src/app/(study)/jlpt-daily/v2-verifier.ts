@@ -25,15 +25,17 @@ export function orderPermutations(q:V2Question){
  return rows;
 }
 export function blindQuestions(questions:V2Question[]){return questions.map((q,index)=>({index,type:q.type,stem:q.stem,choices:q.choices,starSlot:q.starSlot,...(q.type==='order'?{permutations:orderPermutations(q)}:{candidateSentences:q.choices.map((_,i)=>choiceSentence(q,i))})}));}
+const sourceRouting=(questions:V2Question[])=>({openjlptOnly:questions.every(q=>q.example?q.example.sourceId==='openjlpt':q.type==='reading'||q.type==='spelling')});
 async function verifyPair(provider:Provider,questions:V2Question[],excludeModels:string[]=[],seed?:unknown){
  requireValue(questions.length>0,'EMPTY_VERIFY_BATCH');
- const first=seed??await provider('verify',solverPrompt,{expectedResultCount:questions.length,expectedIndexes:questions.map((_,index)=>index),questions:blindQuestions(questions)},verifierWireSchema(independentSchema),{excludeModels});
+ const first=seed??await provider('verify',solverPrompt,{expectedResultCount:questions.length,expectedIndexes:questions.map((_,index)=>index),questions:blindQuestions(questions)},verifierWireSchema(independentSchema),{excludeModels,...sourceRouting(questions)});
  requireValue(Array.isArray(first)&&first.length===questions.length&&new Set(first.map(a=>a.index)).size===questions.length&&first.every(a=>Number.isInteger(a.index)&&questions[a.index]),'INVALID_QA_INDEX');
  const candidates=questions.flatMap((q,questionIndex)=>q.choices.map((choice,choiceIndex)=>{const row=first.find(a=>a.index===questionIndex),order=q.type==='order'?row.optionGrades?.find((g:any)=>g.choiceIndex===choiceIndex)?.candidateOrder??[]:[];return {questionIndex,choiceIndex,candidateOrder:order,task:q.type,stem:q.stem,choice,completedSentence:choiceSentence(q,choiceIndex,order)};}));
  const hasContext=questions.some(q=>q.type==='context');
  const flags=['grammatical','formCorrect','natural','meaningFits',...(hasContext?['contextFits']:[])];
  const schema={type:'array',minItems:candidates.length,maxItems:candidates.length,items:{type:'object',properties:{index:{type:'integer'},...Object.fromEntries(flags.map(k=>[k,{type:'boolean'}])),reason:{type:'string'}},required:['index',...flags,'reason'],additionalProperties:false}};
- const isolated=await provider('verify',isolatedPrompt+(hasContext?contextRubric:''),{expectedResultCount:candidates.length,expectedIndexes:candidates.map((_,index)=>index),sentences:candidates.map((r,index)=>({index,task:r.task,stem:r.stem,choice:r.choice,completedSentence:r.completedSentence}))},verifierWireSchema(schema),{excludeModels});
+ const semanticReview=questions.map((q,index)=>({index,type:q.type,sentence:choiceSentence(q,q.correct,q.order),explanation:q.explanation.replace(/ \[[^\]]*\]/gu,'')}));
+ const isolated=await provider('verify',isolatedPrompt+(hasContext?contextRubric:''),{expectedResultCount:candidates.length,expectedIndexes:candidates.map((_,index)=>index),sentences:candidates.map((r,index)=>({index,task:r.task,stem:r.stem,choice:r.choice,completedSentence:r.completedSentence}))},verifierWireSchema(schema),{excludeModels,...sourceRouting(questions),semanticReview});
  requireValue(Array.isArray(isolated)&&isolated.length===candidates.length&&new Set(isolated.map(a=>a.index)).size===candidates.length&&isolated.every(a=>Number.isInteger(a.index)&&candidates[a.index]),'INVALID_ISOLATED_QA_INDEX');
  return questions.map((q,index)=>{
   const solver=first.find(a=>a.index===index);
@@ -59,9 +61,11 @@ async function verifyPair(provider:Provider,questions:V2Question[],excludeModels
 export async function verifyDeterministic(originalProvider:Provider,questions:V2Question[]){
  requireValue(questions.length>0,'EMPTY_VERIFY_BATCH');
  const attemptedRounds:ModelEvidence[]=[];const provider:Provider=async(...args)=>{const output=await originalProvider(...args);attemptedRounds.push(modelEvidence(output));return output;};
+ const externalEvidence=()=>[...new Set(attemptedRounds.flatMap(p=>p.fallbackProvider?[p.fallbackProvider]:[]))];
  const excluded=[...new Set(questions.filter(q=>q.provenance?.fallback&&q.provenance.generationModel!=='deterministic').map(q=>q.provenance!.generationModel))];
- const reject=(initialSolverModel:string)=>questions.map(q=>({id:q.id,accepted:false,reason:'FALLBACK_CROSS_VERIFICATION_REQUIRED',models:{solver:'none',isolated:'none'},provenance:{generationModel:q.provenance?.generationModel??'deterministic',initialSolverModel,fallback:true,verificationRounds:[],attemptedRounds,switches:attemptedRounds.flatMap(p=>p.switches)} as QuestionProvenance}));
- let first:unknown;try{first=await provider('verify',solverPrompt,{expectedResultCount:questions.length,expectedIndexes:questions.map((_,index)=>index),questions:blindQuestions(questions)},verifierWireSchema(independentSchema),{excludeModels:excluded});}catch(e){if(e instanceof Error&&e.message==='NO_DIFFERENT_VERIFIER')return reject('none');throw e;}
+ const fallbackProvider=()=>{const names=externalEvidence();return names.length?{fallbackProvider:names}:{};};
+ const reject=(initialSolverModel:string)=>questions.map(q=>({id:q.id,accepted:false,reason:'FALLBACK_CROSS_VERIFICATION_REQUIRED',models:{solver:'none',isolated:'none'},provenance:{generationModel:q.provenance?.generationModel??'deterministic',initialSolverModel,fallback:true,...fallbackProvider(),verificationRounds:[],attemptedRounds,switches:attemptedRounds.flatMap(p=>p.switches)} as QuestionProvenance}));
+ let first:unknown;try{first=await provider('verify',solverPrompt,{expectedResultCount:questions.length,expectedIndexes:questions.map((_,index)=>index),questions:blindQuestions(questions)},verifierWireSchema(independentSchema),{excludeModels:excluded,...sourceRouting(questions)});}catch(e){if(e instanceof Error&&e.message==='NO_DIFFERENT_VERIFIER')return reject('none');throw e;}
  const initial=modelEvidence(first);
  requireValue(Array.isArray(first)&&first.length===questions.length&&new Set(first.map(a=>a.index)).size===questions.length&&first.every(a=>Number.isInteger(a.index)&&questions[a.index]),'INVALID_QA_INDEX');
  let rows:Awaited<ReturnType<typeof verifyPair>>;
@@ -74,7 +78,9 @@ export async function verifyDeterministic(originalProvider:Provider,questions:V2
  return rows.map((row,i)=>{
   const q=questions[i],fallback=!!q.provenance?.fallback||attemptedRounds.some(p=>p.fallback),origin=excluded.length?q.provenance?.generationModel:initial.model;
   const cross=!fallback||row.passes.length===2&&row.passes.every(p=>p.model!=='fixture'&&p.model!==origin);
-  const provenance:QuestionProvenance={generationModel:q.provenance?.generationModel??'deterministic',initialSolverModel:initial.model,fallback,verificationRounds:row.passes,attemptedRounds,switches:attemptedRounds.flatMap(p=>p.switches)};
-  const {passes,...audit}=row;return {...audit,accepted:row.accepted&&cross,reason:cross?row.reason:'FALLBACK_CROSS_VERIFICATION_REQUIRED',provenance};
+  const semanticRejected=attemptedRounds.some(p=>p.semanticReview?.some(r=>r.index===i&&(!r.meaningCorrect||!r.grammarLabelCorrect)));
+  const provenance:QuestionProvenance={generationModel:q.provenance?.generationModel??'deterministic',initialSolverModel:initial.model,fallback,...fallbackProvider(),verificationRounds:row.passes,attemptedRounds,switches:attemptedRounds.flatMap(p=>p.switches)};
+  const reason=!cross?'FALLBACK_CROSS_VERIFICATION_REQUIRED':semanticRejected?'FALLBACK_SEMANTIC_REVIEW_REJECTED':row.reason;
+  const {passes,...audit}=row;return {...audit,accepted:row.accepted&&cross&&!semanticRejected,reason,provenance};
  });
 }
