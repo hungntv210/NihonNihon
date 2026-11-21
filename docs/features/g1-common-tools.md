@@ -16,7 +16,7 @@ Ba công cụ có mặt ở mọi màn hình.
 
 - [x] **Popup tra từ:** chạm từ tiếng Nhật bất kỳ → cách đọc, Hán Việt, nghĩa Việt (nhãn nguồn), cấp, nút Thêm vào ôn (kèm câu gốc)
 - [x] **Thanh tìm kiếm chung:** kanji, kana, romaji, Hán Việt, tiếng Việt; **gõ không dấu vẫn tìm ra** ("lam viec" → "làm việc")
-- [ ] Kết quả gồm từ, kanji, mẫu ngữ pháp, câu trong clip
+- [x] Kết quả gồm từ, kanji, mẫu ngữ pháp, câu trong clip
 - [ ] Từ ngoài JLPT tra qua JMdict + tu-dien-nhat-viet
 - [ ] **Báo sai** trên mọi dòng tiếng Việt: chỉ đánh dấu, không phải sửa
 
@@ -58,5 +58,6 @@ Các dấu tick xác nhận phần code đã chạy qua test/fixture; không tha
 - Bằng chứng: `src/app/(study)/common-tools/repository.test.ts`.
 - Bằng chứng: `src/app/(study)/common-tools/browser-check.ts`.
 - Bằng chứng (2026-11-21): `src/app/(study)/common-tools/lookup-popup.tsx`, `src/app/(study)/common-tools/lookup.ts`, `src/app/(study)/common-tools/tokenize.ts`, `src/app/api/common-tools/lookup/route.ts`, `tests/lookup-popup.test.ts`.
+- Bằng chứng (2026-11-22): `src/app/(study)/common-tools/fts5.ts`, `src/app/(study)/common-tools/clip-search.ts`, `src/app/(study)/common-tools/repository.ts`, `src/app/(study)/common-tools/search/page.tsx`, `tests/search-all-kinds.test.ts`.
 
-Tìm chung đã có từ/kanji/ngữ pháp; popup tra từ tại chỗ (tách từ `kuromoji` phía server, `/api/common-tools/lookup`, dialog có focus trap + `Esc`/click ngoài + nút Thêm vào ôn kèm câu gốc, không lấy nghĩa từ KanjiDictVN) đã triển khai và gắn trên phụ đề shadowing. Câu trong clip ở tìm chung, từ điển ngoài JLPT, Báo sai trên mọi dòng Việt và đo mục tiêu 200ms trên dữ liệu thật vẫn giữ trống.
+Tìm chung đã tách 4 nhóm kết quả (Từ, Kanji, Mẫu ngữ pháp, Câu trong clip — tối đa 10 mục/nhóm, link câu trong clip trỏ đúng `/shadowing?clip=...&segment=...` và loại clip đã xoá/inactive, so khớp NFKC); popup tra từ tại chỗ (tách từ `kuromoji` phía server, `/api/common-tools/lookup`, dialog có focus trap + `Esc`/click ngoài + nút Thêm vào ôn kèm câu gốc, không lấy nghĩa từ KanjiDictVN) đã triển khai và gắn trên phụ đề shadowing. Từ điển ngoài JLPT, Báo sai trên mọi dòng Việt và nghiệm thu mục tiêu 200ms trên thiết bị thật vẫn giữ trống.

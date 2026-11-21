@@ -2,25 +2,94 @@ import type { DatabaseSync } from 'node:sqlite';
 import { selectedTranslation, type ContentKind } from '../../../core/content.ts';
 import {
   FTS5_TOKENIZER,
+  GROUPED_CONTENT_KINDS,
   normalize,
   querySearchIndex,
+  querySearchIndexGrouped,
   rebuildSearchIndex,
   resolveSearchIndexPath,
+  type GroupedContentKind,
   type RebuildResult,
   type SearchIndexOptions,
+  type SearchIndexRow,
 } from './fts5.ts';
+import {
+  clipSentenceHref,
+  normalizeClipText,
+  searchClipSentences,
+  type ClipSearchOptions,
+  type ClipSentenceHit,
+} from './clip-search.ts';
 
 export {
   FTS5_TOKENIZER,
+  GROUPED_CONTENT_KINDS,
+  clipSentenceHref,
   normalize,
+  normalizeClipText,
   rebuildSearchIndex,
   resolveSearchIndexPath,
+  searchClipSentences,
+  type ClipSearchOptions,
+  type ClipSentenceHit,
+  type GroupedContentKind,
   type RebuildResult,
   type SearchIndexOptions,
 };
 
+export const SEARCH_GROUP_LIMIT = 10;
+
+export type SearchResultItem = {
+  id: string;
+  kind: ContentKind;
+  title: string;
+  reading: string;
+  level: string;
+  english: string[];
+  sourceName: string;
+  meaning: ReturnType<typeof selectedTranslation>;
+  hanViet: ReturnType<typeof selectedTranslation>;
+  href: string;
+};
+
+export type SearchAllKindsOptions = SearchIndexOptions & {
+  dbFile?: string;
+  youtubeFile?: string;
+  limitPerKind?: number;
+};
+
+export type SearchAllKindsResult = {
+  q: string;
+  limitPerKind: number;
+  total: number;
+  groups: {
+    vocab: { total: number; items: SearchResultItem[] };
+    kanji: { total: number; items: SearchResultItem[] };
+    grammar: { total: number; items: SearchResultItem[] };
+    clipSentences: { total: number; items: ClipSentenceHit[] };
+  };
+};
+
 export function detailHref(kind: ContentKind, id: string, title: string) {
   return `/${kind}/${encodeURIComponent(kind === 'kanji' ? title : id)}`;
+}
+
+function hydrateSearchRow(db: DatabaseSync, r: SearchIndexRow): SearchResultItem {
+  const kind = String(r.kind) as ContentKind;
+  const id = String(r.id);
+  const title = String(r.title);
+  return {
+    id,
+    kind,
+    title,
+    reading: String(r.reading),
+    level: String(r.level),
+    english: JSON.parse(String(r.english)) as string[],
+    sourceName: String(r.source),
+    meaning: selectedTranslation(db, id, 'meaning'),
+    hanViet: selectedTranslation(db, id, 'han_viet'),
+    href: detailHref(kind, id, title),
+  };
 }
 
 export function searchContent(
@@ -33,25 +102,47 @@ export function searchContent(
     needle = normalize(q),
     page = Number.isSafeInteger(pageInput) && pageInput > 0 ? Math.min(pageInput, 100000) : 1;
   const { total, rows } = querySearchIndex(db, needle, 24, (page - 1) * 24, options);
-  const items = rows.map((r) => {
-    const kind = String(r.kind) as ContentKind,
-      id = String(r.id),
-      title = String(r.title);
-    return {
-      id,
-      kind,
-      title,
-      reading: String(r.reading),
-      level: String(r.level),
-      english: JSON.parse(String(r.english)) as string[],
-      sourceName: String(r.source),
-      meaning: selectedTranslation(db, id, 'meaning'),
-      hanViet: selectedTranslation(db, id, 'han_viet'),
-      href: detailHref(kind, id, title),
-    };
-  });
+  const items = rows.map((r) => hydrateSearchRow(db, r));
   return { q, page, total, items };
 }
+
+export function searchAllKinds(
+  db: DatabaseSync,
+  input: string,
+  options?: SearchAllKindsOptions,
+): SearchAllKindsResult {
+  const limitPerKind = Math.max(
+    1,
+    Math.min(Math.trunc(options?.limitPerKind ?? SEARCH_GROUP_LIMIT), 50),
+  );
+  const q = input.normalize('NFKC').trim().slice(0, 160);
+  const needle = normalize(q);
+  const grouped = querySearchIndexGrouped(db, needle, limitPerKind, options);
+  const vocab = {
+    total: grouped.vocab.total,
+    items: grouped.vocab.rows.map((r) => hydrateSearchRow(db, r)),
+  };
+  const kanji = {
+    total: grouped.kanji.total,
+    items: grouped.kanji.rows.map((r) => hydrateSearchRow(db, r)),
+  };
+  const grammar = {
+    total: grouped.grammar.total,
+    items: grouped.grammar.rows.map((r) => hydrateSearchRow(db, r)),
+  };
+  const clipSentences = searchClipSentences(db, q, {
+    dbFile: options?.dbFile,
+    youtubeFile: options?.youtubeFile,
+    limit: limitPerKind,
+  });
+  return {
+    q,
+    limitPerKind,
+    total: vocab.total + kanji.total + grammar.total + clipSentences.total,
+    groups: { vocab, kanji, grammar, clipSentences },
+  };
+}
+
 export function reportQueue(db: DatabaseSync) {
   return db.prepare(`SELECT t.translation_id,t.item_id,t.field,t.text_vi,t.method,t.status,t.needs_refresh,t.base_content_hash=i.source_hash current_hash,i.is_active,i.kind,coalesce(v.word,k.character,g.pattern,s.text_ja,i.source_key) title,d.name source,r.manifest_json,
     p.report_id,p.reason,p.reported_at,
