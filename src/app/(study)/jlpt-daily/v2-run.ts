@@ -8,7 +8,27 @@ const increment=(map:Record<string,number>,key:string)=>map[key]=(map[key]??0)+1
 export async function runDeterministic(contexts:V2Context[],history:Question[],options:{provider?:Provider;noVerifier?:boolean;supplement?:boolean;seed?:V2Run;checkpoint?:(r:V2Run)=>void}){
  requireValue(contexts.length===7&&contexts.every(c=>c.mode===contexts[0].mode),'SEVEN_DAY_CONTEXT_REQUIRED');
  requireValue(options.provider||options.noVerifier,'VERIFIER_REQUIRED');const inputHash=hash({contexts,history,verifierHash,supplement:!!options.supplement}),run:V2Run=options.seed??{version:2,mode:contexts[0].mode,week:contexts[0].date,inputHash,status:'running',questions:[],audit:{},rejected:[],statistics:{hard:{},attempted:{},accepted:{},rejected:{}},days:[]};
- requireValue(run.inputHash===inputHash,'RESUME_CONTEXT_CHANGED');const used=new Set([...run.questions,...run.rejected].map(q=>q.id));
+ requireValue(run.inputHash===inputHash,'RESUME_CONTEXT_CHANGED');
+ // Refill slots vacated by retained questions that fail against earlier survivors.
+ if(options.seed){
+  const retained=run.questions;
+  run.questions=[];
+  for(const q of retained){
+   const context=contexts.find(c=>c.date===q.date);requireValue(context,'RESUME_CONTEXT_CHANGED');
+   try{
+    validateV2(q,context,[...history,...run.questions]);
+    const position=run.questions.filter(other=>other.date===q.date).length+(options.supplement?history.filter(other=>other.date===q.date).length:0);
+    run.questions.push({...q,position});
+   }catch(e){
+    const reason=e instanceof Error?e.message:'INVALID';
+    run.rejected.push({id:q.id,date:q.date,type:q.type,reason});
+    increment(run.statistics.rejected,reason);
+    run.statistics.accepted[q.type]=Math.max(0,(run.statistics.accepted[q.type]??0)-1);
+    delete run.audit[q.id];
+   }
+  }
+ }
+ const used=new Set([...run.questions,...run.rejected].map(q=>q.id));
  const checkpoint=()=>{run.days=contexts.map(c=>{const rows=run.questions.filter(q=>q.date===c.date);return{date:c.date,count:rows.length,mix:dailyMix(rows)};});options.checkpoint?.(structuredClone(run));};
  const pools=contexts.map(c=>candidates(c));run.statistics.hard={};for(const pool of pools)for(const[reason,n]of Object.entries(pool.rejected))run.statistics.hard[reason]=(run.statistics.hard[reason]??0)+n;
  for(const [day,c]of contexts.entries()){

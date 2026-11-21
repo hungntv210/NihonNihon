@@ -10,18 +10,36 @@ export function translationSenseEvidence(s:Pick<V2Source,'english'|'pos'>,raw:un
  return typeof e.gloss_en==='string'&&standardMeanings(s).includes(e.gloss_en)&&Array.isArray(e.pos)&&e.pos.some(p=>typeof p==='string'&&s.pos.includes(p))&&!restricted.test(JSON.stringify([e.tags??[],e.register??'',e.dialect??'']));
 }
 export function provenMeaning(s:V2Source){return !!s.vietnamese&&s.translationSenseProven===true&&!restrictedMeaning(s.vietnamese.text)&&standardMeanings(s).length>0;}
-type Index={words:Map<string,string[]>;adverbs:Set<string>;verbStems:string[]};
+type Index={words:Map<string,string[]>;adverbs:Set<string>;verbStems:string[];politeStems:Set<string>};
 const indexes=new WeakMap<V2Context,Index>(),boundariesCache=new WeakMap<V2Context,Map<string,Set<number>>>();
 function index(c:V2Context){
  let value=indexes.get(c);if(value)return value;
- const vocabulary=(c.boundaryWords??c.dictionary).filter(s=>s.kind==='vocab'),words=new Map<string,string[]>(),adverbs=new Set(['また','いっしょに','一緒に']),verbStems:string[]=[];
+ const vocabulary=(c.boundaryWords??c.dictionary).filter(s=>s.kind==='vocab'),words=new Map<string,string[]>(),adverbs=new Set(['また','いっしょに','一緒に']),verbStems:string[]=[],politeStems=new Set<string>();
+ const godanEndings=new Map([['う','いえ'],['く','きけ'],['ぐ','ぎげ'],['す','しせ'],['つ','ちて'],['ぬ','にね'],['ぶ','びべ'],['む','みめ'],['る','りれ']]);
  // These surfaces prove segmentation only. They never license a target, character or word.
  for(const word of roadmapLexicon(vocabulary))if(word.length>=2){const rows=words.get(word[0])??[];rows.push(word);words.set(word[0],rows);}
  for(const s of vocabulary)for(const word of [s.title,s.reading??''].filter(Boolean)){
   if(s.pos.some(p=>p.startsWith('adv')))adverbs.add(word);
-  if(s.pos.some(p=>p.startsWith('v1'))&&word.endsWith('る')&&word.length>=3)verbStems.push(word.slice(0,-1));
+  if(s.pos.some(p=>p.startsWith('v1'))&&word.endsWith('る')&&word.length>=3){
+   verbStems.push(word.slice(0,-1));
+   politeStems.add(word.slice(0,-1));
+  }
+  if(s.pos.some(p=>p.startsWith('v5')))for(const ending of godanEndings.get(word.at(-1)!)??'')politeStems.add(word.slice(0,-1)+ending);
  }
- value={words,adverbs,verbStems};indexes.set(c,value);return value;
+ value={words,adverbs,verbStems,politeStems};indexes.set(c,value);return value;
+}
+export function grammarWordBoundary(text:string,start:number,end:number,edges:Set<number>,c:V2Context){
+ if(!edges.has(start)||!edges.has(end))return false;
+ const {words,politeStems}=index(c);
+ for(let left=start-1;left>=0&&/[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}ー]/u.test(text[left]);left--){
+  if(!edges.has(left))continue;
+  if((words.get(text[left])??[]).some(word=>left+word.length>end&&edges.has(left+word.length)&&text.startsWith(word,left)))return false;
+  // ICU can split an inflected stem as if its tail were a particle (いただけ + ます).
+  for(let right=end;right<text.length&&edges.has(right);right++){
+   if(/^(?:ます|ました|ません|ましょう)/u.test(text.slice(right))&&politeStems.has(text.slice(left,right)))return false;
+  }
+ }
+ return true;
 }
 export function orderBoundaries(text:string,c:V2Context,example?:Example){
  let cache=boundariesCache.get(c);if(!cache){cache=new Map();boundariesCache.set(c,cache);}const key=text+'\0'+(example?.notation??'');const saved=cache.get(key);if(saved)return saved;

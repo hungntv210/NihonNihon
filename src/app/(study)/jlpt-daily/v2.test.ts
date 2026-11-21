@@ -174,15 +174,21 @@ test('grammar can reuse a learned target with another sentence inside 30 days; d
  const c=context(),old=candidates(c).questions.find(q=>q.type==='grammar')!;
  const changed={...c,examples:[{...c.examples[0],id:'second-sentence',text:'毎日私は学校で日本語を勉強しています。'}]};
  const q=candidates(changed).questions.find(q=>q.type==='grammar'&&q.targetId===old.targetId)!;assert.ok(q);
- assert.doesNotThrow(()=>validateV2(q,changed,[old]));
+ assert.throws(()=>validateV2(q,changed,[old]),/DAILY_GRAMMAR_TARGET_REPEATED/);
+ const sameTargetOrder={...old,type:'order' as const};
+ assert.throws(()=>validateV2(q,changed,[sameTargetOrder]),/DAILY_GRAMMAR_TARGET_REPEATED/);
+ const previousDay={...old,date:plusDays(old.date,-1)};
+ assert.doesNotThrow(()=>validateV2(q,changed,[previousDay]));
+ const repeated=await runDeterministic(Array.from({length:7},(_,n)=>({...changed,date:plusDays(c.date,n)})),[old],{noVerifier:true});
+ assert.ok(!repeated.questions.some(row=>row.date===old.date&&row.targetId===old.targetId&&(row.type==='grammar'||row.type==='order')));
  assert.throws(()=>validateV2({...old,date:plusDays(old.date,30)},{...c,date:plusDays(old.date,30)},[old]),/DUPLICATE/);
  assert.doesNotThrow(()=>validateV2({...old,date:plusDays(old.date,31)},{...c,date:plusDays(old.date,31)},[old]));
  const reading=candidates(c).questions.find(q=>q.type==='reading')!;
  assert.ok(draftCollisionIssues({...reading,stem:reading.stem+'。'},[reading],c.catalog).includes('REPEATED_TARGET_WORD'));
- const run=await runDeterministic(Array.from({length:7},(_,n)=>({...changed,date:plusDays(c.date,n)})),[old],{noVerifier:true});
+ const run=await runDeterministic(Array.from({length:7},(_,n)=>({...changed,date:plusDays(c.date,n)})),[previousDay],{noVerifier:true});
  assert.ok(run.questions.some(q=>q.targetId===old.targetId&&(q.type==='grammar'||q.type==='order')));
  const ten=Array.from({length:10},(_,n)=>({...reading,type:n===0?'grammar' as const:n===1?'spelling' as const:'reading' as const}));
- assert.equal(dailyMix(ten),true);assert.equal(dailyMix(ten.slice(1)),false);assert.equal(dailyMix(ten.map(q=>({...q,type:'reading'}))),false);
+ assert.equal(dailyMix(ten),true);assert.equal(dailyMix(ten.map((row,i)=>i===2?{...row,type:'order'}:row)),false);assert.equal(dailyMix(ten.slice(1)),false);assert.equal(dailyMix(ten.map(q=>({...q,type:'reading'}))),false);
  assert.ok(!run.days.every(day=>day.mix));assert.equal(run.status,'unverified_fixture');
 });
 
@@ -281,4 +287,36 @@ test('the isolated wire schema requires contextFits only in batches containing c
   assert.equal(calls,2);
   assert.ok(audits.every(a=>a.accepted));
  }
+});
+
+test('grammar cloze rejects a verb tail and keeps the limiting particle',()=>{
+ const c=context();
+ const target=c.catalog.find(s=>s.title==='だけ')!;
+ c.catalog.push(source('いただく','いただく','vocab',['v5k']),source('いただけます','いただけます','vocab',['v1']),source('よみます','よみます','vocab',['v5m']));
+ c.boundaryWords=c.catalog.filter(s=>s.title!=='いただけます');
+ const valid={...c.examples[0],targetId:target.id,text:'本だけをよみます。'};
+ const invalid={...valid,id:'authored-verb-tail',text:'本をいただけます。'};
+ c.examples=[valid,invalid];
+ const questions=candidates(c).questions.filter(q=>q.type==='grammar'&&q.targetId===target.id);
+ assert.deepEqual(questions.map(q=>q.example?.id),[valid.id]);
+ const correct=questions[0];
+ assert.doesNotThrow(()=>validateV2(correct,c));
+ const stem='本をいた＿ます。';
+ const forged={...correct,example:invalid,stem,sentence:invalid.text,fingerprint:fingerprint(stem),explanation:correct.explanation.replace(valid.text,invalid.text)};
+ assert.throws(()=>validateV2(forged,c),/GRAMMAR_BLANK_INSIDE_WORD/);
+});
+
+test('resuming a draft queues a repeated daily grammar target for replacement',async()=>{
+ const c=context(),first=candidates(c).questions.find(q=>q.type==='grammar')!;
+ c.examples.push({...c.examples[0],id:'another-authored-sentence',text:'毎日私は学校で日本語を勉強しています。'});
+ const second=candidates(c).questions.find(q=>q.type==='grammar'&&q.targetId===first.targetId&&q.id!==first.id)!;
+ assert.ok(second);
+ const contexts=Array.from({length:7},(_,n)=>({...c,date:plusDays(c.date,n)}));
+ const seed=await runDeterministic(contexts,[],{provider:async()=>{throw Error('DAILY_BUDGET_REACHED');}});
+ seed.questions=[first,{...second,position:1}];
+ seed.statistics.accepted.grammar=2;
+ const run=await runDeterministic(contexts,[],{seed,noVerifier:true});
+ assert.deepEqual(run.rejected.find(q=>q.id===second.id),{id:second.id,date:second.date,type:'grammar',reason:'DAILY_GRAMMAR_TARGET_REPEATED'});
+ assert.deepEqual(run.questions.filter(q=>q.date===c.date&&q.targetId===first.targetId).map(q=>q.id),[first.id]);
+ assert.ok(run.questions.some(q=>q.date===c.date&&q.position===1&&q.id!==second.id));
 });
