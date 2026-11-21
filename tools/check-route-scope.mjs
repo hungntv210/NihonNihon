@@ -60,6 +60,8 @@ ownership.set('shared-chunk-dedup', ['next.config.ts', 'tools/check-route-scope.
 ownership.set('naetoru/shared-chunk-dedup', ownership.get('shared-chunk-dedup'));
 ownership.set('kanji-lesson', ['src/app/(study)/vocab/lesson/kanji/', 'src/app/(study)/vocab/lesson/page.tsx', 'tests/kanji-lesson.test.ts', 'docs/features/g1-kanji.md', 'tools/check-route-scope.mjs']);
 ownership.set('naetoru/kanji-lesson', ownership.get('kanji-lesson'));
+ownership.set('search-fts5', ['src/app/(study)/common-tools/repository.ts', 'src/app/(study)/common-tools/fts5.ts', 'tests/search-fts5.test.ts', 'tools/check-route-scope.mjs']);
+ownership.set('naetoru/search-fts5', ownership.get('search-fts5'));
 ownership.set('ui-motion', ['src/components/motion/', 'src/components/route-presentation.tsx', 'src/components/nav.tsx', 'src/components/add-to-review.tsx', 'src/components/route-heading.tsx', 'src/components/pixel-scenes/', 'src/app/layout.tsx', 'src/app/(study)/srs/page.tsx', 'src/app/(study)/srs/review-session.tsx', 'src/app/(study)/jlpt-daily/practice.tsx', 'src/app/(study)/shadowing/player.tsx', 'src/app/(study)/shadowing/voice-meter.tsx', 'src/app/(study)/common-tools/progress/page.tsx', 'src/app/(study)/today-roadmap/today.tsx', 'src/app/(study)/appearance/', 'tests/pixel-scenes.test.ts', 'tests/ui-motion.test.ts', 'tools/check-route-scope.mjs']);
 ownership.set('foundation', ['src/app/(study)/settings/', 'public/fonts/']);
 ownership.set('ui-phase1', ['src/app/(study)/settings/', 'public/fonts/', 'src/components/town/', 'src/app/(study)/appearance/', 'src/app/(study)/today-roadmap/page.tsx', 'src/app/(study)/today-roadmap/today.module.css', 'src/core/day-period.ts', 'src/components/time-provider.tsx', 'tools/ui-test-clock.mjs', 'tests/day-period.test.ts']);
