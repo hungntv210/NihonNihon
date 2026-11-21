@@ -885,3 +885,11 @@ Checked implementation `d82ee8fde3e87820bdd996d77bc6386a5610ea90` on branch `nae
 - `npm run check`: PASS — typecheck PASS; 22/22 prototype + 227/227 core/route tests PASS (249/249 total, 0 failures/skips); production build PASS; `test:app` 16/16 checks PASS.
 - Mobile perf on `/srs` (390x844 DPR 3, 4x CPU, Fast 4G, cache disabled, 3 runs median, single before/after pass): `wanakana` in initial JS `true -> false`; initial JS raw `583,383 -> 574,380 B` (`-9,003 B`, `-1.54%`), gzip `183,906 -> 180,127 B` (`-3,779 B`, `-2.05%`); TTI `1392.2 -> 1314.7 ms` (`-5.6%`); TBT `220.0 -> 204.0 ms` (`-7.3%`); LCP `576.0 -> 568.0 ms` (`-1.4%`); CLS `0 -> 0`; requests `24 -> 24`.
 - Route scope guard `node tools/check-route-scope.mjs origin/master naetoru/srs-lazy-wanakana`: PASS. Only this append-only audit entry follows the checked implementation commit.
+
+
+## Pokabu JLPT grammar blank boundaries and daily targets
+
+Checked implementation `772086375aeef6bd2eb23261407299549359eb55` on base `e4789df4a00bff0653ad89eed323cba94fa42c25` with Windows, Node v24.10.0, a disposable OpenJLPT fixture, and local Chromium. The check ran from `2026-11-21T11:46:24.0993363+07:00` through `2026-11-21T11:48:41.4886011+07:00`.
+- `npm run check` passed typecheck, 22/22 prototype tests, 233/233 core and route tests, production build, and 16/16 app checks.
+- Authored regressions cover a blank inside an inflected verb, a valid limiting particle, grammar/order target reuse across dates versus within one date, and replacing a repeated target on resume.
+- The gate fingerprint prevents old checkpoints from bypassing the new rules. Route scope passed before push.
