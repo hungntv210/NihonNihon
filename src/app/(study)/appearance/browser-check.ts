@@ -10,6 +10,7 @@ import {chromium,type Page} from 'playwright';
 import {hashPassword} from '../../../core/session.ts';
 import {fixtureCatalog,fixtureBank} from '../jlpt-daily/fixture.ts';
 import {publishBank} from '../jlpt-daily/repository.ts';
+import {scheduler,VERSION} from '../srs/model.ts';
 
 const artifacts=path.resolve('data/private/wasoku-phase3');fs.mkdirSync(artifacts,{recursive:true});
 const base=path.resolve('.tmp');fs.mkdirSync(base,{recursive:true});
@@ -40,13 +41,21 @@ async function appearance(page:Page,label:string){
  assert.deepEqual(violations,[],label+' contrast');
 }
 try{
+ const srsEngine=await scheduler();
+ const seededAt=new Date('2026-11-10T00:00:00.000Z');
  for(const [period,iso]of [['morning','2026-11-15T00:30:00Z'],['day','2026-11-15T06:30:00Z'],['sunset','2026-11-15T10:45:00Z'],['night','2026-11-15T13:30:00Z']]){
   const folder=path.join(fixture,period);fs.mkdirSync(folder);const db=path.join(folder,'demo.sqlite'),catalog=fixtureCatalog(db),store=path.join(folder,'jlpt');
   publishBank(await fixtureBank(catalog,'2026-11-09'),store);
   // Existing synthetic plumbing fixtures only; no production data or AI requests.
   fs.writeFileSync(path.join(folder,'today.json'),JSON.stringify({version:1,shadow:[{date:'2026-11-15',kind:'makeup',minutes:25,clips:['fixture-1','fixture-2'],method:'manual'}],activity:[],activeTask:null,shortDays:[]}));
   const connection=new DatabaseSync(db);
-  connection.exec("UPDATE srs_cards SET due_at='2026-11-14T00:00:00.000Z',updated_at='2026-11-14T00:00:00.000Z'");
+  // Seed due review cards (already reviewed once) so the 15-card quick review loop runs under the default 10-new-card daily limit.
+  const updateCard=connection.prepare('UPDATE srs_cards SET state_json=?,scheduler_version=?,due_at=?,updated_at=? WHERE card_id=?');
+  for(const row of connection.prepare('SELECT card_id FROM srs_cards').all()){
+   const cardId=String(row.card_id);
+   const reviewed=srsEngine.review({card:srsEngine.newCard({cardId,now:seededAt}),grade:3,now:seededAt}).card;
+   updateCard.run(JSON.stringify({...reviewed,dueAt:'2026-11-14T00:00:00.000Z'}),VERSION,'2026-11-14T00:00:00.000Z','2026-11-14T00:00:00.000Z',cardId);
+  }
   const word=String(connection.prepare('SELECT item_id FROM vocab ORDER BY item_id LIMIT 1').get()!.item_id),kanji=String(connection.prepare('SELECT character FROM kanji ORDER BY character LIMIT 1').get()!.character),grammar=String(connection.prepare('SELECT item_id FROM grammar ORDER BY item_id LIMIT 1').get()!.item_id);connection.close();
   const port=await new Promise<number>(resolve=>{const s=createServer();s.listen(0,'127.0.0.1',()=>{const n=(s.address() as {port:number}).port;s.close(()=>resolve(n))})});
   const origin=`http://127.0.0.1:${port}`,password=randomBytes(24).toString('hex');

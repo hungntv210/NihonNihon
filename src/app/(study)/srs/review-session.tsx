@@ -5,7 +5,7 @@ import {MotionProgress} from '../../../components/motion/data-motion.tsx';
 import Link from 'next/link';
 import { JaText, ViText } from '../../../components/text.tsx';
 import { SourceLabel } from '../../../components/source-label.tsx';
-import { normalizeRetention, scheduler, previews, intervalLabel, type Engine, type StudySession } from './model.ts';
+import { isCompatibleSessionCache, normalizeRetention, scheduler, previews, intervalLabel, type Engine, type StudySession } from './model.ts';
 import { queueReview, pendingReviews, acknowledge } from './outbox.ts';
 import { syncReviews } from './sync.ts';
 import type { ReviewEvent } from './model.ts';
@@ -66,7 +66,7 @@ export function ReviewSession({ initial }: { initial: StudySession }) {
   const cacheKey='nihon:srs:session:'+initial.mode;
   const retention = normalizeRetention(session.desiredRetention);
   useEffect(()=>{let alive=true;const initialRetention=normalizeRetention(initial.desiredRetention);offset.current=Date.parse(initial.serverNow)-Date.now();setGestures(false);void scheduler(initialRetention).then(s=>{if(alive)setEngine(s);}).catch(()=>setMessage('Chưa khởi tạo được lịch ôn. Hãy tải lại khi có mạng.'));
-    void pendingReviews().then(events=>{if(!alive)return;setPendingCount(events.length);try{const saved=JSON.parse(localStorage.getItem(cacheKey)||'null');if(saved?.version===1&&saved.session?.mode===initial.mode&&normalizeRetention(saved.session?.desiredRetention)===initialRetention&&(saved.session?.newCardsPerDay??null)===(initial.newCardsPerDay??null)&&Array.isArray(saved.session.cards)&&Array.isArray(saved.seen)&&saved.seen.length<saved.session.cards.length){setSession(saved.session);setSeen([...new Set([...saved.seen,...events.map(e=>e.cardId)])] as string[]);}else{setSession(initial);const next=events.map(e=>e.cardId);setSeen(prev=>next.length===0&&prev.length===0?prev:next);}}catch{setSession(initial);setMessage('Không khôi phục được phiên cũ; các lượt đã chấm vẫn được giữ trong hàng đồng bộ.');}setReady(true);}).catch(()=>setMessage('Trình duyệt chưa cho phép lưu lượt ôn trên thiết bị.'));
+    void pendingReviews().then(events=>{if(!alive)return;setPendingCount(events.length);try{const saved=JSON.parse(localStorage.getItem(cacheKey)||'null');if(isCompatibleSessionCache(saved,initial)){setSession(saved.session);setSeen([...new Set([...saved.seen,...events.map(e=>e.cardId)])] as string[]);}else{setSession(initial);const next=events.map(e=>e.cardId);setSeen(prev=>next.length===0&&prev.length===0?prev:next);}}catch{setSession(initial);setMessage('Không khôi phục được phiên cũ; các lượt đã chấm vẫn được giữ trong hàng đồng bộ.');}setReady(true);}).catch(()=>setMessage('Trình duyệt chưa cho phép lưu lượt ôn trên thiết bị.'));
     const connection=()=>setOnline(navigator.onLine);connection();window.addEventListener('online',connection);window.addEventListener('offline',connection);
     const voices=()=>setVoice(window.speechSynthesis?.getVoices().find(v=>v.lang.startsWith('ja')&&v.localService));voices();window.speechSynthesis?.addEventListener('voiceschanged',voices);
     return()=>{alive=false;window.removeEventListener('online',connection);window.removeEventListener('offline',connection);window.speechSynthesis?.removeEventListener('voiceschanged',voices);window.speechSynthesis?.cancel();};

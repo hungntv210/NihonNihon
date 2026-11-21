@@ -1,6 +1,6 @@
 import { DefaultScheduler, type Grade } from 'ts-fsrs';
 import type { Translation } from '../../../core/content.ts';
-import { DEFAULT_PREFERENCES, normalizeFsrsRetention } from '../../../core/preferences.ts';
+import { DEFAULT_PREFERENCES, normalizeFsrsRetention, normalizeNewCardsPerDay } from '../../../core/preferences.ts';
 export const DEFAULT_RETENTION = DEFAULT_PREFERENCES.fsrsRetention;
 export const normalizeRetention = (value?: unknown) => normalizeFsrsRetention(value);
 export function schedulerVersion(retention: unknown = DEFAULT_RETENTION): string {
@@ -40,6 +40,20 @@ export type StudySession = {
   newCardsPerDay?: number;
   newCardsRemaining?: number;
 };
+export function isCompatibleSessionCache(
+  saved: { version?: unknown; session?: Partial<StudySession>; seen?: unknown } | null,
+  initial: Pick<StudySession, 'mode' | 'desiredRetention' | 'newCardsPerDay'>,
+): saved is { version: 1; session: StudySession; seen: string[] } {
+  return Boolean(
+    saved?.version === 1
+    && saved.session?.mode === initial.mode
+    && normalizeRetention(saved.session?.desiredRetention) === normalizeRetention(initial.desiredRetention)
+    && normalizeNewCardsPerDay(saved.session?.newCardsPerDay) === normalizeNewCardsPerDay(initial.newCardsPerDay)
+    && Array.isArray(saved.session.cards)
+    && Array.isArray(saved.seen)
+    && saved.seen.length < saved.session.cards.length,
+  );
+}
 export function hydrate(row: StoredCard, engine: Engine): Memory {
   const raw = JSON.parse(row.stateJson);
   if (row.schedulerVersion === 'pending:g1/srs') {

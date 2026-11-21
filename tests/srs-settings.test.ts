@@ -6,7 +6,7 @@ import { randomUUID } from 'node:crypto';
 import { fixture } from './helpers.ts';
 import { enqueueCard } from '../src/core/review.ts';
 import { DEFAULT_PREFERENCES, parseStoredPreferences, validatePreferences } from '../src/core/preferences.ts';
-import { hydrate, previews, scheduler, schedulerVersion, VERSION } from '../src/app/(study)/srs/model.ts';
+import { hydrate, isCompatibleSessionCache, previews, scheduler, schedulerVersion, VERSION, type StudyCard, type StudySession } from '../src/app/(study)/srs/model.ts';
 import { recordReview, session } from '../src/app/(study)/srs/repository.ts';
 
 const created = new Date('2026-11-20T01:00:00Z');
@@ -92,6 +92,121 @@ test('SRS session enforces newCardsPerDay daily quota, prioritizes due reviews, 
   const nextDay = session(db, engine, 'full', day2, { newCardsPerDay: 3, desiredRetention: 0.9, timeZone: 'Asia/Ho_Chi_Minh' });
   assert.equal(nextDay.newCardsRemaining, 3);
   assert.equal(nextDay.due, 5); // 2 due learning cards + 3 remaining new cards
+});
+
+test('quick SRS session delivers all 15 cards when due reviews plus remaining new quota >= 15', async t => {
+  const { db, file } = fixture(t);
+  const release = String(db.prepare("SELECT release_id FROM source_releases WHERE source_id='openjlpt' LIMIT 1").get()!.release_id);
+  for (let i = 0; i < 6; i++) {
+    const id = `openjlpt:vocab:quick-regression-${i}`;
+    db.prepare('INSERT INTO content_items(item_id,kind,source_id,source_key,release_id,source_hash) VALUES(?,?,?,?,?,?)')
+      .run(id, 'vocab', 'openjlpt', `quick-regression-${i}`, release, String(i).padStart(64, 'a'));
+    db.prepare('INSERT INTO vocab(item_id,word,reading,romaji,level,meanings_en,pos) VALUES(?,?,?,?,?,?,?)')
+      .run(id, `言葉${i}`, `ことば${i}`, `kotoba${i}`, 'N5', '["word"]', '["n"]');
+  }
+  const items = db
+    .prepare("SELECT item_id FROM content_items WHERE kind IN ('vocab','kanji') ORDER BY item_id LIMIT 16")
+    .all();
+  assert.equal(items.length, 16);
+
+  const engine = await scheduler(0.9);
+  const seededAt = new Date('2026-11-10T00:00:00Z');
+  const dueAt = '2026-11-14T00:00:00.000Z';
+  const cardIds = items.map(row => enqueueCard(file, String(row.item_id), 'recognition', new Date(dueAt)).cardId);
+
+  // All 16 cards are untouched new cards -> default newCardsPerDay=10 caps quick session at 10.
+  const newOnly = session(db, engine, 'quick', day1, { newCardsPerDay: DEFAULT_PREFERENCES.newCardsPerDay, desiredRetention: 0.9, timeZone: 'Asia/Ho_Chi_Minh' });
+  assert.equal(newOnly.cards.length, 10);
+  assert.equal(newOnly.due, 10);
+
+  // Convert the first 10 cards into due review cards -> 10 due reviews + 6 new (within quota 10) = 16 eligible, quick returns full 15 with all 10 reviews first.
+  const updateCard = db.prepare('UPDATE srs_cards SET state_json=?,scheduler_version=?,due_at=?,updated_at=? WHERE card_id=?');
+  for (const cardId of cardIds.slice(0, 10)) {
+    const reviewed = engine.review({ card: engine.newCard({ cardId, now: seededAt }), grade: 3, now: seededAt }).card;
+    updateCard.run(JSON.stringify({ ...reviewed, dueAt }), VERSION, dueAt, dueAt, cardId);
+  }
+  const mixed = session(db, engine, 'quick', day1, { newCardsPerDay: DEFAULT_PREFERENCES.newCardsPerDay, desiredRetention: 0.9, timeZone: 'Asia/Ho_Chi_Minh' });
+  assert.equal(mixed.due, 16);
+  assert.equal(mixed.cards.length, 15);
+  assert.deepEqual(mixed.cards.slice(0, 10).map(c => c.cardId).sort(), cardIds.slice(0, 10).sort());
+  assert.deepEqual(mixed.cards.slice(10).map(c => c.cardId), cardIds.slice(10).sort().slice(0, 5));
+
+  // Convert all 16 cards into due review cards -> even with newCardsPerDay=0, quick returns full 15.
+  for (const cardId of cardIds.slice(10)) {
+    const reviewed = engine.review({ card: engine.newCard({ cardId, now: seededAt }), grade: 3, now: seededAt }).card;
+    updateCard.run(JSON.stringify({ ...reviewed, dueAt }), VERSION, dueAt, dueAt, cardId);
+  }
+  const reviewsOnly = session(db, engine, 'quick', day1, { newCardsPerDay: 0, desiredRetention: 0.9, timeZone: 'Asia/Ho_Chi_Minh' });
+  assert.equal(reviewsOnly.due, 16);
+  assert.equal(reviewsOnly.cards.length, 15);
+});
+
+test('isCompatibleSessionCache preserves legacy/default and unchanged-setting caches and invalidates on setting change', () => {
+  const card = { cardId: 'c1' } as StudyCard;
+  const legacySession: StudySession = {
+    cards: [card, { cardId: 'c2' } as StudyCard],
+    due: 2,
+    unsupported: 0,
+    serverNow: '2026-11-16T13:00:00.000Z',
+    mode: 'full',
+    forecast: [],
+  };
+
+  // Legacy/unoptioned cache (desiredRetention & newCardsPerDay omitted) stays compatible with default preferences.
+  assert.equal(
+    isCompatibleSessionCache(
+      { version: 1, session: legacySession, seen: [] },
+      { mode: 'full', desiredRetention: DEFAULT_PREFERENCES.fsrsRetention, newCardsPerDay: DEFAULT_PREFERENCES.newCardsPerDay },
+    ),
+    true,
+  );
+
+  // Changing newCardsPerDay or desiredRetention away from defaults invalidates the legacy cache.
+  assert.equal(
+    isCompatibleSessionCache(
+      { version: 1, session: legacySession, seen: [] },
+      { mode: 'full', desiredRetention: DEFAULT_PREFERENCES.fsrsRetention, newCardsPerDay: 25 },
+    ),
+    false,
+  );
+  assert.equal(
+    isCompatibleSessionCache(
+      { version: 1, session: legacySession, seen: [] },
+      { mode: 'full', desiredRetention: 0.85, newCardsPerDay: DEFAULT_PREFERENCES.newCardsPerDay },
+    ),
+    false,
+  );
+
+  // Explicit non-default settings are preserved when unchanged and invalidated when changed back to default or another value.
+  const customSession: StudySession = { ...legacySession, desiredRetention: 0.85, newCardsPerDay: 25 };
+  assert.equal(
+    isCompatibleSessionCache(
+      { version: 1, session: customSession, seen: ['c1'] },
+      { mode: 'full', desiredRetention: 0.85, newCardsPerDay: 25 },
+    ),
+    true,
+  );
+  assert.equal(
+    isCompatibleSessionCache(
+      { version: 1, session: customSession, seen: ['c1'] },
+      { mode: 'full', desiredRetention: 0.85, newCardsPerDay: DEFAULT_PREFERENCES.newCardsPerDay },
+    ),
+    false,
+  );
+  assert.equal(
+    isCompatibleSessionCache(
+      { version: 1, session: customSession, seen: ['c1', 'c2'] },
+      { mode: 'full', desiredRetention: 0.85, newCardsPerDay: 25 },
+    ),
+    false,
+  );
+  assert.equal(
+    isCompatibleSessionCache(
+      { version: 1, session: customSession, seen: [] },
+      { mode: 'quick', desiredRetention: 0.85, newCardsPerDay: 25 },
+    ),
+    false,
+  );
 });
 
 test('FSRS uses saved desiredRetention for intervals, previews, and stays compatible with existing r90 cards', async t => {
