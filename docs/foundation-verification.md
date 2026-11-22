@@ -1095,9 +1095,28 @@ Checked implementation 72d83f87c3f570e0ca2b160755a6f8fca6344c34 on branch `naeto
 - `.next/static/chunks/**/*.js` gzip total: `449,987 B` (`93` chunks; `23,507 B` under `473,494 B` ceiling). Zero `.next/static/chunks/**/*.js` files contain `node:sqlite`, `better-sqlite`, or `kuromoji`.
 - `node tools/check-route-scope.mjs origin/master naetoru/report-vi-line`: PASS (18 files including this append-only audit entry; `tools/check-route-scope.mjs` diff `+1/-0`). Only this append-only audit entry follows `72d83f8`.
 
+## Naetoru server lookup latency benchmark on G0 DB copy (g1-common-tools item 37) -- 2026-11-22
+
+Checked implementation 2524bfd39a207ea3604d1acd10437209f97c6a8c on branch `naetoru/lookup-latency` (originally based on `6c1de5d48ed6e0aada87260429255d54cc086f9a`, synced with `origin/master` `a1458562cf7d88e3392d6d9e69cf87b969421f86` including PR #100) on Windows x64 with Node v24.10.0, Intel Core i7-11800H 2.30GHz (16 cores), 15.7 GB RAM, clean `.next` build, and an isolated read-only copy of the G0-scale SQLite DB (`4,741` vocab, `1,038` kanji, `403` grammar, `9,248` sentences; `6,182` FTS5 trigram indexed items, cold index build `607.91 ms`, `selectedVi = 1`).
+- Benchmark (`tools/lookup-latency-benchmark.ts` via `NIHON_DB_PATH`, 30 fixed generic queries across kana/kanji/romaji/Vietnamese/no-result x 5 runs, drop 1st warm-up = 120 measured samples per path, zero private data or hardcoded paths, temp DB copy removed after run):
+  - `searchAllKinds (4 groups)`: p50 `3.62 ms`, p95 `7.63 ms`, max `8.57 ms` (mean `4.19 ms`)
+  - `lookupWord (direct)`: p50 `2.28 ms`, p95 `5.81 ms`, max `6.87 ms` (mean `2.86 ms`)
+  - `GET /api/common-tools/lookup (handler)`: p50 `3.53 ms`, p95 `9.13 ms`, max `14.68 ms` (mean `4.74 ms`)
+- Result: all server lookup paths stay far below `< 200 ms` (all p95 `< 10 ms`); ticked `docs/features/g1-common-tools.md:37` with methodology and numbers (no search/lookup code edited).
+- `npm run check` (clean `.next`, `2026-11-22`, synced with `origin/master` `a145856`): PASS -- typecheck PASS; prototype 22/22 and core/route 314/314 PASS (336 total, 0 failures/skips); clean `next build --webpack` PASS; `test:app` 16/16 checks PASS.
+- `node tools/check-route-scope.mjs origin/master naetoru/lookup-latency`: PASS (4 files including this append-only audit entry; `tools/check-route-scope.mjs` diff `+1/-0`).
+
+## JLPT ambiguous distractor filtering — 2026-11-22
+
+Checked implementation `40f81a1509db566b1ccc49d139c8942cc259576f` from `6c1de5d` on Windows, Node v24.10.0, npm 11.6.1, clean Next.js build and disposable test fixtures.
+- Grammar choice construction and validation reject the endpoint particle as a distractor for a destination particle when Kuromoji identifies a supported motion predicate.
+- Context choice construction and validation reject another time noun for a source-attested time noun answer. Two authored regression fixtures cover the reported ambiguity classes.
+- `npm run check` (2026-11-22 10:30:28 to 10:32:22 ICT): PASS. Typecheck PASS; 22/22 prototype and 310/310 core/route tests PASS; build PASS; app gate 16/16 PASS.
+- Route scope PASS. Only this verification entry follows the tested implementation.
+
 ## Naetoru shadowing clip metadata cards (g1-shadowing item 22) -- 2026-11-22
 
-Checked implementation 61b8cc3fd473097d05f332b6138e7770d1868aad on branch `naetoru/clip-meta` (base `a1458562cf7d88e3392d6d9e69cf87b969421f86`) on Windows x64 with Node v24.10.0, clean `.next` build, disposable OpenJLPT fixture, and local headless Chrome.
+Checked implementation 61b8cc3fd473097d05f332b6138e7770d1868aad on branch `naetoru/clip-meta` (base `a1458562cf7d88e3392d6d9e69cf87b969421f86`, synced with `origin/master` `6df785bfce69f3fbeea0295001ef8ed31b9f6c3f`) on Windows x64 with Node v24.10.0, clean `.next` build, disposable OpenJLPT fixture, and local headless Chrome.
 - Feature: added pure metadata calculator `src/app/(study)/shadowing/clip-meta.ts` and server loader `src/app/(study)/shadowing/clip-meta-server.ts`; wired `buildClipMetaMap` in `src/app/(study)/shadowing/page.tsx` and rendered all 7 fields on every clip card in `src/app/(study)/shadowing/library.tsx` + `src/app/(study)/shadowing/shadowing.module.css` (title, source, level, topic, sentence count = subtitle segment count, speech rate = NFC spoken characters excluding punctuation/whitespace divided by total active segment duration in `ký tự/s` rounded to 1 decimal, and `% từ đã biết` = percentage of unique clickable clip words matching active user SRS cards / vocab notebook entries, rendering `—` without error when 0 cards); ticked `docs/features/g1-shadowing.md:22` with evidence.
 - `npm run check` (clean `.next`, `2026-11-22`): PASS -- typecheck PASS; prototype 22/22 and core/route 318/318 PASS (340 total, 0 failures/skips, including 4 new tests in `tests/clip-meta.test.ts`); clean `next build --webpack` PASS; `test:app` 16/16 checks PASS.
 - Shadowing Playwright route browser check (`npx tsx src/app/(study)/shadowing/browser-check.ts`): PASS 29/29 (desktop 1440x1080 and mobile 390x844, `scrollWidth <= innerWidth` 0 horizontal overflow, 0 browser errors, `noExternalRequests: true`).

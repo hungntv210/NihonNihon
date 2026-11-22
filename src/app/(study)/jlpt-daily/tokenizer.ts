@@ -1,7 +1,7 @@
 import {createRequire} from 'node:module';
 import {dirname,join} from 'node:path';
 
-type IpadicToken={surface_form:string;word_type:'KNOWN'|'UNKNOWN';pos:string;pos_detail_1:string};
+type IpadicToken={surface_form:string;word_type:'KNOWN'|'UNKNOWN';pos:string;pos_detail_1:string;basic_form:string};
 type Tokenizer={tokenize(text:string):IpadicToken[]};
 type Kuromoji={builder(options:{dicPath:string}):{build(callback:(error:Error|null,tokenizer:Tokenizer)=>void):void}};
 export type GrammarToken=IpadicToken&{start:number;end:number};
