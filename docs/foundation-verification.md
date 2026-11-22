@@ -1095,6 +1095,17 @@ Checked implementation 72d83f87c3f570e0ca2b160755a6f8fca6344c34 on branch `naeto
 - `.next/static/chunks/**/*.js` gzip total: `449,987 B` (`93` chunks; `23,507 B` under `473,494 B` ceiling). Zero `.next/static/chunks/**/*.js` files contain `node:sqlite`, `better-sqlite`, or `kuromoji`.
 - `node tools/check-route-scope.mjs origin/master naetoru/report-vi-line`: PASS (18 files including this append-only audit entry; `tools/check-route-scope.mjs` diff `+1/-0`). Only this append-only audit entry follows `72d83f8`.
 
+## Naetoru server lookup latency benchmark on G0 DB copy (g1-common-tools item 37) -- 2026-11-22
+
+Checked implementation 2524bfd39a207ea3604d1acd10437209f97c6a8c on branch `naetoru/lookup-latency` (originally based on `6c1de5d48ed6e0aada87260429255d54cc086f9a`, synced with `origin/master` `a1458562cf7d88e3392d6d9e69cf87b969421f86` including PR #100) on Windows x64 with Node v24.10.0, Intel Core i7-11800H 2.30GHz (16 cores), 15.7 GB RAM, clean `.next` build, and an isolated read-only copy of the G0-scale SQLite DB (`4,741` vocab, `1,038` kanji, `403` grammar, `9,248` sentences; `6,182` FTS5 trigram indexed items, cold index build `607.91 ms`, `selectedVi = 1`).
+- Benchmark (`tools/lookup-latency-benchmark.ts` via `NIHON_DB_PATH`, 30 fixed generic queries across kana/kanji/romaji/Vietnamese/no-result x 5 runs, drop 1st warm-up = 120 measured samples per path, zero private data or hardcoded paths, temp DB copy removed after run):
+  - `searchAllKinds (4 groups)`: p50 `3.62 ms`, p95 `7.63 ms`, max `8.57 ms` (mean `4.19 ms`)
+  - `lookupWord (direct)`: p50 `2.28 ms`, p95 `5.81 ms`, max `6.87 ms` (mean `2.86 ms`)
+  - `GET /api/common-tools/lookup (handler)`: p50 `3.53 ms`, p95 `9.13 ms`, max `14.68 ms` (mean `4.74 ms`)
+- Result: all server lookup paths stay far below `< 200 ms` (all p95 `< 10 ms`); ticked `docs/features/g1-common-tools.md:37` with methodology and numbers (no search/lookup code edited).
+- `npm run check` (clean `.next`, `2026-11-22`, synced with `origin/master` `a145856`): PASS -- typecheck PASS; prototype 22/22 and core/route 314/314 PASS (336 total, 0 failures/skips); clean `next build --webpack` PASS; `test:app` 16/16 checks PASS.
+- `node tools/check-route-scope.mjs origin/master naetoru/lookup-latency`: PASS (4 files including this append-only audit entry; `tools/check-route-scope.mjs` diff `+1/-0`).
+
 ## JLPT ambiguous distractor filtering — 2026-11-22
 
 Checked implementation `40f81a1509db566b1ccc49d139c8942cc259576f` from `6c1de5d` on Windows, Node v24.10.0, npm 11.6.1, clean Next.js build and disposable test fixtures.
