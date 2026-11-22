@@ -5,6 +5,7 @@ import { withContentDatabase } from '../../../server/dal.ts';
 import { SourceLabel } from '../../../components/source-label.tsx';
 import { AddToReview } from '../../../components/add-to-review.tsx';
 import { JaText, ViText } from '../../../components/text.tsx';
+import { ReportViButton } from '../common-tools/report-vi-button.tsx';
 import { grammarHref, levels, listGrammar } from './repository.ts';
 import styles from './grammar.module.css';
 export default async function GrammarPage({
@@ -69,47 +70,51 @@ export default async function GrammarPage({
       </p>
       {result.items.length ? (
         <div className="content-grid">
-          {result.items.map((item) => (
-            <article key={item.id} className={`content-card ${styles.card}`}>
-              <div className="card-heading">
-                <Link href={grammarHref(item.id)}>
-                  <JaText as="h2" className="word-title">
-                    {item.pattern}
-                  </JaText>
+          {result.items.map((item) => {
+            const meaningId = item.meaningVi?.id ?? item.meaningVi?.translationId;
+            return (
+              <article key={item.id} className={`content-card ${styles.card}`}>
+                <div className="card-heading">
+                  <Link href={grammarHref(item.id)}>
+                    <JaText as="h2" className="word-title">
+                      {item.pattern}
+                    </JaText>
+                  </Link>
+                  <span className="level">{item.level}</span>
+                </div>
+                <p className={styles.romaji} lang="en">
+                  {item.romaji}
+                </p>
+                {item.meaningVi ? (
+                  <ViText as="p" className="meaning">
+                    {item.meaningVi.text}
+                  </ViText>
+                ) : (
+                  <p className="meaning" lang="en">
+                    {item.meaningEn}
+                  </p>
+                )}
+                {item.meaningVi && (
+                  <p className="english" lang="en">
+                    {item.meaningEn}
+                  </p>
+                )}
+                <SourceLabel translation={item.meaningVi} />
+                {meaningId && <ReportViButton translationId={meaningId} />}
+                <div className={styles.tags}>
+                  {item.tags.map((tag) => (
+                    <span key={tag} lang="en">
+                      {tag}
+                    </span>
+                  ))}
+                </div>
+                <Link className="text-link" href={grammarHref(item.id)}>
+                  Mở mẫu câu và luyện tập →
                 </Link>
-                <span className="level">{item.level}</span>
-              </div>
-              <p className={styles.romaji} lang="en">
-                {item.romaji}
-              </p>
-              {item.meaningVi ? (
-                <ViText as="p" className="meaning">
-                  {item.meaningVi.text}
-                </ViText>
-              ) : (
-                <p className="meaning" lang="en">
-                  {item.meaningEn}
-                </p>
-              )}
-              {item.meaningVi && (
-                <p className="english" lang="en">
-                  {item.meaningEn}
-                </p>
-              )}
-              <SourceLabel translation={item.meaningVi} />
-              <div className={styles.tags}>
-                {item.tags.map((tag) => (
-                  <span key={tag} lang="en">
-                    {tag}
-                  </span>
-                ))}
-              </div>
-              <Link className="text-link" href={grammarHref(item.id)}>
-                Mở mẫu câu và luyện tập →
-              </Link>
-              <AddToReview itemId={item.id} />
-            </article>
-          ))}
+                <AddToReview itemId={item.id} />
+              </article>
+            );
+          })}
         </div>
       ) : (
         <div className="empty-state">

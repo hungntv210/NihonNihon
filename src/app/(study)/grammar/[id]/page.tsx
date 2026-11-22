@@ -5,6 +5,7 @@ import { withContentDatabase } from '../../../../server/dal.ts';
 import { SourceLabel } from '../../../../components/source-label.tsx';
 import { AddToReview } from '../../../../components/add-to-review.tsx';
 import { JaText, ViText } from '../../../../components/text.tsx';
+import { ReportViButton } from '../../common-tools/report-vi-button.tsx';
 import {
   grammarClipHref,
   grammarHref,
@@ -164,28 +165,32 @@ export default async function GrammarDetailPage({ params }: { params: Promise<{ 
         <section className={styles.confusables} aria-labelledby="confusables-title">
           <h2 id="confusables-title">Dễ nhầm với</h2>
           <ul className={styles.confusableList}>
-            {item.confusables.map((entry) => (
-              <li key={entry.targetId} className={styles.confusableItem}>
-                <div className={styles.confusableHeader}>
-                  <Link href={entry.href} className={styles.confusableLink}>
-                    <JaText>{entry.targetPattern}</JaText>
-                  </Link>
-                  <span className="level">{entry.targetLevel}</span>
-                </div>
-                {entry.noteVi && (
-                  <ViText as="p" className={styles.confusableVi}>
-                    {entry.noteVi.text}
-                  </ViText>
-                )}
-                <p lang="en" className={styles.original}>
-                  <SourceText text={entry.noteEn} />
-                </p>
-                <div className={styles.confusableMeta}>
-                  <SourceLabel translation={entry.noteVi} fallback={entry.sourceName} />
-                  {entry.noteVi && <span className={styles.help}>Bản gốc: {entry.sourceName}</span>}
-                </div>
-              </li>
-            ))}
+            {item.confusables.map((entry) => {
+              const noteViId = entry.noteVi?.id ?? entry.noteVi?.translationId;
+              return (
+                <li key={entry.targetId} className={styles.confusableItem}>
+                  <div className={styles.confusableHeader}>
+                    <Link href={entry.href} className={styles.confusableLink}>
+                      <JaText>{entry.targetPattern}</JaText>
+                    </Link>
+                    <span className="level">{entry.targetLevel}</span>
+                  </div>
+                  {entry.noteVi && (
+                    <ViText as="p" className={styles.confusableVi}>
+                      {entry.noteVi.text}
+                    </ViText>
+                  )}
+                  <p lang="en" className={styles.original}>
+                    <SourceText text={entry.noteEn} />
+                  </p>
+                  <div className={styles.confusableMeta}>
+                    <SourceLabel translation={entry.noteVi} fallback={entry.sourceName} />
+                    {noteViId && <ReportViButton translationId={noteViId} />}
+                    {entry.noteVi && <span className={styles.help}>Bản gốc: {entry.sourceName}</span>}
+                  </div>
+                </li>
+              );
+            })}
           </ul>
         </section>
       )}
@@ -236,19 +241,25 @@ export default async function GrammarDetailPage({ params }: { params: Promise<{ 
             Được nối theo nhãn nhóm của nguồn, không phải kết luận các mẫu thay thế được cho nhau.
           </p>
           <div className={styles.related}>
-            {item.related.map((related) => (
-              <Link className={styles.relatedCard} href={grammarHref(related.id)} key={related.id}>
-                <JaText>{related.pattern}</JaText>
-                <span className="level">{related.level}</span>
-                <p>
-                  {related.meaningVi ? (
-                    <ViText>{related.meaningVi.text}</ViText>
-                  ) : (
-                    <span lang="en">{related.meaningEn}</span>
-                  )}
-                </p>
-              </Link>
-            ))}
+            {item.related.map((related) => {
+              const relatedMeaningId = related.meaningVi?.id ?? related.meaningVi?.translationId;
+              return (
+                <article className={styles.relatedCard} key={related.id}>
+                  <Link href={grammarHref(related.id)}>
+                    <JaText>{related.pattern}</JaText>
+                  </Link>
+                  <span className="level">{related.level}</span>
+                  <p>
+                    {related.meaningVi ? (
+                      <ViText>{related.meaningVi.text}</ViText>
+                    ) : (
+                      <span lang="en">{related.meaningEn}</span>
+                    )}
+                  </p>
+                  {relatedMeaningId && <ReportViButton translationId={relatedMeaningId} />}
+                </article>
+              );
+            })}
           </div>
         </section>
       )}
