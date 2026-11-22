@@ -10,6 +10,7 @@ import {
   type LookupResponse,
   type LookupTarget,
 } from './lookup-popup-model.ts';
+import { ReportViButton } from './report-vi-button.tsx';
 import styles from './lookup-popup.module.css';
 
 type FetchState =
@@ -314,6 +315,12 @@ export function LookupPopup({
                     <small className={styles.source}>
                       {formatLookupSourceLabel(activeItem.hanViet, activeItem.sourceName)}
                     </small>
+                    {activeItem.hanViet.translationId && (
+                      <ReportViButton
+                        translationId={activeItem.hanViet.translationId}
+                        label="Hán Việt"
+                      />
+                    )}
                   </>
                 ) : (
                   <>
@@ -328,6 +335,18 @@ export function LookupPopup({
                         activeItem.sourceName,
                       )}
                     </small>
+                    <div>
+                      {activeItem.kanjiHanViet.map(
+                        (entry) =>
+                          entry.hanViet.translationId && (
+                            <ReportViButton
+                              key={entry.hanViet.translationId}
+                              translationId={entry.hanViet.translationId}
+                              label={`Hán Việt ${entry.character}`}
+                            />
+                          ),
+                      )}
+                    </div>
                   </>
                 )}
               </div>
@@ -343,6 +362,12 @@ export function LookupPopup({
                   <small className={styles.source}>
                     {formatLookupSourceLabel(activeItem.meaning, activeItem.sourceName)}
                   </small>
+                  {activeItem.meaning.translationId && (
+                    <ReportViButton
+                      translationId={activeItem.meaning.translationId}
+                      label="nghĩa Việt"
+                    />
+                  )}
                   {activeItem.english.length > 0 && (
                     <p className={styles.englishSub} lang="en">
                       {activeItem.english.join('; ')}

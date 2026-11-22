@@ -18,7 +18,7 @@ Ba công cụ có mặt ở mọi màn hình.
 - [x] **Thanh tìm kiếm chung:** kanji, kana, romaji, Hán Việt, tiếng Việt; **gõ không dấu vẫn tìm ra** ("lam viec" → "làm việc")
 - [x] Kết quả gồm từ, kanji, mẫu ngữ pháp, câu trong clip
 - [ ] Từ ngoài JLPT tra qua JMdict + tu-dien-nhat-viet
-- [ ] **Báo sai** trên mọi dòng tiếng Việt: chỉ đánh dấu, không phải sửa
+- [x] **Báo sai** trên mọi dòng tiếng Việt: chỉ đánh dấu, không phải sửa
 
 ## Dữ liệu
 
@@ -59,5 +59,6 @@ Các dấu tick xác nhận phần code đã chạy qua test/fixture; không tha
 - Bằng chứng: `src/app/(study)/common-tools/browser-check.ts`.
 - Bằng chứng (2026-11-21): `src/app/(study)/common-tools/lookup-popup.tsx`, `src/app/(study)/common-tools/lookup.ts`, `src/app/(study)/common-tools/tokenize.ts`, `src/app/api/common-tools/lookup/route.ts`, `tests/lookup-popup.test.ts`.
 - Bằng chứng (2026-11-22): `src/app/(study)/common-tools/fts5.ts`, `src/app/(study)/common-tools/clip-search.ts`, `src/app/(study)/common-tools/repository.ts`, `src/app/(study)/common-tools/search/page.tsx`, `tests/search-all-kinds.test.ts`.
+- Bằng chứng (2026-11-22): `src/core/content.ts`, `src/app/(study)/common-tools/report-store.ts`, `src/app/(study)/common-tools/report-handler.ts`, `src/app/api/common-tools/reports/route.ts`, `src/app/(study)/common-tools/report-vi-button.tsx`, `src/app/(study)/common-tools/search/page.tsx`, `src/app/(study)/common-tools/lookup-popup.tsx`, `src/app/(study)/vocab/notebook/page.tsx`, `src/app/(study)/vocab/lesson/kanji/card-body.tsx`, `src/app/(study)/kanji/page.tsx`, `src/app/(study)/kanji/[character]/page.tsx`, `src/app/(study)/grammar/page.tsx`, `src/app/(study)/grammar/[id]/page.tsx`, `src/app/(study)/srs/review-session.tsx`, `tests/report-vi-line.test.ts`.
 
-Tìm chung đã tách 4 nhóm kết quả (Từ, Kanji, Mẫu ngữ pháp, Câu trong clip — tối đa 10 mục/nhóm, link câu trong clip trỏ đúng `/shadowing?clip=...&segment=...` và loại clip đã xoá/inactive, so khớp NFKC); popup tra từ tại chỗ (tách từ `kuromoji` phía server, `/api/common-tools/lookup`, dialog có focus trap + `Esc`/click ngoài + nút Thêm vào ôn kèm câu gốc, không lấy nghĩa từ KanjiDictVN) đã triển khai và gắn trên phụ đề shadowing. Từ điển ngoài JLPT, Báo sai trên mọi dòng Việt và nghiệm thu mục tiêu 200ms trên thiết bị thật vẫn giữ trống.
+Tìm chung đã tách 4 nhóm kết quả (Từ, Kanji, Mẫu ngữ pháp, Câu trong clip — tối đa 10 mục/nhóm, link câu trong clip trỏ đúng `/shadowing?clip=...&segment=...` và loại clip đã xoá/inactive, so khớp NFKC); popup tra từ tại chỗ (tách từ `kuromoji` phía server, `/api/common-tools/lookup`, dialog có focus trap + `Esc`/click ngoài + nút Thêm vào ôn kèm câu gốc, không lấy nghĩa từ KanjiDictVN) đã triển khai và gắn trên phụ đề shadowing; nút Báo sai chỉ đánh dấu (`POST /api/common-tools/reports` lưu vào `translation_reports` sẵn có, idempotent, không sửa `vi_translations`) đã phủ mọi dòng tiếng Việt có `vi_translations` trên `common-tools` (tìm chung, popup tra từ), `vocab` (sổ từ, chi tiết, bài học từ/kanji, sổ từ cá nhân), `kanji` (danh sách, chi tiết và từ liên quan), `grammar` (danh sách, chi tiết gồm dễ nhầm và mẫu cùng nhóm) và `srs` (đáp án phiên ôn khi có mạng); phụ đề clip JSON ngoài không có dòng `vi_translations` nên không tạo thêm bảng mới. Từ điển ngoài JLPT và nghiệm thu mục tiêu 200ms trên thiết bị thật vẫn giữ trống.
