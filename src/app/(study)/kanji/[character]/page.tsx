@@ -5,6 +5,7 @@ import { withContentDatabase } from '../../../../server/dal.ts';
 import { JaText, ViText } from '../../../../components/text.tsx';
 import { SourceLabel } from '../../../../components/source-label.tsx';
 import { AddToReview } from '../../../../components/add-to-review.tsx';
+import { ReportViButton } from '../../common-tools/report-vi-button.tsx';
 import { kanjiDetail } from '../repository.ts';
 import { ReadingTools } from '../reading-tools.tsx';
 import { StrokePlayer } from '../stroke-player.tsx';
@@ -145,13 +146,11 @@ export default async function KanjiDetailPage({
         {item.related.length ? (
           <div className={styles.words}>
             {item.related.map((word) => (
-              <Link
-                className={styles.word}
-                href={'/vocab/' + encodeURIComponent(word.id)}
-                key={word.id}
-              >
+              <article className={styles.word} key={word.id}>
                 <div className={styles.wordLine}>
-                  <JaText className={styles.wordTitle}>{word.word}</JaText>
+                  <Link href={'/vocab/' + encodeURIComponent(word.id)} className={styles.wordTitle}>
+                    <JaText>{word.word}</JaText>
+                  </Link>
                   <span className="level">{word.level}</span>
                 </div>
                 <JaText as="p" className={styles.wordReading}>
@@ -167,8 +166,11 @@ export default async function KanjiDetailPage({
                   </p>
                 )}
                 <SourceLabel translation={word.meaning} />
+                {word.meaning?.translationId && (
+                  <ReportViButton translationId={word.meaning.translationId} />
+                )}
                 {word.studied && <span className={styles.wordStudied}>Đã ở trong hàng ôn</span>}
-              </Link>
+              </article>
             ))}
           </div>
         ) : (

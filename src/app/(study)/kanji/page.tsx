@@ -6,6 +6,7 @@ import { withContentDatabase } from '../../../server/dal.ts';
 import { JaText, ViText } from '../../../components/text.tsx';
 import { SourceLabel } from '../../../components/source-label.tsx';
 import { AddToReview } from '../../../components/add-to-review.tsx';
+import { ReportViButton } from '../common-tools/report-vi-button.tsx';
 import { filterUrl, parseFilters, searchKanji } from './repository.ts';
 import styles from './kanji.module.css';
 
@@ -126,6 +127,9 @@ export default async function KanjiPage({
                 )}
               </div>
               {item.hanViet && <SourceLabel translation={item.hanViet} />}
+              {item.hanViet?.translationId && (
+                <ReportViButton translationId={item.hanViet.translationId} label="Hán Việt" />
+              )}
               <JaText as="p" className={styles.readingLine}>
                 {[item.onyomi.join('・'), item.kunyomi.join('・')].filter(Boolean).join(' / ') ||
                   '—'}
@@ -145,6 +149,9 @@ export default async function KanjiPage({
                 </p>
               )}
               <SourceLabel translation={item.meaning} />
+              {item.meaning?.translationId && (
+                <ReportViButton translationId={item.meaning.translationId} label="nghĩa Việt" />
+              )}
               <div className={styles.meta}>
                 <span>{item.strokes == null ? 'Chưa rõ số nét' : item.strokes + ' nét'}</span>
                 {item.radical && (
