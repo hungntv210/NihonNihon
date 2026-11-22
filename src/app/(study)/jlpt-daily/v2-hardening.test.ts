@@ -96,3 +96,23 @@ test('upper-level matching respects complete tokens and sourced lower-level func
  c.examples=[e];assert.ok(grammarLevelMatches(e.text,c,e).some(m=>!m.uncertain));
  const q=question(c,'先生＿来ました。',['が','を','で','に']);q.sentence='先生まで来ました。';assert.ok(hardeningIssues(q,c).includes('GRAMMAR_LEVEL_UNPROVEN'));
 });
+
+test('motion destinations exclude made as an alternate answer',()=>{
+ const c=context(),code='GRAMMAR_MOTION_MADE_AMBIGUITY';
+ for(const [stem,answer] of [['きょう、学校＿帰ります。','へ'],['学校＿来ました。','に'],['学校＿いきません。','へ']]){
+  const q=question(c,stem,['まで',answer,'で','が'],'grammar',1);
+  assert.ok(hardeningIssues(q,c).includes(code));
+  assert.ok(!hardeningIssues({...q,choices:['と',answer,'で','が']},c).includes(code));
+ }
+ const stationary=question(c,'学校＿本があります。',['まで','に','で','が'],'grammar',1);
+ assert.ok(!hardeningIssues(stationary,c).includes(code));
+});
+test('time noun blanks reject another source-attested time noun',()=>{
+ const c=context(),code='CONTEXT_TIME_NOUN_AMBIGUITY';
+ const target={...source('さくや','さくや',['n','adv']),english:['last night']};
+ const duration={...source('一月','ひとつき',['n']),english:['one month']};
+ c.catalog.push(duration,target);
+ const q=question(c,'＿本を読みました。',['本','さくや','学校','一月'],'context',1);
+ assert.ok(hardeningIssues(q,c).includes(code));
+ assert.ok(!hardeningIssues({...q,choices:['本','さくや','学校','日本語']},c).includes(code));
+});
