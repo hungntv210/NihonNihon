@@ -1105,3 +1105,11 @@ Checked implementation 2524bfd39a207ea3604d1acd10437209f97c6a8c on branch `naeto
 - Result: all server lookup paths stay far below `< 200 ms` (all p95 `< 10 ms`); ticked `docs/features/g1-common-tools.md:37` with methodology and numbers (no search/lookup code edited).
 - `npm run check` (clean `.next`, `2026-11-22`, synced with `origin/master` `a145856`): PASS -- typecheck PASS; prototype 22/22 and core/route 314/314 PASS (336 total, 0 failures/skips); clean `next build --webpack` PASS; `test:app` 16/16 checks PASS.
 - `node tools/check-route-scope.mjs origin/master naetoru/lookup-latency`: PASS (4 files including this append-only audit entry; `tools/check-route-scope.mjs` diff `+1/-0`).
+
+## JLPT ambiguous distractor filtering — 2026-11-22
+
+Checked implementation `40f81a1509db566b1ccc49d139c8942cc259576f` from `6c1de5d` on Windows, Node v24.10.0, npm 11.6.1, clean Next.js build and disposable test fixtures.
+- Grammar choice construction and validation reject the endpoint particle as a distractor for a destination particle when Kuromoji identifies a supported motion predicate.
+- Context choice construction and validation reject another time noun for a source-attested time noun answer. Two authored regression fixtures cover the reported ambiguity classes.
+- `npm run check` (2026-11-22 10:30:28 to 10:32:22 ICT): PASS. Typecheck PASS; 22/22 prototype and 310/310 core/route tests PASS; build PASS; app gate 16/16 PASS.
+- Route scope PASS. Only this verification entry follows the tested implementation.
