@@ -3,6 +3,7 @@ import { RouteHeading } from '../../../../components/route-heading.tsx';
 import { SourceLabel } from '../../../../components/source-label.tsx';
 import { JaText, ViText } from '../../../../components/text.tsx';
 import { withContentDatabase } from '../../../../server/dal.ts';
+import { ReportViButton } from '../../common-tools/report-vi-button.tsx';
 import { Furigana } from '../furigana.tsx';
 import styles from '../vocab.module.css';
 import {
@@ -89,6 +90,9 @@ export default async function VocabNotebookPage({
                 </p>
               )}
               <SourceLabel translation={entry.meaning} fallback={entry.sourceName} />
+              {entry.meaning?.translationId && (
+                <ReportViButton translationId={entry.meaning.translationId} />
+              )}
               {entry.sentenceJa && (
                 <div className={styles.notebookSentence}>
                   <p className={styles.notebookSentenceLabel}>Câu gốc</p>

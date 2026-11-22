@@ -5,6 +5,7 @@ import { SourceLabel } from '../../../../components/source-label.tsx';
 import { AddToReview } from '../../../../components/add-to-review.tsx';
 import { JaText, ViText } from '../../../../components/text.tsx';
 import { searchAllKinds, type SearchResultItem } from '../repository.ts';
+import { ReportViButton } from '../report-vi-button.tsx';
 import styles from '../tools.module.css';
 
 const CONTENT_GROUPS = [
@@ -51,11 +52,17 @@ function renderContentCard(item: SearchResultItem, badge: string) {
         <>
           <ViText as="p">{'Hán Việt: ' + item.hanViet.text}</ViText>
           <SourceLabel translation={item.hanViet} />
+          {item.hanViet.translationId && (
+            <ReportViButton translationId={item.hanViet.translationId} label="Hán Việt" />
+          )}
         </>
       )}
       {item.meaning && <ViText as="p">{item.meaning.text}</ViText>}
       <p lang="en">{item.english.join('; ')}</p>
       <SourceLabel translation={item.meaning} fallback={item.sourceName} />
+      {item.meaning?.translationId && (
+        <ReportViButton translationId={item.meaning.translationId} label="nghĩa Việt" />
+      )}
       <p>
         <Link href={item.href}>Chi tiết · ví dụ · Báo sai</Link>
       </p>

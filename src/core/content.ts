@@ -3,6 +3,7 @@ import { DatabaseSync } from 'node:sqlite';
 export type ContentKind = 'vocab' | 'kanji' | 'grammar';
 export type TranslationField = 'meaning' | 'formation' | 'notes' | 'text' | 'han_viet';
 export type Translation = {
+  translationId?: string;
   text: string;
   sourceId: string;
   sourceName: string;
@@ -37,7 +38,7 @@ export function selectedTranslation(
 ): Translation | null {
   const row = db
     .prepare(
-      `SELECT t.text_vi, t.source_id, t.release_id, t.method, t.context_json,
+      `SELECT t.translation_id, t.text_vi, t.source_id, t.release_id, t.method, t.context_json,
       s.name, r.manifest_json FROM vi_translations t
     JOIN content_items i ON i.item_id=t.item_id JOIN data_sources s ON s.source_id=t.source_id
     JOIN source_releases r ON r.release_id=t.release_id AND r.source_id=t.source_id
@@ -49,6 +50,7 @@ export function selectedTranslation(
   const manifest = JSON.parse(String(row.manifest_json)),
     context = JSON.parse(String(row.context_json));
   return {
+    translationId: String(row.translation_id),
     text: String(row.text_vi).normalize('NFC'),
     sourceId: String(row.source_id),
     sourceName: String(row.name),

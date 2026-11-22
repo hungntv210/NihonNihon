@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { JaText, ViText } from '../../../../../components/text.tsx';
 import { SourceLabel } from '../../../../../components/source-label.tsx';
 import { AddToReview } from '../../../../../components/add-to-review.tsx';
+import { ReportViButton } from '../../../common-tools/report-vi-button.tsx';
 import type { KanjiLessonWord, LessonKanji } from './model.ts';
 
 export function KanjiCardBody({ item }: { item: LessonKanji }) {
@@ -28,6 +29,9 @@ export function KanjiCardBody({ item }: { item: LessonKanji }) {
         </ViText>
       )}
       {item.hanViet && <SourceLabel translation={item.hanViet} />}
+      {item.hanViet?.translationId && (
+        <ReportViButton translationId={item.hanViet.translationId} label="Hán Việt" />
+      )}
       <div data-lesson-meaning="">
         {item.meaning ? (
           <>
@@ -46,6 +50,9 @@ export function KanjiCardBody({ item }: { item: LessonKanji }) {
           </p>
         )}
         <SourceLabel translation={item.meaning} />
+        {item.meaning?.translationId && (
+          <ReportViButton translationId={item.meaning.translationId} label="nghĩa Việt" />
+        )}
       </div>
       <dl
         data-lesson-muted=""
@@ -104,6 +111,9 @@ export function KanjiWordBody({ word, index }: { word: KanjiLessonWord; index: n
           </p>
         )}
         <SourceLabel translation={word.meaning} />
+        {word.meaning?.translationId && (
+          <ReportViButton translationId={word.meaning.translationId} />
+        )}
         <div style={{ marginTop: 6 }}>
           <Link
             className="text-link"
