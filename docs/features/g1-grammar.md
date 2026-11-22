@@ -17,8 +17,8 @@ Mỗi tối học 1–2 mẫu ngữ pháp và làm bài tập ngay; 403 mẫu N5
 - [x] Trang mẫu câu: tên mẫu, nghĩa tiếng Việt, cấp
 - [x] Công thức nối dạng khối màu (V-て + いく) (xác minh 21/11: `src/app/(study)/grammar/formula.ts:1-327`, `src/app/(study)/grammar/[id]/page.tsx:75-122`, `src/app/(study)/grammar/grammar.test.ts:202-313`)
 - [ ] 2–3 câu ví dụ có furigana, audio, bản dịch; phần mẫu câu được tô màu (DB G0 đóng băng còn 16/1.160 câu ví dụ thiếu furigana)
-- [ ] Ghi chú phân biệt mẫu dễ nhầm, có link sang mẫu kia
-- [ ] Câu trong clip shadowing có dùng mẫu này (nếu có)
+- [x] Ghi chú phân biệt mẫu dễ nhầm, có link sang mẫu kia (xác minh 22/11: `src/app/(study)/grammar/confusables.ts:1-273`, `src/app/(study)/grammar/repository.ts:154`, `src/app/(study)/grammar/[id]/page.tsx:163-191`, `tests/grammar-confusables.test.ts`, `tests/grammar-ticks.test.ts`; DB G0 đóng băng: 158/403 mẫu có ghi chú dễ nhầm, 202 link sang mẫu còn hoạt động, 0 link hỏng)
+- [x] Câu trong clip shadowing có dùng mẫu này (nếu có) (xác minh 22/11: `src/app/(study)/grammar/repository.ts:60-61,148-153`, `src/app/(study)/grammar/[id]/page.tsx:255-270`, `src/app/(study)/shadowing/query.ts:13-33`, `tests/grammar-ticks.test.ts`; sửa lệch 1 câu ở `?segment=` sang 1-based để mở đúng clip & câu, ẩn link khi clip/câu bị tắt hoặc xoá; DB G0 đóng băng có 0/403 mẫu do chưa nạp clip riêng)
 - [x] Bài tập **chọn đáp án** (dạng 文法 JLPT)
 - [x] Bài tập **sắp xếp câu ★** (kéo 4 mảnh)
 - [x] Bài tập sinh từ câu ví dụ OpenJLPT
@@ -59,5 +59,6 @@ Các dấu tick xác nhận phần code đã chạy qua test/fixture; không tha
 
 - Bằng chứng: `src/app/(study)/grammar/grammar.test.ts`.
 - Bằng chứng: `src/app/(study)/grammar/browser-check.ts`.
+- Bằng chứng (2026-11-22): `tests/grammar-confusables.test.ts` và `tests/grammar-ticks.test.ts` — xác minh ghi chú phân biệt mẫu dễ nhầm (158/403 mẫu trên DB G0 đóng băng, 202 link = 124 chiều đi + 78 chiều đến, 0 link hỏng) và liên kết câu trong clip shadowing (`grammarClipHref` truyền `?segment=` 1-based khớp `resolveShadowingSelection`, không phát link khi clip/câu bị tắt hoặc đã xoá; DB G0 đóng băng có 0/403 mẫu vì chưa nạp clip riêng).
 
 Cloze và sắp xếp dùng ví dụ thật/fixture, không bịa câu khi nguồn thiếu. Câu clip chỉ hiện khi đã có liên kết; chưa chứng minh đủ403 mẫu,3bài/mẫu hoặc đủ audio/bản dịch cho mọi ví dụ. Các mục ghép thiếu thành phần vẫn để trống.
