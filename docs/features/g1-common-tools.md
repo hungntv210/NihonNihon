@@ -34,7 +34,7 @@ Ba công cụ có mặt ở mọi màn hình.
 
 ## Tiêu chí hoàn thành
 
-- [ ] Tra từ trả kết quả < 200 ms
+- [x] Tra từ trả kết quả < 200 ms
 - [x] Gõ có dấu, không dấu, romaji đều tìm ra cùng từ
 
 ## Câu hỏi còn mở
@@ -59,5 +59,10 @@ Các dấu tick xác nhận phần code đã chạy qua test/fixture; không tha
 - Bằng chứng: `src/app/(study)/common-tools/browser-check.ts`.
 - Bằng chứng (2026-11-21): `src/app/(study)/common-tools/lookup-popup.tsx`, `src/app/(study)/common-tools/lookup.ts`, `src/app/(study)/common-tools/tokenize.ts`, `src/app/api/common-tools/lookup/route.ts`, `tests/lookup-popup.test.ts`.
 - Bằng chứng (2026-11-22): `src/app/(study)/common-tools/fts5.ts`, `src/app/(study)/common-tools/clip-search.ts`, `src/app/(study)/common-tools/repository.ts`, `src/app/(study)/common-tools/search/page.tsx`, `tests/search-all-kinds.test.ts`.
+- Bằng chứng đo độ trễ server (2026-11-22): `tools/lookup-latency-benchmark.ts` chạy qua `NIHON_DB_PATH` trên bản sao chỉ-đọc DB cỡ thật G0 (`4,741` vocab, `1,038` kanji, `403` grammar, `9,248` câu; `6,182` mục chỉ mục FTS5 trigram, dựng chỉ mục lần đầu `607.91 ms`; máy đo Windows x64, Node v24.10.0, Intel Core i7-11800H 2.30GHz, 15.7 GB RAM). Phác đồ: 30 truy vấn cố định (6 kana, 6 kanji, 6 romaji, 6 tiếng Việt có dấu/không dấu, 6 chuỗi không kết quả) × 5 lượt, bỏ lượt đầu = 120 mẫu/đường tra:
+  - `searchAllKinds` (4 nhóm): p50 `3.62 ms`, p95 `7.63 ms`, max `8.57 ms`
+  - `lookupWord` (gọi trực tiếp): p50 `2.28 ms`, p95 `5.81 ms`, max `6.87 ms`
+  - `GET /api/common-tools/lookup` (handler gồm mở/đóng DB + JSON): p50 `3.53 ms`, p95 `9.13 ms`, max `14.68 ms`
+  - Ghi chú: mọi đường tra đều p95 `< 10 ms` (dưới ngưỡng `< 200 ms`); đây là độ trễ xử lý phía server trên máy nhà (chưa gồm RTT mạng/Tailscale và render trình duyệt; bản sao DB G0 hiện có `1` dòng `vi_translations` đang `selected`).
 
-Tìm chung đã tách 4 nhóm kết quả (Từ, Kanji, Mẫu ngữ pháp, Câu trong clip — tối đa 10 mục/nhóm, link câu trong clip trỏ đúng `/shadowing?clip=...&segment=...` và loại clip đã xoá/inactive, so khớp NFKC); popup tra từ tại chỗ (tách từ `kuromoji` phía server, `/api/common-tools/lookup`, dialog có focus trap + `Esc`/click ngoài + nút Thêm vào ôn kèm câu gốc, không lấy nghĩa từ KanjiDictVN) đã triển khai và gắn trên phụ đề shadowing. Từ điển ngoài JLPT, Báo sai trên mọi dòng Việt và nghiệm thu mục tiêu 200ms trên thiết bị thật vẫn giữ trống.
+Tìm chung đã tách 4 nhóm kết quả (Từ, Kanji, Mẫu ngữ pháp, Câu trong clip — tối đa 10 mục/nhóm, link câu trong clip trỏ đúng `/shadowing?clip=...&segment=...` và loại clip đã xoá/inactive, so khớp NFKC); popup tra từ tại chỗ (tách từ `kuromoji` phía server, `/api/common-tools/lookup`, dialog có focus trap + `Esc`/click ngoài + nút Thêm vào ôn kèm câu gốc, không lấy nghĩa từ KanjiDictVN) đã triển khai và gắn trên phụ đề shadowing; đo độ trễ server trên bản sao DB cỡ thật G0 đạt p95 `< 10 ms` (< 200 ms) trên cả tìm chung và popup tra từ. Từ điển ngoài JLPT và Báo sai trên mọi dòng Việt vẫn giữ trống trên nhánh này.
