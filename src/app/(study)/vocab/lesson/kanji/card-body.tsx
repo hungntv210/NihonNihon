@@ -53,6 +53,28 @@ export function KanjiCardBody({ item }: { item: LessonKanji }) {
         {item.meaning?.translationId && (
           <ReportViButton translationId={item.meaning.translationId} label="nghĩa Việt" />
         )}
+        {item.hanVietOriginalMeaning && (
+          <div
+            data-lesson-hanviet-goc=""
+            style={{
+              marginTop: 8,
+              paddingTop: 8,
+              borderTop: '1px dashed var(--color-border)',
+            }}
+          >
+            <ViText as="p" data-lesson-muted="" style={{ margin: '0 0 4px' }}>
+              <strong style={{ fontWeight: 600 }}>Hán Việt gốc: </strong>
+              {item.hanVietOriginalMeaning.text}
+            </ViText>
+            <SourceLabel translation={item.hanVietOriginalMeaning} />
+            {item.hanVietOriginalMeaning.translationId && (
+              <ReportViButton
+                translationId={item.hanVietOriginalMeaning.translationId}
+                label="nghĩa Hán Việt gốc"
+              />
+            )}
+          </div>
+        )}
       </div>
       <dl
         data-lesson-muted=""

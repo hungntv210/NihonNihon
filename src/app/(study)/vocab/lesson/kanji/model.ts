@@ -18,6 +18,7 @@ export type LessonKanji = {
   english: string[];
   meaning: Translation | null;
   hanViet: Translation | null;
+  hanVietOriginalMeaning?: Translation | null;
   alternatives: string[];
   words: KanjiLessonWord[];
 };
@@ -82,6 +83,7 @@ export function newLessonKanji(
       english: detail.english,
       meaning: safeKanjiMeaning(detail.meaning),
       hanViet: detail.hanViet,
+      hanVietOriginalMeaning: detail.hanVietOriginalMeaning,
       alternatives: detail.alternatives,
       words: selectKanjiLessonWords(detail.related, detail.level, detail.character),
     });

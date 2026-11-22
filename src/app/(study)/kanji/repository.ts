@@ -28,6 +28,7 @@ export type KanjiDetail = KanjiSummary & {
   components: string[];
   meaningId: string | null;
   hanVietId: string | null;
+  hanVietOriginalMeaning: Translation | null;
   related: {
     id: string;
     word: string;
@@ -117,6 +118,46 @@ function mapKanji(db: DatabaseSync, row: Record<string, unknown>): KanjiSummary 
     meaning: selectedTranslation(db, id, 'meaning'),
     hanViet,
     alternatives,
+  };
+}
+export function kanjiDictVnOriginalMeaning(
+  db: DatabaseSync,
+  itemId: string,
+): Translation | null {
+  const row = db
+    .prepare(
+      `SELECT t.translation_id, t.text_vi, t.source_id, t.release_id, t.method, t.context_json,
+              s.name, r.manifest_json
+       FROM vi_translations t
+       JOIN content_items i ON i.item_id=t.item_id
+       JOIN data_sources s ON s.source_id=t.source_id
+       JOIN source_releases r ON r.release_id=t.release_id AND r.source_id=t.source_id
+       WHERE t.item_id=?
+         AND t.source_id='kanjidictvn'
+         AND t.field='meaning'
+         AND t.status IN ('selected','candidate')
+         AND t.needs_refresh=0
+         AND t.base_content_hash=i.source_hash
+         AND i.is_active=1
+       ORDER BY (t.status='selected') DESC, t.translation_id ASC
+       LIMIT 1`,
+    )
+    .get(itemId);
+  if (!row) return null;
+  const text = String(row.text_vi).normalize('NFC').trim();
+  if (!text) return null;
+  const manifest = JSON.parse(String(row.manifest_json)),
+    context = JSON.parse(String(row.context_json));
+  return {
+    translationId: String(row.translation_id),
+    text,
+    sourceId: String(row.source_id),
+    sourceName: String(row.name),
+    releaseId: String(row.release_id),
+    method: String(row.method),
+    model: typeof manifest.model === 'string' ? manifest.model : null,
+    promptVersion: typeof manifest.prompt_version === 'string' ? manifest.prompt_version : null,
+    autoSelected: context.selection_method === 'ai_fallback',
   };
 }
 export function searchKanji(db: DatabaseSync, filters: KanjiFilters, pageSize = 18) {
@@ -238,6 +279,7 @@ export function kanjiDetail(db: DatabaseSync, character: string): KanjiDetail | 
       .map((r) => String(r.component)),
     meaningId: translationId(db, id, 'meaning'),
     hanVietId: translationId(db, id, 'han_viet'),
+    hanVietOriginalMeaning: kanjiDictVnOriginalMeaning(db, id),
     related,
     strokePaths: strokes.map((s) => ({ number: Number(s.stroke_no), path: String(s.path_d) })),
     strokeSource: source

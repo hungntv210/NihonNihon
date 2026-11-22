@@ -15,7 +15,7 @@ Học 1.038 kanji N5–N2 qua âm Hán Việt và luôn đi kèm 2–3 từ dùn
 ## Chức năng
 
 - [x] Thẻ chi tiết: chữ lớn, **âm Hán Việt in đậm** (働 – ĐỘNG), nghĩa tiếng Việt theo cách dùng tiếng Nhật (働 = làm việc)
-- [ ] Dòng phụ "nghĩa Hán Việt gốc" từ KanjiDictVN
+- [x] Dòng phụ "nghĩa Hán Việt gốc" từ KanjiDictVN
 - [x] On/Kun có audio, số nét, cấp JLPT, cấu tạo và bộ thủ (chạm xem chữ cùng bộ) (xác minh 21/11: `src/app/(study)/kanji/repository.test.ts:70-86,122-146`, `src/app/(study)/kanji/reading-tools.tsx:33-65`)
 - [x] Animation thứ tự nét (KanjiVG), phát lại từng nét
 - [x] Từ chứa chữ: ưu tiên từ đã học, cùng cấp
@@ -60,5 +60,6 @@ Các dấu tick xác nhận phần code đã chạy qua test/fixture; không tha
 
 - Bằng chứng: `src/app/(study)/kanji/repository.test.ts`.
 - Bằng chứng: `src/app/(study)/kanji/browser-check.ts`.
+- Bằng chứng (2026-11-22): `src/app/(study)/kanji/repository.ts` (`kanjiDictVnOriginalMeaning`), `src/app/(study)/kanji/[character]/page.tsx`, `src/app/(study)/kanji/kanji.module.css`, `src/app/(study)/vocab/lesson/kanji/model.ts`, `src/app/(study)/vocab/lesson/kanji/card-body.tsx`, `tests/kanji-hanviet-goc.test.ts` (dòng phụ `Hán Việt gốc:` lấy `vi_translations` với `source_id='kanjidictvn'` và `field='meaning'`, ưu tiên `status='selected'` rồi `candidate` đầu theo `translation_id`, giữ nguyên dòng Hán Việt chính và nghĩa tiếng Nhật, gắn nút Báo sai `ReportViButton` trên dòng mới, ẩn hoàn toàn khi chưa có dữ liệu).
 
-Tick chức năng hiển thị/tra cứu/nét theo source và test fixture; không suy ra đủ1.038 chữ, nguyên nghĩa từ điển Hán Việt hoặc hiệu năng thiết bị thật. Memo chỉ lưu thiết bị. On/Kun/audio/bộ thủ là mục ghép, chưa đánh dấu trọn khi chưa đủ chứng cứ.
+Tick chức năng hiển thị/tra cứu/nét theo source và test fixture; không suy ra đủ 1.038 chữ, độ phủ dòng `meaning` của KanjiDictVN trong DB G0 hay hiệu năng thiết bị thật. Memo chỉ lưu thiết bị. On/Kun/audio/bộ thủ là mục ghép, chưa đánh dấu trọn khi chưa đủ chứng cứ.
