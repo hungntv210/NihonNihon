@@ -1085,3 +1085,11 @@ Checked implementation `83dea8c74f50cdb1cb52dad927927a2161fff766` on branch `nae
 - `src/app/(study)/grammar/browser-check.ts`: PASS (desktop 1440px and mobile 390px, all listing & related clicks, `shortId: PASS`, `malformedIds: 404`, `browserErrors: []`).
 - `.next/static/chunks/**/*.js` gzip total: `444,785 B` (`92` chunks; `28,709 B` under `473,494 B` ceiling). Zero `.next/static/chunks/**/*.js` files contain `node:sqlite`, `better-sqlite`, or `kuromoji`.
 - `node tools/check-route-scope.mjs origin/master naetoru/grammar-ticks`: PASS (6 files including this append-only audit entry; `tools/check-route-scope.mjs` diff `+1/-0`). Only this append-only audit entry follows `83dea8c`.
+
+## JLPT ambiguous distractor filtering — 2026-11-22
+
+Checked implementation `40f81a1509db566b1ccc49d139c8942cc259576f` from `6c1de5d` on Windows, Node v24.10.0, npm 11.6.1, clean Next.js build and disposable test fixtures.
+- Grammar choice construction and validation reject the endpoint particle as a distractor for a destination particle when Kuromoji identifies a supported motion predicate.
+- Context choice construction and validation reject another time noun for a source-attested time noun answer. Two authored regression fixtures cover the reported ambiguity classes.
+- `npm run check` (2026-11-22 10:30:28 to 10:32:22 ICT): PASS. Typecheck PASS; 22/22 prototype and 310/310 core/route tests PASS; build PASS; app gate 16/16 PASS.
+- Route scope PASS. Only this verification entry follows the tested implementation.
