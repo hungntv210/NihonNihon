@@ -1136,3 +1136,9 @@ Checked implementation `40f81a1509db566b1ccc49d139c8942cc259576f` from `6c1de5d`
 - `npm run check` passed from 22:17:09 to 22:19:22 ICT (UTC+07:00). Typecheck passed, prototype 22/22 and core/route 321/321 passed, production build passed, and the app gate passed 16/16.
 - Three offline regressions passed. A second process retried after observing lock contention, a held lock still returned `STORE_BUSY`, and competing reservations against a shared ledger at 199 allowed one completion and capped the total at 200.
 - Route scope passed. Only this verification entry follows the checked implementation.
+
+## JLPT store lock retry after master sync — 2026-11-25
+
+- Checked merge commit `889943b50fa033ac4136014bcc3ae7c1c04ee510`, which incorporates master `1fef21b`, in a detached worktree on Windows x64 with Node v24.10.0 and npm 11.6.1.
+- Clean `.next` `npm run check` passed from 22:36:45 to 22:38:35 ICT (UTC+07:00). Typecheck passed, prototype 22/22 and core/route 325/325 passed, production build passed, and the app gate passed 16/16.
+- The only merge conflict was resolved by preserving the master verification log and appending the prior JLPT entry. The JLPT retry code and tests match the prior PR head, and the vocab code matches master. Route scope passed. Only this verification entry follows the checked merge.
