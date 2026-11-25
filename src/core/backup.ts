@@ -44,11 +44,17 @@ async function createBackupUnlocked(p:ReturnType<typeof backupPaths>):Promise<Bu
  }finally{if(fs.existsSync(snapshot))fs.unlinkSync(snapshot);if(fs.existsSync(jlptSnapshot))fs.unlinkSync(jlptSnapshot);}
 }
 function safeRecordingPath(name:string){return name.startsWith('recordings/')&&name.split('/').slice(1).every(part=>part.length>0&&part.length<=255&&part!=='.'&&part!=='..'&&!/[\x00-\x1f<>:"\\|?*]/.test(part)&&!/[. ]$/.test(part)&&! /^(con|prn|aux|nul|com[1-9]|lpt[1-9])(?:\.|$)/i.test(part));}
+function isBackupBase64(value: string) {
+ if (value.length % 4 !== 0 || /[^A-Za-z0-9+/=]/.test(value)) return false;
+ const padding = value.indexOf('=');
+ return padding === -1 || padding === value.length - 1 ||
+  (padding === value.length - 2 && value.endsWith('=='));
+}
 export function validateBackup(bytes:Buffer):Archive {
  if(bytes.length>MAX)throw Error('BACKUP_TOO_LARGE');const a=JSON.parse(bytes.toString('utf8')) as Archive;
  if(a.version!==1||!Array.isArray(a.files)||!a.files.length||a.files.length>10000||typeof a.createdAt!=='string')throw Error('INVALID_BACKUP');
  const seen=new Set<string>();let total=0;
- for(const f of a.files){if(typeof f.name!=='string'||!( ['database.sqlite','settings.json','roadmap.json','lookup-sentences.json','shadowing-history.json','jlpt/approved.sqlite','jlpt/attempts.json'].includes(f.name)||safeRecordingPath(f.name))||seen.has(f.name)||typeof f.bytes!=='string'||!/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(f.bytes))throw Error('INVALID_BACKUP_PATH');seen.add(f.name);const b=Buffer.from(f.bytes,'base64');total+=b.length;if(total>MAX||digest(b)!==f.sha256)throw Error('BACKUP_INTEGRITY');}
+ for(const f of a.files){if(typeof f.name!=='string'||!( ['database.sqlite','settings.json','roadmap.json','lookup-sentences.json','shadowing-history.json','jlpt/approved.sqlite','jlpt/attempts.json'].includes(f.name)||safeRecordingPath(f.name))||seen.has(f.name)||typeof f.bytes!=='string'||!isBackupBase64(f.bytes))throw Error('INVALID_BACKUP_PATH');seen.add(f.name);const b=Buffer.from(f.bytes,'base64');total+=b.length;if(total>MAX||digest(b)!==f.sha256)throw Error('BACKUP_INTEGRITY');}
  if(a.jlptIncluded!==undefined&&a.jlptIncluded!==true||a.files.some(f=>f.name.startsWith('jlpt/'))&&a.jlptIncluded!==true)throw Error('INVALID_JLPT_MARKER');
  for(const f of a.files)if(f.name==='jlpt/attempts.json')validateAttempts(Buffer.from(f.bytes,'base64'));
  if(!seen.has('database.sqlite'))throw Error('DATABASE_MISSING');
