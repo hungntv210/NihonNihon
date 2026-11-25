@@ -16,9 +16,23 @@ export function readBank(week:string,level:Level,catalog:Source[],directory=stor
  const questions=validateDrafts(bank.questions,catalog,week,level);validateAudit(bank.audit,questions);return {...bank,questions};
 }
 export function availableBank(day:{date:string;week:string;level:Level},catalog:Source[],approvedCatalog:Source[],directory=storeDirectory()){return readBank(day.week,day.level,catalog,directory)??approvedBank(day.date,day.week,day.level,approvedCatalog,directory);}
+const lockBackoffMs = [25, 50, 100, 200, 400];
+const lockWait = new Int32Array(new SharedArrayBuffer(4));
 export function withStoreLock<T>(directory:string,action:()=>T):T{
- fs.mkdirSync(directory,{recursive:true});let fd:number;try{fd=fs.openSync(path.join(directory,'write.lock'),'wx',0o600);}catch{throw Error('STORE_BUSY');}
- try{return action();}finally{fs.closeSync(fd);fs.unlinkSync(path.join(directory,'write.lock'));}
+ fs.mkdirSync(directory, { recursive: true });
+ const lock = path.join(directory, 'write.lock');
+ let fd: number;
+ for (let attempt = 0; ; attempt++) {
+  try {
+   fd = fs.openSync(lock, 'wx', 0o600);
+   break;
+  } catch (error) {
+   if ((error as NodeJS.ErrnoException).code !== 'EEXIST' || attempt === lockBackoffMs.length) throw Error('STORE_BUSY');
+   // Keep the synchronous contract while giving a separate process time to release the lock.
+   Atomics.wait(lockWait, 0, 0, lockBackoffMs[attempt]);
+  }
+ }
+ try { return action(); } finally { fs.closeSync(fd); fs.unlinkSync(lock); }
 }
 function atomic(file:string,value:unknown){const temporary=file+'.'+randomUUID()+'.tmp';try{fs.writeFileSync(temporary,JSON.stringify(value),{flag:'wx',mode:0o600});fs.renameSync(temporary,file);}finally{if(fs.existsSync(temporary))fs.unlinkSync(temporary);}}
 export function publishBank(bank:Bank,directory=storeDirectory()){
