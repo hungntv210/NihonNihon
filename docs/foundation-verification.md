@@ -1122,6 +1122,14 @@ Checked implementation `40f81a1509db566b1ccc49d139c8942cc259576f` from `6c1de5d`
 - `home-copy-backup.ps1` exited 0 against a 40,292,352-byte synthetic SQLite database and temporary destination outside the repository. The 53,723,332-byte archive passed the script's integrity checks and an independent SHA-256 comparison. The temporary files were removed.
 - Route scope passed. Only this verification entry follows the checked implementation.
 
+## Vocab example English inline for machine translation — 2026-11-25
+
+- Implementation `493151d98b4315b7e31ce7efdd9df5ad87268b72`, based on `d423349`. Windows x64, Node v24.10.0, npm 11.6.1. Started with a clean `.next`.
+- `npm run check` passed from 22:07:09 to 22:08:37 ICT (UTC+07:00). Typecheck passed, prototype 22/22 and core/route 322/322 passed (344/344 total), production build passed, and the app gate passed 16/16 checks.
+- New tests (`src/app/(study)/vocab/example-english.test.ts`, 4/4) verified inline English rendering for `translation.method === 'machine'`, collapsed `<details>` for non-machine translations, suppression of empty `<details>` when `example.english` is null/empty/whitespace, SQLite fixture integration via `vocabularyDetail`, and the `example.english &&` guard in `src/app/(study)/vocab/[id]/page.tsx`.
+- `npx tsx src/app/(study)/vocab/browser-check.ts` passed (0 page errors, 10/10 checks including 390px overflow check). Synthetic Playwright verification on `/vocab/[id]` at 1280x900 and 390x844 confirmed inline English for machine translation, `<details>` for Tatoeba, no empty `<details>` for null English, 0 page errors, and no horizontal overflow.
+- Route scope passed. Only this verification entry follows the checked implementation.
+
 ## JLPT shared ledger lock retry — 2026-11-25
 
 - Implementation `5d8f9586b41c29ed21e77c1744883dc0ff860846` from `d423349`. Windows x64, Node v24.10.0, npm 11.6.1, clean `.next`.
