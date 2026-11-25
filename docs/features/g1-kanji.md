@@ -15,7 +15,7 @@ Học 1.038 kanji N5–N2 qua âm Hán Việt và luôn đi kèm 2–3 từ dùn
 ## Chức năng
 
 - [x] Thẻ chi tiết: chữ lớn, **âm Hán Việt in đậm** (働 – ĐỘNG), nghĩa tiếng Việt theo cách dùng tiếng Nhật (働 = làm việc)
-- [ ] Dòng phụ "nghĩa Hán Việt gốc" từ KanjiDictVN (chờ dữ liệu: kanjidictvn hiện chỉ có han_viet, 0 dòng meaning (kiểm DB production 22/11); UI sẵn sàng ở PR #104)
+- [x] Dòng phụ "nghĩa Hán Việt gốc" từ KanjiDictVN (xác minh 25/11: UI PR #104 + 993/1.038 chữ có nghĩa gốc dạng candidate, 45 chữ rỗng ẩn sạch)
 - [x] On/Kun có audio, số nét, cấp JLPT, cấu tạo và bộ thủ (chạm xem chữ cùng bộ) (xác minh 21/11: `src/app/(study)/kanji/repository.test.ts:70-86,122-146`, `src/app/(study)/kanji/reading-tools.tsx:33-65`)
 - [x] Animation thứ tự nét (KanjiVG), phát lại từng nét
 - [x] Từ chứa chữ: ưu tiên từ đã học, cùng cấp
@@ -61,5 +61,6 @@ Các dấu tick xác nhận phần code đã chạy qua test/fixture; không tha
 - Bằng chứng: `src/app/(study)/kanji/repository.test.ts`.
 - Bằng chứng: `src/app/(study)/kanji/browser-check.ts`.
 - Ghi nhận (2026-11-22, PR #104 — giữ `[ ]` chờ dữ liệu): `src/app/(study)/kanji/repository.ts` (`kanjiDictVnOriginalMeaning`), `src/app/(study)/kanji/[character]/page.tsx`, `src/app/(study)/kanji/kanji.module.css`, `src/app/(study)/vocab/lesson/kanji/model.ts`, `src/app/(study)/vocab/lesson/kanji/card-body.tsx`, `tests/kanji-hanviet-goc.test.ts` (UI và unit test đã sẵn sàng cho dòng phụ `Hán Việt gốc:` từ `vi_translations` với `source_id='kanjidictvn'` và `field='meaning'`, ưu tiên `status='selected'` rồi `candidate` đầu theo `translation_id`, giữ nguyên dòng Hán Việt chính và nghĩa tiếng Nhật, gắn nút Báo sai `ReportViButton`, ẩn hoàn toàn khi thiếu dữ liệu; chưa tick vì DB production kiểm ngày 22/11 hiện chỉ có `han_viet`, `0` dòng `meaning`).
+- Cập nhật (2026-11-25, PR #104 — đã tick `[x]`): đã nhập `993/1.038` dòng `vi_translations` (`field='meaning'`, `source_id='kanjidictvn'`, `status='candidate'`, không đổi dòng `selected`) vào DB app máy nhà; `45` chữ có `row[4]` rỗng ẩn sạch không tạo khung rỗng.
 
 Tick chức năng hiển thị/tra cứu/nét theo source và test fixture; không suy ra đủ 1.038 chữ, độ phủ dòng `meaning` của KanjiDictVN trong DB G0 hay hiệu năng thiết bị thật. Memo chỉ lưu thiết bị. On/Kun/audio/bộ thủ là mục ghép, chưa đánh dấu trọn khi chưa đủ chứng cứ.
