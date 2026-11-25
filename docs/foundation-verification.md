@@ -1121,3 +1121,10 @@ Checked implementation `40f81a1509db566b1ccc49d139c8942cc259576f` from `6c1de5d`
 - Both new regressions passed: a 40,001,536-byte database payload validates, malformed Base64 raises `INVALID_BACKUP_PATH`, and a mismatched checksum raises `BACKUP_INTEGRITY`.
 - `home-copy-backup.ps1` exited 0 against a 40,292,352-byte synthetic SQLite database and temporary destination outside the repository. The 53,723,332-byte archive passed the script's integrity checks and an independent SHA-256 comparison. The temporary files were removed.
 - Route scope passed. Only this verification entry follows the checked implementation.
+
+## JLPT shared ledger lock retry — 2026-11-25
+
+- Implementation `5d8f9586b41c29ed21e77c1744883dc0ff860846` from `d423349`. Windows x64, Node v24.10.0, npm 11.6.1, clean `.next`.
+- `npm run check` passed from 22:17:09 to 22:19:22 ICT (UTC+07:00). Typecheck passed, prototype 22/22 and core/route 321/321 passed, production build passed, and the app gate passed 16/16.
+- Three offline regressions passed. A second process retried after observing lock contention, a held lock still returned `STORE_BUSY`, and competing reservations against a shared ledger at 199 allowed one completion and capped the total at 200.
+- Route scope passed. Only this verification entry follows the checked implementation.
