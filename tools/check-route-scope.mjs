@@ -71,6 +71,7 @@ ownership.set('naetoru/search-fts5', ownership.get('search-fts5'));
 ownership.set('g1-ticks', ['docs/features/g1-foundation.md', 'docs/features/g1-grammar.md', 'tools/check-route-scope.mjs', 'docs/foundation-verification.md']);
 ownership.set('naetoru/g1-ticks', ownership.get('g1-ticks'));
 ownership.set('naetoru/vocab-notebook', ['src/app/(study)/vocab/', 'tests/vocab-notebook.test.ts', 'tools/check-route-scope.mjs']);
+ownership.set('naetoru/vocab-examples', ['src/app/(study)/vocab/[id]/page.tsx', 'src/app/(study)/vocab/example-english.tsx', 'src/app/(study)/vocab/example-english.test.ts', 'src/app/(study)/vocab/vocab.module.css', 'tools/check-route-scope.mjs']);
 ownership.set('naetoru/shadowing-history', ['src/app/(study)/shadowing/', 'src/app/api/shadowing/', 'src/core/backup.ts', 'tests/shadowing-history.test.ts', 'docs/features/g1-shadowing.md', 'tools/check-route-scope.mjs']);
 ownership.set('naetoru/search-all-kinds', ['src/app/(study)/common-tools/', 'tests/search-all-kinds.test.ts', 'docs/features/g1-common-tools.md', 'tools/check-route-scope.mjs']);
 ownership.set('naetoru/grammar-ticks', ['src/app/(study)/grammar/', 'tests/grammar-ticks.test.ts', 'docs/features/g1-grammar.md', 'tools/check-route-scope.mjs']);
