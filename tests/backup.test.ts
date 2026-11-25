@@ -7,6 +7,30 @@ import { createHash } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
 import { fixture } from './helpers.ts';
 import { createBackup, restoreBackup, validateBackup, saveDailyBackup, pruneDailyBackups } from '../src/core/backup.ts';
+
+test('validates an archive containing a 40 MB database payload', () => {
+ const payload = Buffer.alloc(40_001_536);
+ const entry = {
+  name: 'database.sqlite',
+  bytes: payload.toString('base64'),
+  sha256: createHash('sha256').update(payload).digest('hex'),
+ };
+ const archive = Buffer.from(JSON.stringify({ version: 1, createdAt: new Date().toISOString(), files: [entry] }));
+ assert.equal(validateBackup(archive).files[0].sha256, entry.sha256);
+});
+
+test('rejects malformed base64 and a mismatched backup checksum separately', () => {
+ const payload = Buffer.from([255]);
+ const entry = { name: 'database.sqlite', bytes: payload.toString('base64'), sha256: createHash('sha256').update(payload).digest('hex') };
+ const archive = (bytes: string, sha256 = entry.sha256) => Buffer.from(JSON.stringify({
+  version: 1, createdAt: new Date().toISOString(), files: [{ ...entry, bytes, sha256 }],
+ }));
+ for (const invalid of ['_w==', '/w', '/w===', '/=w=', '/w==\n', '/w= ']) {
+  assert.throws(() => validateBackup(archive(invalid)), { message: 'INVALID_BACKUP_PATH' });
+ }
+ assert.throws(() => validateBackup(archive(entry.bytes, '0'.repeat(64))), { message: 'BACKUP_INTEGRITY' });
+});
+
 test('backup snapshots SQLite and recordings, rejects corruption/path traversal, restores with safety copy',async t=>{
  const {file,db:existing}=fixture(t),root=path.dirname(file);process.env.NIHON_DB_PATH=file;process.env.NIHON_DB_ROLE='snapshot';
  for(const k of ['NIHON_SETTINGS_PATH','NIHON_ROADMAP_PATH','NIHON_RECORDINGS_DIR','NIHON_BACKUP_DIR'])delete process.env[k];

@@ -1114,6 +1114,22 @@ Checked implementation `40f81a1509db566b1ccc49d139c8942cc259576f` from `6c1de5d`
 - `npm run check` (2026-11-22 10:30:28 to 10:32:22 ICT): PASS. Typecheck PASS; 22/22 prototype and 310/310 core/route tests PASS; build PASS; app gate 16/16 PASS.
 - Route scope PASS. Only this verification entry follows the tested implementation.
 
+## Large nightly backup validation — 2026-11-25
+
+- Implementation `75ef27958dc088ca2fe9a132c4c93954ae2ac5ba`, based on `6df785b`. Windows x64, Node v24.10.0, npm 11.6.1. Started with a clean `.next`.
+- `npm run check` passed from 21:17:38 to 21:19:22 ICT (UTC+07:00). Typecheck passed, prototype 22/22 and core/route 318/318 passed, production build passed, and the app gate passed 16/16 checks.
+- Both new regressions passed: a 40,001,536-byte database payload validates, malformed Base64 raises `INVALID_BACKUP_PATH`, and a mismatched checksum raises `BACKUP_INTEGRITY`.
+- `home-copy-backup.ps1` exited 0 against a 40,292,352-byte synthetic SQLite database and temporary destination outside the repository. The 53,723,332-byte archive passed the script's integrity checks and an independent SHA-256 comparison. The temporary files were removed.
+- Route scope passed. Only this verification entry follows the checked implementation.
+
+## Vocab example English inline for machine translation — 2026-11-25
+
+- Implementation `493151d98b4315b7e31ce7efdd9df5ad87268b72`, based on `d423349`. Windows x64, Node v24.10.0, npm 11.6.1. Started with a clean `.next`.
+- `npm run check` passed from 22:07:09 to 22:08:37 ICT (UTC+07:00). Typecheck passed, prototype 22/22 and core/route 322/322 passed (344/344 total), production build passed, and the app gate passed 16/16 checks.
+- New tests (`src/app/(study)/vocab/example-english.test.ts`, 4/4) verified inline English rendering for `translation.method === 'machine'`, collapsed `<details>` for non-machine translations, suppression of empty `<details>` when `example.english` is null/empty/whitespace, SQLite fixture integration via `vocabularyDetail`, and the `example.english &&` guard in `src/app/(study)/vocab/[id]/page.tsx`.
+- `npx tsx src/app/(study)/vocab/browser-check.ts` passed (0 page errors, 10/10 checks including 390px overflow check). Synthetic Playwright verification on `/vocab/[id]` at 1280x900 and 390x844 confirmed inline English for machine translation, `<details>` for Tatoeba, no empty `<details>` for null English, 0 page errors, and no horizontal overflow.
+- Route scope passed. Only this verification entry follows the checked implementation.
+
 ## Naetoru secondary KanjiDictVN original Han-Viet meaning line (g1-kanji item 18 — UI ready, pending data) -- 2026-11-22
 
 Checked implementation 8889425c6b0977df1e044d634b1e8138443d3240 (code `1f1322878f23ec4c6a94c7a2458d9a6f2e5352ba`, docs update `8889425`) on branch `naetoru/kanji-hanviet-goc` (base `338c9eaa406e0e3d8c3b7285ddeec56e58c2b972`, synced with `origin/master` `6df785bfce69f3fbeea0295001ef8ed31b9f6c3f`) on Windows with Node v24.10.0, clean `.next` build, disposable OpenJLPT fixture, and local headless Chrome.
