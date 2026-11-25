@@ -1113,3 +1113,11 @@ Checked implementation `40f81a1509db566b1ccc49d139c8942cc259576f` from `6c1de5d`
 - Context choice construction and validation reject another time noun for a source-attested time noun answer. Two authored regression fixtures cover the reported ambiguity classes.
 - `npm run check` (2026-11-22 10:30:28 to 10:32:22 ICT): PASS. Typecheck PASS; 22/22 prototype and 310/310 core/route tests PASS; build PASS; app gate 16/16 PASS.
 - Route scope PASS. Only this verification entry follows the tested implementation.
+
+## Large nightly backup validation — 2026-11-25
+
+- Implementation `75ef27958dc088ca2fe9a132c4c93954ae2ac5ba`, based on `6df785b`. Windows x64, Node v24.10.0, npm 11.6.1. Started with a clean `.next`.
+- `npm run check` passed from 21:17:38 to 21:19:22 ICT (UTC+07:00). Typecheck passed, prototype 22/22 and core/route 318/318 passed, production build passed, and the app gate passed 16/16 checks.
+- Both new regressions passed: a 40,001,536-byte database payload validates, malformed Base64 raises `INVALID_BACKUP_PATH`, and a mismatched checksum raises `BACKUP_INTEGRITY`.
+- `home-copy-backup.ps1` exited 0 against a 40,292,352-byte synthetic SQLite database and temporary destination outside the repository. The 53,723,332-byte archive passed the script's integrity checks and an independent SHA-256 comparison. The temporary files were removed.
+- Route scope passed. Only this verification entry follows the checked implementation.
