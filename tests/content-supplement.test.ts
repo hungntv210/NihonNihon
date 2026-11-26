@@ -95,9 +95,11 @@ test('report counts zero gaps on complete content and never prints example text'
   assert.ok(!stdout.includes(privateText));
   const totals = JSON.parse(stdout);
   assert.deepEqual(totals.vocab, { total: 1, missingPos: 0, noExamples: 0, noCompleteExample: 0 });
-  const { total, examples, ...grammarGaps } = totals.grammar;
+  const { total, examples, choiceQuestions, orderingQuestions, ...grammarGaps } = totals.grammar;
   assert.equal(total, 1);
   assert.equal(examples, 3);
+  assert.equal(choiceQuestions, 3);
+  assert.equal(orderingQuestions, 3);
   assert.ok(Object.values(grammarGaps).every((n) => n === 0));
   assert.ok(Object.values(totals.kanji).every((n) => n === 0));
 });

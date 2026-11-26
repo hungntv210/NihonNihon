@@ -16,8 +16,8 @@ Mỗi tối học 1–2 mẫu ngữ pháp và làm bài tập ngay; 403 mẫu N5
 
 - [x] Trang mẫu câu: tên mẫu, nghĩa tiếng Việt, cấp
 - [x] Công thức nối dạng khối màu (V-て + いく) (xác minh 21/11: `src/app/(study)/grammar/formula.ts:1-327`, `src/app/(study)/grammar/[id]/page.tsx:75-122`, `src/app/(study)/grammar/grammar.test.ts:202-313`)
-- [ ] 2–3 câu ví dụ có furigana, audio, bản dịch; phần mẫu câu được tô màu (DB G0 đóng băng còn 16/1.160 câu ví dụ thiếu furigana)
-  - Còn thiếu: trên bản sao DB app chỉ đọc còn 15/1.136 câu ví dụ ngữ pháp thiếu `furigana_notation` và 9/1.136 câu chưa có bản dịch Việt `selected` khớp hash; UI ví dụ có furigana, tô mẫu câu và audio TTS đã có ở `src/app/(study)/grammar/[id]/page.tsx:197-233`.
+- [ ] 2–3 câu ví dụ có furigana, audio, bản dịch; phần mẫu câu được tô màu
+  - Bản soát riêng đưa 49 → 0 mẫu thiếu ví dụ (403 mẫu, 1.209 ví dụ). Ví dụ mới có furigana, bản dịch và vùng tô màu chỉ định. Trang có nút TTS cho mọi câu khi thiết bị có giọng Nhật. Phạm vi tô màu của ví dụ cũ và phát audio trên thiết bị thật chưa xác minh đầy đủ.
 - [x] Ghi chú phân biệt mẫu dễ nhầm, có link sang mẫu kia (xác minh 22/11: `src/app/(study)/grammar/confusables.ts:1-273`, `src/app/(study)/grammar/repository.ts:154`, `src/app/(study)/grammar/[id]/page.tsx:163-191`, `tests/grammar-confusables.test.ts`, `tests/grammar-ticks.test.ts`; DB G0 đóng băng: 158/403 mẫu có ghi chú dễ nhầm, 202 link sang mẫu còn hoạt động, 0 link hỏng)
 - [x] Câu trong clip shadowing có dùng mẫu này (nếu có) (xác minh 22/11: `src/app/(study)/grammar/repository.ts:60-61,148-153`, `src/app/(study)/grammar/[id]/page.tsx:255-270`, `src/app/(study)/shadowing/query.ts:13-33`, `tests/grammar-ticks.test.ts`; sửa lệch 1 câu ở `?segment=` sang 1-based để mở đúng clip & câu, ẩn link khi clip/câu bị tắt hoặc xoá; DB G0 đóng băng có 0/403 mẫu do chưa nạp clip riêng)
 - [x] Bài tập **chọn đáp án** (dạng 文法 JLPT)
@@ -40,7 +40,7 @@ Mỗi tối học 1–2 mẫu ngữ pháp và làm bài tập ngay; 403 mẫu N5
 
 - [x] 403 mẫu N5–N2 có trang đầy đủ (xác minh 21/11: 403/403 trên DB G0 đóng băng, `src/app/(study)/grammar/grammar.test.ts:63-75`)
 - [ ] Mỗi mẫu có ít nhất 3 câu bài tập mỗi dạng
-  - Còn thiếu: trên bản sao DB app chỉ đọc có 57/403 mẫu ngữ pháp N5–N2 chưa đủ 3 câu ví dụ (346/403 có ≥3 câu), và bộ sinh bài tập ở `src/app/(study)/grammar/practice.ts:31-91` còn lọc theo `focusOf` và câu ≥4 mảnh nên nhiều mẫu chưa đạt ≥3 câu mỗi dạng.
+  - Trang luyện dùng cả câu soạn riêng và bài sinh từ câu gốc. Dùng `tools/report-content-gaps.mjs` với cùng snapshot và hai bản supplement để kiểm số mẫu và số câu còn thiếu.
 
 ## Câu hỏi còn mở
 

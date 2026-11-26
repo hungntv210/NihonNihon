@@ -13,7 +13,7 @@ import {
   type GrammarTranslation,
 } from '../repository.ts';
 import { decodeGrammarRouteId } from '../route-id.ts';
-import { focusOf, choiceQuestions, orderingQuestions } from '../practice.ts';
+import { focusOf, grammarPractice } from '../practice.ts';
 import { FORMULA_LEGEND, parseGrammarFormula, type FormulaKind } from '../formula.ts';
 import { Furigana } from '../furigana.tsx';
 import { PracticePanel } from '../practice-panel.tsx';
@@ -63,9 +63,7 @@ export default async function GrammarDetailPage({ params }: { params: Promise<{ 
   const { item, patterns } = data,
     focus = focusOf(item.pattern),
     formula = parseGrammarFormula(item.formationEn, item.pattern),
-    practiceExamples = item.examples.filter(({ id }) => !id.startsWith('g1:sentence:')),
-    choices = choiceQuestions(item.pattern, practiceExamples, patterns),
-    ordering = orderingQuestions(practiceExamples);
+    { choices, ordering } = grammarPractice(item.pattern, item.examples, patterns, item.exercises);
   return (
     <>
       <RouteHeading heading="h2" title="Chi tiết ngữ pháp" species="owl" eyebrow="ĐỌC · HIỂU · GẶP LẠI"><p>Đối chiếu nội dung và lưu lại để ôn.</p></RouteHeading>
@@ -214,6 +212,7 @@ export default async function GrammarDetailPage({ params }: { params: Promise<{ 
                       japanese={example.japanese}
                       notation={example.furigana}
                       focus={focus}
+                      highlights={example.highlights}
                     />
                   </p>
                   <Vietnamese value={example.vietnamese} grammarId={item.id} />
