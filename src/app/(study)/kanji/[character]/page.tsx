@@ -39,6 +39,10 @@ export default async function KanjiDetailPage({
               <ViText as="strong" className={styles.primaryReading}>
                 {item.hanViet.text}
               </ViText>
+            ) : item.readingNote ? (
+              <p className={styles.missing}>
+                {item.readingNote.text} · <a href={item.readingNote.url}>{item.readingNote.sourceName}</a>
+              </p>
             ) : (
               <p className={styles.missing}>Chưa có âm Hán Việt chính trong dữ liệu hiện tại.</p>
             )}

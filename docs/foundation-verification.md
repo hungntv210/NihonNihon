@@ -1238,3 +1238,20 @@ Checked implementation 61b8cc3fd473097d05f332b6138e7770d1868aad on branch `naeto
 - `.next/static/chunks/**/*.js` gzip total: `456,919 B` (`94` chunks; `+2,572 B` vs PR #112 master `454,347 B`; `-11,575 B` vs baseline `468,494 B`; `16,575 B` headroom under `473,494 B` gate). Zero new npm dependencies; `src/proxy.ts`, `package.json`, and `package-lock.json` untouched.
 - `node tools/check-route-scope.mjs origin/master naetoru/today-reminders`: PASS (`21` changed files including this append-only verification entry). Only this append-only audit entry follows `fe515a364ad6f10737c0dd0111bd1a8a450cd4d7`.
 - Limits: Web Push cryptography, VAPID signing, 410 subscription pruning, and SQLite restart deduplication are verified locally with synthetic P-256 keys and mock push endpoints; real physical iOS Safari / Android push delivery requires owner-configured local `VAPID_*` env vars over HTTPS and remains unverified on hardware.
+
+## Pokabu G1 private content supplement and gap audit -- 2026-11-26
+
+- Checked implementation c49648a523b97315f823fab0b9eda76f1e9ce305 on Windows x64 with Node v24.10.0 and npm 11.6.1 against master 6c7f286e75439ffca68bc36b920c94a3e9c93f06.
+- npm run check passed from 13:47:59 to 13:49:30 ICT (UTC+07:00). Typecheck, tests, webpack production build, and all 16 application checks passed. Both focused supplement tests passed.
+- Route scope passed. The counts-only audit ran on the same read-only catalog snapshot with and without the gitignored review supplement. Only this append-only audit entry follows the checked implementation.
+
+### Contextual reading and attribution review
+
+- Checked implementation 79a7fe74ed5c7cbb765baa808efdffd518c2e988 on Windows x64, Node v24.10.0 and npm 11.6.1. npm run check passed from 14:39:51 to 14:41:16 ICT (UTC+07:00). Typecheck, 367/367 tests (22 prototype and 345 core/route), webpack build and all 16 application checks passed.
+- Route ownership passed. Reviewed 711 furigana rows offline. The final private supplement preserves complete vocabulary and grammar example coverage on the same read-only snapshot. Only this append-only verification entry follows the checked implementation.
+
+### Synchronization with the reminders release
+
+- Checked merge commit 5129f7000e8cba0631f50b0aca530f04edb8d3e9 against master c3473e1c9c629d3691ac841101bac02a1dd5caaa on Windows x64, Node v24.10.0 and npm 11.6.1 with a clean .next.
+- npm run check passed from 14:58:58 to 15:00:57 ICT (UTC+07:00). Typecheck, 371/371 tests (22 prototype and 349 core/route), webpack build and all 16 application checks passed.
+- Route ownership passed for 12 files. Conflict resolution retained both ownership entries and both append-only verification sections. Only this audit entry follows the checked merge.

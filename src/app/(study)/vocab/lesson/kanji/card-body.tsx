@@ -20,6 +20,10 @@ export function KanjiCardBody({ item }: { item: LessonKanji }) {
         >
           {item.hanViet.text}
         </ViText>
+      ) : item.readingNote ? (
+        <p data-lesson-muted="">
+          {item.readingNote.text} · <a href={item.readingNote.url}>{item.readingNote.sourceName}</a>
+        </p>
       ) : (
         <p data-lesson-muted="">Chưa có âm Hán Việt chính trong dữ liệu hiện tại.</p>
       )}
