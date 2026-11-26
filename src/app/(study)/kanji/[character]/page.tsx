@@ -77,6 +77,23 @@ export default async function KanjiDetailPage({
                 label="nghĩa tiếng Việt"
               />
             )}
+            {item.hanVietOriginalMeaning && (
+              <div className={styles.originalHanViet}>
+                <ViText as="p" className={styles.originalHanVietText}>
+                  <span className={styles.originalHanVietLabel}>Hán Việt gốc: </span>
+                  {item.hanVietOriginalMeaning.text}
+                </ViText>
+                <div className={styles.originalHanVietMeta}>
+                  <SourceLabel translation={item.hanVietOriginalMeaning} />
+                  {item.hanVietOriginalMeaning.translationId && (
+                    <ReportViButton
+                      translationId={item.hanVietOriginalMeaning.translationId}
+                      label="nghĩa Hán Việt gốc"
+                    />
+                  )}
+                </div>
+              </div>
+            )}
           </div>
           <AddToReview key={item.id} itemId={item.id} cardType="recognition" />
         </div>

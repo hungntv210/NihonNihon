@@ -158,6 +158,13 @@
 .english p {
   margin: 4px 0 12px;
 }
+.exampleOriginal {
+  margin: 12px 0;
+  color: var(--color-muted);
+  font-size: 13px;
+  line-height: 1.9;
+  white-space: pre-line;
+}
 .muted {
   font-size: 12px;
   line-height: 1.8;

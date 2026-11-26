@@ -609,3 +609,27 @@
 }
 
 .toolbar{background:var(--theme-raised);border-radius:4px;box-shadow:0 3px 0 var(--theme-shadow)}.tile{background:var(--color-surface);border-radius:4px;border-top:4px solid var(--color-accent);box-shadow:0 3px 0 var(--theme-shadow)}.tile .character{font-family:var(--font-ja)!important}.detailHeader{background:var(--theme-raised);border:1px solid var(--color-border);border-radius:4px}.largeCharacter,.panel,.word,.strokeEmpty,.memo textarea,.reportForm textarea{background:var(--color-surface);border-radius:4px}.panel{box-shadow:0 3px 0 var(--theme-shadow)}.panel h2,.relatedHeading h2{font:29px var(--font-pixel)}.radicalOption{min-height:44px;border-radius:3px}.radicals summary,.report summary,.back,.detailLink{min-height:44px}.back,.detailLink{display:inline-flex;align-items:center}.field :is(input,select){border-radius:3px}.speak,.strokeControls button{min-height:44px;min-width:44px;border-radius:3px;background:var(--color-surface);color:var(--color-ink)}.reading{background:var(--theme-raised);border:1px solid var(--color-border);border-radius:3px}.strokeBoard{background:var(--color-surface);border-radius:3px}.strokeGrid{stroke:var(--color-border)}.strokeOutline{stroke:var(--color-border)}.auto{background:var(--color-accent-soft);color:var(--color-accent)}.componentList a{display:inline-flex;align-items:center;justify-content:center;min-width:44px;min-height:44px;background:var(--theme-raised);border-radius:3px}
+
+.originalHanViet {
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px dashed var(--color-border);
+  min-width: 0;
+}
+.originalHanVietText {
+  margin: 0 0 6px;
+  font-size: 13px;
+  line-height: 1.65;
+  color: var(--color-muted);
+  overflow-wrap: anywhere;
+}
+.originalHanVietLabel {
+  color: var(--color-ink);
+  font-weight: 600;
+}
+.originalHanVietMeta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}

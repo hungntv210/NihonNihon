@@ -4,6 +4,7 @@ import { notFound } from 'next/navigation';
 import { getVocabularyDetail } from '../server.ts';
 import { parseFurigana } from '../data.ts';
 import { Furigana } from '../furigana.tsx';
+import { ExampleEnglish } from '../example-english.tsx';
 import { Speak } from '../speech.tsx';
 import { ReportTranslation } from '../report.tsx';
 import { JaText, ViText } from '../../../../components/text.tsx';
@@ -115,10 +116,14 @@ export default async function WordPage({ params }: { params: Promise<{ id: strin
                     {example.translationId && (
                       <ReportTranslation itemId={item.id} translationId={example.translationId} />
                     )}
-                    <details className={styles.english}>
-                      <summary>Xem câu Anh gốc</summary>
-                      <p lang="en">{example.english}</p>
-                    </details>
+                    {example.english && (
+                      <ExampleEnglish
+                        english={example.english}
+                        method={example.translation.method}
+                        originalClassName={styles.exampleOriginal}
+                        detailsClassName={styles.english}
+                      />
+                    )}
                   </>
                 ) : (
                   <>

@@ -1114,6 +1114,39 @@ Checked implementation `40f81a1509db566b1ccc49d139c8942cc259576f` from `6c1de5d`
 - `npm run check` (2026-11-22 10:30:28 to 10:32:22 ICT): PASS. Typecheck PASS; 22/22 prototype and 310/310 core/route tests PASS; build PASS; app gate 16/16 PASS.
 - Route scope PASS. Only this verification entry follows the tested implementation.
 
+## Large nightly backup validation — 2026-11-25
+
+- Implementation `75ef27958dc088ca2fe9a132c4c93954ae2ac5ba`, based on `6df785b`. Windows x64, Node v24.10.0, npm 11.6.1. Started with a clean `.next`.
+- `npm run check` passed from 21:17:38 to 21:19:22 ICT (UTC+07:00). Typecheck passed, prototype 22/22 and core/route 318/318 passed, production build passed, and the app gate passed 16/16 checks.
+- Both new regressions passed: a 40,001,536-byte database payload validates, malformed Base64 raises `INVALID_BACKUP_PATH`, and a mismatched checksum raises `BACKUP_INTEGRITY`.
+- `home-copy-backup.ps1` exited 0 against a 40,292,352-byte synthetic SQLite database and temporary destination outside the repository. The 53,723,332-byte archive passed the script's integrity checks and an independent SHA-256 comparison. The temporary files were removed.
+- Route scope passed. Only this verification entry follows the checked implementation.
+
+## Vocab example English inline for machine translation — 2026-11-25
+
+- Implementation `493151d98b4315b7e31ce7efdd9df5ad87268b72`, based on `d423349`. Windows x64, Node v24.10.0, npm 11.6.1. Started with a clean `.next`.
+- `npm run check` passed from 22:07:09 to 22:08:37 ICT (UTC+07:00). Typecheck passed, prototype 22/22 and core/route 322/322 passed (344/344 total), production build passed, and the app gate passed 16/16 checks.
+- New tests (`src/app/(study)/vocab/example-english.test.ts`, 4/4) verified inline English rendering for `translation.method === 'machine'`, collapsed `<details>` for non-machine translations, suppression of empty `<details>` when `example.english` is null/empty/whitespace, SQLite fixture integration via `vocabularyDetail`, and the `example.english &&` guard in `src/app/(study)/vocab/[id]/page.tsx`.
+- `npx tsx src/app/(study)/vocab/browser-check.ts` passed (0 page errors, 10/10 checks including 390px overflow check). Synthetic Playwright verification on `/vocab/[id]` at 1280x900 and 390x844 confirmed inline English for machine translation, `<details>` for Tatoeba, no empty `<details>` for null English, 0 page errors, and no horizontal overflow.
+- Route scope passed. Only this verification entry follows the checked implementation.
+
+## Naetoru secondary KanjiDictVN original Han-Viet meaning line (g1-kanji item 18 — UI ready, pending data) -- 2026-11-22
+
+Checked implementation 8889425c6b0977df1e044d634b1e8138443d3240 (code `1f1322878f23ec4c6a94c7a2458d9a6f2e5352ba`, docs update `8889425`) on branch `naetoru/kanji-hanviet-goc` (base `338c9eaa406e0e3d8c3b7285ddeec56e58c2b972`, synced with `origin/master` `6df785bfce69f3fbeea0295001ef8ed31b9f6c3f`) on Windows with Node v24.10.0, clean `.next` build, disposable OpenJLPT fixture, and local headless Chrome.
+- Feature (UI ready; kept `[ ]` in `docs/features/g1-kanji.md:18` because feature is not yet displayed on live kanji due to missing data): added read-only `kanjiDictVnOriginalMeaning(db, itemId)` and `KanjiDetail.hanVietOriginalMeaning` in `src/app/(study)/kanji/repository.ts` querying `vi_translations` where `source_id = 'kanjidictvn'` and `field = 'meaning'`, preferring `status = 'selected'` then earliest `candidate` by `translation_id ASC` without mutating `vi_translations` or touching primary Hán Việt reading / primary Japanese meaning; rendered secondary line `"Hán Việt gốc: …"` with `<SourceLabel>` and `<ReportViButton label="nghĩa Hán Việt gốc" />` (hidden cleanly when absent) on `src/app/(study)/kanji/[character]/page.tsx` (+ `src/app/(study)/kanji/kanji.module.css`) and `src/app/(study)/vocab/lesson/kanji/card-body.tsx` (+ `src/app/(study)/vocab/lesson/kanji/model.ts`).
+- Data status (2026-11-22): production G0 DB currently has `kanjidictvn` for kanji only on `field = 'han_viet'` (`656` selected + `988` candidate) and `0` rows on `field = 'meaning'`; therefore the secondary line stays cleanly hidden on all live kanji until G0 imports `kanjidictvn` `meaning` rows, and `docs/features/g1-kanji.md:18` remains unticked `[ ]` noting this explicitly.
+- `npm run check` (`2026-11-22`): PASS -- typecheck PASS; prototype 22/22 and core/route 317/317 PASS (339 total, 0 failures/skips, including 3 new tests in `tests/kanji-hanviet-goc.test.ts`; re-verified after sync with `origin/master` `6df785b`); `next build --webpack` PASS; `test:app` 16/16 checks PASS.
+- `src/app/(study)/kanji/browser-check.ts`: PASS (desktop 1440px and mobile 390px, 0 browser errors, 0 horizontal overflow). Verified read-only against a G0 SQLite snapshot (line cleanly hidden, 0 errors, DB unchanged) and against a disposable synthetic fixture with a `kanjidictvn` `meaning` row (desktop 1280px & mobile 390px: `"Hán Việt gốc: …"` + `Báo sai` visible, 0 horizontal overflow).
+- `.next/static/chunks/**/*.js` gzip total: `450,111 B` (`93` chunks; `23,383 B` under `473,494 B` ceiling). Zero `.next/static/chunks/**/*.js` files contain `node:sqlite`, `better-sqlite`, `kuromoji`, `gsap`, `lottie`, or `framer-motion`.
+- `node tools/check-route-scope.mjs origin/master naetoru/kanji-hanviet-goc`: PASS (9 files including this append-only audit entry; `tools/check-route-scope.mjs` diff `+1/-0`). Only this append-only audit entry follows `8889425`.
+
+## Naetoru PR #104 sync with master and g1-kanji item 18 tick -- 2026-11-25
+
+- Checked implementation `774e638b9a9ecdb9b16cff47ca8354814fce50e1` on branch `naetoru/kanji-hanviet-goc` after merging `origin/master` (`1fef21bbbb434effc64812ef74fc0b8bde4926d3`, preserving all prior verification entries) and ticking `docs/features/g1-kanji.md:18` now that `993/1,038` active kanji have `kanjidictvn` `meaning` rows (`status='candidate'`, `45` empty-meaning kanji hidden cleanly).
+- `npm run check` (`2026-11-25 22:27:55` to `22:29:42` ICT, Windows x64, Node v24.10.0, clean `.next`): PASS — `typecheck` PASS; `npm test` `347/347` PASS (`22/22` prototype + `325/325` core/route, 0 failures/skips); `next build --webpack` PASS; `test:app` `16/16` PASS.
+- Playwright verification against a disposable read-only copy of the updated local DB (`1280x900` desktop and `390x844` mobile, 0 page errors, 0 horizontal overflow): `/kanji/上` renders `"Hán Việt gốc:"` cleanly; `/kanji/読` (among the 45 empty-meaning kanji) hides the secondary block cleanly with no empty box. Disposable DB copy removed after verification.
+- Route scope passed (`9` files). Only this append-only verification entry follows `774e638b9a9ecdb9b16cff47ca8354814fce50e1`.
+
 ## Naetoru shadowing clip metadata cards (g1-shadowing item 22) -- 2026-11-22
 
 Checked implementation 61b8cc3fd473097d05f332b6138e7770d1868aad on branch `naetoru/clip-meta` (base `a1458562cf7d88e3392d6d9e69cf87b969421f86`, synced with `origin/master` `6df785bfce69f3fbeea0295001ef8ed31b9f6c3f`) on Windows x64 with Node v24.10.0, clean `.next` build, disposable OpenJLPT fixture, and local headless Chrome.
