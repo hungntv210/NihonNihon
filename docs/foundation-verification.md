@@ -1169,3 +1169,11 @@ Checked implementation 61b8cc3fd473097d05f332b6138e7770d1868aad on branch `naeto
 - Fix (`tools/import-g0.mjs`): when a G0 OpenJLPT item or linked example sentence collides by natural key and `item_id` with an existing OpenJLPT seed row whose `source_hash` differs, reconcile `content_items` and its detail table to G0 (rebasing any pre-existing `vi_translations` only when detail columns are identical, and leaving semantically conflicting already-translated items untouched); additionally guard every `vi_translations` insert so `base_content_hash` must equal the target parent's resulting `content_items.source_hash` and never violate `vi_one_selected`. Reader filtering rules in `src/core/content.ts` and `src/app/(study)/kanji/repository.ts` are unchanged.
 - `npm run check` (`2026-11-26 09:48:09` to `09:49:52` +07:00 ICT): PASS -- `typecheck` PASS; `npm test` `354/354` PASS (`22/22` prototype + `332/332` core/route, 0 failures/skips, including 3 new regression tests in `tests/import-g0.test.ts` covering seed-collision hash reconciliation, reader visibility, strict second-run idempotency, semantic-conflict preservation, candidate rebasing, stale-hash blocking, and live-DB path guards); `next build --webpack` PASS; `test:app` `16/16` PASS.
 - Route scope passed (`4` files: `tools/import-g0.mjs`, `tests/import-g0.test.ts`, `tools/check-route-scope.mjs`, and this append-only verification entry). Only this append-only verification entry follows `0ff35d35730cf21ee2665b53d11b8fe41a7c9484`.
+
+## Pokabu 87-week OpenJLPT roadmap -- 2026-11-26
+
+- Checked implementation $sha on branch pokabu/roadmap-87w against $base on Windows x64 (Node v24.10.0, npm 11.6.1).
+- npm run check (11:52:17 to 11:53:52, UTC+07:00) PASS. Typecheck PASS, prototype 22/22 and core/route 332/332 PASS, production build PASS, app gate 16/16 PASS.
+- Today browser check PASS at 1440 px and 390 px with a disposable fixture. It verified the 87 week controls, the same-level clip link and the missing-clip label.
+- Read-only G0 CLI smoke produced byte-identical plans twice: 87 weeks, 6,182 unique catalog items and two N5 library suggestions.
+- Route scope PASS. This append-only entry follows the checked implementation.
