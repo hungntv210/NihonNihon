@@ -24,6 +24,13 @@ import { handleLookupGet, handleLookupPost } from '../src/app/(study)/common-too
 import { rebuildSearchIndex, searchAllKinds } from '../src/app/(study)/common-tools/repository.ts';
 import { session as srsSession } from '../src/app/(study)/srs/repository.ts';
 import { scheduler as srsScheduler } from '../src/app/(study)/srs/model.ts';
+import {
+  findVocabulary,
+  newVocabulary,
+  vocabularyDetail,
+} from '../src/app/(study)/vocab/data.ts';
+import { listVocabNotebook } from '../src/app/(study)/vocab/notebook/data.ts';
+import { kanjiDetail } from '../src/app/(study)/kanji/repository.ts';
 
 const SAMPLE_JMDICT_XML = `<?xml version="1.0" encoding="UTF-8"?>
 <!-- JMdict created: 2026-11-26 -->
@@ -506,5 +513,182 @@ test('outside-JLPT word can be added to SRS with original sentence, maintains FK
     assert.equal(getJmdictEntryById(jmdictDbPath, 'jmdict:vocab:9999999'), null);
   } finally {
     db.close();
+  }
+});
+
+test('materialized JMdict words never leak into JLPT /vocab or /kanji lists and always display Ngoài JLPT', async (t) => {
+  const { dir, appDbPath, jmdictDbPath } = setupAppAndJmdict(t);
+  const contextPath = path.join(dir, 'lookup-sentences.json');
+
+  // Build an extra mini JMdict fixture with an alternate reading for JLPT word 学生 to test otherReadings
+  const altXml = `<?xml version="1.0" encoding="UTF-8"?>
+<!-- JMdict created: 2026-11-26 -->
+<!DOCTYPE JMdict [<!ENTITY n "noun">]>
+<JMdict>
+<entry>
+  <ent_seq>9900001</ent_seq>
+  <k_ele><keb>学生</keb></k_ele>
+  <r_ele><reb>がくしょう</reb></r_ele>
+  <sense><pos>&n;</pos><gloss>alternate historical reading</gloss></sense>
+</entry>
+</JMdict>`;
+  const altGz = path.join(dir, 'JMdict_alt.gz');
+  fs.writeFileSync(altGz, zlib.gzipSync(Buffer.from(altXml, 'utf8')));
+  const altDbPath = path.join(dir, 'private', 'jmdict-alt.sqlite');
+  importJmdict({ jmdictPath: altGz, targetPath: altDbPath });
+
+  // Capture baseline JLPT state before any JMdict materialization
+  const baselineDb = openContentDatabase(appDbPath);
+  let beforeTotal = 0;
+  let beforeN1Total = 0;
+  let beforeKanjiRelatedIds: string[] = [];
+  let gakuseiId = '';
+  let beforeOtherReadings: { id: string; reading: string }[] = [];
+  try {
+    beforeTotal = findVocabulary(baselineDb, { q: '', level: '', saved: false, page: 1 }).total;
+    beforeN1Total = findVocabulary(baselineDb, { q: '', level: 'N1', saved: false, page: 1 }).total;
+    const kanjiBefore = kanjiDetail(baselineDb, '日');
+    assert.ok(kanjiBefore, 'demo seed should contain kanji 日');
+    beforeKanjiRelatedIds = kanjiBefore.related.map((r) => r.id);
+    const gakuseiRow = baselineDb
+      .prepare(
+        `SELECT v.item_id FROM vocab v JOIN content_items i USING(item_id)
+         WHERE v.word='学生' AND i.is_active=1 AND i.source_id<>'jmdict' LIMIT 1`,
+      )
+      .get() as { item_id: string } | undefined;
+    assert.ok(gakuseiRow, 'demo seed should contain JLPT word 学生');
+    gakuseiId = gakuseiRow.item_id;
+    beforeOtherReadings = vocabularyDetail(baselineDb, gakuseiId)!.otherReadings;
+  } finally {
+    baselineDb.close();
+  }
+
+  // Materialize 日誌 (contains kanji 日, has VI meaning) via POST /api/common-tools/lookup
+  const postRes = await handleLookupPost(
+    new Request('http://127.0.0.1:3000/api/common-tools/lookup', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        itemId: 'jmdict:vocab:1465820',
+        cardType: 'recognition',
+        sentenceJa: '毎日日誌をつける。',
+        sentenceVi: 'Viết nhật ký mỗi ngày.',
+      }),
+    }),
+    {
+      isAuthenticated: async () => true,
+      sameOriginCheck: () => true,
+      readBody: async (req: Request) => req.text(),
+      dbPath: appDbPath,
+      contextPath,
+      jmdictPath: jmdictDbPath,
+      now: () => new Date('2026-11-26T12:00:00.000Z'),
+    },
+  );
+  assert.equal(postRes.status, 201);
+
+  // Materialize 微風 (EN-only) and alternate-reading 学生/がくしょう via enqueueCard
+  const bifuu = enqueueCard(
+    appDbPath,
+    'jmdict:vocab:1601234',
+    'recognition',
+    new Date('2026-11-26T12:00:00.000Z'),
+    jmdictDbPath,
+  );
+  assert.equal(bifuu.created, true);
+
+  const alt = enqueueCard(
+    appDbPath,
+    'jmdict:vocab:9900001',
+    'recognition',
+    new Date('2026-11-26T12:00:00.000Z'),
+    altDbPath,
+  );
+  assert.equal(alt.created, true);
+
+  const db = openContentDatabase(appDbPath);
+  try {
+    // 1. /vocab unfiltered list and total must exclude materialized JMdict rows
+    const afterAll = findVocabulary(db, { q: '', level: '', saved: false, page: 1 });
+    assert.equal(afterAll.total, beforeTotal);
+    assert.equal(afterAll.items.some((item) => item.id.startsWith('jmdict:')), false);
+
+    // 2. /vocab?level=N1 must NOT show materialized JMdict rows (even though vocab.level stores 'N1')
+    const afterN1 = findVocabulary(db, { q: '', level: 'N1', saved: false, page: 1 });
+    assert.equal(afterN1.total, beforeN1Total);
+    assert.equal(afterN1.items.some((item) => item.id.startsWith('jmdict:')), false);
+
+    // 3. /vocab?q=日誌 and /vocab?saved=1 must exclude materialized JMdict rows
+    const byQuery = findVocabulary(db, { q: '日誌', level: '', saved: false, page: 1 });
+    assert.equal(byQuery.total, 0);
+    assert.equal(byQuery.items.length, 0);
+
+    const bySaved = findVocabulary(db, { q: '', level: '', saved: true, page: 1 });
+    assert.equal(bySaved.items.some((item) => item.id.startsWith('jmdict:')), false);
+
+    // 4. otherReadings on JLPT word 学生 must NOT include materialized JMdict alternate reading
+    const gakuseiDetail = vocabularyDetail(db, gakuseiId);
+    assert.ok(gakuseiDetail);
+    assert.deepEqual(gakuseiDetail.otherReadings, beforeOtherReadings);
+    assert.equal(
+      gakuseiDetail.otherReadings.some((r) => r.id === 'jmdict:vocab:9900001'),
+      false,
+    );
+
+    // 5. /kanji/日 related words must exclude materialized JMdict 日誌 and preserve JLPT list
+    const kanjiAfter = kanjiDetail(db, '日');
+    assert.ok(kanjiAfter);
+    assert.equal(
+      kanjiAfter.related.some((r) => r.id === 'jmdict:vocab:1465820' || r.id.startsWith('jmdict:')),
+      false,
+    );
+    assert.deepEqual(
+      kanjiAfter.related.map((r) => r.id),
+      beforeKanjiRelatedIds,
+    );
+
+    // 6. /vocab/[id] detail for materialized JMdict items shows 'Ngoài JLPT', never 'N1'
+    const nisshiDetail = vocabularyDetail(db, 'jmdict:vocab:1465820');
+    assert.ok(nisshiDetail, 'materialized JMdict detail should remain viewable on /vocab/[id]');
+    assert.equal(nisshiDetail.level, JMDICT_LEVEL_LABEL);
+    assert.notEqual(nisshiDetail.level, 'N1');
+    assert.equal(nisshiDetail.sourceName, JMDICT_ATTRIBUTION.name);
+    assert.equal(nisshiDetail.meaning?.sourceName, TU_DIEN_VI_ATTRIBUTION.name);
+
+    const bifuuDetail = vocabularyDetail(db, 'jmdict:vocab:1601234');
+    assert.ok(bifuuDetail);
+    assert.equal(bifuuDetail.level, JMDICT_LEVEL_LABEL);
+    assert.notEqual(bifuuDetail.level, 'N1');
+    assert.equal(bifuuDetail.meaning, null);
+
+    // 7. /vocab/notebook shows saved JMdict words labeled 'Ngoài JLPT', never 'N1'
+    const notebook = listVocabNotebook(db, { contextPath, clips: [] });
+    const nbNisshi = notebook.items.find((entry) => entry.id === 'jmdict:vocab:1465820');
+    assert.ok(nbNisshi, 'saved JMdict word should appear in personal vocab notebook');
+    assert.equal(nbNisshi.level, JMDICT_LEVEL_LABEL);
+    assert.notEqual(nbNisshi.level, 'N1');
+    assert.equal(nbNisshi.sentenceJa, '毎日日誌をつける。');
+
+    // 8. Re-lookup after materialization still labels as 'Ngoài JLPT' and marks inSrs: true
+    const relookup = lookupWord(db, '日誌', '日誌', undefined, { jmdictPath: jmdictDbPath });
+    assert.equal(relookup.found, true);
+    assert.ok(relookup.item);
+    assert.equal(relookup.item.id, 'jmdict:vocab:1465820');
+    assert.equal(relookup.item.outsideJlpt, true);
+    assert.equal(relookup.item.level, JMDICT_LEVEL_LABEL);
+    assert.equal(relookup.item.inSrs, true);
+
+  } finally {
+    db.close();
+  }
+
+  // 9. newVocabulary must exclude JMdict items even if their SRS card is later deleted
+  const rwDb = new DatabaseSync(appDbPath);
+  try {
+    rwDb.prepare('DELETE FROM srs_cards WHERE item_id=?').run('jmdict:vocab:1601234');
+    const freshLessons = newVocabulary(rwDb);
+    assert.equal(freshLessons.some((item) => item.id.startsWith('jmdict:')), false);
+  } finally {
+    rwDb.close();
   }
 });
