@@ -57,8 +57,8 @@ try{
  // Deep-link to an unanswered question must also keep stem plain without lookup buttons or popup.
  await page.goto(origin+`/jlpt-daily?q=${encodeURIComponent(questions[1].id)}`);
  await page.getByText('Câu 2',{exact:false}).waitFor();
- assert.equal(await page.locator('h2 button').count(),0,'unanswered ?q= stem must not expose lookup buttons');
- await page.locator('h2').click();
+ assert.equal(await page.locator('article h2 button').count(),0,'unanswered ?q= stem must not expose lookup buttons');
+ await page.locator('article h2').click();
  assert.equal(await page.getByRole('dialog').count(),0,'clicking unanswered ?q= stem must not open lookup popup');
  await page.goto(origin+'/jlpt-daily');await page.getByRole('button',{name:'Kiểm tra đáp án'}).waitFor();
 
@@ -66,15 +66,15 @@ try{
  let savedLookupAfterGrade=false;
  for(let i=0;i<10;i++){
   if(i===0){
-   assert.equal(await page.locator('h2 button').count(),0,'unanswered stem must have 0 lookup buttons');
-   await page.locator('h2').click();
+   assert.equal(await page.locator('article h2 button').count(),0,'unanswered stem must have 0 lookup buttons');
+   await page.locator('article h2').click();
    assert.equal(await page.getByRole('dialog').count(),0,'clicking unanswered stem must not open lookup popup');
   }
   const chosen=i===0||i===5?(questions[i].correct+1)%4:questions[i].correct;
   await page.getByRole('radio').nth(chosen).check();await page.getByRole('button',{name:'Kiểm tra đáp án'}).click();await page.getByRole('status').waitFor();
   await page.getByText(questions[i].explanation,{exact:true}).waitFor();
   if(i>=1&&!savedLookupAfterGrade){
-   const stemButtons=page.locator('h2 button[data-jlpt-word]');
+   const stemButtons=page.locator('article h2 button[data-jlpt-word]');
    const stemCount=await stemButtons.count();
    assert.ok(stemCount>0,'answered stem must expose clickable lookup tokens');
    for(let t=0;t<Math.min(stemCount,6)&&!savedLookupAfterGrade;t++){
