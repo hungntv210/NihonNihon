@@ -37,7 +37,8 @@ const readingNote = (x: unknown): x is ReadingNote =>
 function example(x: unknown): x is SupplementExample {
   return object(x) && typeof x.id === 'string' && /^g1:sentence:[a-f0-9]{64}$/.test(x.id)
     && text(x.japanese) && text(x.english) && text(x.furigana) && text(x.vietnamese)
-    && text(x.attribution) && provenance(x.provenance) && furiganaMatches(x.japanese, x.furigana);
+    && text(x.attribution) && !/not\s+resolved/iu.test(x.attribution)
+    && provenance(x.provenance) && supplementFuriganaMatches(x.japanese, x.furigana);
 }
 
 export function furiganaMatches(japanese: string, notation: string) {
@@ -45,6 +46,11 @@ export function furiganaMatches(japanese: string, notation: string) {
   const gaps = notation.replace(/\{([^{}|]+)\|([\p{Script=Hiragana}\p{Script=Katakana}ー・]+)\}/gu, '');
   return !/[{}|\p{Script=Han}]/u.test(gaps)
     && notation.replace(/\{([^{}|]+)\|([^{}|]+)\}/gu, '$1') === japanese;
+}
+
+function supplementFuriganaMatches(japanese: string, notation: string) {
+  return !/\{[^{}|]*[\p{Script=Hiragana}\p{Script=Katakana}?]\|/u.test(notation)
+    && furiganaMatches(japanese, notation);
 }
 
 export function readContentSupplement(file = path.join(path.dirname(databasePath()), 'private', 'g1-content-supplement.json')): ContentSupplement {
@@ -70,7 +76,8 @@ export function readContentSupplement(file = path.join(path.dirname(databasePath
       || (x.pos !== undefined && (!Array.isArray(x.pos) || !x.pos.length || !x.pos.every(text)))
       || (x.readingNote !== undefined && !readingNote(x.readingNote))
       || (x.examples !== undefined && (!Array.isArray(x.examples) || !x.examples.every(example)))
-      || (x.furigana !== undefined && !text(x.furigana))
+      || (x.furigana !== undefined && (!text(x.furigana)
+        || !supplementFuriganaMatches(x.furigana.replace(/\{([^{}|]+)\|[^{}|]+\}/gu, '$1'), x.furigana)))
       || (x.vietnamese !== undefined && (!object(x.vietnamese) || !text(x.vietnamese.text) || !provenance(x.vietnamese.provenance))))
       throw new Error('Invalid G1 content supplement item');
     const entry = x as SupplementItem;
@@ -108,7 +115,7 @@ export function supplementSentence(
 ) {
   const entry = supplementFor(supplement, row.id, row.hash);
   const furigana = entry?.furigana && !furiganaMatches(row.japanese, row.furigana ?? '')
-    && furiganaMatches(row.japanese, entry.furigana) ? entry.furigana : row.furigana;
+    && supplementFuriganaMatches(row.japanese, entry.furigana) ? entry.furigana : row.furigana;
   const vi = !hasVietnamese && entry?.vietnamese
     ? supplementTranslation(entry.vietnamese.text, entry.vietnamese.provenance)
     : null;

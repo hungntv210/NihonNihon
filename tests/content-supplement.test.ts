@@ -101,3 +101,29 @@ test('report counts zero gaps on complete content and never prints example text'
   assert.ok(Object.values(grammarGaps).every((n) => n === 0));
   assert.ok(Object.values(totals.kanji).every((n) => n === 0));
 });
+
+test('supplement rejects okurigana inside ruby, mismatched text and unresolved attribution', (t) => {
+  const { file, itemId } = fixture(t);
+  const output = path.join(path.dirname(file), 'ruby.json');
+  const example = {
+    id: 'g1:sentence:' + '6'.repeat(64),
+    japanese: '本を読む。',
+    furigana: '{本|ほん}を{読|よ}む。',
+    english: 'I read a book.',
+    vietnamese: 'Tôi đọc sách.',
+    attribution: 'Tatoeba #123 (CC BY 2.0 FR)',
+    provenance,
+  };
+  const load = (overrides = {}, patch = example.furigana) => {
+    fs.writeFileSync(output, JSON.stringify({ version: 1, items: {
+      [itemId]: { hash, examples: [{ ...example, ...overrides }] },
+      'openjlpt:sentence:fixture': { hash, furigana: patch },
+    } }));
+    return readContentSupplement(output);
+  };
+  assert.equal(load().get(itemId)?.examples?.[0].furigana, example.furigana);
+  assert.throws(() => load({ furigana: '{本|ほん}を{読む|よむ}。' }), /Invalid G1 content supplement item/);
+  assert.throws(() => load({}, '{本|ほん}を{読む|よむ}。'), /Invalid G1 content supplement item/);
+  assert.throws(() => load({ furigana: '{本|ほん}を{読|よ}。' }), /Invalid G1 content supplement item/);
+  assert.throws(() => load({ attribution: 'Tatoeba contributor not resolved' }), /Invalid G1 content supplement item/);
+});
