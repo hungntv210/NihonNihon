@@ -1222,3 +1222,9 @@ Checked implementation 61b8cc3fd473097d05f332b6138e7770d1868aad on branch `naeto
 - `.next/static/chunks/**/*.js` gzip total: `454,347 B` (`93` chunks; `+4,497 B` vs clean `origin/master` `409c125` baseline `449,850 B`; `19,147 B` headroom under `473,494 B` gate). Zero forbidden packages in client chunks.
 - `node tools/check-route-scope.mjs origin/master naetoru/shadowing-record-compare`: PASS (`10` changed files including this append-only verification entry). Only this append-only audit entry follows `4feb7ac49645efd6b3f3b4ad158fe0e4d8247511`.
 - Limits: browser check uses Chrome fake MediaRecorder device and public synthetic clip; physical iOS Safari / Android microphone hardware not tested here.
+
+### Master synchronization for PR #112
+
+- Checked merge commit 342a9c39ab6127697ff6fb1e2f255558628a339f against master afc8b0f72de3b0c810f644ae194eb99ffc5cc336 on Windows x64, Node v24.10.0 and npm 11.6.1, starting from a clean .next.
+- npm run check passed on 2026-11-26 from 13:33:02 to 13:34:48 ICT (UTC+07:00). Typecheck and webpack build passed. Tests passed 364/364 (22 prototype and 342 core/route). The application gate passed 16/16.
+- Route scope passed for 10 files. Both ownership entries and audit records were retained. The master checklist note for recording was superseded by the completed implementation. Only this append-only audit entry follows the tested merge.
