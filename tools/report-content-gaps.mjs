@@ -3,7 +3,7 @@ import { pathToFileURL } from 'node:url';
 import {
   furiganaMatches, readContentSupplement, supplementExamples, supplementFor, supplementSentence,
 } from '../src/core/content-supplement.ts';
-import { choiceQuestions, orderingQuestions } from '../src/app/(study)/grammar/practice.ts';
+import { grammarPractice } from '../src/app/(study)/grammar/practice.ts';
 
 const levels = "('N5','N4','N3','N2')";
 const scoped = (table) => `FROM ${table} t JOIN content_items i USING(item_id)
@@ -18,7 +18,7 @@ const linked = `SELECT s.*, si.source_hash,
 
 export function reportContentGaps(db, supplement = new Map()) {
   const vocab = { total: 0, missingPos: 0, noExamples: 0, noCompleteExample: 0 };
-  const grammar = { total: 0, examples: 0, missingNotation: 0, missingFurigana: 0, missingVietnamese: 0,
+  const grammar = { total: 0, examples: 0, choiceQuestions: 0, orderingQuestions: 0, choiceShortfall: 0, orderingShortfall: 0, missingNotation: 0, missingFurigana: 0, missingVietnamese: 0,
     fewerThanThreeExamples: 0, fewerThanThreeChoice: 0, fewerThanThreeOrdering: 0 };
   const kanji = { total: 0, missingHanViet: 0, unexplainedMissingHanViet: 0, missingVietnamese: 0, noReadings: 0, missingOn: 0,
     missingKun: 0, missingStrokes: 0 };
@@ -63,12 +63,17 @@ export function reportContentGaps(db, supplement = new Map()) {
       !furiganaMatches(s.text_ja, s.furigana_notation || s.text_ja)).length;
     grammar.missingVietnamese += rows.filter((s) => !s.has_vi).length;
     grammar.fewerThanThreeExamples += Number(rows.length < 3);
-    const distinct = [...new Map(original.map((s) => [s.text_ja.normalize('NFKC'), s])).values()]
+    const practiceExamples = original
       .map((s) => ({ id: s.item_id, japanese: s.text_ja, english: s.text_en }));
     const other = allPatterns.filter((p) => p.item_id !== row.item_id)
       .map((p) => p.pattern);
-    grammar.fewerThanThreeChoice += Number(choiceQuestions(row.pattern, distinct, other).length < 3);
-    grammar.fewerThanThreeOrdering += Number(orderingQuestions(distinct).length < 3);
+    const practice = grammarPractice(row.pattern, practiceExamples, other, supplementFor(supplement, row.item_id, row.source_hash)?.exercises);
+    grammar.choiceQuestions += practice.choices.length;
+    grammar.orderingQuestions += practice.ordering.length;
+    grammar.choiceShortfall += Math.max(0, 3 - practice.choices.length);
+    grammar.orderingShortfall += Math.max(0, 3 - practice.ordering.length);
+    grammar.fewerThanThreeChoice += Number(practice.choices.length < 3);
+    grammar.fewerThanThreeOrdering += Number(practice.ordering.length < 3);
   }
 
   const translation = db.prepare(`SELECT 1 FROM vi_translations v JOIN content_items i USING(item_id)
@@ -92,12 +97,14 @@ export function reportContentGaps(db, supplement = new Map()) {
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
-  if (![3, 4].includes(process.argv.length))
-    throw new Error('Usage: node tools/report-content-gaps.mjs <snapshot.sqlite> [supplement.json]');
+  if (![3, 4, 5].includes(process.argv.length))
+    throw new Error('Usage: node tools/report-content-gaps.mjs <snapshot.sqlite> [supplement.json] [baseline-supplement.json]');
   const supplement = process.argv[3] ? readContentSupplement(process.argv[3]) : undefined;
   const db = new DatabaseSync(process.argv[2], { readOnly: true });
   try {
-    console.log(JSON.stringify(reportContentGaps(db, supplement), null, 2));
+    const after = reportContentGaps(db, supplement);
+    console.log(JSON.stringify(process.argv[4]
+      ? { before: reportContentGaps(db, readContentSupplement(process.argv[4])), after } : after, null, 2));
   } finally {
     db.close();
   }
