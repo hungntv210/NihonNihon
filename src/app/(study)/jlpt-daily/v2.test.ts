@@ -5,12 +5,37 @@ import {contextAt} from './v2-data.ts';import {japaneseWordEvidence,roadmapLexic
 import {verifierWireSchema} from './v2-verifier.ts';import {independentSchema,choiceSentence} from './independent-qa.ts';
 import {matchesGrammarFunction} from './grammar-function.ts';
 import {contextMeaning} from './context-sense.ts';
+import {draftProvider} from './draft-provider.ts';
 const source=(title:string,reading:string,kind:V2Source['kind']='vocab',pos=['n']):V2Source=>({id:'openjlpt:'+kind+':fixture-'+title,title,reading,kind,pos,level:'N5',hash:hash(title),english:['self-authored fixture'],vietnamese:null,on:[]});
 export function context():V2Context{
  const words=[source('私','わたし','vocab',['pn']),source('毎日','まいにち','vocab',['adv']),source('学校','がっこう'),source('日本語','にほんご'),source('勉強','べんきょう','vocab',['vs']),source('校長','こうちょう'),source('日本','にほん'),source('曰本','にほん'),source('本','ほん'),source('名前','なまえ'),source('はし','はし'),source('行','こう')];
  const characters=[...new Set(words.flatMap(w=>[...w.title]).filter(c=>/\p{Script=Han}/u.test(c)))];characters.push('木','人','国','未','末','目','白');const catalog=[...words,...characters.map(k=>({...source(k,'こう','kanji'),on:k==='行'?['コウ','ギョウ','アン']:k==='本'||k==='書'?['ホン']:k==='日'||k==='人'?['ジツ']:[]})),...['は','が','を','に','で','へ','と','の','だけ','です','だ','でした','ではありません'].map(s=>source(s,s,'grammar',[]))];
  const target=catalog.find(s=>s.kind==='grammar'&&s.title==='で')!;return{mode:'draft_roadmap',date:'2026-11-16',level:'N5',catalog,dictionary:catalog,knownKanji:characters,examples:[{id:'fixture:sentence:1',targetId:target.id,text:'私は毎日学校で日本語を勉強しています。',english:'Self-authored test only.',notation:null,sourceId:'openjlpt',releaseId:'fixture',attribution:'Self-authored test'},{id:'fixture:sentence:modifiers',targetId:catalog.find(s=>s.kind==='grammar'&&s.title==='です')!.id,text:'私の学校の日本語の本です。',english:'Self-authored plumbing fixture; not semantic approval.',notation:null,sourceId:'openjlpt',releaseId:'fixture',attribution:'Self-authored test'}]};
 }
+test('all providers returning incomplete output stop the run with an empty checkpoint',async t=>{
+ const directory=fs.mkdtempSync(path.join(os.tmpdir(),'nihon-incomplete-'));
+ t.after(()=>fs.rmSync(directory,{recursive:true,force:true}));
+ const model='gemini-fixture',seen:string[]=[];
+ const provider=draftProvider([{model,verifierModel:model,requestsPerMinute:60_000_000,dailyBudget:200,timeoutMs:1000,maxOutputTokens:100}],
+  path.join(directory,'quota.json'),'mock-credential',{
+   freeKeys:{groq:'mock-credential',groqFreeTier:true,openrouter:'mock-credential'},
+   fetcher:async url=>{
+    const {hostname,pathname}=new URL(String(url));
+    if(pathname.endsWith('/key'))return Response.json({data:{limit_remaining:null}});
+    seen.push(hostname);
+    if(hostname==='generativelanguage.googleapis.com')return Response.json({candidates:[{finishReason:'MAX_TOKENS'}]});
+    return Response.json({choices:[{finish_reason:'length'}]});
+   },
+  });
+ const base=context(),contexts=Array.from({length:7},(_,n)=>({...base,date:plusDays(base.date,n)}));
+ let checkpoint;
+ const run=await runDeterministic(contexts,[],{provider,checkpoint:r=>{checkpoint=r;}});
+ assert.equal(run.status,'stopped:VERIFIER_OUTPUT_INCOMPLETE_MODELS_EXHAUSTED');
+ assert.deepEqual(run.questions,[]);
+ assert.deepEqual(run.audit,{});
+ assert.deepEqual(checkpoint,run);
+ assert.deepEqual(seen,['generativelanguage.googleapis.com','generativelanguage.googleapis.com','api.groq.com','api.groq.com','openrouter.ai','openrouter.ai']);
+});
 test('context explanations choose only the supported gloss and keep Vietnamese tied to that gloss',()=>{
  const book=source('本','ほん');
  book.english=['book','volume'];

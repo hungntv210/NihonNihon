@@ -2,7 +2,7 @@ import test,{type TestContext} from 'node:test';import assert from 'node:assert/
 import {draftProvider,modelEvidence,semanticSchema,validateSemanticReview,type DraftAttempt} from './draft-provider.ts';
 import {freeCompletion,freeModels,freeProviderStatus,groqRateLimitUntil,readFreeKeys} from './free-provider.ts';
 import {logRateLimitedRequest} from './generate-v2.ts';
-import {verifyDeterministic} from './v2-verifier.ts';
+import {blindQuestions,verifyDeterministic} from './v2-verifier.ts';
 import {choiceSentence} from './independent-qa.ts';
 import type {V2Question} from './deterministic.ts';
 const primary={model:'gemini-3.6-flash',verifierModel:'gemini-3.6-flash',requestsPerMinute:60000000,dailyBudget:200,timeoutMs:1000,maxOutputTokens:100};
@@ -207,7 +207,8 @@ const roleFixture:V2Question={version:2,mode:'draft_roadmap',id:'roles-fixture',
  stem:'[fixture]',choices:['one','two','three','four'],correct:0,order:[],starSlot:0,explanation:'Authored fixture',distractors:[]};
 const flags=(correct:boolean)=>({grammatical:correct,formCorrect:correct,natural:correct,meaningFits:correct});
 function roleProvider(t:TestContext,config:{geminiCap?:boolean;groqLimit?:'model'|'shared';router?:boolean;
- reject?:'meaningCorrect'|'grammarLabelCorrect';reviewMissing?:boolean;groqError?:number;shortIsolatedLimit?:boolean;longTokenReset?:boolean}={}){
+ reject?:'meaningCorrect'|'grammarLabelCorrect';reviewMissing?:boolean;groqError?:number;shortIsolatedLimit?:boolean;longTokenReset?:boolean;
+ geminiIncomplete?:boolean;groqIncomplete?:boolean}={}){
  const ledger=setup(t),seen:string[]=[],waits:number[]=[];
  if(config.shortIsolatedLimit)fakeClock(t);
  let throttled=false;
@@ -222,6 +223,7 @@ function roleProvider(t:TestContext,config:{geminiCap?:boolean;groqLimit?:'model
    const {hostname,pathname}=new URL(String(url));
    if(hostname==='generativelanguage.googleapis.com'){
     seen.push('Gemini');
+    if(config.geminiIncomplete)return Response.json({candidates:[{finishReason:'MAX_TOKENS'}]});
     return new Response(null,{status:429,headers:{'Retry-After':'90'}});
    }
    if(pathname.endsWith('/key')){
@@ -231,6 +233,7 @@ function roleProvider(t:TestContext,config:{geminiCap?:boolean;groqLimit?:'model
    const body=JSON.parse(String(init?.body)),payload=JSON.parse(body.messages[1].content);
    const role=payload.claims?'semantic':payload.questions?'blind':'isolated';
    seen.push(body.model+':'+role);
+   if(config.groqIncomplete&&body.model===freeModels.groqSolver)return Response.json({choices:[{finish_reason:'length'}]});
    if(config.shortIsolatedLimit&&body.model===freeModels.groqSolver&&role==='isolated'&&!throttled){
     throttled=true;
     return new Response(null,{status:429,headers:{'Retry-After':'5'}});
@@ -259,6 +262,49 @@ function roleProvider(t:TestContext,config:{geminiCap?:boolean;groqLimit?:'model
  return {provider,seen,waits,ledger};
 }
 const groqRoleCalls=[freeModels.groqSolver+':blind',freeModels.groqSolver+':isolated',freeModels.groqReview+':semantic'];
+for(const groqIncomplete of [false,true]){
+ test('incomplete final Gemini falls back to '+(groqIncomplete?'OpenRouter after incomplete Groq':'Groq')+' with independent review',async t=>{
+  const {provider,seen}=roleProvider(t,{geminiIncomplete:true,groqIncomplete,router:true});
+  const [row]=await verifyDeterministic(provider,[roleFixture]);
+  assert.equal(row.accepted,true);
+  const model=groqIncomplete?freeModels.openrouter:freeModels.groqSolver;
+  assert.deepEqual(row.models,{solver:model,isolated:model});
+  assert.deepEqual(row.provenance.fallbackProvider,[groqIncomplete?'openrouter':'groq']);
+  assert.equal(row.provenance.verificationRounds[1].semanticReviewerModel,freeModels.groqReview);
+  assert.deepEqual(seen,groqIncomplete?[
+   'Gemini',freeModels.groqSolver+':blind','OpenRouter key',model+':blind',
+   'Gemini','Gemini',freeModels.groqSolver+':isolated',freeModels.groqSolver+':isolated',
+   'OpenRouter key',model+':isolated',freeModels.groqReview+':semantic',
+  ]:['Gemini',groqRoleCalls[0],'Gemini','Gemini',...groqRoleCalls.slice(1)]);
+ });
+}
+for(const missingIndex of [false,true]){
+ test('smaller blind batches preserve all permutations and '+(missingIndex?'reject a wrong index before switching models':'reassemble every index'),async t=>{
+  const question={...roleFixture,type:'order' as const,stem:'__ __ __ __'};
+  const questions=blindQuestions([question,{...question,id:'second'}]);
+  assert.ok(questions.every(q=>q.choices.length===4&&'permutations' in q&&q.permutations.length===24));
+  const requests:{model:string;indexes:number[]}[]=[],ledger=setup(t);
+  const provider=draftProvider([primary,fallback],ledger,'fake',{fetcher:async(url,init)=>{
+   const model=String(url).includes(primary.model)?primary.model:fallback.model;
+   const body=JSON.parse(String(init?.body)),payload=JSON.parse(body.contents[0].parts[0].text);
+   const indexes:number[]=payload.expectedIndexes;
+   assert.equal(payload.expectedResultCount,indexes.length);
+   assert.deepEqual(payload.questions,indexes.map(index=>questions[index]));
+   requests.push({model,indexes});
+   if(model===primary.model&&indexes.length===2)return Response.json({candidates:[{finishReason:'MAX_TOKENS'}]});
+   const rows=indexes.map(index=>({index:missingIndex&&model===primary.model&&index===1?0:index,model}));
+   return Response.json({candidates:[{finishReason:'STOP',content:{parts:[{text:JSON.stringify(rows)}]}}]});
+  }});
+  const output=await provider('verify','',{questions,expectedIndexes:[0,1],expectedResultCount:2},{});
+  assert.deepEqual(requests,[[0,1],[0],[1]].map(indexes=>({model:primary.model,indexes})).concat(
+   missingIndex?[{model:fallback.model,indexes:[0,1]}]:[]));
+  const model=missingIndex?fallback.model:primary.model;
+  assert.deepEqual(output,[{index:0,model},{index:1,model}]);
+  const counts=JSON.parse(fs.readFileSync(ledger,'utf8')).models;
+  assert.equal(counts[primary.model].count,3);
+  assert.equal(counts[fallback.model]?.count,missingIndex?1:undefined);
+ });
+}
 for(const geminiCap of [true,false]){
  test('Gemini '+(geminiCap?'at 200 calls':'HTTP 429')+' uses GPT-OSS for both passes and Qwen only for semantic review',async t=>{
   const {provider,seen}=roleProvider(t,{geminiCap});

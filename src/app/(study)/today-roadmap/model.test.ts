@@ -5,8 +5,8 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import { seedDemo } from '../../../../tools/seed-demo.ts';
-import { defaults, emptyProgress, todayPlan, lessonAccess, allocateRoadmap, localClock, type Shadow } from './model.ts';
-import { readProgress, updateProgress, validateProgress, roadmapData } from './repository.ts';
+import { defaults, emptyProgress, todayPlan, lessonAccess, buildRoadmap, localClock, roadmapKinds, type Shadow } from './model.ts';
+import { readProgress, updateProgress, validateProgress, roadmapData, readRoadmapCatalog } from './repository.ts';
 fs.mkdirSync(path.resolve('.tmp'), {recursive:true});
 const session = (date: string, kind: Shadow['kind'] = 'regular'): Shadow => ({date, kind, minutes:25, clips:kind === 'makeup' ? ['a','b'] : ['a'],method:'manual'});
 test('local daytime/evening and Friday warning follow study timezone', () => {
@@ -33,13 +33,40 @@ test('Sunday and recovery always retain review and never assign new lessons', ()
  assert.deepEqual(recovery.selected,['review']);assert.equal(recovery.reduceNew,true);
  p.shortDays=['2026-11-05'];assert.deepEqual(todayPlan(p,defaults,new Date('2026-11-05T13:00:00Z'),0).selected,['review','new','grammar']);
 });
-test('roadmap distributes real catalog exactly once across 87 weeks in frequency order', () => {
- const items=Array.from({length:25},(_,n)=>({id:String(n),kind:'kanji' as const,level:'N5',title:String(n),frequency:25-n}));
- const weeks=allocateRoadmap(items,defaults.startDate);
- assert.equal(weeks.length,87);assert.equal(weeks[0].date,defaults.startDate);
- assert.deepEqual(weeks.flatMap(w=>w.items.map(i=>i.id)),items.toReversed().map(i=>i.id));
- assert.equal(weeks.filter(w=>w.level==='N2').length,30);
- assert.equal(allocateRoadmap([],defaults.startDate).flatMap(w=>w.items).length,0);
+test('roadmap covers 87 ordered weeks with every catalog item assigned once', () => {
+ const stages = { N5: 12, N4: 23, N3: 22, N2: 30 };
+ const levels = Object.entries(stages).flatMap(([level, weeks]) => Array<string>(weeks).fill(level));
+ const items = Object.entries(stages).flatMap(([level, weeks]) =>
+   roadmapKinds.flatMap(kind => Array.from({ length: weeks * 2 + 1 }, (_, n) => ({
+     id: level + kind + String(n).padStart(3, '0'), title: String(n), kind, level,
+     frequency: kind === 'grammar' ? null : n === 0 ? null : weeks * 2 - Math.floor(n / 2),
+   }))),
+ );
+ const clips = [
+   { id: 'clip-b', level: 'N5', title: 'B' },
+   { id: 'clip-a', level: 'N5', title: 'A' },
+   { id: 'clip-c', level: 'N3', title: 'C' },
+ ];
+ const weeks = buildRoadmap(items, defaults.startDate, clips);
+ assert.equal(weeks.length, 87);
+ assert.deepEqual(weeks.map(w => w.level), levels);
+ assert.deepEqual(weeks.map(w => w.week), Array.from({ length: 87 }, (_, i) => i + 1));
+ assert.equal(weeks[0].date, defaults.startDate);
+ assert.ok(weeks.every(w => w.theme && roadmapKinds.every(kind => w.items[kind].length > 0)));
+ const assigned = weeks.flatMap(w => roadmapKinds.flatMap(kind => w.items[kind].map(i => i.id)));
+ assert.equal(new Set(assigned).size, assigned.length);
+ assert.deepEqual(assigned.toSorted(), items.map(i => i.id).toSorted());
+ for (const level of Object.keys(stages)) {
+   for (const kind of ['kanji', 'vocab'] as const) {
+     const ranks = weeks.filter(w => w.level === level).flatMap(w => w.items[kind].map(i => i.frequency ?? Infinity));
+     assert.deepEqual(ranks, ranks.toSorted((a, b) => a - b));
+   }
+ }
+ assert.deepEqual(weeks.slice(0, 3).map(w => w.clip?.id ?? null), ['clip-a', 'clip-b', null]);
+ assert.equal(weeks[35].clip?.id, 'clip-c');
+ assert.equal(weeks.filter(w => w.clip).length, 3);
+ assert.deepEqual(buildRoadmap(items.toReversed(), defaults.startDate, clips.toReversed()), weeks);
+ assert.ok(buildRoadmap([], defaults.startDate).every(w => w.clip === null && roadmapKinds.every(kind => w.items[kind].length === 0)));
 });
 test('storage rejects invalid makeup/corruption and retains prior progress on failed update', () => {
  const dir=fs.mkdtempSync(path.join(path.resolve('.tmp'),'roadmap-')),file=path.join(dir,'progress.json');
@@ -61,6 +88,7 @@ test('catalog and quick count use active OpenJLPT and recognition cards only', (
  assert.equal(data.items.length,15);assert.deepEqual(new Set(data.items.map(i=>i.kind)),new Set(['vocab','kanji','grammar']));
  assert.equal(Object.getPrototypeOf(data.items[0]),Object.prototype,'RSC catalog rows must be plain serializable objects');
  assert.equal(data.due,0);assert.deepEqual(data.clips,[]);
+ assert.ok(readRoadmapCatalog(db).some(item => item.kind === 'vocab' && item.frequency !== null));
  } finally {db.close();fs.rmSync(dir,{recursive:true,force:true});}
 });
 

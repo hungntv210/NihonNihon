@@ -1170,6 +1170,35 @@ Checked implementation 61b8cc3fd473097d05f332b6138e7770d1868aad on branch `naeto
 - `npm run check` (`2026-11-26 09:48:09` to `09:49:52` +07:00 ICT): PASS -- `typecheck` PASS; `npm test` `354/354` PASS (`22/22` prototype + `332/332` core/route, 0 failures/skips, including 3 new regression tests in `tests/import-g0.test.ts` covering seed-collision hash reconciliation, reader visibility, strict second-run idempotency, semantic-conflict preservation, candidate rebasing, stale-hash blocking, and live-DB path guards); `next build --webpack` PASS; `test:app` `16/16` PASS.
 - Route scope passed (`4` files: `tools/import-g0.mjs`, `tests/import-g0.test.ts`, `tools/check-route-scope.mjs`, and this append-only verification entry). Only this append-only verification entry follows `0ff35d35730cf21ee2665b53d11b8fe41a7c9484`.
 
+## Pokabu JLPT incomplete verifier fallback (2026-11-26)
+
+- Checked implementation `3a9acfd036fad184177728f66527a0638df24ea0` on `pokabu/verifier-incomplete-fallback`, based on `a90e1fd`. Windows 11 x64, Node v24.10.0 and npm 11.6.1.
+- `npm run check` (09:50:14–09:51:45 ICT) passed. Typecheck, webpack build and application gate (16/16) passed. All 356 tests passed (22 prototype and 334 core/route), with zero failures or skips.
+- Five mock regressions passed. They cover batch integrity, model fallback, independent semantic review and the stopped checkpoint. The route-scope guard passed. Only this append-only entry follows the checked implementation.
+
+
+### Master synchronization
+
+- Checked merge commit `245fd2c2c859278c5c918cc75aea6ec2c39a93db` after merging master `6ef86d2`. Windows x64, Node v24.10.0, npm 11.6.1.
+- `npm run check` passed from 2026-11-26 11:41:08 to 11:42:32 ICT (UTC+07:00). Typecheck and webpack build passed. Tests passed 359/359 (22 prototype and 337 core/route), with zero failures or skips. Application gate passed 16/16.
+- Route scope passed for all five changed files. The verifier implementation and tests match the previously reviewed head.
+
+## Pokabu 87-week OpenJLPT roadmap -- 2026-11-26
+
+- Checked implementation ab774cd6cd23d7d3bcfcfd9648e43b8f36252493 on branch pokabu/roadmap-87w against 6ef86d28fcff5eb4435d867fb54b582157f8428d on Windows x64 (Node v24.10.0, npm 11.6.1).
+- npm run check (11:52:17 to 11:53:52, UTC+07:00) PASS. Typecheck PASS, prototype 22/22 and core/route 332/332 PASS, production build PASS, app gate 16/16 PASS.
+- Today browser check PASS at 1440 px and 390 px with a disposable fixture. It verified the 87 week controls, the same-level clip link and the missing-clip label.
+- Read-only G0 CLI smoke produced byte-identical plans twice: 87 weeks, 6,182 unique catalog items and two N5 library suggestions.
+- Route scope PASS. This append-only entry follows the checked implementation.
+
+
+### Master synchronization
+
+- Checked merge commit `2ec088946ce0c81cc71deafa4f00bd983fe02737` after merging master `409c125e127610d65841cc4a3a316b47df53aa37`. Windows x64, Node v24.10.0, npm 11.6.1.
+- `npm run check` passed on 2026-11-26 from 12:21:54 to 12:23:22 ICT (UTC+07:00). Typecheck and webpack build passed. Tests passed 359/359 (22 prototype and 337 core/route), with zero failures or skips. Application gate passed 16/16.
+- Route scope passed for all 12 changed files. The only manual conflict resolution preserved both append-only verification entries.
+
+
 ## Naetoru G1 checklist verification and FTS5 tick -- 2026-11-26
 
 - Checked commit `363d3e32307ac0e6d1628edd7e2b1b15b385e0fe` on branch `naetoru/g1-tick-1126` (base `origin/master` `6ef86d28fcff5eb4435d867fb54b582157f8428d`) on Windows x64, Node v24.10.0, npm 11.6.1, starting from a clean `.next`.
