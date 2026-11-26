@@ -1279,3 +1279,12 @@ Checked implementation 61b8cc3fd473097d05f332b6138e7770d1868aad on branch `naeto
 - `npm run check` passed from 20:27:53 to 20:29:10 ICT (UTC+07:00). Typecheck, 380/380 tests (22 prototype and 358 core/route), webpack build and 16/16 application checks passed.
 - Browser JavaScript gzip grew from 467,522 B to 468,121 B in the same worktree and dependency tree. Grammar detail grew from 62,031 B to 62,630 B, and the grammar list from 57,770 B to 57,771 B.
 - Route ownership passed for 13 files. Only this append-only audit entry follows the checked merge.
+
+## Naetoru Shadowing offline auto-meta -- 2026-11-26
+
+- Checked implementation `dc20f66b19dde464776731274caffa9fb0f04af0` on branch `naetoru/shadowing-auto-meta` against `origin/master` `3ce4d88f1161ffce3dda5b849f9ceafd998acfad` (Windows x64, Node `v24.10.0`, npm `11.6.1`, clean `.next`).
+- `npm run check` PASS (2026-11-26T22:17:34+07:00 to 2026-11-26T22:19:10+07:00): `typecheck` PASS; `npm test` **386/386 PASS** (22/22 prototype + 364/364 core/route, including 6 new test suites in `tests/shadowing-auto-meta.test.ts` and 3/3 `font-split.test.ts`), 0 fail, 0 skipped; webpack production `build` PASS; `test:app` **16/16 PASS**.
+- Client bundle `.next/static/chunks/**/*.js` total gzip: **470,710 B** (budget `< 473,494 B`, headroom `2,784 B`); zero `kuromoji` / IPADIC dictionary chunks in `.next/static/`.
+- Playwright `node --import tsx src/app/(study)/shadowing/browser-check.ts` PASS **31/31** (2026-11-26T22:20:09+07:00 to 2026-11-26T22:21:07+07:00, `noExternalRequests: true`, 0 console/page errors, 390px and 1440px zero horizontal overflow): verified `/api/shadowing/clips/analyze` 401 + `private, no-store` + no `Set-Cookie`, offline kuromoji furigana + `<ruby>` preview, OpenJLPT tags, 87-week roadmap suggestion, honest no-MT notice, user edits to furigana/tags/week before saving, and persistence across reload.
+- Route scope `node tools/check-route-scope.mjs origin/master naetoru/shadowing-auto-meta` PASS (17 implementation files + this append-only audit entry).
+- Limitations: Vietnamese machine translation is intentionally NOT implemented (offline-only, no external API calls); `docs/features/g1-shadowing.md` line 31 stays unticked `[ ]` with note `còn thiếu: dịch máy tiếng Việt (chờ duyệt gửi ra ngoài)`. Only this append-only audit entry follows the checked implementation.
