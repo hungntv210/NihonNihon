@@ -19,6 +19,30 @@ export type DraftAttempt={at:string;phase:'generate'|'verify';model:string;attem
 
 const MODEL_COOLDOWN_MS=30_000;
 const MAX_RECOVERY_WAIT_MS=60_000;
+const incompleteOutput=(error:unknown):error is Error=>error instanceof Error&&
+ ['AI_OUTPUT_INCOMPLETE','FREE_PROVIDER_OUTPUT_INCOMPLETE'].includes(error.message);
+
+async function retrySmallerBatch(call:(payload:unknown)=>Promise<unknown>,payload:unknown,onSplit?:(error:Error)=>void){
+ try{return await call(payload);}
+ catch(error){
+  if(!incompleteOutput(error)||!payload||typeof payload!=='object')throw error;
+  const batch=payload as {questions?:{index:number}[];sentences?:{index:number}[];expectedIndexes?:number[]};
+  const field=batch.questions?'questions':'sentences',rows=batch[field];
+  if(!Array.isArray(rows)||rows.length<2||!Array.isArray(batch.expectedIndexes))throw error;
+  const middle=field==='sentences'&&rows.length>4?Math.floor(rows.length/8)*4:Math.floor(rows.length/2);
+  const combined:unknown[]=[];
+  onSplit?.(error);
+  for(const part of [rows.slice(0,middle),rows.slice(middle)]){
+   const indexes=part.map(row=>row.index);
+   const output=await call({...batch,[field]:part,expectedIndexes:indexes,expectedResultCount:part.length});
+   requireValue(Array.isArray(output)&&output.length===indexes.length&&
+    new Set(output.map(row=>row?.index)).size===indexes.length&&
+    output.every(row=>indexes.includes(row?.index)),'AI_OUTPUT_INCOMPLETE');
+   combined.push(...output);
+  }
+  return combined;
+ }
+}
 
 function cooldownUntil(error:unknown,now:number){
  const value=error instanceof GeminiHttpError?error.retryAfter?.trim():undefined;
@@ -48,6 +72,10 @@ export function draftProvider(profiles:Profile[],ledger:string,key:string,option
   const order=routing?.excludeModels?.length?eligible:[...eligible.filter(i=>i>=current),...eligible.filter(i=>i<current)];
   let previous:{index:number;reason:string}|undefined;
   let noDifferentSolver=false;
+  const incompleteModels=new Set<number>();
+  let incomplete=false;
+  const reportError=(model:string,attempt:number,error:string,input:unknown)=>
+   options.onAttempt?.({at:new Date().toISOString(),phase,model,attempt,status:'error',error},input);
   const record=(output:unknown,model:string,fallback:boolean,attempt:number,extra:Pick<ModelEvidence,'fallbackProvider'|'semanticReview'|'semanticReviewerModel'>={})=>{
    const evidence:ModelEvidence={model,fallback,switches:structuredClone(switches),...extra};
    if(output&&typeof output==='object'){Object.defineProperty(output,'modelEvidence',{value:evidence});Object.defineProperty(output,'verifierModel',{value:model});}
@@ -56,20 +84,29 @@ export function draftProvider(profiles:Profile[],ledger:string,key:string,option
   };
   for(const recovery of [false,true]){
    if(recovery){
-    const wait=Math.min(...order.map(index=>cooldowns[index]))-Date.now();
+    const wait=Math.min(...order.filter(index=>!incompleteModels.has(index)).map(index=>cooldowns[index]))-Date.now();
     if(wait>MAX_RECOVERY_WAIT_MS)break;
     if(wait>0)await sleep(wait);
    }
    for(const index of order){
-    if(cooldowns[index]>Date.now())continue;
+    if(incompleteModels.has(index)||cooldowns[index]>Date.now())continue;
     if(previous&&previous.index!==index)switches.push({from:profiles[previous.index].model,to:profiles[index].model,reason:previous.reason});
     for(let attempt=1;attempt<=2;attempt++)try{
-     const output=await providers[index](phase,prompt,payload,schema);
+     const call=(input:unknown)=>providers[index](phase,prompt,input,schema);
+     const output=phase==='verify'
+      ?await retrySmallerBatch(call,payload,e=>reportError(profiles[index].model,attempt,e.message,payload))
+      :await call(payload);
      if(!routing?.excludeModels?.length)current=index;
      return record(output,profiles[index].model,index>0,attempt);
     }catch(e){
      const error=(e instanceof Error?e.message:String(e)).replaceAll(key,'[REDACTED]').replace(/AIza[\w-]+/g,'[REDACTED]');
-     options.onAttempt?.({at:new Date().toISOString(),phase,model:profiles[index].model,attempt,status:'error',error},payload);
+     reportError(profiles[index].model,attempt,error,payload);
+     if(phase==='verify'&&incompleteOutput(e)){
+      incomplete=true;
+      incompleteModels.add(index);
+      previous={index,reason:error};
+      break;
+     }
      const overload=e instanceof GeminiHttpError&&(e.status===503||e.status===429),temporary=e instanceof Error&&e.name==='TimeoutError'||e instanceof TypeError&&e.message==='fetch failed';
      const capReached=error==='SHARED_DAILY_BUDGET_REACHED'||error==='DAILY_BUDGET_REACHED';
      if(capReached&&useGroq&&!recovery){previous={index,reason:error};break;}
@@ -90,23 +127,26 @@ export function draftProvider(profiles:Profile[],ledger:string,key:string,option
       const message=e instanceof Error?e.message:'';
       const error=/^(?:FREE_PROVIDER|OPENROUTER)_[A-Z0-9_]+$/u.test(message)?message:
        e instanceof Error&&e.name==='TimeoutError'?'FREE_PROVIDER_TIMEOUT':'FREE_PROVIDER_REQUEST_FAILED';
-      options.onAttempt?.({at:new Date().toISOString(),phase,model,attempt:1,status:'error',error},input);
+      reportError(model,1,error,input);
       throw Error(error);
      }
     };
     let model:string=freeModels.groqSolver,fallbackProvider:FreeProvider='groq';
     if(previous)switches.push({from:profiles[previous.index].model,to:model,reason:previous.reason});
+    const solve=(solverModel:string,call:NonNullable<typeof groqSolver>)=>
+     retrySmallerBatch(input=>complete(solverModel,call,prompt,input,schema),payload);
     let output:unknown;
-    try{output=await complete(model,groqSolver,prompt,payload,schema);}
+    try{output=await solve(model,groqSolver);}
     catch(e){
      const reason=(e as Error).message;
-     if(!['FREE_PROVIDER_HTTP_429','FREE_PROVIDER_RATE_LIMITED','FREE_PROVIDER_DAILY_BUDGET_REACHED'].includes(reason))continue;
+     if(incompleteOutput(e))incomplete=true;
+     else if(!['FREE_PROVIDER_HTTP_429','FREE_PROVIDER_RATE_LIMITED','FREE_PROVIDER_DAILY_BUDGET_REACHED'].includes(reason))continue;
      if(!useRouter){noDifferentSolver=true;continue;}
      switches.push({from:model,to:freeModels.openrouter,reason});
      model=freeModels.openrouter;
      fallbackProvider='openrouter';
-     try{output=await complete(model,routerSolver,prompt,payload,schema);}
-     catch{noDifferentSolver=true;continue;}
+     try{output=await solve(model,routerSolver);}
+     catch(e){if(incompleteOutput(e))incomplete=true;noDifferentSolver=true;continue;}
     }
     const extra:Pick<ModelEvidence,'fallbackProvider'|'semanticReview'|'semanticReviewerModel'>={fallbackProvider};
     const claims=routing.semanticReview;
@@ -122,6 +162,7 @@ export function draftProvider(profiles:Profile[],ledger:string,key:string,option
     return record(output,model,true,1,extra);
    }
   }
+  if(incomplete)throw Error('VERIFIER_OUTPUT_INCOMPLETE_MODELS_EXHAUSTED');
   throw Error(noDifferentSolver||routing?.excludeModels?.length?'NO_DIFFERENT_VERIFIER':'DRAFT_MODELS_EXHAUSTED');
  };
 }
