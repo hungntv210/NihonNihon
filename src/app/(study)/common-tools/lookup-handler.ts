@@ -10,6 +10,7 @@ export type LookupHandlerDeps = {
   readBody: (request: Request) => Promise<string>;
   dbPath: string;
   contextPath: string;
+  jmdictPath?: string;
   now?: () => Date;
 };
 
@@ -28,7 +29,7 @@ export async function handleLookupGet(request: Request, deps: LookupHandlerDeps)
   const url = new URL(request.url);
   const rawQuery = url.searchParams.get('q') ?? '';
   const rawBase = url.searchParams.get('base');
-  if (!rawQuery.normalize('NFC').trim()) {
+  if (rawQuery.includes('\0') || !rawQuery.normalize('NFC').trim()) {
     return NextResponse.json(
       { error: 'Thiếu từ cần tra.' },
       { status: 400, headers: NO_STORE_HEADERS },
@@ -36,8 +37,12 @@ export async function handleLookupGet(request: Request, deps: LookupHandlerDeps)
   }
   const db = openContentDatabase(deps.dbPath);
   try {
-    const payload = lookupWord(db, rawQuery, rawBase, (itemId) =>
-      getSavedSentenceForItem(itemId, deps.contextPath),
+    const payload = lookupWord(
+      db,
+      rawQuery,
+      rawBase,
+      (itemId) => getSavedSentenceForItem(itemId, deps.contextPath),
+      deps.jmdictPath !== undefined ? { jmdictPath: deps.jmdictPath } : undefined,
     );
     return NextResponse.json(payload, { status: 200, headers: NO_STORE_HEADERS });
   } finally {
@@ -91,6 +96,7 @@ export async function handleLookupPost(request: Request, deps: LookupHandlerDeps
     const result = saveLookupItemToSrs({
       dbPath: deps.dbPath,
       contextPath: deps.contextPath,
+      jmdictPath: deps.jmdictPath,
       itemId: body.itemId,
       cardType,
       sentenceJa: body.sentenceJa,

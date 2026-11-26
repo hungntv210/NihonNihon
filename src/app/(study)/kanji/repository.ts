@@ -233,7 +233,7 @@ export function kanjiDetail(db: DatabaseSync, character: string, supplement = re
   const related = db
     .prepare(
       `SELECT DISTINCT v.*,EXISTS(SELECT 1 FROM srs_cards sc WHERE sc.item_id=v.item_id) studied FROM vocab v JOIN content_items i USING(item_id)
-    WHERE i.is_active=1 AND (EXISTS(SELECT 1 FROM kanji_vocab kv WHERE kv.kanji_id=? AND kv.vocab_id=v.item_id) OR instr(v.word,?)>0)
+    WHERE i.is_active=1 AND i.source_id<>'jmdict' AND (EXISTS(SELECT 1 FROM kanji_vocab kv WHERE kv.kanji_id=? AND kv.vocab_id=v.item_id) OR instr(v.word,?)>0)
     ORDER BY studied DESC,(v.level=?) DESC,CASE v.level WHEN 'N5' THEN 0 WHEN 'N4' THEN 1 WHEN 'N3' THEN 2 WHEN 'N2' THEN 3 ELSE 4 END,v.word LIMIT 8`,
     )
     .all(id, character, item.level)

@@ -136,6 +136,7 @@ function writeLookupSentenceEntry(file: string, entry: SavedLookupSentence): Loo
 export function saveLookupItemToSrs(params: {
   dbPath?: string;
   contextPath?: string;
+  jmdictPath?: string;
   itemId: string;
   cardType?: CardType;
   sentenceJa: string;
@@ -160,7 +161,13 @@ export function saveLookupItemToSrs(params: {
       ? params.sourceClipId.trim().slice(0, 128)
       : null;
   const now = params.now ?? new Date();
-  const card = enqueueCard(params.dbPath ?? databasePath(), params.itemId, cardType, now);
+  const card = enqueueCard(
+    params.dbPath ?? databasePath(),
+    params.itemId,
+    cardType,
+    now,
+    params.jmdictPath,
+  );
   const sentence: SavedLookupSentence = {
     cardId: card.cardId,
     itemId: params.itemId,
