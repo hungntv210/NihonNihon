@@ -21,32 +21,43 @@ export function createSession(secret: string, now = Date.now()) {
   return `${body}.${signature(body, secret).toString('base64url')}`;
 }
 
-export function verifySession(
+export function sessionSubject(
   token: string | undefined,
   secret: string,
   now = Date.now(),
-): boolean {
+): string | null {
   validSecret(secret);
-  if (!token || token.length > 1024) return false;
+  if (!token || token.length > 1024) return null;
   try {
     const parts = token.split('.');
-    if (parts.length !== 2) return false;
+    if (parts.length !== 2) return null;
     const actual = Buffer.from(parts[1], 'base64url'),
       expected = signature(parts[0], secret);
-    if (actual.length !== expected.length || !timingSafeEqual(actual, expected)) return false;
+    if (actual.length !== expected.length || !timingSafeEqual(actual, expected)) return null;
     const value = JSON.parse(Buffer.from(parts[0], 'base64url').toString('utf8')),
       seconds = Math.floor(now / 1000);
-    return (
+    if (
       value.sub === 'owner' &&
       Number.isSafeInteger(value.iat) &&
       Number.isSafeInteger(value.exp) &&
       value.iat <= seconds &&
       value.exp > seconds &&
       value.exp - value.iat === SESSION_SECONDS
-    );
+    ) {
+      return value.sub;
+    }
+    return null;
   } catch {
-    return false;
+    return null;
   }
+}
+
+export function verifySession(
+  token: string | undefined,
+  secret: string,
+  now = Date.now(),
+): boolean {
+  return sessionSubject(token, secret, now) !== null;
 }
 
 export function hashPassword(password: string): string {

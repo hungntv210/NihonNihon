@@ -10,7 +10,7 @@ import {Mascot} from '../../../components/mascot.tsx';
 import {RoadmapMap} from './roadmap-map.tsx';
 type Props = { now: string; settings: Settings; progress: Progress; data: { due: number; roadmap: ReturnType<typeof buildRoadmap>; clips: RoadmapClip[]; saved: string[] } };
 export function Today({ now, settings, progress, data }: Props) {
-  const router = useRouter(), [clock, setClock] = useState(now), [message, setMessage] = useState(''), [busy, setBusy] = useState(false), [kind, setKind] = useState('regular'), [notice, setNotice] = useState('');
+  const router = useRouter(), [clock, setClock] = useState(now), [message, setMessage] = useState(''), [busy, setBusy] = useState(false), [kind, setKind] = useState('regular');
   const plan = todayPlan(progress, settings, new Date(clock), data.due), roadmap = data.roadmap, current = roadmap[plan.week - 1];
   useEffect(() => { const tick = setInterval(() => setClock(new Date().toISOString()), 30000);return () => clearInterval(tick); }, []);
   useEffect(() => {
@@ -29,6 +29,7 @@ export function Today({ now, settings, progress, data }: Props) {
   const weekCount = (week: typeof current) => roadmapKinds.reduce((sum, kind) => sum + week.items[kind].length, 0);
   const weekDate = (week: typeof current) => plusDays(week.date, plan.delayedWeeks * 7);
   const active = progress.activeTask && Object.hasOwn(tasks, progress.activeTask) ? tasks[progress.activeTask as keyof typeof tasks] : null;
+  const breakText = (settings.dayBreakTimes ?? []).join(' · ');
   return <div className={styles.page}>
     <RouteHeading title="Hôm nay" eyebrow={'MỖI NGÀY MỘT CHÚT · TUẦN '+plan.week+'/87'}><h2 className={styles.subtitle}>{plan.evening ? 'Buổi tối, dành chút thời gian cho mình.' : 'Hôm nay, gặp lại những điều đã học.'}</h2><p>{plan.date} · {settings.timeZone} · Giờ học tối {settings.eveningTime}</p></RouteHeading>
     <div className={styles.groupLabel}><span>01</span><h2>Làm ngay</h2></div>
@@ -74,13 +75,6 @@ export function Today({ now, settings, progress, data }: Props) {
         </details>)}
       </div>
     </section>
-    <section className={styles.section}><h2>Nhắc học trên màn hình</h2><p>{plan.evening ? `Đã đến giờ học tối. ${plan.count < 2 && ['21','22'].includes(plan.time.slice(0,2)) ? 'Bạn còn buổi shadowing cần hoàn thành.' : ''}` : data.due ? `Còn ${data.due} thẻ Ôn nhanh trong giờ nghỉ. Ban ngày không nhắc bài mới.` : 'Đã hết thẻ đến hạn. Tạm tắt nhắc Ôn nhanh.'}</p><p className="muted">Chỉ nhắc khi trang này đang mở; chưa gửi thông báo nền. Tự làm mới giờ mỗi 30 giây.</p><button className="button" onClick={() => setNotice('Nhắc học hiện chỉ có trên trang. Cài đặt thông báo nền sẽ được bổ sung khi có dịch vụ gửi.')}>Thông tin nhắc học</button><p role="status">{notice}</p></section>
+    <section className={styles.section}><h2>Thông báo nhắc học</h2><p>{plan.evening ? `Đã đến giờ học tối. ${plan.count < 2 && ['21','22'].includes(plan.time.slice(0,2)) ? 'Bạn còn buổi shadowing cần hoàn thành.' : ''}` : data.due ? `Còn ${data.due} thẻ Ôn nhanh trong giờ nghỉ. Ban ngày không nhắc bài mới.` : 'Đã hết thẻ đến hạn. Tự tắt nhắc Ôn nhanh.'}</p><p className="muted">{settings.remindersEnabled ? `Đang bật nhắc nền: giờ nghỉ ${breakText || '—'}, buổi tối ${settings.eveningTime} (nhắc lại shadowing 21:00 và 22:00 nếu chưa làm).` : 'Nhắc đẩy nền đang tắt.'}</p><Link className="text-link" href="/settings">Cài đặt thông báo và khung giờ nghỉ →</Link></section>
   </div>;
 }
-
-
-
-
-
-
-
