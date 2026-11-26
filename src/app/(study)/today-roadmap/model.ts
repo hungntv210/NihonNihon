@@ -55,13 +55,31 @@ export function todayPlan(progress: Progress, settings: Settings, now: Date, due
   return { date, time, week, monday, weekday, evening: time >= settings.eveningTime, access, short, selected, count, urgent, streak, freezes, recovery, missed, reduceNew: due > 60, delayedWeeks, expectedFinish: plusDays(settings.startDate, (87 + delayedWeeks) * 7 - 1), behindExam: dayNumber(plusDays(settings.startDate, (87 + delayedWeeks) * 7 - 1)) - dayNumber(settings.examDate) > 28, examDays: Math.ceil(dayNumber(settings.examDate) - dayNumber(date)) };
 }
 export type CatalogItem = { id: string; kind: 'vocab' | 'kanji' | 'grammar'; level: string; title: string; frequency: number | null };
-export function allocateRoadmap(items: CatalogItem[], startDate: string) {
-  const stages = [{ level: 'N5', weeks: 12, theme: 'Nền tảng và sinh hoạt' }, { level: 'N4', weeks: 23, theme: 'Cuộc sống và công việc' }, { level: 'N3', weeks: 22, theme: 'Kết nối và diễn đạt' }, { level: 'N2', weeks: 30, theme: 'Đọc hiểu và lập luận' }];
+export type RoadmapClip = { id: string; title: string; level: string };
+export const roadmapKinds = ['kanji', 'vocab', 'grammar'] as const;
+const stages = [
+  { level: 'N5', weeks: 12, theme: 'Nền tảng và sinh hoạt' },
+  { level: 'N4', weeks: 23, theme: 'Cuộc sống và công việc' },
+  { level: 'N3', weeks: 22, theme: 'Kết nối và diễn đạt' },
+  { level: 'N2', weeks: 30, theme: 'Đọc hiểu và lập luận' },
+];
+const byId = (a: { id: string }, b: { id: string }) => a.id < b.id ? -1 : Number(a.id > b.id);
+export function allocateRoadmap(
+  items: CatalogItem[], startDate: string,
+  compareIds = (a: CatalogItem, b: CatalogItem) => a.id.localeCompare(b.id),
+) {
   let offset = 0;
   return stages.flatMap(stage => {
-    const weeks = Array.from({ length: stage.weeks }, (_, n) => ({ week: offset + n + 1, date: plusDays(startDate, (offset + n) * 7), level: stage.level, theme: stage.theme, items: [] as CatalogItem[] }));
-    for (const kind of ['kanji', 'vocab', 'grammar']) {
-      const available = items.filter(i => i.level === stage.level && i.kind === kind).sort((a, b) => (a.frequency ?? Infinity) - (b.frequency ?? Infinity) || a.id.localeCompare(b.id));
+    const weeks = Array.from({ length: stage.weeks }, (_, n) => ({
+      week: offset + n + 1,
+      date: plusDays(startDate, (offset + n) * 7),
+      level: stage.level,
+      theme: stage.theme,
+      items: [] as CatalogItem[],
+    }));
+    for (const kind of roadmapKinds) {
+      const available = items.filter(i => i.level === stage.level && i.kind === kind);
+      available.sort((a, b) => (a.frequency ?? Infinity) - (b.frequency ?? Infinity) || compareIds(a, b));
       available.forEach((item, n) => weeks[Math.floor(n * stage.weeks / available.length)].items.push(item));
     }
     offset += stage.weeks;
@@ -69,5 +87,18 @@ export function allocateRoadmap(items: CatalogItem[], startDate: string) {
   });
 }
 
-
-
+export function buildRoadmap(items: CatalogItem[], startDate: string, clips: RoadmapClip[] = []) {
+  const suggestions = clips.toSorted(byId);
+  return allocateRoadmap(items, startDate, byId).map(week => {
+    const clipIndex = suggestions.findIndex(clip => clip.level === week.level);
+    return {
+      ...week,
+      items: {
+        kanji: week.items.filter(item => item.kind === 'kanji'),
+        vocab: week.items.filter(item => item.kind === 'vocab'),
+        grammar: week.items.filter(item => item.kind === 'grammar'),
+      },
+      clip: clipIndex < 0 ? null : suggestions.splice(clipIndex, 1)[0],
+    };
+  });
+}

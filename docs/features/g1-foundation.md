@@ -28,7 +28,7 @@ SRS, Từ vựng, Kanji và Ngữ pháp trong thư mục tuyến tương ứng; 
 ## Chức năng
 
 - [x] Next.js (React) + Tailwind; SQLite qua `node:sqlite` của Node 24 như G0 (tests/content.test.ts, tools/test-app.ts).
-- [ ] FTS5 cho bước tìm kiếm sau.
+- [x] FTS5 cho bước tìm kiếm sau (xác minh 26/11: `src/app/(study)/common-tools/fts5.ts:76-100,387,663-683`, `src/app/(study)/common-tools/repository.ts:95-145`, tuyến `/common-tools/search` tại `src/app/(study)/common-tools/search/page.tsx:77-84` và `/api/common-tools/lookup` tại `src/app/api/common-tools/lookup/route.ts:17-24`, kiểm thử `tests/search-fts5.test.ts:58-209`).
 - [x] Dựng token giao diện mới theo `docs/interface-redesign.md`; không mang các token cũ của prototype sang.
 - [x] **Đăng nhập:** một tài khoản, mật khẩu hoặc passkey; mọi trang yêu cầu đăng nhập; `robots` chặn công cụ tìm kiếm
 - [x] **Triển khai:** VPS nhỏ hoặc máy nhà + Tailscale (không mở cổng ra Internet khi dùng Tailscale)
@@ -157,6 +157,7 @@ Các dấu tick xác nhận phần code đã chạy qua test/fixture; không tha
 - Bằng chứng: `tools/test-app.ts`.
 - Bằng chứng: `tests/backup.test.ts`.
 - Bằng chứng: `tools/home-run.ps1`.
+- Bằng chứng (2026-11-26): `src/app/(study)/common-tools/fts5.ts:76-100,387,663-683`, `src/app/(study)/common-tools/repository.ts:95-145`, `src/app/(study)/common-tools/search/page.tsx:77-84`, `src/app/api/common-tools/lookup/route.ts:17-24`, `tests/search-fts5.test.ts:58-209` (chỉ mục sidecar SQLite FTS5 trigram `search_fts USING fts5`, giữ nguyên DB G0 chỉ đọc, phục vụ `/common-tools/search` và `/api/common-tools/lookup`).
 
 Next/React/Tailwind/SQLite đã chạy; FTS5 chưa có. PWA cold-offline SRS/outbox đã kiểm ở tools/test-app.ts, chưa bao phủ đọc bài offline. Có code/script sao lưu hằng ngày và download/restore; chưa nghiệm thu lịch backup production nên mục tự động còn để trống. Settings lưu các trường nhưng retention FSRS chưa nối scheduler (vẫn90%); không tick cả mục ghép. Cài PWA/font trên cả hai hệ điện thoại chưa có đủ chứng cứ thiết bị.
 # Wasoku visual foundation

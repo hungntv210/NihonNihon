@@ -18,6 +18,7 @@ Ba công cụ có mặt ở mọi màn hình.
 - [x] **Thanh tìm kiếm chung:** kanji, kana, romaji, Hán Việt, tiếng Việt; **gõ không dấu vẫn tìm ra** ("lam viec" → "làm việc")
 - [x] Kết quả gồm từ, kanji, mẫu ngữ pháp, câu trong clip
 - [ ] Từ ngoài JLPT tra qua JMdict + tu-dien-nhat-viet
+  - Còn thiếu: chưa nạp kho từ ngoài JLPT từ JMdict (bản sao DB app chỉ đọc hiện chỉ có 4.741 mục `vocab` nguồn `openjlpt`, 0 mục JMdict) và `src/app/(study)/common-tools/lookup.ts:121-227` chưa có nhánh tra cứu ngoài JLPT qua JMdict + `tu-dien-nhat-viet`.
 - [x] **Báo sai** trên mọi dòng tiếng Việt: chỉ đánh dấu, không phải sửa
 
 ## Dữ liệu
