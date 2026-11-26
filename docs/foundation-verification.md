@@ -1155,3 +1155,10 @@ Checked implementation 61b8cc3fd473097d05f332b6138e7770d1868aad on branch `naeto
 - Shadowing Playwright route browser check (`npx tsx src/app/(study)/shadowing/browser-check.ts`): PASS 29/29 (desktop 1440x1080 and mobile 390x844, `scrollWidth <= innerWidth` 0 horizontal overflow, 0 browser errors, `noExternalRequests: true`).
 - `.next/static/chunks/**/*.js` gzip total: `450,485 B` (`93` chunks; `23,009 B` under `473,494 B` ceiling). Zero `.next/static/chunks/**/*.js` files contain `node:sqlite`, `better-sqlite`, or `kuromoji`.
 - `node tools/check-route-scope.mjs origin/master naetoru/clip-meta`: PASS (9 files including this append-only audit entry; `tools/check-route-scope.mjs` diff `+1/-0`). Only this append-only audit entry follows `61b8cc3`.
+
+## Naetoru PR #103 sync with master 346a0c3 -- 2026-11-26
+
+- Checked merge commit `3ac7ab51cd2f9210477950dd86c98a4fb160a99d` on branch `naetoru/clip-meta` after merging `origin/master` (`346a0c3fbf4a10e413dd936e24677ede33e22d67`, preserving all prior verification entries in `docs/foundation-verification.md` and all routes in `tools/check-route-scope.mjs`).
+- `npm run check` (`2026-11-26 08:41:08` to `08:43:13` ICT, Windows x64, Node v24.10.0, clean `.next`): PASS — `typecheck` PASS; `npm test` `351/351` PASS (`22/22` prototype + `329/329` core/route, 0 failures/skips); `next build --webpack` PASS; `test:app` `16/16` PASS.
+- Playwright verification against the fresh production build with disposable demo, YouTube, and private-clip fixtures (`1280x900` desktop and `390x844` mobile, 0 page errors, 0 horizontal overflow): all 3 library cards display all 7 metadata fields (title, level, source, topic, sentence count, speech rate in `ký tự/s`, and `% từ đã biết`).
+- Route scope passed (`9` files). Only this append-only verification entry follows `3ac7ab51cd2f9210477950dd86c98a4fb160a99d`.
