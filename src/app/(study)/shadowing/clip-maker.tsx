@@ -1,9 +1,31 @@
 'use client';
-import { useEffect, useMemo, useRef, useState, type ChangeEvent, type PointerEvent as ReactPointerEvent } from 'react';
+import {
+  Fragment,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ChangeEvent,
+  type PointerEvent as ReactPointerEvent,
+} from 'react';
 import type { Clip } from './clip-model.ts';
 import type { ClipMetaSummary } from './clip-meta.ts';
 import { computeWaveformPeaks } from './record-compare.ts';
 import { decodeArrayBufferToMono } from './waveform-compare.tsx';
+import {
+  MAX_CLIP_TAGS,
+  MAX_CLIP_TAG_LENGTH,
+  MAX_ROADMAP_WEEK,
+  MIN_ROADMAP_WEEK,
+  ROADMAP_STAGES,
+  furiganaToKana,
+  normalizeClipTags,
+  normalizeRoadmapWeek,
+  parseFuriganaNotationStrict,
+  validateFuriganaNotation,
+  type AutoMetaWeekCandidate,
+  type ClipAutoMetaResult,
+} from './auto-meta-model.ts';
 import {
   CLIP_LEVELS,
   MAX_CLIP_SPAN_MS,
@@ -28,6 +50,15 @@ const WAVE_W = 480;
 const WAVE_H = 88;
 const WAVE_MID = WAVE_H / 2;
 
+const ROADMAP_WEEK_OPTIONS = Array.from(
+  { length: MAX_ROADMAP_WEEK - MIN_ROADMAP_WEEK + 1 },
+  (_, idx) => {
+    const week = MIN_ROADMAP_WEEK + idx;
+    const stage = ROADMAP_STAGES.find((s) => week >= s.start && week <= s.end)!;
+    return { week, label: `Tuần ${week} · ${stage.level} — ${stage.theme}` };
+  },
+);
+
 function toSec(ms: number): string {
   return (ms / 1000).toFixed(1);
 }
@@ -51,6 +82,15 @@ export function ShadowingClipMaker({
   const [title, setTitle] = useState('');
   const [level, setLevel] = useState<string>('N5');
   const [topic, setTopic] = useState('');
+
+  // Auto-metadata state (offline furigana, tags, 87-week roadmap suggestion)
+  const [tags, setTags] = useState<string[]>([]);
+  const [tagInput, setTagInput] = useState('');
+  const [roadmapWeek, setRoadmapWeek] = useState<number | null>(null);
+  const [analyzing, setAnalyzing] = useState(false);
+  const [autoMetaNote, setAutoMetaNote] = useState<string | null>(null);
+  const [weekReason, setWeekReason] = useState<string | null>(null);
+  const [weekCandidates, setWeekCandidates] = useState<AutoMetaWeekCandidate[]>([]);
 
   // File source state
   const [file, setFile] = useState<File | null>(null);
@@ -87,6 +127,10 @@ export function ShadowingClipMaker({
   const fileDurationRef = useRef(0);
   const userAdjustedRangeRef = useRef(false);
   const parsedCuesRef = useRef<SubtitleCue[] | null>(null);
+  const userEditedLevelRef = useRef(false);
+  const userEditedTagsRef = useRef(false);
+  const userEditedWeekRef = useRef(false);
+  const analyzeSeqRef = useRef(0);
 
   useEffect(() => {
     parsedCuesRef.current = parsedCues;
@@ -107,19 +151,101 @@ export function ShadowingClipMaker({
         title,
         level,
         topic,
+        tags,
+        roadmapWeek,
         durationMs,
         clipStartMs,
         clipEndMs,
         youtubeUrlOrId: youtubeInput,
         segments,
       }),
-    [kind, title, level, topic, durationMs, clipStartMs, clipEndMs, youtubeInput, segments],
+    [kind, title, level, topic, tags, roadmapWeek, durationMs, clipStartMs, clipEndMs, youtubeInput, segments],
   );
 
   function stopPreview() {
     previewStopMs.current = null;
     setPreviewingIndex(null);
     mediaRef.current?.pause();
+  }
+
+  async function runAutoAnalyze(
+    targetSegments: readonly DraftSegment[],
+    options: { overwriteFurigana?: boolean } = {},
+  ) {
+    const entries: { index: number; ja: string }[] = [];
+    for (let i = 0; i < targetSegments.length; i++) {
+      const ja = targetSegments[i].ja.normalize('NFC').trim();
+      if (ja) entries.push({ index: i, ja });
+    }
+    if (entries.length === 0) {
+      setAutoMetaNote('Thêm ít nhất 1 câu tiếng Nhật trước khi chạy phân tích tự động.');
+      return;
+    }
+
+    const seq = ++analyzeSeqRef.current;
+    setAnalyzing(true);
+    setAutoMetaNote('Đang tạo furigana, gợi ý tag và tuần lộ trình (offline)…');
+
+    try {
+      const res = await fetch('/api/shadowing/clips/analyze', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sentences: entries.map((e) => e.ja) }),
+      });
+      const data = (await res.json().catch(() => ({}))) as Partial<ClipAutoMetaResult> & { error?: string };
+      if (seq !== analyzeSeqRef.current) return;
+      if (!res.ok || !Array.isArray(data.segments)) {
+        setAutoMetaNote(data.error || 'Chưa phân tích được tự động. Bạn vẫn có thể nhập thủ công.');
+        return;
+      }
+
+      const byIndex = new Map<number, { ja: string; furigana: string; kana: string }>();
+      entries.forEach((entry, i) => {
+        const resultSeg = data.segments?.[i];
+        if (resultSeg) byIndex.set(entry.index, resultSeg);
+      });
+
+      setSegments((prev) =>
+        prev.map((seg, idx) => {
+          const hit = byIndex.get(idx);
+          if (!hit) return seg;
+          if (seg.ja.normalize('NFC').trim() !== hit.ja) return seg;
+          if (!options.overwriteFurigana && seg.furigana && seg.furigana.trim()) return seg;
+          return {
+            ...seg,
+            furigana: hit.furigana,
+            kana: hit.kana || seg.kana || null,
+          };
+        }),
+      );
+
+      if (data.suggestedLevel && !userEditedLevelRef.current) {
+        setLevel(data.suggestedLevel);
+      }
+      const nextTags = Array.isArray(data.suggestedTags) ? data.suggestedTags : [];
+      if (!userEditedTagsRef.current) {
+        setTags(nextTags);
+      }
+      const nextWeek = normalizeRoadmapWeek(data.suggestedWeek);
+      if (!userEditedWeekRef.current) {
+        setRoadmapWeek(nextWeek);
+      }
+      setWeekReason(typeof data.suggestedWeekReason === 'string' ? data.suggestedWeekReason : null);
+      setWeekCandidates(Array.isArray(data.weekCandidates) ? data.weekCandidates : []);
+
+      const weekLabel = nextWeek ? ` và Tuần ${nextWeek}` : '';
+      setAutoMetaNote(
+        `Đã tạo furigana cho ${data.segments.length} câu, gợi ý ${nextTags.length} tag${weekLabel} (xử lý offline trên máy chủ; chưa có dịch máy tiếng Việt — chờ duyệt gửi ra ngoài).`,
+      );
+    } catch {
+      if (seq === analyzeSeqRef.current) {
+        setAutoMetaNote('Không kết nối được máy chủ để phân tích offline.');
+      }
+    } finally {
+      if (seq === analyzeSeqRef.current) {
+        setAnalyzing(false);
+      }
+    }
   }
 
   function mergeFileDuration(candidateMs: number) {
@@ -269,6 +395,9 @@ export function ShadowingClipMaker({
     setSubtitleStatus(
       `Đã đọc ${parsed.value.cues.length} dòng ${parsed.value.format.toUpperCase()}${warn} → tạo ${built.length} câu trong đoạn ${toSec(nextStart)}–${toSec(nextEnd)}s.`,
     );
+    if (built.length > 0) {
+      void runAutoAnalyze(built);
+    }
   }
 
   async function handleSubtitleFile(event: ChangeEvent<HTMLInputElement>) {
@@ -294,6 +423,7 @@ export function ShadowingClipMaker({
     setSubtitleStatus(
       `Đã tự chia thành ${built.length} câu theo dấu 。！？ trong khoảng ${toSec(clipStartMs)}–${toSec(clipEndMs)}s.`,
     );
+    void runAutoAnalyze(built);
   }
 
   function handleWaveformPointer(event: ReactPointerEvent<SVGSVGElement>, isStart: boolean) {
@@ -347,8 +477,30 @@ export function ShadowingClipMaker({
     setSegments((prev) => adjustSegmentBoundary(prev, index, field, nextMs, clipStartMs, clipEndMs));
   }
 
-  function updateSegmentField(index: number, field: 'ja' | 'vi' | 'kana', value: string) {
-    setSegments((prev) => prev.map((seg, i) => (i === index ? { ...seg, [field]: value } : seg)));
+  function updateSegmentField(index: number, field: 'ja' | 'vi' | 'kana' | 'furigana', value: string) {
+    setSegments((prev) =>
+      prev.map((seg, i) => {
+        if (i !== index) return seg;
+        if (field === 'ja') {
+          const keepFurigana = seg.furigana && parseFuriganaNotationStrict(value.trim(), seg.furigana.trim());
+          return {
+            ...seg,
+            ja: value,
+            furigana: keepFurigana ? seg.furigana : null,
+            kana: keepFurigana ? seg.kana : null,
+          };
+        }
+        if (field === 'furigana') {
+          const check = validateFuriganaNotation(seg.ja, value);
+          return {
+            ...seg,
+            furigana: value,
+            kana: check.ok && check.value ? furiganaToKana(check.value) : seg.kana,
+          };
+        }
+        return { ...seg, [field]: value };
+      }),
+    );
   }
 
   function splitSegmentAtMidpoint(index: number) {
@@ -362,8 +514,17 @@ export function ShadowingClipMaker({
     next.splice(
       index,
       1,
-      { ...seg, endMs: mid, ja: firstJa },
-      { id: `seg-${Date.now()}`, startMs: mid, endMs: seg.endMs, ja: secondJa, kana: null, speaker: seg.speaker, vi: null },
+      { ...seg, endMs: mid, ja: firstJa, furigana: null, kana: null },
+      {
+        id: `seg-${Date.now()}`,
+        startMs: mid,
+        endMs: seg.endMs,
+        ja: secondJa,
+        furigana: null,
+        kana: null,
+        speaker: seg.speaker,
+        vi: null,
+      },
     );
     setSegments(next);
   }
@@ -376,7 +537,16 @@ export function ShadowingClipMaker({
       const nextEnd = Math.min(clipEndMs, nextStart + Math.min(available, 3000));
       setSegments((prev) => [
         ...prev,
-        { id: `seg-${prev.length + 1}-${Date.now()}`, startMs: nextStart, endMs: nextEnd, ja: '', kana: null, speaker: null, vi: null },
+        {
+          id: `seg-${prev.length + 1}-${Date.now()}`,
+          startMs: nextStart,
+          endMs: nextEnd,
+          ja: '',
+          furigana: null,
+          kana: null,
+          speaker: null,
+          vi: null,
+        },
       ]);
       return;
     }
@@ -388,6 +558,19 @@ export function ShadowingClipMaker({
   function removeSegment(index: number) {
     if (previewingIndex === index) stopPreview();
     setSegments((prev) => prev.filter((_, i) => i !== index));
+  }
+
+  function addTagFromInput() {
+    const cleaned = tagInput.normalize('NFC').replace(/\s+/g, ' ').trim();
+    if (!cleaned) return;
+    userEditedTagsRef.current = true;
+    setTags((prev) => normalizeClipTags([...prev, cleaned]));
+    setTagInput('');
+  }
+
+  function removeTag(target: string) {
+    userEditedTagsRef.current = true;
+    setTags((prev) => prev.filter((item) => item !== target));
   }
 
   async function handleSave() {
@@ -414,6 +597,8 @@ export function ShadowingClipMaker({
             title: draftCheck.value.title,
             level: draftCheck.value.level,
             topic: draftCheck.value.topic,
+            tags: draftCheck.value.tags,
+            roadmapWeek: draftCheck.value.roadmapWeek,
             durationMs: draftCheck.value.durationMs,
             clipStartMs: draftCheck.value.clipStartMs,
             clipEndMs: draftCheck.value.clipEndMs,
@@ -430,6 +615,8 @@ export function ShadowingClipMaker({
             title: draftCheck.value.title,
             level: draftCheck.value.level,
             topic: draftCheck.value.topic,
+            tags: draftCheck.value.tags,
+            roadmapWeek: draftCheck.value.roadmapWeek,
             durationMs: draftCheck.value.durationMs,
             clipStartMs: draftCheck.value.clipStartMs,
             clipEndMs: draftCheck.value.clipEndMs,
@@ -506,7 +693,13 @@ export function ShadowingClipMaker({
         </label>
         <label className={styles.makerField}>
           <span>Cấp độ</span>
-          <select value={level} onChange={(e) => setLevel(e.target.value)}>
+          <select
+            value={level}
+            onChange={(e) => {
+              userEditedLevelRef.current = true;
+              setLevel(e.target.value);
+            }}
+          >
             {CLIP_LEVELS.map((lv) => (
               <option key={lv} value={lv}>
                 {lv}
@@ -774,8 +967,116 @@ export function ShadowingClipMaker({
         )}
       </div>
 
+      <div className={styles.makerSection} data-maker-auto-meta="">
+        <div className={styles.waveHead}>
+          <strong>Tự thêm furigana, gắn tag &amp; tuần lộ trình (offline)</strong>
+          <button
+            type="button"
+            className="button"
+            disabled={analyzing || segments.length === 0}
+            aria-busy={analyzing}
+            onClick={() => void runAutoAnalyze(segments, { overwriteFurigana: true })}
+          >
+            {analyzing ? 'Đang phân tích offline…' : 'Tự thêm furigana & gợi ý (offline)'}
+          </button>
+        </div>
+        <p className={styles.makerHint} role="status" data-maker-auto-status="">
+          {autoMetaNote ??
+            'Tự sinh furigana, gợi ý tag và tuần lộ trình chạy offline bằng từ điển OpenJLPT trên máy chủ. Chưa có dịch máy tiếng Việt (chờ duyệt gửi ra ngoài).'}
+        </p>
+
+        <div className={styles.makerMetaGrid}>
+          <div className={styles.makerMetaBox}>
+            <strong>Tag clip ({tags.length}/{MAX_CLIP_TAGS})</strong>
+            <div className={styles.makerTagList} aria-label="Danh sách tag đã gắn">
+              {tags.length === 0 ? (
+                <span className={styles.makerHint}>Chưa có tag. Chạy phân tích offline hoặc thêm thủ công bên dưới.</span>
+              ) : (
+                tags.map((tag) => (
+                  <span key={tag} className={styles.makerTagChip} data-maker-tag={tag}>
+                    <span>{tag}</span>
+                    <button
+                      type="button"
+                      className={styles.makerTagRemove}
+                      aria-label={`Xóa tag ${tag}`}
+                      onClick={() => removeTag(tag)}
+                    >
+                      ×
+                    </button>
+                  </span>
+                ))
+              )}
+            </div>
+            <div className={styles.makerTagAddRow}>
+              <input
+                type="text"
+                aria-label="Thêm tag mới"
+                value={tagInput}
+                maxLength={MAX_CLIP_TAG_LENGTH}
+                placeholder="Nhập tag mới (ví dụ: hội thoại)"
+                onChange={(e) => setTagInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    addTagFromInput();
+                  }
+                }}
+              />
+              <button
+                type="button"
+                className="button"
+                disabled={!tagInput.trim() || tags.length >= MAX_CLIP_TAGS}
+                onClick={addTagFromInput}
+              >
+                + Thêm tag
+              </button>
+            </div>
+          </div>
+
+          <div className={styles.makerMetaBox}>
+            <label className={styles.makerField}>
+              <strong>Tuần lộ trình (87 tuần · N5 → N2)</strong>
+              <select
+                aria-label="Tuần lộ trình"
+                value={roadmapWeek ?? ''}
+                onChange={(e) => {
+                  userEditedWeekRef.current = true;
+                  setRoadmapWeek(normalizeRoadmapWeek(e.target.value));
+                }}
+              >
+                <option value="">Chưa gắn tuần lộ trình</option>
+                {ROADMAP_WEEK_OPTIONS.map((opt) => (
+                  <option key={opt.week} value={opt.week}>
+                    {opt.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+            {weekReason && <p className={styles.makerHint}>{weekReason}</p>}
+            {weekCandidates.length > 0 && (
+              <div className={styles.makerCandidateRow} aria-label="Gợi ý tuần lộ trình nhanh">
+                {weekCandidates.map((cand) => (
+                  <button
+                    key={cand.week}
+                    type="button"
+                    className="button"
+                    aria-pressed={roadmapWeek === cand.week}
+                    onClick={() => {
+                      userEditedWeekRef.current = true;
+                      setRoadmapWeek(cand.week);
+                    }}
+                  >
+                    Tuần {cand.week} ({cand.level} · {cand.matchedCount} mục)
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
       <div className={styles.makerSection}>
-        <strong>Danh sách câu ({segments.length} câu) — kéo chỉnh mốc và nghe thử</strong>
+        <strong>Danh sách câu ({segments.length} câu) — kéo chỉnh mốc, sửa furigana và nghe thử</strong>
         {segments.length === 0 ? (
           <p className={styles.makerHint}>
             Chưa có câu nào. Nhập tệp .srt/.ass, dán văn bản rồi bấm “Chia câu tự động”, hoặc bấm “+ Thêm câu thủ công”.
@@ -785,6 +1086,8 @@ export function ShadowingClipMaker({
             {segments.map((seg, idx) => {
               const prevEnd = idx > 0 ? segments[idx - 1].endMs : clipStartMs;
               const nextStart = idx < segments.length - 1 ? segments[idx + 1].startMs : clipEndMs;
+              const trimmedFuri = seg.furigana?.trim() ?? '';
+              const parsedFuri = trimmedFuri ? parseFuriganaNotationStrict(seg.ja.trim(), trimmedFuri) : null;
               return (
                 <li key={seg.id} className={styles.makerSegRow} data-maker-segment={idx}>
                   <div className={styles.makerSegHead}>
@@ -871,7 +1174,7 @@ export function ShadowingClipMaker({
                       />
                     </label>
                     <label className={styles.makerField}>
-                      <span>Tiếng Việt (tùy chọn)</span>
+                      <span>Tiếng Việt (tùy chọn — chưa dịch máy)</span>
                       <input
                         type="text"
                         value={seg.vi ?? ''}
@@ -880,6 +1183,37 @@ export function ShadowingClipMaker({
                       />
                     </label>
                   </div>
+                  <label className={styles.makerField}>
+                    <span>Furigana câu {idx + 1} (cú pháp {'{chữ|cách đọc}'})</span>
+                    <input
+                      type="text"
+                      lang="ja"
+                      aria-label={`Furigana câu ${idx + 1}`}
+                      value={seg.furigana ?? ''}
+                      maxLength={1200}
+                      placeholder="Tự sinh offline hoặc nhập dạng {base|reading}"
+                      onChange={(e) => updateSegmentField(idx, 'furigana', e.target.value)}
+                    />
+                  </label>
+                  {trimmedFuri &&
+                    (parsedFuri ? (
+                      <p className={styles.makerRubyPreview} lang="ja" data-maker-ruby-preview={idx}>
+                        {parsedFuri.map((part, pIdx) =>
+                          part.reading ? (
+                            <ruby key={pIdx}>
+                              {part.text}
+                              <rt>{part.reading}</rt>
+                            </ruby>
+                          ) : (
+                            <Fragment key={pIdx}>{part.text}</Fragment>
+                          ),
+                        )}
+                      </p>
+                    ) : (
+                      <p className={styles.makerWarn} role="alert">
+                        Furigana chưa khớp chữ gốc câu {idx + 1}. Hãy giữ nguyên chữ gốc tiếng Nhật và dùng cú pháp {'{base|reading}'}.
+                      </p>
+                    ))}
                 </li>
               );
             })}

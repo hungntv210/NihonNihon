@@ -1,6 +1,7 @@
 'use client';
 import { lazy, Suspense, useState, type ReactNode } from 'react';
 import type { Clip } from './clip-model.ts';
+import { roadmapWeekInfo } from './auto-meta-model.ts';
 import {
   computeClipMeta,
   formatKnownWordPercent,
@@ -35,12 +36,17 @@ function libraryHistoryText(summary: ClipHistorySummary, timeZone: string): stri
 }
 
 function defaultUserClipNotice(clip: Clip): ReactNode {
+  const weekInfo = clip.roadmapWeek ? roadmapWeekInfo(clip.roadmapWeek) : null;
+  const metaBits: string[] = [];
+  if (weekInfo) metaBits.push(`Tuần ${weekInfo.week} (${weekInfo.level} · ${weekInfo.theme})`);
+  if (clip.tags && clip.tags.length > 0) metaBits.push(`Tag: ${clip.tags.join(', ')}`);
   if (clip.youtubeId) {
     return (
       <>
         <strong>
           YouTube cá nhân · {clip.level || 'N5'} · {clip.topic || 'Tự tạo'}
         </strong>
+        {metaBits.length > 0 && <p>{metaBits.join(' · ')}</p>}
         <p>Chỉ lưu ID video và mốc thời gian, phát bằng trình phát nhúng sau khi bạn bấm. Không tải video về máy.</p>
       </>
     );
@@ -50,6 +56,7 @@ function defaultUserClipNotice(clip: Clip): ReactNode {
       <strong>
         Clip tự tạo · {clip.level || 'N5'} · {clip.topic || 'Tự tạo'}
       </strong>
+      {metaBits.length > 0 && <p>{metaBits.join(' · ')}</p>}
       <p>Tệp âm thanh/video lưu trong thư mục riêng tư trên máy chủ nhà, chỉ phát khi đã đăng nhập.</p>
     </>
   );
@@ -132,9 +139,19 @@ export function ShadowingLibrary({
               <strong>{meta.title}</strong>
               <span className={styles.libraryMeta}>
                 <span className={styles.libraryBadge}>{meta.level}</span>
+                {c.roadmapWeek && <span className={styles.libraryWeekBadge}>Tuần {c.roadmapWeek}</span>}
                 <span className={styles.libraryField}>Nguồn: {meta.sourceLabel}</span>
                 <span className={styles.libraryField}>Chủ đề: {meta.topic}</span>
               </span>
+              {c.tags && c.tags.length > 0 && (
+                <span className={styles.libraryTags}>
+                  {c.tags.slice(0, 6).map((tag) => (
+                    <span key={tag} className={styles.libraryTag}>
+                      {tag}
+                    </span>
+                  ))}
+                </span>
+              )}
               <span className={styles.libraryStats}>
                 <span className={styles.libraryStat}>{meta.sentenceCount} câu</span>
                 <span className={styles.libraryStat}>
