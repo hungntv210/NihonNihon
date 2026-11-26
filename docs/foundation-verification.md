@@ -1172,7 +1172,7 @@ Checked implementation 61b8cc3fd473097d05f332b6138e7770d1868aad on branch `naeto
 
 ## Pokabu 87-week OpenJLPT roadmap -- 2026-11-26
 
-- Checked implementation $sha on branch pokabu/roadmap-87w against $base on Windows x64 (Node v24.10.0, npm 11.6.1).
+- Checked implementation ab774cd6cd23d7d3bcfcfd9648e43b8f36252493 on branch pokabu/roadmap-87w against 6ef86d28fcff5eb4435d867fb54b582157f8428d on Windows x64 (Node v24.10.0, npm 11.6.1).
 - npm run check (11:52:17 to 11:53:52, UTC+07:00) PASS. Typecheck PASS, prototype 22/22 and core/route 332/332 PASS, production build PASS, app gate 16/16 PASS.
 - Today browser check PASS at 1440 px and 390 px with a disposable fixture. It verified the 87 week controls, the same-level clip link and the missing-clip label.
 - Read-only G0 CLI smoke produced byte-identical plans twice: 87 weeks, 6,182 unique catalog items and two N5 library suggestions.
