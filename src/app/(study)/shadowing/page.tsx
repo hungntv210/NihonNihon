@@ -15,6 +15,7 @@ import { requireSession } from '../../../server/auth.ts';
 import { tokenizeClipSegments } from '../common-tools/tokenize.ts';
 import { readShadowingHistory } from './history-store.ts';
 import { summarizeAllClips } from './history-model.ts';
+import { buildClipMetaMap } from './clip-meta-server.ts';
 
 const PRACTICE_NOTE = (
   <p>
@@ -84,6 +85,7 @@ export default async function ShadowingPage({
     readShadowingHistory(),
     clips.map((c) => c.id),
   );
+  const clipMetaById = buildClipMetaMap(clips);
 
   return (
     <>
@@ -99,6 +101,7 @@ export default async function ShadowingPage({
         practiceNote={PRACTICE_NOTE}
         recordNote={RECORD_NOTE}
         initialHistory={initialHistory}
+        metaByClip={clipMetaById}
         timeZone={settings.timeZone}
       />
     </>

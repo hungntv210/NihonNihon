@@ -2,6 +2,12 @@
 import { useState, type ReactNode } from 'react';
 import type { Clip } from './clip-model.ts';
 import {
+  computeClipMeta,
+  formatKnownWordPercent,
+  formatSpeechRate,
+  type ClipMetaSummary,
+} from './clip-meta.ts';
+import {
   emptyClipHistory,
   formatHistoryDate,
   type ClipHistorySummary,
@@ -32,6 +38,7 @@ export function ShadowingLibrary({
   practiceNote,
   recordNote,
   initialHistory,
+  metaByClip,
   timeZone = 'Asia/Ho_Chi_Minh',
 }: {
   clips: Clip[];
@@ -41,6 +48,7 @@ export function ShadowingLibrary({
   practiceNote?: ReactNode;
   recordNote?: string;
   initialHistory?: Record<string, ClipHistorySummary>;
+  metaByClip?: Record<string, ClipMetaSummary>;
   timeZone?: string;
 }) {
   const startId = initialClipId && clips.some((c) => c.id === initialClipId) ? initialClipId : clips[0].id;
@@ -60,12 +68,23 @@ export function ShadowingLibrary({
       <section className={styles.library} aria-label="Kho clip">
         {clips.map((c) => {
           const summary = historyByClip[c.id] ?? emptyClipHistory(c.id);
+          const meta = metaByClip?.[c.id] ?? computeClipMeta(c, null);
           return (
             <button key={c.id} className="button" aria-pressed={id === c.id} onClick={() => setId(c.id)}>
-              <strong>{c.title}</strong>
-              <span>
-                {c.isDemo ? 'Demo' : (c.youtubeId ? 'YouTube · ' : '') + c.level + ' · ' + c.topic} ·{' '}
-                {c.segments.length} câu
+              <strong>{meta.title}</strong>
+              <span className={styles.libraryMeta}>
+                <span className={styles.libraryBadge}>{meta.level}</span>
+                <span className={styles.libraryField}>Nguồn: {meta.sourceLabel}</span>
+                <span className={styles.libraryField}>Chủ đề: {meta.topic}</span>
+              </span>
+              <span className={styles.libraryStats}>
+                <span className={styles.libraryStat}>{meta.sentenceCount} câu</span>
+                <span className={styles.libraryStat}>
+                  Tốc độ: {formatSpeechRate(meta.speechRateCharsPerSec)}
+                </span>
+                <span className={styles.libraryStat}>
+                  Từ đã biết: {formatKnownWordPercent(meta.knownWordPercent)}
+                </span>
               </span>
               <span className={styles.libraryHistory}>{libraryHistoryText(summary, timeZone)}</span>
             </button>
