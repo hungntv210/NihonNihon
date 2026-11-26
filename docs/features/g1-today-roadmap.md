@@ -40,10 +40,8 @@ Tài liệu này đọc riêng được: mọi quyết định cần cho nhánh 
 - [x] Xem dạng dòng thời gian; đổi ngày bắt đầu, phút học, kỳ thi → tự tính lại
 
 **Thông báo**
-- [ ] Ban ngày: 2–3 nhắc Ôn nhanh vào giờ nghỉ tự chọn, tự tắt khi đã ôn hết; không nhắc bài mới trong giờ làm
-  - Còn thiếu: cài đặt khung giờ nghỉ tự chọn (`src/core/preferences.ts:6-10`), bộ lập lịch 2–3 nhắc ban ngày và cơ chế gửi thông báo đẩy nền (`public/sw.js` chưa có listener `push`; `src/app/(study)/today-roadmap/today.tsx:56` mới hiện chữ nhắc khi trang đang mở).
-- [ ] Buổi tối: nhắc giờ học; ngày shadowing chưa làm nhắc lại 21:00 và 22:00
-  - Còn thiếu: cơ chế lập lịch và gửi thông báo đẩy nền đúng giờ học tối và nhắc lại lúc 21:00, 22:00 (`src/app/(study)/today-roadmap/today.tsx:56` mới hiện nhắc trên màn hình khi trang đang mở, `public/sw.js` chưa có `push`).
+- [x] Ban ngày: 2–3 nhắc Ôn nhanh vào giờ nghỉ tự chọn, tự tắt khi đã ôn hết; không nhắc bài mới trong giờ làm
+- [x] Buổi tối: nhắc giờ học; ngày shadowing chưa làm nhắc lại 21:00 và 22:00
 
 ## Dữ liệu
 
@@ -72,8 +70,7 @@ Khối lượng theo cấp (OpenJLPT): N5 84 kanji / 674 từ / 81 mẫu; N4 169
 - [x] Màn Hôm nay tự đổi giữa ban ngày và buổi tối theo giờ cài đặt
 - [x] Thiếu buổi shadowing → tuần sau bị khoá bài mới, ôn SRS vẫn mở
 - [x] Buổi bù mở khoá đúng
-- [ ] Thông báo không gửi bài mới trong giờ làm
-  - Còn thiếu: bộ gửi thông báo nền thật và kiểm thử xác minh thông báo nền không gửi bài mới trong giờ làm (`src/app/(study)/today-roadmap/model.test.ts` mới kiểm `todayPlan().evening` cho trạng thái hiển thị khi mở trang).
+- [x] Thông báo không gửi bài mới trong giờ làm
 
 ## Câu hỏi còn mở
 
@@ -95,5 +92,6 @@ Các dấu tick xác nhận phần code đã chạy qua test/fixture; không tha
 
 - Bằng chứng: `src/app/(study)/today-roadmap/model.test.ts`.
 - Bằng chứng: `src/app/(study)/today-roadmap/browser-check.ts`.
+- Bằng chứng thông báo nhắc học (2026-11-26): `src/core/preferences.ts`, `src/core/push.ts`, `src/server/dal.ts`, `src/server/reminders.ts`, `src/server/maintenance.ts`, `src/instrumentation.ts`, `src/app/api/settings/route.ts`, `src/app/api/push/subscription/route.ts`, `src/app/(study)/settings/settings-form.tsx`, `src/app/(study)/today-roadmap/settings.ts`, `src/app/(study)/today-roadmap/reminders.ts`, `public/sw.js`, `tests/today-reminders.test.ts`.
 
-Luật2buổi/tuần và làm bù25phút2clip không đổi; buổi tự động kind regular được cùng bộ đọc và luật nhận. Phân87tuần/cấp có model test, nhưng tần suất từ và clip gợi ý theo tuần chưa đầy đủ nên các mục ghép giữ trống. Nhắc hiện chỉ khi trang đang mở, chưa có push nền/giờ nghỉ tuỳ chọn.
+Luật2buổi/tuần và làm bù25phút2clip không đổi; buổi tự động kind regular được cùng bộ đọc và luật nhận. Thông báo nhắc học dùng chung mốc `eveningTime`, hỗ trợ bật/tắt và 2–3 giờ nghỉ ban ngày (chỉ nhắc Ôn nhanh SRS và tự im khi hết thẻ, không nhắc bài mới trong giờ làm), buổi tối nhắc giờ học và nhắc lại shadowing lúc 21:00/22:00 nếu ngày shadowing chưa hoàn thành, chống gửi trùng bền vững qua SQLite riêng tư và gửi Web Push VAPID (chưa nghiệm thu gửi push thật tới iOS/Android vật lý).
