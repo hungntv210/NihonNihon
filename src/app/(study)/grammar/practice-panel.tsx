@@ -2,6 +2,7 @@
 import { useState } from 'react';
 import type { ChoiceQuestion, OrderingQuestion } from './practice.ts';
 import { correctOrder } from './practice.ts';
+import { Furigana } from './furigana.tsx';
 import styles from './grammar.module.css';
 export function PracticePanel({
   choices,
@@ -41,8 +42,8 @@ export function PracticePanel({
         </div>
       </div>
       <p className={styles.help}>
-        Bài luyện được tách từ ví dụ đang học. Đáp án khớp câu gốc, không khẳng định các cách diễn
-        đạt khác đều sai.
+        Bài luyện gồm câu soạn bổ sung và câu tách từ ví dụ đang học. Với câu tách từ ví dụ,
+        đáp án dùng để khôi phục câu gốc.
       </p>
       <div className={styles.tabs} role="group" aria-label="Dạng bài">
         <button
@@ -83,7 +84,7 @@ export function PracticePanel({
           {selected && (
             <>
               <p className={styles.question} lang="ja">
-                {selected.sentence}
+                <Furigana japanese={selected.sentence} notation={selected.promptFurigana ?? null} />
               </p>
               <div className={styles.options} role="group" aria-label="Đáp án">
                 {selected.choices.map((value) => (
@@ -103,6 +104,7 @@ export function PracticePanel({
           )}
           {ordered && (
             <>
+              {ordered.prefix && <p className={styles.question} lang="ja">{ordered.prefix}</p>}
               <div className={styles.slots} aria-label="Câu đang ghép">
                 {[0, 1, 2, 3].map((slot) => {
                   const id = order[slot],
@@ -150,6 +152,7 @@ export function PracticePanel({
                   </button>
                 ))}
               </div>
+              {ordered.suffix && <p className={styles.question} lang="ja">{ordered.suffix}</p>}
               <p className={styles.help}>
                 Chạm mảnh câu để thêm; chạm ô đã ghép để bỏ. Có thể kéo mảnh vào vùng câu trên máy
                 tính.
@@ -162,9 +165,12 @@ export function PracticePanel({
                 {correct ? 'Đúng với câu gốc.' : 'Chưa khớp câu gốc. Cùng xem lại nhé.'}
               </strong>
               <p lang="ja" className={styles.answer}>
-                {selected?.original ?? ordered?.sentence}
+                <Furigana japanese={selected?.original ?? ordered!.sentence} notation={question.furigana ?? null} />
               </p>
+              {question.vietnamese && <p lang="vi">{question.vietnamese}</p>}
+              {question.explanation && <p lang="vi">{question.explanation}</p>}
               {question.english && <p lang="en">{question.english}</p>}
+              {question.attribution && <p className={styles.help}>{question.attribution}</p>}
               <div className={styles.options}>
                 <button className="button" onClick={() => reset(mode, index)}>
                   Thử lại câu này

@@ -6,6 +6,7 @@ import {
 } from '../../../core/content.ts';
 import {
   readContentSupplement, supplementExamples, supplementFor, supplementSentence, supplementTranslation,
+  type Highlight, type SupplementExercise,
 } from '../../../core/content-supplement.ts';
 import { getGrammarConfusables, type GrammarConfusable } from './confusables.ts';
 
@@ -30,6 +31,7 @@ export type Example = {
   furigana: string | null;
   vietnamese: GrammarTranslation | null;
   attribution: string;
+  highlights?: Highlight[];
 };
 export type GrammarDetail = GrammarSummary & {
   formationEn: string;
@@ -38,6 +40,7 @@ export type GrammarDetail = GrammarSummary & {
   notesVi: GrammarTranslation | null;
   confusables: GrammarConfusable[];
   examples: Example[];
+  exercises: SupplementExercise[];
   related: GrammarSummary[];
   clips: { id: string; position: number }[];
 };
@@ -146,8 +149,8 @@ export function getGrammar(db: DatabaseSync, key: string, supplement = readConte
     });
   const entry = supplementFor(supplement, id, row.source_hash);
   const added = supplementExamples(entry, original.map((r) => r.japanese))
-    .map(({ id, japanese, english, furigana, vietnamese, provenance, attribution }) => ({
-      id, japanese, english, furigana, attribution,
+    .map(({ id, japanese, english, furigana, vietnamese, provenance, attribution, highlights }) => ({
+      id, japanese, english, furigana, attribution, highlights,
       vietnamese: { ...supplementTranslation(vietnamese, provenance), id: null },
     }));
   const examples = [...original, ...added];
@@ -172,6 +175,7 @@ export function getGrammar(db: DatabaseSync, key: string, supplement = readConte
     notesVi: translation(db, id, 'notes'),
     confusables,
     examples,
+    exercises: entry?.exercises ?? [],
     related,
     clips,
   };

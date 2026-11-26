@@ -14,8 +14,8 @@ Học 4.741 từ N5–N2 theo thứ tự lộ trình, nghĩa tiếng Việt từ
 
 ## Chức năng
 
-- [ ] Thẻ từ: từ + furigana, âm Hán Việt (chỉ từ đọc On), từ loại, cấp (DB G0 đóng băng còn 5/4.741 từ thiếu từ loại)
-  - Còn thiếu: trên bản sao DB app chỉ đọc còn 5/4.741 từ N5–N2 thiếu từ loại (`pos` rỗng); UI thẻ chi tiết đã đủ ở `src/app/(study)/vocab/[id]/page.tsx:27-101`, `src/app/(study)/vocab/data.ts:79-111,204-247`.
+- [x] Thẻ từ: từ + furigana, âm Hán Việt (chỉ từ đọc On), từ loại, cấp
+  - Xác minh 26/11 bằng `tools/report-content-gaps.mjs`: 5 → 0 từ N5–N2 thiếu từ loại trên 4.741 từ, dùng bản sao DB app và supplement đang cài trên production (#113).
 - [x] Nghĩa tiếng Việt (nhãn "từ điển"), dòng tiếng Anh OpenJLPT thu gọn, chạm để mở
 - [x] Audio (TTS hoặc Kanji Alive)
 - [ ] 1–2 câu ví dụ có furigana, audio, bản dịch (Tatoeba tiếng Việt nếu có, còn lại dịch máy kèm tiếng Anh)

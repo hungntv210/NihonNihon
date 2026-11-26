@@ -1266,6 +1266,20 @@ Checked implementation 61b8cc3fd473097d05f332b6138e7770d1868aad on branch `naeto
 - `node tools/check-route-scope.mjs origin/master naetoru/shadowing-clip-maker`: PASS (`14` changed files including this append-only verification entry). Only this append-only audit entry follows `79dd9e72832ca4d4e846eeacd53b395aff564ebf`.
 - Limits: local Whisper CLI/Python runtime is not installed on this machine, so the Whisper auto-transcribe button is automatically hidden (`detectLocalWhisper() === false`); real YouTube iframe playback and physical microphone hardware remain unverified in headless CI.
 
+## Pokabu G1 private grammar practice -- 2026-11-26
+
+- Checked implementation `39b81648706500f32d42cbc2d2079facebe7302d` against master `baecc32afb1a4532c735be44027412933b23faf5` on Windows x64, Node v24.10.0 and npm 11.6.1.
+- `npm run check` passed from 20:22:05 to 20:23:39 ICT (UTC+07:00). Typecheck, 373/373 tests (22 prototype and 351 core/route), webpack build and 16/16 application checks passed.
+- Builds used the same worktree path and dependency tree. Total browser JavaScript gzip grew from 456,712 B to 457,310 B. Grammar detail assets grew from 62,016 B to 62,614 B, and the grammar list remained at 57,755 B.
+- Route ownership passed. Only this append-only audit entry follows the checked implementation.
+
+### Synchronization with the Shadowing Clip Maker release
+
+- Checked merge `25f194a321a630f94fa8cf8210457506e7fc2c29` against `f34e013082814a20aa876cae85dabb332cc334ea` on Windows x64, Node v24.10.0 and npm 11.6.1.
+- `npm run check` passed from 20:27:53 to 20:29:10 ICT (UTC+07:00). Typecheck, 380/380 tests (22 prototype and 358 core/route), webpack build and 16/16 application checks passed.
+- Browser JavaScript gzip grew from 467,522 B to 468,121 B in the same worktree and dependency tree. Grammar detail grew from 62,031 B to 62,630 B, and the grammar list from 57,770 B to 57,771 B.
+- Route ownership passed for 13 files. Only this append-only audit entry follows the checked merge.
+
 ## Naetoru outside-JLPT JMdict + tu-dien-nhat-viet lookup -- 2026-11-26
 
 Checked implementation `a23049b5546ae94d2c25241443532c2c48fb7338` on branch `naetoru/g1-jmdict-lookup` (base `f34e013082814a20aa876cae85dabb332cc334ea`) on Windows with Node v24.10.0, clean `.next` build, disposable OpenJLPT fixture, and local headless Chrome. Check window: `2026-11-26T21:00:48+07:00` through `2026-11-26T21:02:36+07:00` (UTC+07:00).
