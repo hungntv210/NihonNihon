@@ -1272,3 +1272,10 @@ Checked implementation 61b8cc3fd473097d05f332b6138e7770d1868aad on branch `naeto
 - `npm run check` passed from 20:22:05 to 20:23:39 ICT (UTC+07:00). Typecheck, 373/373 tests (22 prototype and 351 core/route), webpack build and 16/16 application checks passed.
 - Builds used the same worktree path and dependency tree. Total browser JavaScript gzip grew from 456,712 B to 457,310 B. Grammar detail assets grew from 62,016 B to 62,614 B, and the grammar list remained at 57,755 B.
 - Route ownership passed. Only this append-only audit entry follows the checked implementation.
+
+### Synchronization with the Shadowing Clip Maker release
+
+- Checked merge `25f194a321a630f94fa8cf8210457506e7fc2c29` against `f34e013082814a20aa876cae85dabb332cc334ea` on Windows x64, Node v24.10.0 and npm 11.6.1.
+- `npm run check` passed from 20:27:53 to 20:29:10 ICT (UTC+07:00). Typecheck, 380/380 tests (22 prototype and 358 core/route), webpack build and 16/16 application checks passed.
+- Browser JavaScript gzip grew from 467,522 B to 468,121 B in the same worktree and dependency tree. Grammar detail grew from 62,031 B to 62,630 B, and the grammar list from 57,770 B to 57,771 B.
+- Route ownership passed for 13 files. Only this append-only audit entry follows the checked merge.
