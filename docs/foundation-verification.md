@@ -1228,3 +1228,9 @@ Checked implementation 61b8cc3fd473097d05f332b6138e7770d1868aad on branch `naeto
 - Checked merge commit 342a9c39ab6127697ff6fb1e2f255558628a339f against master afc8b0f72de3b0c810f644ae194eb99ffc5cc336 on Windows x64, Node v24.10.0 and npm 11.6.1, starting from a clean .next.
 - npm run check passed on 2026-11-26 from 13:33:02 to 13:34:48 ICT (UTC+07:00). Typecheck and webpack build passed. Tests passed 364/364 (22 prototype and 342 core/route). The application gate passed 16/16.
 - Route scope passed for 10 files. Both ownership entries and audit records were retained. The master checklist note for recording was superseded by the completed implementation. Only this append-only audit entry follows the tested merge.
+
+## Pokabu G1 private content supplement and gap audit -- 2026-11-26
+
+- Checked implementation c49648a523b97315f823fab0b9eda76f1e9ce305 on Windows x64 with Node v24.10.0 and npm 11.6.1 against master 6c7f286e75439ffca68bc36b920c94a3e9c93f06.
+- npm run check passed from 13:47:59 to 13:49:30 ICT (UTC+07:00). Typecheck, tests, webpack production build, and all 16 application checks passed. Both focused supplement tests passed.
+- Route scope passed. The counts-only audit ran on the same read-only catalog snapshot with and without the gitignored review supplement. Only this append-only audit entry follows the checked implementation.
