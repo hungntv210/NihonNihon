@@ -1249,3 +1249,9 @@ Checked implementation 61b8cc3fd473097d05f332b6138e7770d1868aad on branch `naeto
 
 - Checked implementation 79a7fe74ed5c7cbb765baa808efdffd518c2e988 on Windows x64, Node v24.10.0 and npm 11.6.1. npm run check passed from 14:39:51 to 14:41:16 ICT (UTC+07:00). Typecheck, 367/367 tests (22 prototype and 345 core/route), webpack build and all 16 application checks passed.
 - Route ownership passed. Reviewed 711 furigana rows offline. The final private supplement preserves complete vocabulary and grammar example coverage on the same read-only snapshot. Only this append-only verification entry follows the checked implementation.
+
+### Synchronization with the reminders release
+
+- Checked merge commit 5129f7000e8cba0631f50b0aca530f04edb8d3e9 against master c3473e1c9c629d3691ac841101bac02a1dd5caaa on Windows x64, Node v24.10.0 and npm 11.6.1 with a clean .next.
+- npm run check passed from 14:58:58 to 15:00:57 ICT (UTC+07:00). Typecheck, 371/371 tests (22 prototype and 349 core/route), webpack build and all 16 application checks passed.
+- Route ownership passed for 12 files. Conflict resolution retained both ownership entries and both append-only verification sections. Only this audit entry follows the checked merge.
