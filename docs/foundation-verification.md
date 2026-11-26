@@ -1211,3 +1211,4 @@ Checked implementation 61b8cc3fd473097d05f332b6138e7770d1868aad on branch `naeto
 - Checked merge commit $checked against master b4e38e11b16cd479f3e5b97ad5067fd3bb714fbd on Windows x64, Node v24.10.0 and npm 11.6.1, starting from a clean .next.
 - npm run check passed on 2026-11-26 from 13:20:20 to 13:22:04 ICT (UTC+07:00). Typecheck and webpack build passed. Tests passed 359/359 (22 prototype and 337 core/route). The application gate passed 16/16.
 - Route scope passed for all nine changed files. All 15 checklist notes and both completed roadmap items were retained. Only this append-only audit entry follows the tested merge.
+- Checked merge SHA for the entry above: ba53bfd5a09beaff4cca2a2d36729a43e993c674.
