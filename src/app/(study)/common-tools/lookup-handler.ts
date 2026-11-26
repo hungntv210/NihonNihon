@@ -2,7 +2,13 @@ import { NextResponse } from 'next/server';
 import { openContentDatabase } from '../../../core/content.ts';
 import type { CardType } from '../../../core/review.ts';
 import { lookupWord } from './lookup.ts';
-import { getSavedSentenceForItem, saveLookupItemToSrs } from './lookup-store.ts';
+import type { LookupSaveSource } from './lookup-popup-model.ts';
+import {
+  getSavedSentenceForItem,
+  saveLookupItemToNotebook,
+  saveLookupItemToSrs,
+} from './lookup-store.ts';
+import { tokenizeJapaneseSentence } from './tokenize.ts';
 
 export type LookupHandlerDeps = {
   isAuthenticated: () => Promise<boolean>;
@@ -27,6 +33,18 @@ export async function handleLookupGet(request: Request, deps: LookupHandlerDeps)
     );
   }
   const url = new URL(request.url);
+  if (url.searchParams.has('tokenize')) {
+    const rawText = url.searchParams.get('tokenize') ?? '';
+    const text = rawText.normalize('NFC');
+    if (text.includes('\0') || !text.trim() || text.length > 2200) {
+      return NextResponse.json(
+        { error: 'Câu cần tách từ không hợp lệ.' },
+        { status: 400, headers: NO_STORE_HEADERS },
+      );
+    }
+    const tokens = await tokenizeJapaneseSentence(text);
+    return NextResponse.json({ text, tokens }, { status: 200, headers: NO_STORE_HEADERS });
+  }
   const rawQuery = url.searchParams.get('q') ?? '';
   const rawBase = url.searchParams.get('base');
   if (rawQuery.includes('\0') || !rawQuery.normalize('NFC').trim()) {
@@ -85,7 +103,15 @@ export async function handleLookupPost(request: Request, deps: LookupHandlerDeps
       { status: 400, headers: NO_STORE_HEADERS },
     );
   }
-  if (typeof body.sentenceJa !== 'string' || !body.sentenceJa.trim()) {
+  const notebookOnly = body.notebookOnly === true;
+  const sourceKind =
+    typeof body.sourceKind === 'string' ? (body.sourceKind as LookupSaveSource) : undefined;
+  const jlptDate = typeof body.jlptDate === 'string' ? body.jlptDate : null;
+  const jlptQuestionId = typeof body.jlptQuestionId === 'string' ? body.jlptQuestionId : null;
+  const jlptQuestionNumber =
+    typeof body.jlptQuestionNumber === 'number' ? body.jlptQuestionNumber : null;
+
+  if (!notebookOnly && (typeof body.sentenceJa !== 'string' || !body.sentenceJa.trim())) {
     return NextResponse.json(
       { error: 'Thiếu câu gốc để lưu kèm.' },
       { status: 400, headers: NO_STORE_HEADERS },
@@ -93,17 +119,36 @@ export async function handleLookupPost(request: Request, deps: LookupHandlerDeps
   }
   const cardType = typeof body.cardType === 'string' ? (body.cardType as CardType) : 'recognition';
   try {
-    const result = saveLookupItemToSrs({
-      dbPath: deps.dbPath,
-      contextPath: deps.contextPath,
-      jmdictPath: deps.jmdictPath,
-      itemId: body.itemId,
-      cardType,
-      sentenceJa: body.sentenceJa,
-      sentenceVi: typeof body.sentenceVi === 'string' ? body.sentenceVi : null,
-      sourceClipId: typeof body.sourceClipId === 'string' ? body.sourceClipId : null,
-      now: deps.now?.(),
-    });
+    const result = notebookOnly
+      ? saveLookupItemToNotebook({
+          dbPath: deps.dbPath,
+          contextPath: deps.contextPath,
+          jmdictPath: deps.jmdictPath,
+          itemId: body.itemId,
+          sentenceJa: typeof body.sentenceJa === 'string' ? body.sentenceJa : null,
+          sentenceVi: typeof body.sentenceVi === 'string' ? body.sentenceVi : null,
+          sourceClipId: typeof body.sourceClipId === 'string' ? body.sourceClipId : null,
+          sourceKind,
+          jlptDate,
+          jlptQuestionId,
+          jlptQuestionNumber,
+          now: deps.now?.(),
+        })
+      : saveLookupItemToSrs({
+          dbPath: deps.dbPath,
+          contextPath: deps.contextPath,
+          jmdictPath: deps.jmdictPath,
+          itemId: body.itemId,
+          cardType,
+          sentenceJa: String(body.sentenceJa),
+          sentenceVi: typeof body.sentenceVi === 'string' ? body.sentenceVi : null,
+          sourceClipId: typeof body.sourceClipId === 'string' ? body.sourceClipId : null,
+          sourceKind,
+          jlptDate,
+          jlptQuestionId,
+          jlptQuestionNumber,
+          now: deps.now?.(),
+        });
     return NextResponse.json(result, {
       status: result.created ? 201 : 200,
       headers: NO_STORE_HEADERS,
@@ -113,15 +158,15 @@ export async function handleLookupPost(request: Request, deps: LookupHandlerDeps
     const status =
       code === 'ITEM_NOT_FOUND'
         ? 404
-        : code === 'INVALID_CARD' || code === 'INVALID_SENTENCE'
+        : code === 'INVALID_CARD' || code === 'INVALID_SENTENCE' || code === 'INVALID_SOURCE'
           ? 400
           : 503;
     const message =
       status === 404
         ? 'Không tìm thấy mục cần lưu.'
         : status === 400
-          ? 'Nội dung hoặc câu gốc không hợp lệ.'
-          : 'Chưa thể lưu thẻ ôn. Thử lại sau.';
+          ? 'Nội dung, nguồn hoặc câu gốc không hợp lệ.'
+          : 'Chưa thể lưu từ lúc này. Thử lại sau.';
     return NextResponse.json({ error: message }, { status, headers: NO_STORE_HEADERS });
   }
 }

@@ -23,8 +23,8 @@ Học 4.741 từ N5–N2 theo thứ tự lộ trình, nghĩa tiếng Việt từ
 - [x] Liên kết sang từng kanji cấu thành
 - [x] **Từ cùng chữ khác cách đọc** (22 từ, ví dụ 方 かた/ほう): nghĩa dịch máy theo đúng cách đọc + cảnh báo "còn cách đọc khác"
 - [x] Bài học từ mới buổi tối; nghe audio, đọc to câu ví dụ
-- [ ] Sổ từ cá nhân: từ thêm từ Reader, phụ đề, tra cứu, đề thi kèm câu gốc và nguồn
-  - Còn thiếu: điểm lưu từ kèm câu gốc từ Reader và đề thi JLPT (tuyến `/vocab/notebook` tại `src/app/(study)/vocab/notebook/page.tsx:20-65`, `src/app/(study)/vocab/notebook/data.ts:14,58-68,217-349` hiện mới hỗ trợ nguồn phụ đề clip `clip`, tra từ `lookup` và hàng ôn `srs`).
+- [x] Sổ từ cá nhân: từ thêm từ Reader, phụ đề, tra cứu, đề thi kèm câu gốc và nguồn
+  - Xác minh 26/11 (`tests/vocab-notebook.test.ts`, `tests/vocab-notebook-sources.test.ts`, kiểm tra trình duyệt Playwright trên `/jlpt-daily` và `/vocab/notebook`): tuyến `/vocab/notebook` hỗ trợ đủ 3 nguồn có trong app là phụ đề clip (`clip`), tra cứu (`lookup`, bao gồm cả từ ngoài JLPT/JMdict lưu thẳng vào sổ không ép tạo thẻ SRS), đề thi JLPT (`jlpt`, chạm từ trong câu hỏi `/jlpt-daily` lưu kèm câu gốc và liên kết `/jlpt-daily?date=YYYY-MM-DD&q=<questionId>`, lọc `"Đề thi"`), cùng hàng ôn SRS (`srs`) và tương thích ngược `lookup-sentences.json` v1 / backup-restore. Ghi chú: app hiện chưa có màn hình Reader nên chưa có nguồn Reader.
 
 ## Dữ liệu
 

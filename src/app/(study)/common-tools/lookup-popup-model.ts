@@ -6,6 +6,8 @@ export type SentenceToken = {
   clickable: boolean;
 };
 
+export type LookupSaveSource = 'clip' | 'lookup' | 'jlpt';
+
 export type SavedLookupSentence = {
   cardId: string;
   itemId: string;
@@ -13,6 +15,17 @@ export type SavedLookupSentence = {
   sentenceVi: string | null;
   sourceClipId: string | null;
   savedAt: string;
+  sourceKind?: LookupSaveSource;
+  jlptDate?: string | null;
+  jlptQuestionId?: string | null;
+  jlptQuestionNumber?: number | null;
+  notebookOnly?: boolean;
+  sentenceMissing?: boolean;
+  word?: string | null;
+  reading?: string | null;
+  romaji?: string | null;
+  meaningVi?: string | null;
+  meaningsEn?: string[] | null;
 };
 
 export type LookupMatchSource =
@@ -54,9 +67,13 @@ export type LookupResponse = {
 export type LookupTarget = {
   surface: string;
   base?: string;
-  sentenceJa: string;
+  sentenceJa?: string | null;
   sentenceVi?: string | null;
   sourceClipId?: string | null;
+  sourceKind?: LookupSaveSource;
+  jlptDate?: string | null;
+  jlptQuestionId?: string | null;
+  jlptQuestionNumber?: number | null;
 };
 
 const JAPANESE_WORD_RE =

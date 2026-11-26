@@ -20,6 +20,7 @@ type FetchState =
   | { kind: 'error' };
 
 type SaveState = 'idle' | 'saving' | 'saved' | 'error';
+type SaveMode = 'srs' | 'notebook';
 
 const FOCUSABLE_SELECTOR =
   'button:not(:disabled), a[href], input:not(:disabled), select:not(:disabled), textarea:not(:disabled), [tabindex]:not([tabindex="-1"])';
@@ -41,6 +42,7 @@ export function LookupPopup({
   const [fetchState, setFetchState] = useState<FetchState>({ kind: 'loading' });
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [saveState, setSaveState] = useState<SaveState>('idle');
+  const [savedMode, setSavedMode] = useState<SaveMode | null>(null);
   const [saveMessage, setSaveMessage] = useState('');
 
   useEffect(() => {
@@ -49,6 +51,7 @@ export function LookupPopup({
     setFetchState({ kind: 'loading' });
     setSelectedIndex(0);
     setSaveState('idle');
+    setSavedMode(null);
     setSaveMessage('');
 
     const controller = new AbortController();
@@ -124,13 +127,14 @@ export function LookupPopup({
 
   if (!target) return null;
 
+  const hasSentence = Boolean(target.sentenceJa && target.sentenceJa.trim().length > 0);
   const allItems: LookupItem[] =
     fetchState.kind === 'ready' && fetchState.data.item
       ? [fetchState.data.item, ...fetchState.data.alternatives]
       : [];
   const activeItem = allItems[selectedIndex] ?? allItems[0] ?? null;
 
-  async function handleSaveToSrs(item: LookupItem) {
+  async function handleSave(item: LookupItem, mode: SaveMode) {
     if (!target || saveState === 'saving') return;
     setSaveState('saving');
     setSaveMessage('');
@@ -140,32 +144,59 @@ export function LookupPopup({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           itemId: item.id,
-          cardType: item.cardType,
-          sentenceJa: target.sentenceJa,
+          ...(mode === 'notebook' ? { notebookOnly: true } : { cardType: item.cardType }),
+          sentenceJa: target.sentenceJa ?? null,
           sentenceVi: target.sentenceVi ?? null,
           sourceClipId: target.sourceClipId ?? null,
+          ...(target.sourceKind ? { sourceKind: target.sourceKind } : {}),
+          ...(target.jlptDate ? { jlptDate: target.jlptDate } : {}),
+          ...(target.jlptQuestionId ? { jlptQuestionId: target.jlptQuestionId } : {}),
+          ...(typeof target.jlptQuestionNumber === 'number'
+            ? { jlptQuestionNumber: target.jlptQuestionNumber }
+            : {}),
         }),
       });
       if (response.status === 401) {
         setSaveState('error');
-        setSaveMessage('Cần đăng nhập lại để lưu thẻ ôn.');
+        setSaveMessage('Cần đăng nhập lại để lưu từ.');
         return;
       }
       if (!response.ok) {
         setSaveState('error');
-        setSaveMessage('Chưa lưu được thẻ ôn. Thử lại sau.');
+        setSaveMessage(
+          mode === 'notebook'
+            ? 'Chưa lưu được vào sổ từ. Thử lại sau.'
+            : 'Chưa lưu được thẻ ôn. Thử lại sau.',
+        );
         return;
       }
       const data = (await response.json()) as { created?: boolean };
       setSaveState('saved');
-      setSaveMessage(
-        data.created
-          ? 'Đã thêm vào ôn kèm câu gốc.'
-          : 'Thẻ đã có trong hàng ôn; đã lưu kèm câu gốc.',
-      );
+      setSavedMode(mode);
+      if (mode === 'notebook') {
+        setSaveMessage(
+          hasSentence
+            ? data.created
+              ? 'Đã lưu vào sổ từ kèm câu gốc.'
+              : 'Từ đã có trong sổ; đã cập nhật câu gốc.'
+            : data.created
+              ? 'Đã lưu vào sổ từ.'
+              : 'Từ đã có trong sổ từ.',
+        );
+      } else {
+        setSaveMessage(
+          data.created
+            ? 'Đã thêm vào ôn kèm câu gốc.'
+            : 'Thẻ đã có trong hàng ôn; đã lưu kèm câu gốc.',
+        );
+      }
     } catch {
       setSaveState('error');
-      setSaveMessage('Chưa lưu được thẻ ôn. Thử lại sau.');
+      setSaveMessage(
+        mode === 'notebook'
+          ? 'Chưa lưu được vào sổ từ. Thử lại sau.'
+          : 'Chưa lưu được thẻ ôn. Thử lại sau.',
+      );
     }
   }
 
@@ -262,17 +293,19 @@ export function LookupPopup({
             <p id={descId} className={styles.note}>
               Chưa tìm thấy “{target.surface}” trong dữ liệu đã nhập.
             </p>
-            <div className={styles.sentenceBox}>
-              <p className={styles.sectionLabel}>Câu gốc</p>
-              <p className={styles.sentenceJa} lang="ja">
-                {target.sentenceJa}
-              </p>
-              {target.sentenceVi && (
-                <p className={styles.sentenceVi} lang="vi">
-                  {target.sentenceVi}
+            {hasSentence && (
+              <div className={styles.sentenceBox}>
+                <p className={styles.sectionLabel}>Câu gốc</p>
+                <p className={styles.sentenceJa} lang="ja">
+                  {target.sentenceJa}
                 </p>
-              )}
-            </div>
+                {target.sentenceVi && (
+                  <p className={styles.sentenceVi} lang="vi">
+                    {target.sentenceVi}
+                  </p>
+                )}
+              </div>
+            )}
             <div className={styles.actions}>
               <Link
                 className="button"
@@ -418,17 +451,19 @@ export function LookupPopup({
               </p>
             )}
 
-            <div className={styles.sentenceBox}>
-              <p className={styles.sectionLabel}>Câu gốc</p>
-              <p className={styles.sentenceJa} lang="ja">
-                {target.sentenceJa}
-              </p>
-              {target.sentenceVi && (
-                <p className={styles.sentenceVi} lang="vi">
-                  {target.sentenceVi}
+            {hasSentence && (
+              <div className={styles.sentenceBox}>
+                <p className={styles.sectionLabel}>Câu gốc</p>
+                <p className={styles.sentenceJa} lang="ja">
+                  {target.sentenceJa}
                 </p>
-              )}
-            </div>
+                {target.sentenceVi && (
+                  <p className={styles.sentenceVi} lang="vi">
+                    {target.sentenceVi}
+                  </p>
+                )}
+              </div>
+            )}
 
             {allItems.length > 1 && (
               <div className={styles.alternatives} aria-label="Kết quả khác">
@@ -441,6 +476,7 @@ export function LookupPopup({
                     onClick={() => {
                       setSelectedIndex(index);
                       setSaveState('idle');
+                      setSavedMode(null);
                       setSaveMessage('');
                     }}
                   >
@@ -451,19 +487,62 @@ export function LookupPopup({
             )}
 
             <div className={styles.actions}>
-              <button
-                type="button"
-                className="button primary"
-                onClick={() => void handleSaveToSrs(activeItem)}
-                disabled={saveState === 'saving' || saveState === 'saved'}
-                aria-busy={saveState === 'saving'}
-              >
-                {saveState === 'saved'
-                  ? 'Đã thêm ✓'
-                  : saveState === 'saving'
-                    ? 'Đang lưu…'
-                    : 'Thêm vào ôn'}
-              </button>
+              {activeItem.outsideJlpt ? (
+                <button
+                  type="button"
+                  className="button primary"
+                  onClick={() => void handleSave(activeItem, 'notebook')}
+                  disabled={saveState === 'saving' || (saveState === 'saved' && savedMode === 'notebook')}
+                  aria-busy={saveState === 'saving'}
+                >
+                  {saveState === 'saved' && savedMode === 'notebook'
+                    ? 'Đã lưu vào sổ ✓'
+                    : saveState === 'saving'
+                      ? 'Đang lưu…'
+                      : 'Lưu vào sổ'}
+                </button>
+              ) : activeItem.kind === 'vocab' && target.sourceKind === 'jlpt' ? (
+                <>
+                  <button
+                    type="button"
+                    className="button primary"
+                    onClick={() => void handleSave(activeItem, 'notebook')}
+                    disabled={saveState === 'saving' || (saveState === 'saved' && savedMode === 'notebook')}
+                    aria-busy={saveState === 'saving'}
+                  >
+                    {saveState === 'saved' && savedMode === 'notebook'
+                      ? 'Đã lưu vào sổ ✓'
+                      : saveState === 'saving'
+                        ? 'Đang lưu…'
+                        : 'Lưu vào sổ'}
+                  </button>
+                  <button
+                    type="button"
+                    className="button"
+                    onClick={() => void handleSave(activeItem, 'srs')}
+                    disabled={saveState === 'saving' || (saveState === 'saved' && savedMode === 'srs')}
+                    aria-busy={saveState === 'saving'}
+                  >
+                    {saveState === 'saved' && savedMode === 'srs'
+                      ? 'Đã thêm ✓'
+                      : 'Thêm vào ôn'}
+                  </button>
+                </>
+              ) : (
+                <button
+                  type="button"
+                  className="button primary"
+                  onClick={() => void handleSave(activeItem, 'srs')}
+                  disabled={saveState === 'saving' || saveState === 'saved'}
+                  aria-busy={saveState === 'saving'}
+                >
+                  {saveState === 'saved'
+                    ? 'Đã thêm ✓'
+                    : saveState === 'saving'
+                      ? 'Đang lưu…'
+                      : 'Thêm vào ôn'}
+                </button>
+              )}
               <Link className="button" href={activeItem.href}>
                 {activeItem.outsideJlpt && !activeItem.inSrs
                   ? 'Mở Tra cứu chung'
@@ -473,9 +552,11 @@ export function LookupPopup({
 
             <p role="status" className={styles.status}>
               {saveMessage ||
-                (activeItem.inSrs && activeItem.savedSentence
-                  ? 'Từ này đã có trong hàng ôn; bấm “Thêm vào ôn” để cập nhật câu gốc.'
-                  : '')}
+                (activeItem.outsideJlpt && activeItem.savedSentence && !activeItem.inSrs
+                  ? 'Từ này đã lưu trong sổ từ; bấm “Lưu vào sổ” để cập nhật.'
+                  : activeItem.inSrs && activeItem.savedSentence
+                    ? 'Từ này đã có trong hàng ôn; bấm “Thêm vào ôn” để cập nhật câu gốc.'
+                    : '')}
             </p>
           </>
         )}

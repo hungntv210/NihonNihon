@@ -7,6 +7,7 @@ import { ReportViButton } from '../../common-tools/report-vi-button.tsx';
 import { Furigana } from '../furigana.tsx';
 import styles from '../vocab.module.css';
 import {
+  formatCalendarDate,
   formatNotebookDate,
   listVocabNotebook,
   NOTEBOOK_SOURCE_LABELS,
@@ -42,6 +43,9 @@ export default async function VocabNotebookPage({
         <Link href="/shadowing" className="text-link">
           Shadowing →
         </Link>
+        <Link href="/jlpt-daily" className="text-link">
+          JLPT mỗi tối →
+        </Link>
       </div>
       <nav aria-label="Lọc theo nguồn lưu từ" className={styles.notebookFilters}>
         {NOTEBOOK_SOURCES.map((tab) => {
@@ -60,8 +64,9 @@ export default async function VocabNotebookPage({
         })}
       </nav>
       <p className={styles.notebookNote}>
-        Hiển thị {result.filteredTotal}/{result.total} từ · Sắp theo ngày thêm mới nhất. Nguồn
-        Reader và Đề thi JLPT hiện chưa có điểm lưu từ kèm câu gốc.
+        Hiển thị {result.filteredTotal}/{result.total} từ · Sắp theo ngày thêm mới nhất. Hỗ trợ
+        lưu từ phụ đề clip, tra từ (cả ngoài JLPT), đề thi JLPT và hàng ôn SRS; ứng dụng chưa có
+        màn Reader.
       </p>
       {result.items.length > 0 ? (
         <ul className={styles.notebookList}>
@@ -70,7 +75,7 @@ export default async function VocabNotebookPage({
               <div className={styles.notebookHead}>
                 <div className={styles.notebookTitleGroup}>
                   <JaText as="h2" className={styles.notebookWord}>
-                    <Link href={'/vocab/' + encodeURIComponent(entry.id)}>
+                    <Link href={entry.href}>
                       <Furigana segments={entry.segments} />
                     </Link>
                   </JaText>
@@ -117,6 +122,13 @@ export default async function VocabNotebookPage({
                     {entry.segmentNumber ? ` · câu ${entry.segmentNumber}` : ''} →
                   </Link>
                 )}
+                {entry.jlptHref && (
+                  <Link href={entry.jlptHref} className={styles.notebookClipLink}>
+                    Đề JLPT
+                    {entry.jlptDate ? ` ${formatCalendarDate(entry.jlptDate)}` : ''}
+                    {entry.jlptQuestionNumber ? ` · câu ${entry.jlptQuestionNumber}` : ''} →
+                  </Link>
+                )}
                 <time dateTime={entry.addedAt} className={styles.notebookDate}>
                   Thêm ngày {formatNotebookDate(entry.addedAt)}
                 </time>
@@ -128,12 +140,15 @@ export default async function VocabNotebookPage({
         <section className="empty-state">
           <h2>Sổ từ cá nhân chưa có từ nào.</h2>
           <p>
-            Chạm vào từ trong phụ đề Shadowing để lưu kèm câu gốc, hoặc bấm «Thêm vào ôn» ở mục Từ
-            vựng.
+            Chạm vào từ trong phụ đề Shadowing hoặc câu đề thi JLPT để lưu kèm câu gốc, hoặc bấm
+            «Thêm vào ôn» ở mục Từ vựng.
           </p>
           <div className={styles.notebookEmptyActions}>
             <Link href="/shadowing" className="button button-primary">
               Mở Shadowing
+            </Link>
+            <Link href="/jlpt-daily" className="button">
+              Mở JLPT mỗi tối
             </Link>
             <Link href="/vocab" className="button">
               Xem từ vựng
