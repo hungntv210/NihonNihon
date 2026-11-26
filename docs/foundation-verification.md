@@ -1255,3 +1255,10 @@ Checked implementation 61b8cc3fd473097d05f332b6138e7770d1868aad on branch `naeto
 - Checked merge commit 5129f7000e8cba0631f50b0aca530f04edb8d3e9 against master c3473e1c9c629d3691ac841101bac02a1dd5caaa on Windows x64, Node v24.10.0 and npm 11.6.1 with a clean .next.
 - npm run check passed from 14:58:58 to 15:00:57 ICT (UTC+07:00). Typecheck, 371/371 tests (22 prototype and 349 core/route), webpack build and all 16 application checks passed.
 - Route ownership passed for 12 files. Conflict resolution retained both ownership entries and both append-only verification sections. Only this audit entry follows the checked merge.
+
+## Pokabu G1 private grammar practice -- 2026-11-26
+
+- Checked implementation `39b81648706500f32d42cbc2d2079facebe7302d` against master `baecc32afb1a4532c735be44027412933b23faf5` on Windows x64, Node v24.10.0 and npm 11.6.1.
+- `npm run check` passed from 20:22:05 to 20:23:39 ICT (UTC+07:00). Typecheck, 373/373 tests (22 prototype and 351 core/route), webpack build and 16/16 application checks passed.
+- Builds used the same worktree path and dependency tree. Total browser JavaScript gzip grew from 456,712 B to 457,310 B. Grammar detail assets grew from 62,016 B to 62,614 B, and the grammar list remained at 57,755 B.
+- Route ownership passed. Only this append-only audit entry follows the checked implementation.
