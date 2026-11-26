@@ -3,10 +3,15 @@ export const MAX_NEW_CARDS_PER_DAY = 100;
 export const MIN_FSRS_RETENTION = 0.8;
 export const MAX_FSRS_RETENTION = 0.97;
 export const FSRS_RETENTION_STEP = 0.01;
+export const MIN_DAY_BREAK_TIMES = 2;
+export const MAX_DAY_BREAK_TIMES = 3;
+export const DEFAULT_DAY_BREAK_TIMES = ['10:30', '12:15', '15:30'];
+export const CLOCK_TIME_RE = /^([01]\d|2[0-3]):[0-5]\d$/;
 export const DEFAULT_PREFERENCES = {
   startDate: '2026-11-02', eveningTime: '19:30', studyMinutes: 50,
   examDate: '2028-07-02', timeZone: 'Asia/Ho_Chi_Minh', shadowingDays: [2, 4],
   newCardsPerDay: 10, fsrsRetention: 0.9, furigana: true, ttsVoice: '', theme: 'system', motion: true,
+  remindersEnabled: false, dayBreakTimes: [...DEFAULT_DAY_BREAK_TIMES],
 };
 export type StudyPreferences = typeof DEFAULT_PREFERENCES;
 export function isValidNewCardsPerDay(value: unknown): value is number {
@@ -22,6 +27,32 @@ export function isValidFsrsRetention(value: unknown): value is number {
 }
 export function normalizeFsrsRetention(value: unknown): number {
   return isValidFsrsRetention(value) ? Math.round(value * 100) / 100 : DEFAULT_PREFERENCES.fsrsRetention;
+}
+export function isValidDayBreakTimes(value: unknown, eveningTime?: string): value is string[] {
+  if (!Array.isArray(value) || value.length < MIN_DAY_BREAK_TIMES || value.length > MAX_DAY_BREAK_TIMES) return false;
+  if (value.some(t => typeof t !== 'string' || !CLOCK_TIME_RE.test(t))) return false;
+  if (new Set(value).size !== value.length) return false;
+  if (eveningTime !== undefined && value.some(t => t >= eveningTime)) return false;
+  return true;
+}
+export function parseReminderBreakTimesInput(
+  slots: readonly string[],
+  eveningTime: string,
+): { ok: true; dayBreakTimes: string[] } | { ok: false; error: string } {
+  const cleaned = slots.map(s => s.trim()).filter(Boolean);
+  if (cleaned.length < MIN_DAY_BREAK_TIMES || cleaned.length > MAX_DAY_BREAK_TIMES) {
+    return { ok: false, error: 'Hãy chọn từ 2 đến 3 khung giờ nghỉ ban ngày.' };
+  }
+  if (cleaned.some(t => !CLOCK_TIME_RE.test(t))) {
+    return { ok: false, error: 'Khung giờ nghỉ không hợp lệ (định dạng HH:MM).' };
+  }
+  if (new Set(cleaned).size !== cleaned.length) {
+    return { ok: false, error: 'Các khung giờ nghỉ ban ngày không được trùng nhau.' };
+  }
+  if (CLOCK_TIME_RE.test(eveningTime) && cleaned.some(t => t >= eveningTime)) {
+    return { ok: false, error: 'Các giờ nghỉ ban ngày phải trước giờ học buổi tối.' };
+  }
+  return { ok: true, dayBreakTimes: [...cleaned].sort() };
 }
 export function parseSrsSettingsInput(newCardsRaw: string, retentionRaw: string): { ok: true; newCardsPerDay: number; fsrsRetention: number } | { ok: false; error: string } {
   const cardsText = newCardsRaw.trim(), retentionText = retentionRaw.trim();
@@ -46,16 +77,27 @@ export function validatePreferences(value: unknown): StudyPreferences {
   if (Object.keys(input).some(key => !Object.hasOwn(DEFAULT_PREFERENCES,key))) throw Error('UNKNOWN_SETTING');
   const p = { ...DEFAULT_PREFERENCES, ...input } as StudyPreferences;
   const date = (s: unknown) => typeof s === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(s) && new Date(s).toISOString().slice(0,10) === s;
-  if (!date(p.startDate) || !date(p.examDate) || p.examDate <= p.startDate || !/^([01]\d|2[0-3]):[0-5]\d$/.test(p.eveningTime)
+  if (!date(p.startDate) || !date(p.examDate) || p.examDate <= p.startDate || !CLOCK_TIME_RE.test(p.eveningTime)
     || !Number.isInteger(p.studyMinutes) || p.studyMinutes < 5 || p.studyMinutes > 180
     || !isValidNewCardsPerDay(p.newCardsPerDay)
     || !isValidFsrsRetention(p.fsrsRetention)
     || typeof p.furigana !== 'boolean' || typeof p.motion !== 'boolean' || typeof p.ttsVoice !== 'string' || p.ttsVoice.length > 200
     || !['system','light','dark'].includes(p.theme) || !Array.isArray(p.shadowingDays)
-    || p.shadowingDays.length < 2 || p.shadowingDays.some(d => !Number.isInteger(d) || d < 0 || d > 6) || new Set(p.shadowingDays).size !== p.shadowingDays.length) throw Error('INVALID_SETTINGS');
+    || p.shadowingDays.length < 2 || p.shadowingDays.some(d => !Number.isInteger(d) || d < 0 || d > 6) || new Set(p.shadowingDays).size !== p.shadowingDays.length
+    || typeof p.remindersEnabled !== 'boolean') throw Error('INVALID_SETTINGS');
+  const enforceBeforeEvening = Object.hasOwn(input, 'dayBreakTimes') || p.remindersEnabled;
+  if (!isValidDayBreakTimes(p.dayBreakTimes, enforceBeforeEvening ? p.eveningTime : undefined)) {
+    throw Error('INVALID_BREAK_TIMES');
+  }
   if (typeof p.timeZone !== 'string' || p.timeZone.length > 80) throw Error('INVALID_TIMEZONE');
   new Intl.DateTimeFormat('en', { timeZone: p.timeZone });
-  return { ...p, fsrsRetention: Math.round(p.fsrsRetention * 100) / 100, ttsVoice: p.ttsVoice.normalize('NFC') };
+  return {
+    ...p,
+    shadowingDays: [...p.shadowingDays],
+    dayBreakTimes: [...p.dayBreakTimes].sort(),
+    fsrsRetention: Math.round(p.fsrsRetention * 100) / 100,
+    ttsVoice: p.ttsVoice.normalize('NFC'),
+  };
 }
 export function parseStoredPreferences(value: unknown): StudyPreferences {
   if (!value || typeof value !== 'object' || Array.isArray(value)) throw Error('INVALID_SETTINGS');
