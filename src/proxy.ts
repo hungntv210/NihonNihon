@@ -10,6 +10,7 @@ export function proxy(request: NextRequest) {
     path === '/api/session' ||
     path === '/robots.txt' ||
     path === '/icon.svg' || path === '/sw.js' || path === '/offline.html' || path === '/manifest.webmanifest' ||
+    /^\/icons\/[A-Za-z0-9_-]+\.png$/.test(path) ||
     path.startsWith('/_next/static/') ||
     path.startsWith('/fonts/') || path.startsWith('/mascots/');
   const headers = {
