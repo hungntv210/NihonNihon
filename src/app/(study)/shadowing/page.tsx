@@ -16,6 +16,7 @@ import { tokenizeClipSegments } from '../common-tools/tokenize.ts';
 import { readShadowingHistory } from './history-store.ts';
 import { summarizeAllClips } from './history-model.ts';
 import { buildClipMetaMap } from './clip-meta-server.ts';
+import { detectLocalWhisper, USER_CLIP_PREFIX } from './clip-maker-store.ts';
 
 const PRACTICE_NOTE = (
   <p>
@@ -35,6 +36,29 @@ function clipNotice(clip: Clip): ReactNode {
         </p>
       </>
     );
+  if (clip.id.startsWith(USER_CLIP_PREFIX)) {
+    if (clip.youtubeId)
+      return (
+        <>
+          <strong>
+            YouTube cá nhân · {clip.level} · {clip.topic}
+          </strong>
+          <p>
+            Chỉ lưu ID video và mốc thời gian, phát bằng trình phát nhúng sau khi bạn bấm. Không tải video/audio về máy.
+          </p>
+        </>
+      );
+    return (
+      <>
+        <strong>
+          Clip tự tạo · {clip.level} · {clip.topic}
+        </strong>
+        <p>
+          Tệp âm thanh/video lưu trong thư mục riêng tư trên máy chủ nhà, chỉ phát khi đã đăng nhập. Không gửi tệp lên dịch vụ ngoài.
+        </p>
+      </>
+    );
+  }
   if (clip.youtubeId)
     return (
       <>
@@ -103,6 +127,7 @@ export default async function ShadowingPage({
         initialHistory={initialHistory}
         metaByClip={clipMetaById}
         timeZone={settings.timeZone}
+        whisperAvailable={detectLocalWhisper()}
       />
     </>
   );
