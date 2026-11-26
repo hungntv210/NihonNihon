@@ -39,6 +39,7 @@ Học 1.038 kanji N5–N2 qua âm Hán Việt và luôn đi kèm 2–3 từ dùn
 ## Tiêu chí hoàn thành
 
 - [ ] 1.038 kanji N5–N2 đều có Hán Việt, nghĩa Việt, On/Kun, animation nét
+  - Còn thiếu: trên bản sao DB app chỉ đọc đã đủ 1.038/1.038 nghĩa Việt, On/Kun và animation nét (`kanji_strokes`), nhưng Hán Việt mới đạt 1.037/1.038 — thiếu đúng 1 chữ `畑` (N3, kokuji Nhật tự tạo chưa có dòng `han_viet` trong `vi_translations`).
 - [ ] Animation chạy mượt trên điện thoại tầm trung
 
 ## Câu hỏi còn mở

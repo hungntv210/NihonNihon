@@ -1197,3 +1197,18 @@ Checked implementation 61b8cc3fd473097d05f332b6138e7770d1868aad on branch `naeto
 - Checked merge commit `2ec088946ce0c81cc71deafa4f00bd983fe02737` after merging master `409c125e127610d65841cc4a3a316b47df53aa37`. Windows x64, Node v24.10.0, npm 11.6.1.
 - `npm run check` passed on 2026-11-26 from 12:21:54 to 12:23:22 ICT (UTC+07:00). Typecheck and webpack build passed. Tests passed 359/359 (22 prototype and 337 core/route), with zero failures or skips. Application gate passed 16/16.
 - Route scope passed for all 12 changed files. The only manual conflict resolution preserved both append-only verification entries.
+
+
+## Naetoru G1 checklist verification and FTS5 tick -- 2026-11-26
+
+- Checked commit `363d3e32307ac0e6d1628edd7e2b1b15b385e0fe` on branch `naetoru/g1-tick-1126` (base `origin/master` `6ef86d28fcff5eb4435d867fb54b582157f8428d`) on Windows x64, Node v24.10.0, npm 11.6.1, starting from a clean `.next`.
+- Docs-only audit (zero `src/` edits, `docs/features/g1-today-roadmap.md:38-39` untouched): ticked 1 item (`docs/features/g1-foundation.md:31` FTS5 search index with verified `file:line`, route, and test evidence) and added concise single-line `"Còn thiếu:"` notes under verified incomplete items across `g1-common-tools.md`, `g1-grammar.md`, `g1-kanji.md`, `g1-shadowing.md`, `g1-today-roadmap.md` (`:43`, `:44`, `:73`), and `g1-vocab.md` (data counts verified read-only against a disposable copy of the app DB).
+- `npm run check` (`2026-11-26 12:08:17` to `12:10:04` +07:00 ICT): PASS -- `typecheck` PASS (`next typegen && tsc --noEmit`); `npm test` `354/354` PASS (`22/22` prototype + `332/332` core/route, 0 failures/skips); `next build --webpack` PASS; `test:app` `16/16` PASS.
+- Route scope passed (`9` files: 7 `docs/features/g1-*.md` files, `tools/check-route-scope.mjs`, and this append-only verification entry). Only this append-only verification entry follows `363d3e32307ac0e6d1628edd7e2b1b15b385e0fe`.
+
+### Master synchronization for PR #111
+
+- Checked merge commit $checked against master b4e38e11b16cd479f3e5b97ad5067fd3bb714fbd on Windows x64, Node v24.10.0 and npm 11.6.1, starting from a clean .next.
+- npm run check passed on 2026-11-26 from 13:20:20 to 13:22:04 ICT (UTC+07:00). Typecheck and webpack build passed. Tests passed 359/359 (22 prototype and 337 core/route). The application gate passed 16/16.
+- Route scope passed for all nine changed files. All 15 checklist notes and both completed roadmap items were retained. Only this append-only audit entry follows the tested merge.
+- Checked merge SHA for the entry above: ba53bfd5a09beaff4cca2a2d36729a43e993c674.
