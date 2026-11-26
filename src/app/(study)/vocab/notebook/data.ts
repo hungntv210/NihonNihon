@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import type { DatabaseSync } from 'node:sqlite';
 import { selectedTranslation, type Translation } from '../../../../core/content.ts';
+import { JMDICT_LEVEL_LABEL } from '../../../../core/jmdict.ts';
 import {
   lookupContextPath,
   readLookupSentenceStore,
@@ -236,7 +237,7 @@ export function listVocabNotebook(
 
   const srsRows = db
     .prepare(
-      `SELECT v.item_id, v.word, v.reading, v.romaji, v.level, v.meanings_en, s.name source_name,
+      `SELECT v.item_id, v.word, v.reading, v.romaji, v.level, v.meanings_en, i.source_id, s.name source_name,
               MIN(
                 CASE
                   WHEN (SELECT MIN(r.reviewed_at) FROM srs_reviews r WHERE r.card_id=c.card_id) IS NOT NULL
@@ -262,7 +263,7 @@ export function listVocabNotebook(
   const extraLookupIds = [...latestLookupByItem.keys()].filter((id) => !rowById.has(id));
   if (extraLookupIds.length > 0) {
     const lookupVocabStmt = db.prepare(
-      `SELECT v.item_id, v.word, v.reading, v.romaji, v.level, v.meanings_en, s.name source_name
+      `SELECT v.item_id, v.word, v.reading, v.romaji, v.level, v.meanings_en, i.source_id, s.name source_name
        FROM vocab v
        JOIN content_items i USING(item_id)
        JOIN data_sources s ON s.source_id=i.source_id
@@ -301,7 +302,7 @@ export function listVocabNotebook(
       word,
       reading,
       romaji: String(row.romaji),
-      level: String(row.level),
+      level: String(row.source_id) === 'jmdict' ? JMDICT_LEVEL_LABEL : String(row.level),
       segments: wordSegments(
         furiganaRow ? String(furiganaRow.segments) : null,
         word,

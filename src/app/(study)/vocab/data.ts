@@ -4,6 +4,7 @@ import {
   type ContentSupplement,
 } from '../../../core/content-supplement.ts';
 import { selectedTranslation, type Translation } from '../../../core/content.ts';
+import { JMDICT_LEVEL_LABEL } from '../../../core/jmdict.ts';
 
 export type Vocabulary = {
   id: string;
@@ -100,7 +101,7 @@ function vocabulary(db: DatabaseSync, r: Record<string, unknown>, supplement: Co
     word: String(r.word),
     reading: String(r.reading),
     romaji: String(r.romaji),
-    level: String(r.level),
+    level: String(r.source_id) === 'jmdict' ? JMDICT_LEVEL_LABEL : String(r.level),
     english: JSON.parse(String(r.meanings_en)),
     pos: pos.some((part) => typeof part === 'string' && part.trim()) ? pos : supplementFor(supplement, id, r.source_hash)?.pos ?? pos,
     meaning: meaning.value,
@@ -111,20 +112,20 @@ function vocabulary(db: DatabaseSync, r: Record<string, unknown>, supplement: Co
     queued: Boolean(r.queued),
     otherReadings: db
       .prepare(
-        `SELECT v.item_id,v.reading FROM vocab v JOIN content_items i USING(item_id) WHERE v.word=? AND v.reading<>? AND i.is_active=1 ORDER BY v.reading,v.item_id`,
+        `SELECT v.item_id,v.reading FROM vocab v JOIN content_items i USING(item_id) WHERE v.word=? AND v.reading<>? AND i.is_active=1 AND i.source_id<>'jmdict' ORDER BY v.reading,v.item_id`,
       )
       .all(String(r.word), String(r.reading))
       .map((v) => ({ id: String(v.item_id), reading: String(v.reading) })),
   };
 }
-const select = `SELECT v.*,i.source_hash,s.name source_name,EXISTS(SELECT 1 FROM srs_cards c WHERE c.item_id=v.item_id) queued
+const select = `SELECT v.*,i.source_id,i.source_hash,s.name source_name,EXISTS(SELECT 1 FROM srs_cards c WHERE c.item_id=v.item_id) queued
   FROM vocab v JOIN content_items i USING(item_id) JOIN data_sources s ON s.source_id=i.source_id`;
 
 export function findVocabulary(db: DatabaseSync, search: Search) {
   db.function('nihon_vocab_search', { deterministic: true }, (value) =>
     normalizeSearch(String(value ?? '')),
   );
-  const clauses = ['i.is_active=1'],
+  const clauses = ['i.is_active=1', "i.source_id<>'jmdict'"],
     args: (string | number)[] = [];
   if (search.level) {
     clauses.push('v.level=?');
@@ -166,7 +167,7 @@ export function newVocabulary(db: DatabaseSync, supplement = readContentSuppleme
   return db
     .prepare(
       select +
-        ` WHERE i.is_active=1 AND NOT EXISTS(SELECT 1 FROM srs_cards c WHERE c.item_id=v.item_id) ORDER BY CASE v.level WHEN 'N5' THEN 0 WHEN 'N4' THEN 1 WHEN 'N3' THEN 2 WHEN 'N2' THEN 3 ELSE 4 END,v.item_id LIMIT 5`,
+        ` WHERE i.is_active=1 AND i.source_id<>'jmdict' AND NOT EXISTS(SELECT 1 FROM srs_cards c WHERE c.item_id=v.item_id) ORDER BY CASE v.level WHEN 'N5' THEN 0 WHEN 'N4' THEN 1 WHEN 'N3' THEN 2 WHEN 'N2' THEN 3 ELSE 4 END,v.item_id LIMIT 5`,
     )
     .all()
     .map((r) => vocabulary(db, r, supplement));

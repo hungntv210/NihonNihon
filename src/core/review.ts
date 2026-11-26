@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { DatabaseSync } from 'node:sqlite';
+import { isJmdictItemId, materializeJmdictItem, resolveJmdictDbPath } from './jmdict.ts';
 
 export const cardTypes = [
   'recognition',
@@ -11,16 +12,30 @@ export const cardTypes = [
 ] as const;
 export type CardType = (typeof cardTypes)[number];
 
-export function enqueueCard(file: string, itemId: string, cardType: CardType, now = new Date()) {
+export function enqueueCard(
+  file: string,
+  itemId: string,
+  cardType: CardType,
+  now = new Date(),
+  jmdictPath?: string,
+) {
   if (typeof itemId !== 'string' || !itemId || itemId.length > 256 || !cardTypes.includes(cardType))
     throw new Error('INVALID_CARD');
-  // The connection writes only srs_cards; content readers use a separate read-only connection.
+  // The connection writes only srs_cards (plus on-demand JMdict vocab materialization when adding an outside-JLPT word).
   const db = new DatabaseSync(file, { timeout: 5000 });
   try {
     db.exec('PRAGMA foreign_keys=ON; BEGIN IMMEDIATE;');
-    const item = db
+    let item = db
       .prepare('SELECT kind FROM content_items WHERE item_id=? AND is_active=1')
       .get(itemId);
+    if (!item && isJmdictItemId(itemId)) {
+      const resolvedJmdict = resolveJmdictDbPath(file, jmdictPath);
+      if (resolvedJmdict && materializeJmdictItem(db, itemId, resolvedJmdict, now)) {
+        item = db
+          .prepare('SELECT kind FROM content_items WHERE item_id=? AND is_active=1')
+          .get(itemId);
+      }
+    }
     if (!item) throw new Error('ITEM_NOT_FOUND');
     if (cardType === 'shadow' && item.kind !== 'clip') throw new Error('INVALID_CARD');
     const time = now.toISOString();

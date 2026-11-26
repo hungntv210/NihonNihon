@@ -17,13 +17,19 @@ Ba công cụ có mặt ở mọi màn hình.
 - [x] **Popup tra từ:** chạm từ tiếng Nhật bất kỳ → cách đọc, Hán Việt, nghĩa Việt (nhãn nguồn), cấp, nút Thêm vào ôn (kèm câu gốc)
 - [x] **Thanh tìm kiếm chung:** kanji, kana, romaji, Hán Việt, tiếng Việt; **gõ không dấu vẫn tìm ra** ("lam viec" → "làm việc")
 - [x] Kết quả gồm từ, kanji, mẫu ngữ pháp, câu trong clip
-- [ ] Từ ngoài JLPT tra qua JMdict + tu-dien-nhat-viet
-  - Còn thiếu: chưa nạp kho từ ngoài JLPT từ JMdict (bản sao DB app chỉ đọc hiện chỉ có 4.741 mục `vocab` nguồn `openjlpt`, 0 mục JMdict) và `src/app/(study)/common-tools/lookup.ts:121-227` chưa có nhánh tra cứu ngoài JLPT qua JMdict + `tu-dien-nhat-viet`.
+- [x] Từ ngoài JLPT tra qua JMdict + tu-dien-nhat-viet
 - [x] **Báo sai** trên mọi dòng tiếng Việt: chỉ đánh dấu, không phải sửa
 
 ## Dữ liệu
 
 - Chỉ mục FTS5; bảng báo sai (mục, ngữ cảnh, ngày).
+- Kho từ ngoài JLPT lưu tách biệt trong `data/private/jmdict.sqlite` (cùng FTS5 index và bảng tra dạng từ `jmdict_forms`, dựng qua `tools/import-jmdict.mjs`, không thay đổi `demo.sqlite` hay bản ghi `openjlpt` và không làm phình gói sao lưu `backup.ts`). Khi người học bấm **Thêm vào ôn**, mục `jmdict:vocab:<ent_seq>` được hiện thực hoá theo yêu cầu vào DB app với nguồn `jmdict` / `bunchaway-javi` và nhãn `"Ngoài JLPT"`.
+
+## Bản quyền và ghi công dữ liệu ngoài JLPT
+
+- **JMdict** (`http://ftp.edrdg.org/pub/Nihongo/JMdict_e.gz`): James William Breen & Electronic Dictionary Research and Development Group (EDRDG), giấy phép **CC BY-SA 4.0** (<https://www.edrdg.org/edrdg/licence.html>).
+- **tu-dien-nhat-viet** (<https://github.com/bunchaway/tu-dien-nhat-viet>, bản đối chiếu commit `6b1e9248c5382949115ccf1f5e8846d0fc85d6ad`, tệp `final.csv`): Bunchaway, công bố giấy phép **CC BY-SA 4.0** trong `README.md` (<https://creativecommons.org/licenses/by-sa/4.0/>; lưu ý kho nguồn không có tệp `LICENSE` riêng nên căn cứ theo tuyên bố trong `README.md`).
+- Ghi công CC BY-SA 4.0 được hiển thị trực tiếp trên popup tra từ (khi hiện mục ngoài JLPT) và trang `/common-tools/search`.
 
 ## Quy tắc và ràng buộc
 
@@ -66,5 +72,8 @@ Các dấu tick xác nhận phần code đã chạy qua test/fixture; không tha
   - `lookupWord` (gọi trực tiếp): p50 `2.28 ms`, p95 `5.81 ms`, max `6.87 ms`
   - `GET /api/common-tools/lookup` (handler gồm mở/đóng DB + JSON): p50 `3.53 ms`, p95 `9.13 ms`, max `14.68 ms`
   - Ghi chú: mọi đường tra đều p95 `< 10 ms` (dưới ngưỡng `< 200 ms`); đây là độ trễ xử lý phía server trên máy nhà (chưa gồm RTT mạng/Tailscale và render trình duyệt; bản sao DB G0 hiện có `1` dòng `vi_translations` đang `selected`).
+- Bằng chứng tra cứu ngoài JLPT qua JMdict + `tu-dien-nhat-viet` (2026-11-26): `tools/import-jmdict.mjs`, `src/core/jmdict.ts`, `src/core/review.ts`, `src/app/(study)/common-tools/lookup.ts`, `src/app/(study)/common-tools/lookup-popup.tsx`, `src/app/(study)/common-tools/lookup-popup-model.ts`, `src/app/(study)/common-tools/lookup-store.ts`, `src/app/(study)/common-tools/lookup-handler.ts`, `src/app/(study)/common-tools/repository.ts`, `src/app/(study)/common-tools/fts5.ts`, `src/app/(study)/common-tools/search/page.tsx`, `tests/jmdict-lookup.test.ts`.
+  - Chạy thử nạp toàn bộ `JMdict_e.gz` (phiên bản `2026-11-26`) + `tu-dien-nhat-viet` (`final.csv`, `360,083` mục) vào bản sao SQLite thử nghiệm ngoài repo: `219,246` mục JMdict (`218,058` khớp nghĩa Việt = `99.46%`), kích thước DB + FTS5 `176,623,616 B` (~`168.4 MB`), nạp lại idempotent (0 mục chèn mới).
+  - Đo độ trễ server trên bản sao DB G0 chỉ-đọc kết hợp kho JMdict cỡ thật (`219,246` mục, 50 mẫu/đường tra): `lookupJmdictExact` p50 `1.09 ms` / p95 `1.87 ms` / max `2.39 ms`; `lookupWord` (ưu tiên JLPT rồi rơi xuống JMdict + Hán Việt từng chữ) p50 `3.84 ms` / p95 `8.11 ms` / max `15.82 ms`; `searchAllKinds` (5 nhóm gồm `Ngoài JLPT` lọc trùng `openjlpt`) p50 `14.55 ms` / p95 `37.20 ms` / max `42.38 ms`.
 
-Tìm chung đã tách 4 nhóm kết quả (Từ, Kanji, Mẫu ngữ pháp, Câu trong clip — tối đa 10 mục/nhóm, link câu trong clip trỏ đúng `/shadowing?clip=...&segment=...` và loại clip đã xoá/inactive, so khớp NFKC); popup tra từ tại chỗ (tách từ `kuromoji` phía server, `/api/common-tools/lookup`, dialog có focus trap + `Esc`/click ngoài + nút Thêm vào ôn kèm câu gốc, không lấy nghĩa từ KanjiDictVN) đã triển khai và gắn trên phụ đề shadowing; nút Báo sai chỉ đánh dấu (`POST /api/common-tools/reports` lưu vào `translation_reports` sẵn có, idempotent, không sửa `vi_translations`) đã phủ mọi dòng tiếng Việt có `vi_translations` trên `common-tools` (tìm chung, popup tra từ), `vocab` (sổ từ, chi tiết, bài học từ/kanji, sổ từ cá nhân), `kanji` (danh sách, chi tiết và từ liên quan), `grammar` (danh sách, chi tiết gồm dễ nhầm và mẫu cùng nhóm) và `srs` (đáp án phiên ôn khi có mạng); phụ đề clip JSON ngoài không có dòng `vi_translations` nên không tạo thêm bảng mới; đo độ trễ server trên bản sao DB cỡ thật G0 đạt p95 `< 10 ms` (< 200 ms) trên cả tìm chung và popup tra từ. Từ điển ngoài JLPT vẫn giữ trống.
+Tìm chung đã tách 5 nhóm kết quả (Từ, Kanji, Mẫu ngữ pháp, Câu trong clip, Ngoài JLPT — tối đa 10 mục/nhóm, kết quả JLPT luôn ưu tiên trước ngoài JLPT và loại trùng theo `openjlpt`, link câu trong clip trỏ đúng `/shadowing?clip=...&segment=...` và loại clip đã xoá/inactive, so khớp NFKC); popup tra từ tại chỗ (tách từ `kuromoji` phía server, `/api/common-tools/lookup`, dialog có focus trap + `Esc`/click ngoài + nút Thêm vào ôn kèm câu gốc cho cả từ JLPT và từ ngoài JLPT, không lấy nghĩa từ KanjiDictVN) đã triển khai và gắn trên phụ đề shadowing; nút Báo sai chỉ đánh dấu (`POST /api/common-tools/reports` lưu vào `translation_reports` sẵn có, idempotent, không sửa `vi_translations`) đã phủ mọi dòng tiếng Việt có `vi_translations` trên `common-tools` (tìm chung, popup tra từ), `vocab` (sổ từ, chi tiết, bài học từ/kanji, sổ từ cá nhân), `kanji` (danh sách, chi tiết và từ liên quan), `grammar` (danh sách, chi tiết gồm dễ nhầm và mẫu cùng nhóm) và `srs` (đáp án phiên ôn khi có mạng); phụ đề clip JSON ngoài không có dòng `vi_translations` nên không tạo thêm bảng mới; đo độ trễ server trên bản sao DB cỡ thật G0 kết hợp kho JMdict `219,246` mục đạt `lookupWord` p95 `8.11 ms` và `searchAllKinds` p95 `37.20 ms` (đều dưới ngưỡng `< 200 ms`).
