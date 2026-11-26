@@ -21,6 +21,7 @@ export type LookupMatchSource =
   | 'form'
   | 'reading'
   | 'search'
+  | 'jmdict'
   | 'kanji_fallback';
 
 export type LookupItem = {
@@ -39,6 +40,7 @@ export type LookupItem = {
   inSrs: boolean;
   savedSentence: SavedLookupSentence | null;
   matchedBy: LookupMatchSource;
+  outsideJlpt?: boolean;
 };
 
 export type LookupResponse = {
@@ -98,7 +100,7 @@ export function formatLookupSourceLabel(
   translation: Translation | null,
   fallback = 'OpenJLPT',
 ): string {
-  if (!translation) return `Bản Anh · ${fallback}`;
+  if (!translation) return fallback === 'JMdict' ? 'EN · JMdict' : `Bản Anh · ${fallback}`;
   const labels: Record<string, string> = {
     machine: 'Dịch máy',
     dictionary: 'Từ điển',

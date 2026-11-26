@@ -369,9 +369,16 @@ export function LookupPopup({
                     />
                   )}
                   {activeItem.english.length > 0 && (
-                    <p className={styles.englishSub} lang="en">
-                      {activeItem.english.join('; ')}
-                    </p>
+                    <>
+                      <p className={styles.englishSub} lang="en">
+                        {activeItem.english.join('; ')}
+                      </p>
+                      {activeItem.outsideJlpt && (
+                        <small className={styles.source}>
+                          {formatLookupSourceLabel(null, activeItem.sourceName)}
+                        </small>
+                      )}
+                    </>
                   )}
                 </>
               ) : (
@@ -385,6 +392,31 @@ export function LookupPopup({
                 </>
               )}
             </div>
+
+            {activeItem.outsideJlpt && (
+              <p className={styles.attribution}>
+                Nguồn ngoài JLPT:{' '}
+                <a
+                  href="https://www.edrdg.org/edrdg/licence.html"
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  JMdict (EDRDG, CC BY-SA 4.0)
+                </a>
+                {activeItem.meaning?.sourceId === 'bunchaway-javi' && (
+                  <>
+                    {' · '}
+                    <a
+                      href="https://github.com/bunchaway/tu-dien-nhat-viet"
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      tu-dien-nhat-viet (Bunchaway, CC BY-SA 4.0)
+                    </a>
+                  </>
+                )}
+              </p>
+            )}
 
             <div className={styles.sentenceBox}>
               <p className={styles.sectionLabel}>Câu gốc</p>
@@ -433,7 +465,9 @@ export function LookupPopup({
                     : 'Thêm vào ôn'}
               </button>
               <Link className="button" href={activeItem.href}>
-                Xem chi tiết
+                {activeItem.outsideJlpt && !activeItem.inSrs
+                  ? 'Mở Tra cứu chung'
+                  : 'Xem chi tiết'}
               </Link>
             </div>
 

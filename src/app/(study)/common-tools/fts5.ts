@@ -5,7 +5,7 @@ import { DatabaseSync } from 'node:sqlite';
 import { toHiragana, toRomaji } from 'wanakana';
 
 export const FTS5_TOKENIZER = 'trigram' as const;
-const INDEX_VERSION = 'fts5-trigram-v1';
+const INDEX_VERSION = 'fts5-trigram-v2';
 const FIELD_SEPARATOR = '\u001f';
 
 export const GROUPED_CONTENT_KINDS = ['vocab', 'kanji', 'grammar'] as const;
@@ -63,7 +63,7 @@ export function normalize(value: string) {
     .normalize('NFC');
 }
 
-export const CONTENT_SQL = `SELECT i.item_id id,i.kind,v.word title,v.reading,v.romaji,v.level,v.meanings_en english,s.name source FROM content_items i JOIN vocab v USING(item_id) JOIN data_sources s ON s.source_id=i.source_id WHERE i.is_active=1
+export const CONTENT_SQL = `SELECT i.item_id id,i.kind,v.word title,v.reading,v.romaji,v.level,v.meanings_en english,s.name source FROM content_items i JOIN vocab v USING(item_id) JOIN data_sources s ON s.source_id=i.source_id WHERE i.is_active=1 AND i.source_id<>'jmdict'
  UNION ALL SELECT i.item_id,i.kind,k.character,k.onyomi||' '||k.kunyomi,'',k.level,k.meanings_en,s.name FROM content_items i JOIN kanji k USING(item_id) JOIN data_sources s ON s.source_id=i.source_id WHERE i.is_active=1
  UNION ALL SELECT i.item_id,i.kind,g.pattern,coalesce(g.reading,''),g.romaji,g.level,json_array(g.meaning_en),s.name FROM content_items i JOIN grammar g USING(item_id) JOIN data_sources s ON s.source_id=i.source_id WHERE i.is_active=1`;
 

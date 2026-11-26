@@ -1,5 +1,12 @@
 import type { DatabaseSync } from 'node:sqlite';
 import { selectedTranslation, type ContentKind, type Translation } from '../../../core/content.ts';
+import {
+  JMDICT_ATTRIBUTION,
+  JMDICT_LEVEL_LABEL,
+  jmdictMeaningTranslation,
+  lookupJmdictExact,
+  resolveJmdictDbPath,
+} from '../../../core/jmdict.ts';
 import { detailHref, normalize, searchContent } from './repository.ts';
 import type {
   LookupItem,
@@ -8,7 +15,13 @@ import type {
   SavedLookupSentence,
 } from './lookup-popup-model.ts';
 
-type SearchItem = ReturnType<typeof searchContent>['items'][number];
+type SearchItem = ReturnType<typeof searchContent>['items'][number] & {
+  outsideJlpt?: boolean;
+};
+
+export type LookupWordOptions = {
+  jmdictPath?: string;
+};
 
 const KIND_PRIORITY: Record<ContentKind, number> = {
   vocab: 0,
@@ -62,7 +75,7 @@ function formatKanjiReading(raw: string): string {
   return raw.trim();
 }
 
-function lookupKanjiHanViet(
+export function lookupKanjiHanViet(
   db: DatabaseSync,
   word: string,
 ): { character: string; hanViet: Translation }[] {
@@ -89,7 +102,7 @@ function loadVocabByForm(db: DatabaseSync, form: string): SearchItem[] {
        JOIN content_items i ON i.item_id=f.item_id
        JOIN vocab v ON v.item_id=f.item_id
        JOIN data_sources s ON s.source_id=i.source_id
-       WHERE i.is_active=1 AND f.form=?
+       WHERE i.is_active=1 AND i.source_id<>'jmdict' AND f.form=?
        ORDER BY v.level, v.word, i.item_id
        LIMIT 6`,
     )
@@ -123,9 +136,16 @@ export function lookupWord(
   rawQuery: string,
   rawBase?: string | null,
   savedSentenceLookup?: (itemId: string) => SavedLookupSentence | null,
+  options?: LookupWordOptions,
 ): LookupResponse {
-  const query = rawQuery.normalize('NFC').trim().slice(0, 160);
-  const normalizedBase = rawBase ? rawBase.normalize('NFC').trim().slice(0, 160) : '';
+  const query =
+    typeof rawQuery === 'string' && !rawQuery.includes('\0')
+      ? rawQuery.normalize('NFC').trim().slice(0, 160)
+      : '';
+  const normalizedBase =
+    typeof rawBase === 'string' && !rawBase.includes('\0')
+      ? rawBase.normalize('NFC').trim().slice(0, 160)
+      : '';
   const base = normalizedBase && normalizedBase !== query ? normalizedBase : null;
 
   if (!query) {
@@ -138,22 +158,29 @@ export function lookupWord(
     const hanViet = entry.hanViet;
     const kanjiHanViet =
       entry.kind === 'vocab' && !hanViet ? lookupKanjiHanViet(db, entry.title) : [];
+    const inSrs = Boolean(srsCheck.get(entry.id));
+    const outsideJlpt = Boolean(entry.outsideJlpt);
+    const href =
+      outsideJlpt && !inSrs
+        ? `/common-tools/search?q=${encodeURIComponent(entry.title)}`
+        : entry.href;
     return {
       id: entry.id,
       kind: entry.kind,
       title: entry.title,
       reading: entry.kind === 'kanji' ? formatKanjiReading(entry.reading) : entry.reading,
-      level: entry.level,
+      level: outsideJlpt ? JMDICT_LEVEL_LABEL : entry.level,
       english: entry.english,
       sourceName: entry.sourceName,
       meaning,
       hanViet,
       kanjiHanViet,
-      href: entry.href,
+      href,
       cardType: 'recognition',
-      inSrs: Boolean(srsCheck.get(entry.id)),
+      inSrs,
       savedSentence: savedSentenceLookup?.(entry.id) ?? null,
       matchedBy,
+      ...(outsideJlpt ? { outsideJlpt: true } : {}),
     };
   };
 
@@ -172,11 +199,13 @@ export function lookupWord(
     { term: query, isLemma: false },
   ];
 
+  const broadFallback: SearchItem[] = [];
+
   for (const { term, isLemma } of searchTerms) {
     const termNorm = normalize(term);
     const found = searchContent(db, term, 1).items;
 
-    // 1. Exact title match (vocab/kanji/grammar)
+    // 1. Exact title match (vocab/kanji/grammar) in JLPT catalog
     const exactTitle = found.filter(
       (item) =>
         item.title === term ||
@@ -184,23 +213,59 @@ export function lookupWord(
     );
     pushAll(exactTitle, isLemma ? 'lemma' : 'exact');
 
-    // 2. Alternate vocab writing forms (vocab_forms)
+    // 2. Alternate vocab writing forms (vocab_forms) in JLPT catalog
     const formMatches = loadVocabByForm(db, term);
     pushAll(formMatches, 'form');
 
-    // 3. Exact reading match
+    // 3. Exact reading match in JLPT catalog
     const exactReading = found.filter(
       (item) => item.kind !== 'kanji' && item.reading && normalize(item.reading) === termNorm,
     );
     pushAll(exactReading, 'reading');
 
-    // 4. Broad search match when query has >= 2 chars and no exact match yet
-    if (candidates.length === 0 && term.length >= 2 && found.length > 0) {
-      pushAll(found.slice(0, 4), 'search');
+    if (candidates.length === 0 && term.length >= 2 && found.length > 0 && broadFallback.length === 0) {
+      broadFallback.push(...found.slice(0, 4));
     }
   }
 
-  // 5. Constituent kanji fallback when a multi-kanji word is not yet in the vocabulary snapshot
+  // 4. Out-of-JLPT dictionary fallback via JMdict (+ tu-dien-nhat-viet when present)
+  if (candidates.length === 0) {
+    const jmdictPath = resolveJmdictDbPath(db, options?.jmdictPath);
+    const jmdictHit = lookupJmdictExact(
+      jmdictPath,
+      searchTerms.map((t) => t.term),
+      6,
+    );
+    if (jmdictHit && jmdictHit.items.length > 0) {
+      const entries: SearchItem[] = jmdictHit.items.map((record) => ({
+        id: record.id,
+        kind: 'vocab',
+        title: record.word,
+        reading: record.reading,
+        level: JMDICT_LEVEL_LABEL,
+        english: record.meaningsEn,
+        sourceName: JMDICT_ATTRIBUTION.name,
+        meaning:
+          selectedTranslation(db, record.id, 'meaning') ??
+          jmdictMeaningTranslation(record, jmdictHit.meta),
+        hanViet: null,
+        href: detailHref('vocab', record.id, record.word),
+        outsideJlpt: true,
+      }));
+      for (const entry of entries) {
+        if (seenIds.has(entry.id)) continue;
+        seenIds.add(entry.id);
+        candidates.push({ entry, matchedBy: 'jmdict' });
+      }
+    }
+  }
+
+  // 5. Broad JLPT search match when query has >= 2 chars and no exact JLPT/JMdict match
+  if (candidates.length === 0 && broadFallback.length > 0) {
+    pushAll(broadFallback, 'search');
+  }
+
+  // 6. Constituent kanji fallback when a multi-kanji word is not in JLPT or JMdict
   if (candidates.length === 0) {
     const kanjiChars = extractUniqueKanji(base ?? query);
     for (const ch of kanjiChars) {

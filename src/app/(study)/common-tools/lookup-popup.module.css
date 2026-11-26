@@ -144,6 +144,19 @@
   color: var(--color-muted);
 }
 
+.attribution {
+  margin: 0;
+  font-size: 0.75rem;
+  color: var(--color-muted);
+  line-height: 1.45;
+}
+
+.attribution a {
+  color: inherit;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
 .sentenceBox {
   display: grid;
   gap: 4px;

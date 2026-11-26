@@ -1,5 +1,12 @@
 import type { DatabaseSync } from 'node:sqlite';
-import { selectedTranslation, type ContentKind } from '../../../core/content.ts';
+import { selectedTranslation, type ContentKind, type Translation } from '../../../core/content.ts';
+import {
+  JMDICT_ATTRIBUTION,
+  JMDICT_LEVEL_LABEL,
+  jmdictMeaningTranslation,
+  resolveJmdictDbPath,
+  searchJmdict,
+} from '../../../core/jmdict.ts';
 import {
   FTS5_TOKENIZER,
   GROUPED_CONTENT_KINDS,
@@ -38,6 +45,7 @@ export {
 };
 
 export const SEARCH_GROUP_LIMIT = 10;
+const KANJI_CHAR_RE = /[\u3400-\u4DBF\u4E00-\u9FFF\uF900-\uFAFF]/gu;
 
 export type SearchResultItem = {
   id: string;
@@ -49,12 +57,15 @@ export type SearchResultItem = {
   sourceName: string;
   meaning: ReturnType<typeof selectedTranslation>;
   hanViet: ReturnType<typeof selectedTranslation>;
+  kanjiHanViet?: { character: string; hanViet: Translation }[];
   href: string;
+  outsideJlpt?: boolean;
 };
 
 export type SearchAllKindsOptions = SearchIndexOptions & {
   dbFile?: string;
   youtubeFile?: string;
+  jmdictPath?: string;
   limitPerKind?: number;
 };
 
@@ -67,6 +78,7 @@ export type SearchAllKindsResult = {
     kanji: { total: number; items: SearchResultItem[] };
     grammar: { total: number; items: SearchResultItem[] };
     clipSentences: { total: number; items: ClipSentenceHit[] };
+    outsideJlpt: { total: number; items: SearchResultItem[] };
   };
 };
 
@@ -92,6 +104,26 @@ function hydrateSearchRow(db: DatabaseSync, r: SearchIndexRow): SearchResultItem
   };
 }
 
+function constituentKanjiHanViet(
+  db: DatabaseSync,
+  word: string,
+): { character: string; hanViet: Translation }[] {
+  const matches = word.match(KANJI_CHAR_RE);
+  if (!matches) return [];
+  const chars = [...new Set(matches)];
+  const stmt = db.prepare(
+    `SELECT i.item_id id FROM content_items i JOIN kanji k USING(item_id) WHERE i.is_active=1 AND k.character=? LIMIT 1`,
+  );
+  const results: { character: string; hanViet: Translation }[] = [];
+  for (const character of chars) {
+    const row = stmt.get(character);
+    if (!row) continue;
+    const hv = selectedTranslation(db, String(row.id), 'han_viet');
+    if (hv) results.push({ character, hanViet: hv });
+  }
+  return results;
+}
+
 export function searchContent(
   db: DatabaseSync,
   input: string,
@@ -115,7 +147,8 @@ export function searchAllKinds(
     1,
     Math.min(Math.trunc(options?.limitPerKind ?? SEARCH_GROUP_LIMIT), 50),
   );
-  const q = input.normalize('NFKC').trim().slice(0, 160);
+  const safeInput = typeof input === 'string' && !input.includes('\0') ? input : '';
+  const q = safeInput.normalize('NFKC').trim().slice(0, 160);
   const needle = normalize(q);
   const grouped = querySearchIndexGrouped(db, needle, limitPerKind, options);
   const vocab = {
@@ -135,11 +168,57 @@ export function searchAllKinds(
     youtubeFile: options?.youtubeFile,
     limit: limitPerKind,
   });
+
+  // Search outside-JLPT JMdict (+ tu-dien-nhat-viet) only for non-empty queries, ranked after JLPT.
+  const jmdictPath = resolveJmdictDbPath(options?.dbFile ?? db, options?.jmdictPath);
+  let outsideJlpt: { total: number; items: SearchResultItem[] } = { total: 0, items: [] };
+  if (q && jmdictPath) {
+    const rawExternal = searchJmdict(jmdictPath, q, { limit: limitPerKind * 2 });
+    if (rawExternal.items.length > 0) {
+      const jlptCheck = db.prepare(
+        `SELECT 1 FROM vocab v JOIN content_items i USING(item_id)
+         WHERE i.is_active=1 AND i.source_id<>'jmdict'
+           AND (v.jmdict_id=? OR (v.word=? AND v.reading=?))
+         LIMIT 1`,
+      );
+      const filtered = rawExternal.items.filter(
+        (rec) => !jlptCheck.get(rec.entSeq, rec.word, rec.reading),
+      );
+      const removedCount = rawExternal.items.length - filtered.length;
+      const items: SearchResultItem[] = filtered.slice(0, limitPerKind).map((rec) => {
+        const storedMeaning = selectedTranslation(db, rec.id, 'meaning');
+        return {
+          id: rec.id,
+          kind: 'vocab',
+          title: rec.word,
+          reading: rec.reading,
+          level: JMDICT_LEVEL_LABEL,
+          english: rec.meaningsEn,
+          sourceName: JMDICT_ATTRIBUTION.name,
+          meaning: storedMeaning ?? jmdictMeaningTranslation(rec),
+          hanViet: null,
+          kanjiHanViet: constituentKanjiHanViet(db, rec.word),
+          href: `/common-tools/search?q=${encodeURIComponent(rec.word)}`,
+          outsideJlpt: true,
+        };
+      });
+      outsideJlpt = {
+        total: Math.max(items.length, rawExternal.total - removedCount),
+        items,
+      };
+    }
+  }
+
   return {
     q,
     limitPerKind,
-    total: vocab.total + kanji.total + grammar.total + clipSentences.total,
-    groups: { vocab, kanji, grammar, clipSentences },
+    total:
+      vocab.total +
+      kanji.total +
+      grammar.total +
+      clipSentences.total +
+      outsideJlpt.total,
+    groups: { vocab, kanji, grammar, clipSentences, outsideJlpt },
   };
 }
 
