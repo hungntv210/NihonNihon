@@ -4,7 +4,7 @@ import type { Clip, ClipSegment } from './clip-model.ts';
 import {
   formatHistoryTime,
   pinnedAudioUrl,
-  type PinnedRecording,
+  type PinnedBestTake,
 } from './history-model.ts';
 import {
   currentAlternatingStep,
@@ -82,7 +82,7 @@ export function RecordingPanel({
   takesCount: number;
   take: Take | null;
   wholeTake: WholeTake | null;
-  currentPin: PinnedRecording | null;
+  currentPin: PinnedBestTake | null;
   pinning: boolean;
   unpinning: boolean;
   altState: AlternatingState;
