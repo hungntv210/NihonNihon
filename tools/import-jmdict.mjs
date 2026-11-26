@@ -548,6 +548,9 @@ export function importJmdict(options) {
 
     const existingRows = db.prepare('SELECT ent_seq FROM jmdict_entries').all();
     const existingSet = new Set(existingRows.map((r) => Number(r.ent_seq)));
+    const incomingSet = new Set(preparedEntries.map((entry) => entry.entSeq));
+    const bulkRebuild =
+      existingSet.size === 0 || [...existingSet].every((seq) => incomingSet.has(seq));
 
     const upsertEntry = db.prepare(`
       INSERT INTO jmdict_entries(
@@ -580,6 +583,13 @@ export function importJmdict(options) {
 
     db.exec('BEGIN IMMEDIATE');
     try {
+      if (bulkRebuild) {
+        if (existingSet.size > 0) {
+          db.exec('DELETE FROM jmdict_forms; DELETE FROM jmdict_fts;');
+        }
+        db.exec('DROP INDEX IF EXISTS idx_jmdict_forms_lookup;');
+      }
+
       for (const entry of preparedEntries) {
         const alreadyExists = existingSet.has(entry.entSeq);
         upsertEntry.run(
@@ -597,8 +607,10 @@ export function importJmdict(options) {
         );
         if (alreadyExists) {
           updated++;
-          deleteForms.run(entry.entSeq);
-          deleteFts.run(entry.entSeq);
+          if (!bulkRebuild) {
+            deleteForms.run(entry.entSeq);
+            deleteFts.run(entry.entSeq);
+          }
         } else {
           inserted++;
           existingSet.add(entry.entSeq);
@@ -643,6 +655,12 @@ export function importJmdict(options) {
           kanaNorms.join(' '),
           romajiNorms.join(' '),
           meaningParts.join(' '),
+        );
+      }
+
+      if (bulkRebuild) {
+        db.exec(
+          'CREATE INDEX IF NOT EXISTS idx_jmdict_forms_lookup ON jmdict_forms(form_norm, priority, ent_seq);',
         );
       }
 
