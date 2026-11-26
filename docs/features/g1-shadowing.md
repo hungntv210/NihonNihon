@@ -24,9 +24,13 @@ Tính năng chủ lực: luyện nói theo từng câu của đoạn hội tho�
 
 **Công cụ tạo clip** (mục tiêu < 15 phút/clip)
 - [ ] Tải file lên máy chủ riêng hoặc dán link YouTube
+  - Còn thiếu: giao diện và API tạo clip từ file tải lên hoặc dán link YouTube (chưa có công cụ tạo clip dưới `src/app/(study)/shadowing/` hay `src/app/api/shadowing/`).
 - [ ] Chọn đoạn trên sóng âm; lấy phụ đề có sẵn (.srt/.ass) hoặc Whisper
+  - Còn thiếu: trình chọn đoạn trên sóng âm, bộ nhập phụ đề `.srt`/`.ass` và luồng Whisper (chưa triển khai dưới `src/app/(study)/shadowing/`).
 - [ ] Chia câu tự động, kéo chỉnh mốc thời gian
+  - Còn thiếu: công cụ tự chia câu và thanh kéo chỉnh mốc `start`/`end` (chưa triển khai dưới `src/app/(study)/shadowing/`).
 - [ ] Tự thêm furigana, dịch máy tiếng Việt, gắn tag, gắn vào tuần lộ trình
+  - Còn thiếu: luồng tự động thêm furigana, dịch máy tiếng Việt, gắn tag và gán tuần lộ trình khi tạo clip mới (chưa triển khai dưới `src/app/(study)/shadowing/`).
 
 **Player**
 - [x] Danh sách câu, câu đang phát được làm nổi
@@ -37,6 +41,7 @@ Tính năng chủ lực: luyện nói theo từng câu của đoạn hội tho�
 
 **Ghi âm và so sánh**
 - [ ] Ghi từng câu hoặc cả clip; nghe gốc / giọng mình / xen kẽ; sóng âm xếp chồng
+  - Còn thiếu: ghi âm cả clip, chế độ phát xen kẽ (gốc → giọng mình) và sóng âm xếp chồng so sánh (`src/app/(study)/shadowing/player.tsx:485-580,872-975` mới hỗ trợ ghi từng câu và nghe riêng bản gốc hoặc giọng mình).
 - [x] Thêm câu vào SRS
 
 **Buổi hợp lệ** (tính vào hạn mức tuần khi đủ cả 4):

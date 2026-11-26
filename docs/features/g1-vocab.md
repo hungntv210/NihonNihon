@@ -15,13 +15,16 @@ Học 4.741 từ N5–N2 theo thứ tự lộ trình, nghĩa tiếng Việt từ
 ## Chức năng
 
 - [ ] Thẻ từ: từ + furigana, âm Hán Việt (chỉ từ đọc On), từ loại, cấp (DB G0 đóng băng còn 5/4.741 từ thiếu từ loại)
+  - Còn thiếu: trên bản sao DB app chỉ đọc còn 5/4.741 từ N5–N2 thiếu từ loại (`pos` rỗng); UI thẻ chi tiết đã đủ ở `src/app/(study)/vocab/[id]/page.tsx:27-101`, `src/app/(study)/vocab/data.ts:79-111,204-247`.
 - [x] Nghĩa tiếng Việt (nhãn "từ điển"), dòng tiếng Anh OpenJLPT thu gọn, chạm để mở
 - [x] Audio (TTS hoặc Kanji Alive)
 - [ ] 1–2 câu ví dụ có furigana, audio, bản dịch (Tatoeba tiếng Việt nếu có, còn lại dịch máy kèm tiếng Anh)
+  - Còn thiếu: trên bản sao DB app chỉ đọc còn 285/4.741 từ N5–N2 chưa có câu ví dụ (4.456/4.741 có) và 1.678/8.632 câu ví dụ thiếu `furigana_notation` (6.954/8.632 có); UI ví dụ kèm tiếng Anh inline cho dịch máy và audio TTS đã đủ ở `src/app/(study)/vocab/[id]/page.tsx:102-145`, `src/app/(study)/vocab/example-english.tsx:1-28`.
 - [x] Liên kết sang từng kanji cấu thành
 - [x] **Từ cùng chữ khác cách đọc** (22 từ, ví dụ 方 かた/ほう): nghĩa dịch máy theo đúng cách đọc + cảnh báo "còn cách đọc khác"
 - [x] Bài học từ mới buổi tối; nghe audio, đọc to câu ví dụ
 - [ ] Sổ từ cá nhân: từ thêm từ Reader, phụ đề, tra cứu, đề thi kèm câu gốc và nguồn
+  - Còn thiếu: điểm lưu từ kèm câu gốc từ Reader và đề thi JLPT (tuyến `/vocab/notebook` tại `src/app/(study)/vocab/notebook/page.tsx:20-65`, `src/app/(study)/vocab/notebook/data.ts:14,58-68,217-349` hiện mới hỗ trợ nguồn phụ đề clip `clip`, tra từ `lookup` và hàng ôn `srs`).
 
 ## Dữ liệu
 

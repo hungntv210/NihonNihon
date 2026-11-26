@@ -41,7 +41,9 @@ Tài liệu này đọc riêng được: mọi quyết định cần cho nhánh 
 
 **Thông báo**
 - [ ] Ban ngày: 2–3 nhắc Ôn nhanh vào giờ nghỉ tự chọn, tự tắt khi đã ôn hết; không nhắc bài mới trong giờ làm
+  - Còn thiếu: cài đặt khung giờ nghỉ tự chọn (`src/core/preferences.ts:6-10`), bộ lập lịch 2–3 nhắc ban ngày và cơ chế gửi thông báo đẩy nền (`public/sw.js` chưa có listener `push`; `src/app/(study)/today-roadmap/today.tsx:56` mới hiện chữ nhắc khi trang đang mở).
 - [ ] Buổi tối: nhắc giờ học; ngày shadowing chưa làm nhắc lại 21:00 và 22:00
+  - Còn thiếu: cơ chế lập lịch và gửi thông báo đẩy nền đúng giờ học tối và nhắc lại lúc 21:00, 22:00 (`src/app/(study)/today-roadmap/today.tsx:56` mới hiện nhắc trên màn hình khi trang đang mở, `public/sw.js` chưa có `push`).
 
 ## Dữ liệu
 
@@ -71,6 +73,7 @@ Khối lượng theo cấp (OpenJLPT): N5 84 kanji / 674 từ / 81 mẫu; N4 169
 - [x] Thiếu buổi shadowing → tuần sau bị khoá bài mới, ôn SRS vẫn mở
 - [x] Buổi bù mở khoá đúng
 - [ ] Thông báo không gửi bài mới trong giờ làm
+  - Còn thiếu: bộ gửi thông báo nền thật và kiểm thử xác minh thông báo nền không gửi bài mới trong giờ làm (`src/app/(study)/today-roadmap/model.test.ts` mới kiểm `todayPlan().evening` cho trạng thái hiển thị khi mở trang).
 
 ## Câu hỏi còn mở
 
