@@ -3,15 +3,15 @@ import {CountUp} from '../../../components/motion/data-motion.tsx';
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { allocateRoadmap, plusDays, todayPlan, tasks, type Settings, type Progress, type CatalogItem } from './model.ts';
+import { plusDays, todayPlan, tasks, roadmapKinds, type Settings, type Progress, type RoadmapClip, type buildRoadmap } from './model.ts';
 import styles from './today.module.css';
 import {RouteHeading} from '../../../components/route-heading.tsx';
 import {Mascot} from '../../../components/mascot.tsx';
 import {RoadmapMap} from './roadmap-map.tsx';
-type Props = { now: string; settings: Settings; progress: Progress; data: { due: number; items: CatalogItem[]; clips: { id: string; title: string }[]; saved: string[] } };
+type Props = { now: string; settings: Settings; progress: Progress; data: { due: number; roadmap: ReturnType<typeof buildRoadmap>; clips: RoadmapClip[]; saved: string[] } };
 export function Today({ now, settings, progress, data }: Props) {
   const router = useRouter(), [clock, setClock] = useState(now), [message, setMessage] = useState(''), [busy, setBusy] = useState(false), [kind, setKind] = useState('regular'), [notice, setNotice] = useState('');
-  const plan = todayPlan(progress, settings, new Date(clock), data.due), roadmap = allocateRoadmap(data.items, plusDays(settings.startDate, plan.delayedWeeks * 7)), current = roadmap[plan.week - 1];
+  const plan = todayPlan(progress, settings, new Date(clock), data.due), roadmap = data.roadmap, current = roadmap[plan.week - 1];
   useEffect(() => { const tick = setInterval(() => setClock(new Date().toISOString()), 30000);return () => clearInterval(tick); }, []);
   useEffect(() => {
     const refresh = () => router.refresh();window.addEventListener('focus', refresh);return () => window.removeEventListener('focus', refresh);
@@ -22,7 +22,12 @@ export function Today({ now, settings, progress, data }: Props) {
     catch (error) { setMessage(error instanceof Error ? error.message : 'Chưa lưu được. Hãy thử lại.');return false; }
     finally { setBusy(false); }
   }
-  const currentItems = data.items.filter(i => i.level === current.level), covered = currentItems.filter(i => data.saved.includes(i.id)).length;
+  const saved = new Set(data.saved);
+  const currentItems = roadmap.filter(week => week.level === current.level).flatMap(week => roadmapKinds.flatMap(kind => week.items[kind]));
+  const covered = currentItems.filter(item => saved.has(item.id)).length;
+  const kindLabels = { kanji: 'Kanji', vocab: 'Từ vựng', grammar: 'Mẫu ngữ pháp' };
+  const weekCount = (week: typeof current) => roadmapKinds.reduce((sum, kind) => sum + week.items[kind].length, 0);
+  const weekDate = (week: typeof current) => plusDays(week.date, plan.delayedWeeks * 7);
   const active = progress.activeTask && Object.hasOwn(tasks, progress.activeTask) ? tasks[progress.activeTask as keyof typeof tasks] : null;
   return <div className={styles.page}>
     <RouteHeading title="Hôm nay" eyebrow={'MỖI NGÀY MỘT CHÚT · TUẦN '+plan.week+'/87'}><h2 className={styles.subtitle}>{plan.evening ? 'Buổi tối, dành chút thời gian cho mình.' : 'Hôm nay, gặp lại những điều đã học.'}</h2><p>{plan.date} · {settings.timeZone} · Giờ học tối {settings.eveningTime}</p></RouteHeading>
@@ -50,8 +55,24 @@ export function Today({ now, settings, progress, data }: Props) {
     </section>
     <div className={styles.groupLabel}><span>03</span><h2>Hành trình</h2><Mascot species="turtle" size={56}/></div>
     <div className={styles.stats}><article><span>Chuỗi ngày tự ghi nhận</span><strong><CountUp value={plan.streak}/> ngày</strong></article><article><span>Đóng băng tích luỹ</span><strong>{plan.freezes}/2</strong></article><article><span>Mốc thi dự kiến {settings.examDate}</span><strong><CountUp value={Math.max(0,plan.examDays)}/> ngày</strong></article><article><span>{current.level} · đã đưa vào ôn</span><strong>{covered}/{currentItems.length}</strong><small>Độ phủ trong dữ liệu đang có; chưa đánh giá thành thạo.</small></article></div>
-    <section id="roadmap" className={styles.section} aria-labelledby="roadmap-title"><p className="eyebrow">TỪ N5 ĐẾN N2 · BẮT ĐẦU {settings.startDate}</p><h2 id="roadmap-title">Lộ trình</h2><p>87 tuần, từng bước nhỏ.</p><p>Phân bổ {data.items.length} mục OpenJLPT đang active. Kanji ưu tiên thứ hạng tần suất có sẵn; từ và ngữ pháp theo mã ổn định vì nguồn chưa có tần suất. Tuần trống nghĩa là chưa có dữ liệu, không phải đã hoàn thành.</p><p className="muted">N5: tuần 1–12; N4: 13–35; N3: 36–57; N2: 58–87. Đây là phân kỳ kế hoạch, chưa chứng nhận đủ nội dung mỗi cấp. Mốc dự kiến: N4 04/07/2027, N3 05/12/2027, N2 02/07/2028.</p><Link className="text-link" href="/settings">Đổi ngày bắt đầu, giờ học và kỳ thi →</Link>
-      <RoadmapMap current={plan.week} stages={roadmap.map(w=>({week:w.week,level:w.level,date:w.date,count:w.items.length}))}/><div className={styles.timeline}>{roadmap.map(w => <details id={'week-'+w.week} key={w.week} open={w.week === plan.week || undefined}><summary><span>Tuần {w.week} · {w.level}</span><span>{w.date} · {w.items.length} mục</span></summary><p>{w.theme}</p>{w.items.length ? <ul>{w.items.map(item => <li key={item.id}><Link href={item.kind === 'vocab' ? `/vocab/${encodeURIComponent(item.id)}` : item.kind === 'kanji' ? `/kanji/${encodeURIComponent(item.title)}` : `/grammar/${encodeURIComponent(item.id)}`}>{item.title}</Link> <small>{item.kind}</small></li>)}</ul> : <p className="muted">Chưa có mục được phân bổ từ dữ liệu hiện có.</p>}<p className="muted">{data.clips.length ? 'Chọn clip phù hợp trong danh sách shadowing ở trên.' : 'Chưa có clip gợi ý trong thư viện.'}</p></details>)}</div>
+    <section id="roadmap" className={styles.section} aria-labelledby="roadmap-title"><p className="eyebrow">TỪ N5 ĐẾN N2 · BẮT ĐẦU {settings.startDate}</p><h2 id="roadmap-title">Lộ trình</h2><p>Kanji theo hạng tần suất. Từ vựng ưu tiên dạng viết xuất hiện trong nhiều câu mẫu OpenJLPT.</p><p className="muted">N5: tuần 1–12; N4: 13–35; N3: 36–57; N2: 58–87. Đây là phân kỳ kế hoạch, chưa chứng nhận đủ nội dung mỗi cấp. Mốc dự kiến: N4 04/07/2027, N3 05/12/2027, N2 02/07/2028.</p><Link className="text-link" href="/settings">Đổi ngày bắt đầu, giờ học và kỳ thi →</Link>
+      <RoadmapMap current={plan.week} stages={roadmap.map(w=>({week:w.week,level:w.level,date:weekDate(w),count:weekCount(w)}))}/>
+      <div className={styles.timeline}>
+        {roadmap.map(w => <details id={'week-'+w.week} key={w.week} open={w.week === plan.week || undefined}>
+          <summary><span>Tuần {w.week} · {w.level}</span><span>{weekDate(w)} · {weekCount(w)} mục</span></summary>
+          <h3>{w.theme}</h3>
+          {roadmapKinds.map(kind => <div key={kind}>
+            <h4>{kindLabels[kind]} · {w.items[kind].length}</h4>
+            {w.items[kind].length ? <ul>{w.items[kind].map(item => {
+              const href = kind === 'kanji' ? '/kanji/' + encodeURIComponent(item.title) : '/' + kind + '/' + encodeURIComponent(item.id);
+              return <li key={item.id}><Link href={href} prefetch={false}>{item.title}</Link></li>;
+            })}</ul> : <p className="muted">Chưa có nội dung.</p>}
+          </div>)}
+          <h4>Clip gợi ý</h4>
+          {w.clip ? <Link href={'/shadowing?clip=' + encodeURIComponent(w.clip.id)} prefetch={false}>{w.clip.title}</Link>
+            : <p className="muted">Chưa có clip gợi ý.</p>}
+        </details>)}
+      </div>
     </section>
     <section className={styles.section}><h2>Nhắc học trên màn hình</h2><p>{plan.evening ? `Đã đến giờ học tối. ${plan.count < 2 && ['21','22'].includes(plan.time.slice(0,2)) ? 'Bạn còn buổi shadowing cần hoàn thành.' : ''}` : data.due ? `Còn ${data.due} thẻ Ôn nhanh trong giờ nghỉ. Ban ngày không nhắc bài mới.` : 'Đã hết thẻ đến hạn. Tạm tắt nhắc Ôn nhanh.'}</p><p className="muted">Chỉ nhắc khi trang này đang mở; chưa gửi thông báo nền. Tự làm mới giờ mỗi 30 giây.</p><button className="button" onClick={() => setNotice('Nhắc học hiện chỉ có trên trang. Cài đặt thông báo nền sẽ được bổ sung khi có dịch vụ gửi.')}>Thông tin nhắc học</button><p role="status">{notice}</p></section>
   </div>;

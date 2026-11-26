@@ -6,12 +6,13 @@ import { createServer } from 'node:net';
 import { randomBytes } from 'node:crypto';
 import { chromium } from 'playwright';
 import { seedDemo } from '../../../../tools/seed-demo.ts';
+import { seedPrivateClipFixture } from '../shadowing/private-fixture.ts';
 import { hashPassword } from '../../../core/session.ts';
 const reports=path.resolve('data/reports/today-roadmap');fs.mkdirSync(reports,{recursive:true});
-const directory=fs.mkdtempSync(path.join(process.env.NIHON_BROWSER_FIXTURE_ROOT || reports,'browser-')),dbPath=path.join(directory,'demo.sqlite');seedDemo(dbPath);
+const directory=fs.mkdtempSync(path.join(process.env.NIHON_BROWSER_FIXTURE_ROOT || reports,'browser-')),dbPath=path.join(directory,'demo.sqlite');seedDemo(dbPath);seedPrivateClipFixture(dbPath,directory);
 const port=await new Promise<number>(resolve=>{const s=createServer();s.listen(0,'127.0.0.1',()=>{const p=(s.address() as {port:number}).port;s.close(()=>resolve(p));});});
 const origin=`http://127.0.0.1:${port}`,password=randomBytes(24).toString('hex');
-const child=spawn(process.execPath,['node_modules/next/dist/bin/next','start','--hostname','127.0.0.1','--port',String(port)],{env:{...process.env,NODE_ENV:'production',APP_ORIGIN:origin,NIHON_DB_PATH:dbPath,NIHON_ROADMAP_PATH:'',NIHON_SETTINGS_PATH:'',NIHON_PASSWORD_HASH:hashPassword(password),SESSION_SECRET:randomBytes(32).toString('hex'),NEXT_TELEMETRY_DISABLED:'1'},stdio:['ignore','pipe','pipe']});
+const child=spawn(process.execPath,['node_modules/next/dist/bin/next','start','--hostname','127.0.0.1','--port',String(port)],{env:{...process.env,NODE_ENV:'production',APP_ORIGIN:origin,NIHON_DB_PATH:dbPath,NIHON_YOUTUBE_CLIP_PATH:path.join(directory,'no-youtube.json'),NIHON_ROADMAP_PATH:'',NIHON_SETTINGS_PATH:'',NIHON_PASSWORD_HASH:hashPassword(password),SESSION_SECRET:randomBytes(32).toString('hex'),NEXT_TELEMETRY_DISABLED:'1'},stdio:['ignore','pipe','pipe']});
 fs.writeFileSync(path.join(directory,'settings.json'),JSON.stringify({eveningTime:'23:59'}));
 let log='';child.stdout.on('data',b=>log+=b);child.stderr.on('data',b=>log+=b);
 let browser:Awaited<ReturnType<typeof chromium.launch>>|undefined;
@@ -27,8 +28,16 @@ try {
  for(const width of [1440,390]){
  await page.setViewportSize({width,height:950});await page.goto(origin+'/today-roadmap');await page.getByRole('heading',{name:'Ôn nhanh',exact:true}).waitFor();
  assert.equal(await page.locator('main').evaluate(el=>el.scrollWidth>el.clientWidth),false,`overflow at ${width}`);
- assert.equal(await page.locator('summary').count(),87);
+ assert.equal(await page.locator('#roadmap summary').count(),87);
  await page.screenshot({path:path.join(directory,`${width}.png`),fullPage:false});
+ const firstWeek=page.locator('#week-1');
+ await page.locator('#roadmap').getByRole('button',{name:/^Tuần 1 ·/}).click();
+ await firstWeek.getByRole('heading',{name:'Clip gợi ý'}).waitFor();
+ assert.equal(await firstWeek.locator('a[href^="/shadowing?clip="]').count(),1);
+ assert.equal(await firstWeek.getByRole('heading',{level:4}).count(),4);
+ await firstWeek.screenshot({path:path.join(directory,`roadmap-${width}.png`)});
+ await page.locator('#roadmap').getByRole('button',{name:/^Tuần 2 ·/}).click();
+ await page.locator('#week-2').getByText('Chưa có clip gợi ý.').waitFor();
  }
  assert.equal(await page.getByRole('button',{name:'Bắt đầu →',exact:true}).count(),0);
  fs.writeFileSync(path.join(directory,'settings.json'),JSON.stringify({eveningTime:'00:00'}));await page.reload();await page.getByRole('heading',{name:'Buổi tối, dành chút thời gian cho mình.'}).waitFor();

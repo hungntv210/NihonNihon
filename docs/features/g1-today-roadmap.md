@@ -35,8 +35,8 @@ Tài liệu này đọc riêng được: mọi quyết định cần cho nhánh 
 - [x] Chủ nhật: không bài mới; ôn SRS, kiểm tra tuần 20 phút, làm bù
 
 **Lộ trình**
-- [ ] 87 tuần N5 → N2; mỗi tuần có chủ đề, kanji, từ, mẫu ngữ pháp, clip gợi ý
-- [ ] Chia kanji và từ tự động từ OpenJLPT theo cấp, ưu tiên tần suất cao
+- [x] 87 tuần N5 → N2; mỗi tuần có chủ đề, kanji, từ, mẫu ngữ pháp, clip gợi ý
+- [x] Chia kanji và từ tự động từ OpenJLPT theo cấp, ưu tiên tần suất cao
 - [x] Xem dạng dòng thời gian; đổi ngày bắt đầu, phút học, kỳ thi → tự tính lại
 
 **Thông báo**
