@@ -36,7 +36,7 @@ Tính năng chủ lực: luyện nói theo từng câu của đoạn hội tho�
 - [x] Phím tắt máy tính: Space, ← →, R, L
 
 **Ghi âm và so sánh**
-- [ ] Ghi từng câu hoặc cả clip; nghe gốc / giọng mình / xen kẽ; sóng âm xếp chồng
+- [x] Ghi từng câu hoặc cả clip; nghe gốc / giọng mình / xen kẽ; sóng âm xếp chồng
 - [x] Thêm câu vào SRS
 
 **Buổi hợp lệ** (tính vào hạn mức tuần khi đủ cả 4):

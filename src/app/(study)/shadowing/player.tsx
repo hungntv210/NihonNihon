@@ -1,5 +1,5 @@
 'use client';
-import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import type { Clip, ClipSegment } from './clip-model.ts';
 import { segmentAtIn, shouldRepeat, updatePlayback, SEEK_TOLERANCE } from './playback.ts';
 import {
@@ -29,6 +29,28 @@ import {
   pinnedAudioUrl,
   type ClipHistorySummary,
 } from './history-model.ts';
+import {
+  IDLE_ALTERNATING,
+  advanceAlternating,
+  buildAlternatingQueue,
+  currentAlternatingStep,
+  describeAlternatingStep,
+  formatMicError,
+  pauseAlternating,
+  resumeAlternating,
+  startAlternating,
+  stopAlternating,
+  wholeClipMaxRecordMs,
+  type AlternatingState,
+  type AlternatingStep,
+} from './record-compare.ts';
+import {
+  WaveformCompare,
+  decodeArrayBufferToMono,
+  decodeBlobPeaks,
+  extractWindowPeaks,
+  type DecodedMonoAudio,
+} from './waveform-compare.tsx';
 
 type Take = {
   url: string;
@@ -37,7 +59,12 @@ type Take = {
   segment: number;
   seconds: number;
   extension: string;
+  peaks: number[] | null;
+  waveLoading: boolean;
+  waveError: string | null;
 };
+type WholeTake = Omit<Take, 'segment'>;
+type RecordingMode = 'segment' | 'whole';
 type YoutubePlayer = {
   destroy(): void;
   getCurrentTime(): number;
@@ -53,6 +80,7 @@ declare global {
   }
 }
 const DONE_MSG = 'Đã nghe xong đoạn. Bạn có thể ghi âm nói thử.';
+const YOUTUBE_WAVE_NOTE = 'Clip YouTube nhúng không trích xuất được âm thanh gốc; chỉ hiển thị sóng âm giọng của bạn.';
 const stopTracks = (s: MediaStream | null | undefined) => s?.getTracks().forEach((t) => t.stop());
 
 export function ShadowingPlayer({
@@ -81,7 +109,9 @@ export function ShadowingPlayer({
   const youtube = useRef<YoutubePlayer | null>(null);
   const youtubeTimer = useRef<ReturnType<typeof setInterval> | null>(null);
   const replay = useRef<HTMLAudioElement>(null);
+  const wholeReplay = useRef<HTMLAudioElement>(null);
   const pinnedReplay = useRef<HTMLAudioElement>(null);
+  const altAudio = useRef<HTMLAudioElement | null>(null);
   const recorder = useRef<MediaRecorder | null>(null);
   const recordingBegan = useRef(0),
     recordingEnded = useRef<number | null>(null);
@@ -90,6 +120,7 @@ export function ShadowingPlayer({
   const stream = useRef<MediaStream | null>(null);
   const disposed = useRef(false);
   const takeUrls = useRef(new Map<number, string>());
+  const wholeTakeUrl = useRef<string | null>(null);
   const timeout = useRef<ReturnType<typeof setTimeout> | null>(null);
   const ctrl = useRef({
     pause: false,
@@ -123,8 +154,23 @@ export function ShadowingPlayer({
   const [pinning, setPinning] = useState(false);
   const [unpinning, setUnpinning] = useState(false);
   const [recording, setRecording] = useState(false);
+  const [recordingMode, setRecordingMode] = useState<RecordingMode | null>(null);
   const [requesting, setRequesting] = useState(false);
   const [takes, setTakes] = useState<Record<number, Take>>({});
+  const [wholeTake, setWholeTake] = useState<WholeTake | null>(null);
+  const [altState, setAltState] = useState<AlternatingState>(IDLE_ALTERNATING);
+  const [originalAudio, setOriginalAudio] = useState<DecodedMonoAudio | null>(null);
+  const [originalWaveLoading, setOriginalWaveLoading] = useState(false);
+  const [originalWaveError, setOriginalWaveError] = useState<string | null>(null);
+  const originalAudioRef = useRef<DecodedMonoAudio | null>(null);
+  const originalLoadingRef = useRef(false);
+  const takesRef = useRef<Record<number, Take>>({});
+  takesRef.current = takes;
+  const wholeTakeRef = useRef<WholeTake | null>(null);
+  wholeTakeRef.current = wholeTake;
+  const altRef = useRef<AlternatingState>(IDLE_ALTERNATING);
+  const speedRef = useRef<number>(speed);
+  speedRef.current = speed;
   const take = takes[selected] ?? null;
   const [supported, setSupported] = useState(false);
   const [youtubeLoaded, setYoutubeLoaded] = useState(false);
@@ -132,13 +178,18 @@ export function ShadowingPlayer({
   const lookupTrigger = useRef<HTMLElement | null>(null);
   const pending = useRef(false);
   const keyHandler = useRef<(event: KeyboardEvent) => void>(() => {});
+  const altFinishRef = useRef<() => void>(() => {});
   const onHistoryChangeRef = useRef(onHistoryChange);
   onHistoryChangeRef.current = onHistoryChange;
   const closeLookup = useCallback(() => setLookupTarget(null), []);
   const practice = usePractice(clip.id, !clip.isDemo, () => {
     const audio = replay.current,
+      wholeAudio = wholeReplay.current,
+      alt = altAudio.current,
       rec = recorder.current?.state === 'recording';
     if (audio && !audio.paused) return { recording: rec, playing: true, seeking: audio.seeking, mediaTime: audio.currentTime };
+    if (wholeAudio && !wholeAudio.paused) return { recording: rec, playing: true, seeking: wholeAudio.seeking, mediaTime: wholeAudio.currentTime };
+    if (alt && !alt.paused) return { recording: rec, playing: true, seeking: alt.seeking, mediaTime: alt.currentTime };
     return {
       recording: rec,
       playing: clip.youtubeId ? playing : Boolean(video.current && !video.current.paused),
@@ -174,6 +225,33 @@ export function ShadowingPlayer({
     [clip.id, clip.segments.length],
   );
 
+  const ensureOriginalAudio = useCallback(() => {
+    if (!clip.mediaUrl || originalAudioRef.current || originalLoadingRef.current) return;
+    originalLoadingRef.current = true;
+    setOriginalWaveLoading(true);
+    setOriginalWaveError(null);
+    void fetch(clip.mediaUrl)
+      .then((res) => {
+        if (!res.ok) throw new Error('MEDIA_FETCH_FAILED');
+        return res.arrayBuffer();
+      })
+      .then((buffer) => decodeArrayBufferToMono(buffer))
+      .then((decoded) => {
+        if (disposed.current) return;
+        originalAudioRef.current = decoded;
+        setOriginalAudio(decoded);
+      })
+      .catch(() => {
+        if (!disposed.current) {
+          setOriginalWaveError('Không giải mã được sóng âm bản gốc trên trình duyệt này.');
+        }
+      })
+      .finally(() => {
+        originalLoadingRef.current = false;
+        if (!disposed.current) setOriginalWaveLoading(false);
+      });
+  }, [clip.mediaUrl]);
+
   const clearShadowPause = () => {
     if (ctrl.current.timer) {
       clearTimeout(ctrl.current.timer);
@@ -187,6 +265,18 @@ export function ShadowingPlayer({
   const resetSession = (sel: number, lim: number, act: boolean, whole: boolean) => {
     session.current = { selected: sel, limit: lim, count: 0, active: act, whole, entered: false };
     setCount(0);
+  };
+  const clearAltAudio = () => {
+    const audio = altAudio.current;
+    if (!audio) return;
+    audio.onended = null;
+    audio.onerror = null;
+    audio.pause();
+  };
+  const stopAlternatingState = () => {
+    clearAltAudio();
+    altRef.current = stopAlternating();
+    setAltState(IDLE_ALTERNATING);
   };
   function afterSegment(repeat: boolean, pauseMedia: () => void, resume: () => void) {
     if (!ctrl.current.pause) {
@@ -214,6 +304,182 @@ export function ShadowingPlayer({
     }, waitMs);
   }
 
+  async function playAlternatingStep(step: AlternatingStep, index: number, total: number) {
+    if (disposed.current) return;
+    setStatus(describeAlternatingStep(step, index, total));
+    if (step.source === 'original') {
+      clearAltAudio();
+      replay.current?.pause();
+      wholeReplay.current?.pause();
+      pinnedReplay.current?.pause();
+      const player = youtube.current;
+      const media = video.current;
+      if (clip.youtubeId && !player) {
+        stopAlternatingState();
+        setStatus('Bấm “Mở trình phát YouTube” trước khi phát xen kẽ.');
+        return;
+      }
+      if (!clip.youtubeId && !media) {
+        stopAlternatingState();
+        return;
+      }
+      const isWhole = step.kind === 'whole';
+      const segIdx = step.kind === 'segment' ? step.segmentIndex : 0;
+      const target = isWhole ? clip.start : clip.segments[segIdx].start;
+      ctrl.current.seeked = true;
+      setSelected(segIdx);
+      setTime(target);
+      resetSession(segIdx, 1, !isWhole, isWhole);
+      if (clip.youtubeId) {
+        player!.seekTo(target, true);
+        player!.setPlaybackRate(speedRef.current);
+        player!.playVideo();
+        return;
+      }
+      media!.currentTime = target;
+      media!.playbackRate = speedRef.current;
+      media!.preservesPitch = true;
+      try {
+        await media!.play();
+      } catch {
+        stopAlternatingState();
+        setStatus('Chưa phát được bản gốc trong chế độ xen kẽ. Thử bấm lại.');
+      }
+      return;
+    }
+
+    video.current?.pause();
+    youtube.current?.pauseVideo();
+    replay.current?.pause();
+    wholeReplay.current?.pause();
+    pinnedReplay.current?.pause();
+    session.current.active = false;
+    session.current.whole = false;
+
+    const targetTake =
+      step.kind === 'segment' ? takesRef.current[step.segmentIndex] : wholeTakeRef.current;
+    if (!targetTake) {
+      altFinishRef.current();
+      return;
+    }
+    if (step.kind === 'segment') setSelected(step.segmentIndex);
+    const audio = (altAudio.current ??= new Audio());
+    audio.onended = () => {
+      if (!disposed.current && altRef.current.status === 'playing') {
+        altFinishRef.current();
+      }
+    };
+    audio.onerror = () => {
+      if (!disposed.current) {
+        stopAlternatingState();
+        setStatus('Không phát được bản ghi của bạn trong chế độ xen kẽ.');
+      }
+    };
+    audio.src = targetTake.url;
+    audio.currentTime = 0;
+    try {
+      await audio.play();
+    } catch {
+      if (!disposed.current) {
+        stopAlternatingState();
+        setStatus('Trình duyệt chặn phát giọng ghi âm trong chế độ xen kẽ. Thử bấm lại.');
+      }
+    }
+  }
+
+  altFinishRef.current = () => {
+    if (altRef.current.status !== 'playing') return;
+    const next = advanceAlternating(altRef.current);
+    altRef.current = next;
+    setAltState(next);
+    if (next.status === 'completed') {
+      clearAltAudio();
+      setStatus('Đã phát xong chuỗi xen kẽ: câu gốc → giọng của bạn.');
+      return;
+    }
+    const step = currentAlternatingStep(next);
+    if (step) {
+      void playAlternatingStep(step, next.index, next.steps.length);
+    }
+  };
+
+  async function startAlternatingPlayback() {
+    const recorded = Object.keys(takesRef.current).map(Number);
+    const steps = buildAlternatingQueue(clip.segments.length, recorded, {
+      hasWholeTake: Boolean(wholeTakeRef.current),
+    });
+    if (!steps.length) {
+      setStatus('Ghi âm ít nhất một câu hoặc cả clip để phát xen kẽ.');
+      return;
+    }
+    if (clip.youtubeId && !youtube.current) {
+      setStatus('Bấm “Mở trình phát YouTube” trước khi phát xen kẽ.');
+      return;
+    }
+    stopPlayback();
+    const next = startAlternating(steps);
+    altRef.current = next;
+    setAltState(next);
+    const step = currentAlternatingStep(next);
+    if (step) {
+      await playAlternatingStep(step, next.index, next.steps.length);
+    }
+  }
+
+  function pauseAlternatingPlayback() {
+    if (altRef.current.status !== 'playing') return;
+    const next = pauseAlternating(altRef.current);
+    altRef.current = next;
+    setAltState(next);
+    video.current?.pause();
+    youtube.current?.pauseVideo();
+    altAudio.current?.pause();
+    setStatus('Đã tạm dừng phát xen kẽ. Bấm Tiếp tục xen kẽ để nghe tiếp.');
+  }
+
+  async function resumeAlternatingPlayback() {
+    if (altRef.current.status !== 'paused') return;
+    const next = resumeAlternating(altRef.current);
+    altRef.current = next;
+    setAltState(next);
+    const step = currentAlternatingStep(next);
+    if (!step) return;
+    setStatus(describeAlternatingStep(step, next.index, next.steps.length));
+    if (step.source === 'original') {
+      if (clip.youtubeId) {
+        youtube.current?.playVideo();
+        return;
+      }
+      try {
+        await video.current?.play();
+      } catch {
+        stopAlternatingState();
+        setStatus('Không thể tiếp tục phát bản gốc. Thử bắt đầu phát xen kẽ lại.');
+      }
+      return;
+    }
+    const audio = altAudio.current;
+    if (!audio) {
+      await playAlternatingStep(step, next.index, next.steps.length);
+      return;
+    }
+    try {
+      await audio.play();
+    } catch {
+      stopAlternatingState();
+      setStatus('Không thể tiếp tục phát giọng ghi âm. Thử bắt đầu phát xen kẽ lại.');
+    }
+  }
+
+  function stopAlternatingPlayback() {
+    stopAlternatingState();
+    video.current?.pause();
+    youtube.current?.pauseVideo();
+    session.current.active = false;
+    session.current.whole = false;
+    setStatus('Đã dừng chế độ phát xen kẽ.');
+  }
+
   useEffect(() => {
     disposed.current = false;
     setSupported(
@@ -228,10 +494,17 @@ export function ShadowingPlayer({
       const current = recorder.current;
       if (current && current.state !== 'inactive') current.stop();
       stopTracks(stream.current);
+      if (altAudio.current) {
+        altAudio.current.onended = null;
+        altAudio.current.onerror = null;
+        altAudio.current.pause();
+        altAudio.current = null;
+      }
       void meter.current?.close().catch(() => {});
       meter.current = null;
       analyser.current = null;
       for (const url of takeUrls.current.values()) URL.revokeObjectURL(url);
+      if (wholeTakeUrl.current) URL.revokeObjectURL(wholeTakeUrl.current);
     };
   }, []);
 
@@ -256,6 +529,9 @@ export function ShadowingPlayer({
         loop.whole = false;
         setTime(clip.end);
         void logPracticeTurn(null, (clip.end - clip.start) * 1000, takeUrls.current.size);
+        if (altRef.current.status === 'playing') {
+          altFinishRef.current();
+        }
         return;
       }
       if (!loop.active || current < clip.segments[loop.selected].end - 0.08) return;
@@ -268,6 +544,10 @@ export function ShadowingPlayer({
         const seg = clip.segments[loop.selected];
         if (seg) {
           void logPracticeTurn(seg.id, Math.max(500, (seg.end - seg.start) * 1000 * loop.count), takeUrls.current.size);
+        }
+        if (altRef.current.status === 'playing') {
+          altFinishRef.current();
+          return;
         }
       }
       afterSegment(
@@ -341,11 +621,13 @@ export function ShadowingPlayer({
 
   function stopPlayback() {
     clearShadowPause();
+    stopAlternatingState();
     session.current.active = false;
     session.current.whole = false;
     video.current?.pause();
     youtube.current?.pauseVideo();
     replay.current?.pause();
+    wholeReplay.current?.pause();
     pinnedReplay.current?.pause();
   }
   function openLookup(token: SentenceToken, sentence: ClipSegment, trigger: HTMLElement) {
@@ -388,6 +670,7 @@ export function ShadowingPlayer({
   }
   async function play(whole = false) {
     clearShadowPause();
+    stopAlternatingState();
     ctrl.current.seeked = true;
     const player = youtube.current,
       media = video.current;
@@ -399,6 +682,7 @@ export function ShadowingPlayer({
     const target = whole ? clip.start : clip.segments[selected].start;
     const msg = whole ? 'Đang phát toàn clip.' : 'Đang phát đoạn đã chọn.';
     replay.current?.pause();
+    wholeReplay.current?.pause();
     pinnedReplay.current?.pause();
     resetSession(selected, whole ? 1 : limit, !whole, whole);
     if (clip.youtubeId) {
@@ -429,11 +713,19 @@ export function ShadowingPlayer({
     setCount(loop.count);
     if (wasWhole && !loop.whole) {
       void logPracticeTurn(null, (clip.end - clip.start) * 1000, takeUrls.current.size);
+      if (altRef.current.status === 'playing') {
+        altFinishRef.current();
+        return;
+      }
     }
     if (result.finished && !result.repeat) {
       const seg = clip.segments[loop.selected];
       if (seg) {
         void logPracticeTurn(seg.id, Math.max(500, (seg.end - seg.start) * 1000 * loop.count), takeUrls.current.size);
+      }
+      if (altRef.current.status === 'playing') {
+        altFinishRef.current();
+        return;
       }
     }
     if (result.finished || result.repeat)
@@ -462,8 +754,12 @@ export function ShadowingPlayer({
     const act = lookupTarget || recording || requesting ? null : resolveShadowingShortcut(e);
     if (!act) return;
     e.preventDefault();
-    if (act === 'toggle-play') playing || pausing ? stopPlayback() : void play();
-    else if (act === 'prev-segment') choose(Math.max(0, selected - 1));
+    if (act === 'toggle-play') {
+      if (altRef.current.status === 'playing') pauseAlternatingPlayback();
+      else if (altRef.current.status === 'paused') void resumeAlternatingPlayback();
+      else if (playing || pausing) stopPlayback();
+      else void play();
+    } else if (act === 'prev-segment') choose(Math.max(0, selected - 1));
     else if (act === 'next-segment') choose(Math.min(clip.segments.length - 1, selected + 1));
     else if (act === 'replay-segment') void play();
     else {
@@ -482,10 +778,11 @@ export function ShadowingPlayer({
     }
     stopTracks(stream.current);
   }
-  async function startRecording() {
+  async function startRecording(mode: RecordingMode = 'segment') {
     if (pending.current || recorder.current?.state === 'recording') return;
     pending.current = true;
     setRequesting(true);
+    setRecordingMode(mode);
     stopPlayback();
     let acquired: MediaStream | null = null;
     try {
@@ -507,18 +804,23 @@ export function ShadowingPlayer({
       recorder.current = current;
       const chunks: Blob[] = [],
         sentence = selected;
+      const maxDurationMs = mode === 'whole' ? wholeClipMaxRecordMs(clip.end - clip.start) : 60_000;
       current.ondataavailable = (event) => {
         if (event.data.size) chunks.push(event.data);
       };
       current.onerror = () => {
         stopRecording();
-        if (!disposed.current) setStatus('Ghi âm bị gián đoạn. Thử cấp lại quyền micro.');
+        if (!disposed.current) {
+          setRecordingMode(null);
+          setStatus('Ghi âm bị gián đoạn. Kiểm tra micro hoặc cấp lại quyền rồi thử lại.');
+        }
       };
       current.onstop = () => {
         stopTracks(acquired);
         clearRecTimeout();
         if (disposed.current) return;
         setRecording(false);
+        setRecordingMode(null);
         const resolvedMime = current.mimeType || mimeType || 'audio/webm';
         const blob = new Blob(chunks, { type: resolvedMime });
         if (!blob.size) {
@@ -526,18 +828,85 @@ export function ShadowingPlayer({
           return;
         }
         const durationMs = Math.max(0, (recordingEnded.current ?? performance.now()) - recordingBegan.current);
+        const extension = resolvedMime.includes('mp4') ? 'm4a' : resolvedMime.includes('ogg') ? 'ogg' : 'webm';
+        ensureOriginalAudio();
+        if (mode === 'whole') {
+          if (wholeTakeUrl.current) URL.revokeObjectURL(wholeTakeUrl.current);
+          const url = URL.createObjectURL(blob);
+          wholeTakeUrl.current = url;
+          setWholeTake({
+            url,
+            blob,
+            mimeType: resolvedMime,
+            seconds: durationMs / 1000,
+            extension,
+            peaks: null,
+            waveLoading: true,
+            waveError: null,
+          });
+          void logPracticeTurn(null, durationMs, takeUrls.current.size);
+          setStatus('Đã ghi âm cả clip trên thiết bị. Nghe lại, phát xen kẽ hoặc so sóng âm bên dưới.');
+          void decodeBlobPeaks(blob)
+            .then((peaks) => {
+              if (disposed.current || wholeTakeUrl.current !== url) return;
+              setWholeTake((prev) => (prev && prev.url === url ? { ...prev, peaks, waveLoading: false } : prev));
+            })
+            .catch(() => {
+              if (disposed.current || wholeTakeUrl.current !== url) return;
+              setWholeTake((prev) =>
+                prev && prev.url === url
+                  ? { ...prev, waveLoading: false, waveError: 'Không giải mã được sóng âm bản ghi trên trình duyệt này.' }
+                  : prev,
+              );
+            });
+          return;
+        }
+
         const previous = takeUrls.current.get(sentence);
         if (previous) URL.revokeObjectURL(previous);
         const url = URL.createObjectURL(blob);
         takeUrls.current.set(sentence, url);
-        const extension = resolvedMime.includes('mp4') ? 'm4a' : resolvedMime.includes('ogg') ? 'ogg' : 'webm';
         setTakes((values) => ({
           ...values,
-          [sentence]: { url, blob, mimeType: resolvedMime, segment: sentence, seconds: durationMs / 1000, extension },
+          [sentence]: {
+            url,
+            blob,
+            mimeType: resolvedMime,
+            segment: sentence,
+            seconds: durationMs / 1000,
+            extension,
+            peaks: null,
+            waveLoading: true,
+            waveError: null,
+          },
         }));
         practice.record(clip.segments[sentence].id, durationMs);
         void logPracticeTurn(clip.segments[sentence].id, durationMs, takeUrls.current.size);
-        setStatus('Đã ghi âm trên thiết bị. Nghe lại, tải xuống hoặc ghim làm bản ghi tốt nhất.');
+        setStatus('Đã ghi âm trên thiết bị. Nghe lại, phát xen kẽ, tải xuống hoặc ghim làm bản ghi tốt nhất.');
+        void decodeBlobPeaks(blob)
+          .then((peaks) => {
+            if (disposed.current || takeUrls.current.get(sentence) !== url) return;
+            setTakes((values) => {
+              const cur = values[sentence];
+              if (!cur || cur.url !== url) return values;
+              return { ...values, [sentence]: { ...cur, peaks, waveLoading: false } };
+            });
+          })
+          .catch(() => {
+            if (disposed.current || takeUrls.current.get(sentence) !== url) return;
+            setTakes((values) => {
+              const cur = values[sentence];
+              if (!cur || cur.url !== url) return values;
+              return {
+                ...values,
+                [sentence]: {
+                  ...cur,
+                  waveLoading: false,
+                  waveError: 'Không giải mã được sóng âm bản ghi trên trình duyệt này.',
+                },
+              };
+            });
+          });
       };
       recordingBegan.current = performance.now();
       recordingEnded.current = null;
@@ -546,22 +915,25 @@ export function ShadowingPlayer({
       };
       current.start();
       setRecording(true);
-      setStatus('Đang ghi micro · tự dừng sau 60 giây.');
-      timeout.current = setTimeout(stopRecording, 60_000);
+      setStatus(
+        mode === 'whole'
+          ? `Đang ghi micro cả clip · tự dừng sau ${Math.round(maxDurationMs / 1000)} giây.`
+          : 'Đang ghi micro · tự dừng sau 60 giây.',
+      );
+      timeout.current = setTimeout(stopRecording, maxDurationMs);
     } catch (error) {
       stopTracks(acquired);
-      if (!disposed.current)
-        setStatus(
-          error instanceof DOMException && error.name === 'NotAllowedError'
-            ? 'Chưa có quyền micro. Cho phép micro trong cài đặt trình duyệt rồi thử lại.'
-            : 'Không mở được micro. Kiểm tra thiết bị và dùng HTTPS hoặc localhost.',
-        );
+      if (!disposed.current) {
+        setRecordingMode(null);
+        setStatus(formatMicError(error));
+      }
     } finally {
       pending.current = false;
       if (!disposed.current) setRequesting(false);
     }
   }
   function removeTake() {
+    stopAlternatingState();
     replay.current?.pause();
     const url = takeUrls.current.get(selected);
     if (url) URL.revokeObjectURL(url);
@@ -572,6 +944,14 @@ export function ShadowingPlayer({
       return next;
     });
     setStatus('Đã xóa bản ghi của câu này.');
+  }
+  function removeWholeTake() {
+    stopAlternatingState();
+    wholeReplay.current?.pause();
+    if (wholeTakeUrl.current) URL.revokeObjectURL(wholeTakeUrl.current);
+    wholeTakeUrl.current = null;
+    setWholeTake(null);
+    setStatus('Đã xóa bản ghi cả clip.');
   }
   async function pinTake() {
     if (!take || pinning) return;
@@ -642,6 +1022,22 @@ export function ShadowingPlayer({
       Boolean(entry.pin),
     );
   const segmentIndexById = new Map(clip.segments.map((segment, index) => [segment.id, index]));
+  const altStep = currentAlternatingStep(altState);
+  const altPlaying = altState.status === 'playing';
+  const altPaused = altState.status === 'paused';
+  const altActive = altPlaying || altPaused;
+  const hasAlternatingSource = Object.keys(takes).length > 0 || Boolean(wholeTake);
+  const segmentOriginalPeaks = useMemo(() => {
+    if (!originalAudio || !selectedSegment) return null;
+    return extractWindowPeaks(originalAudio, selectedSegment.start, selectedSegment.end);
+  }, [originalAudio, selectedSegment]);
+  const wholeOriginalPeaks = useMemo(() => {
+    if (!originalAudio) return null;
+    return extractWindowPeaks(originalAudio, clipStart, clipEnd);
+  }, [originalAudio, clipStart, clipEnd]);
+  const originalUnavailableNote = clip.youtubeId
+    ? YOUTUBE_WAVE_NOTE
+    : originalWaveError;
 
   return (
     <div className={styles.root}>
@@ -750,7 +1146,7 @@ export function ShadowingPlayer({
               </svg>
               {playing ? 'Tạm dừng clip' : 'Phát cả clip'}
             </button>
-            <button className="button" onClick={stopPlayback} disabled={!playing && !pausing}>
+            <button className="button" onClick={stopPlayback} disabled={!playing && !pausing && !altActive}>
               Tạm dừng
             </button>
             <button
@@ -875,21 +1271,60 @@ export function ShadowingPlayer({
           <span>TRÊN THIẾT BỊ · GHIM LƯU RIÊNG</span>
         </div>
         <p>
-          {recordNote}Đã ghi {Object.keys(takes).length}/{clip.segments.length} câu.
+          {recordNote}Đã ghi {Object.keys(takes).length}/{clip.segments.length} câu
+          {wholeTake ? ' · Đã ghi cả clip' : ''}.
         </p>
         <div className={styles.actions}>
           {!recording ? (
-            <button
-              className="button primary"
-              disabled={!supported || requesting}
-              onClick={() => void startRecording()}
-            >
-              {requesting ? 'Đang xin quyền micro…' : `Ghi âm câu ${selected + 1}`}
-            </button>
+            <>
+              <button
+                className="button primary"
+                disabled={!supported || requesting}
+                onClick={() => void startRecording('segment')}
+              >
+                {requesting && recordingMode === 'segment' ? 'Đang xin quyền micro…' : `Ghi âm câu ${selected + 1}`}
+              </button>
+              <button
+                type="button"
+                className="button"
+                disabled={!supported || requesting}
+                onClick={() => void startRecording('whole')}
+              >
+                {requesting && recordingMode === 'whole' ? 'Đang xin quyền micro…' : 'Ghi âm cả clip'}
+              </button>
+            </>
           ) : (
             <button className="button primary" onClick={stopRecording}>
               Dừng ghi âm
             </button>
+          )}
+          {!altActive ? (
+            <button
+              type="button"
+              className="button"
+              disabled={locked || !hasAlternatingSource}
+              onClick={() => void startAlternatingPlayback()}
+            >
+              Phát xen kẽ
+            </button>
+          ) : altPlaying ? (
+            <>
+              <button type="button" className="button primary" onClick={pauseAlternatingPlayback}>
+                Tạm dừng xen kẽ
+              </button>
+              <button type="button" className="button" onClick={stopAlternatingPlayback}>
+                Dừng xen kẽ
+              </button>
+            </>
+          ) : (
+            <>
+              <button type="button" className="button primary" onClick={() => void resumeAlternatingPlayback()}>
+                Tiếp tục xen kẽ
+              </button>
+              <button type="button" className="button" onClick={stopAlternatingPlayback}>
+                Dừng xen kẽ
+              </button>
+            </>
           )}
           {take && !recording && (
             <>
@@ -915,6 +1350,12 @@ export function ShadowingPlayer({
             </>
           )}
         </div>
+        {altActive && altStep && (
+          <p className={styles.altBanner} data-alternating-state={altState.status}>
+            {describeAlternatingStep(altStep, altState.index, altState.steps.length)}
+            {altPaused ? ' (Đang tạm dừng)' : ''}
+          </p>
+        )}
         {recording && <VoiceMeter analyser={analyser.current} />}
         <span className="record-state" aria-hidden="true">
           {recording ? '●' : ''}
@@ -930,12 +1371,70 @@ export function ShadowingPlayer({
               src={take.url}
               controls
               onPlay={() => {
+                stopAlternatingState();
                 video.current?.pause();
                 youtube.current?.pauseVideo();
+                wholeReplay.current?.pause();
                 pinnedReplay.current?.pause();
               }}
               onError={() => setStatus('Trình duyệt không phát được định dạng bản ghi này. Thử tải xuống.')}
               aria-label="Nghe lại giọng của bạn"
+            />
+            {selectedSegment && (
+              <WaveformCompare
+                title={`Sóng âm xếp chồng · Câu ${take.segment + 1}`}
+                originalPeaks={segmentOriginalPeaks}
+                userPeaks={take.peaks}
+                originalSeconds={selectedSegment.end - selectedSegment.start}
+                userSeconds={take.seconds}
+                loading={take.waveLoading || originalWaveLoading}
+                error={take.waveError}
+                originalUnavailableNote={originalUnavailableNote}
+              />
+            )}
+          </div>
+        )}
+        {wholeTake && !recording && (
+          <div className={styles.wholeTake} aria-label="Bản ghi cả clip">
+            <div className={styles.pinnedHead}>
+              <strong>Bản ghi cả clip</strong>
+              <span>{wholeTake.seconds.toFixed(1)} giây · trên thiết bị</span>
+            </div>
+            <div className={styles.pinnedControls}>
+              <audio
+                ref={wholeReplay}
+                src={wholeTake.url}
+                controls
+                onPlay={() => {
+                  stopAlternatingState();
+                  video.current?.pause();
+                  youtube.current?.pauseVideo();
+                  replay.current?.pause();
+                  pinnedReplay.current?.pause();
+                }}
+                onError={() => setStatus('Trình duyệt không phát được định dạng bản ghi cả clip. Thử tải xuống.')}
+                aria-label="Nghe lại bản ghi cả clip"
+              />
+              <a
+                className="button"
+                href={wholeTake.url}
+                download={`shadowing-${clip.id.replace(/[^a-zA-Z0-9-]/g, '-')}-ca-clip.${wholeTake.extension}`}
+              >
+                Tải file cả clip
+              </a>
+              <button type="button" className="button" onClick={removeWholeTake}>
+                Xóa ghi âm cả clip
+              </button>
+            </div>
+            <WaveformCompare
+              title="Sóng âm xếp chồng · Cả clip"
+              originalPeaks={wholeOriginalPeaks}
+              userPeaks={wholeTake.peaks}
+              originalSeconds={clipEnd - clipStart}
+              userSeconds={wholeTake.seconds}
+              loading={wholeTake.waveLoading || originalWaveLoading}
+              error={wholeTake.waveError}
+              originalUnavailableNote={originalUnavailableNote}
             />
           </div>
         )}
@@ -956,9 +1455,11 @@ export function ShadowingPlayer({
                 controls
                 preload="none"
                 onPlay={() => {
+                  stopAlternatingState();
                   video.current?.pause();
                   youtube.current?.pauseVideo();
                   replay.current?.pause();
+                  wholeReplay.current?.pause();
                 }}
                 aria-label="Nghe lại bản ghi đã ghim"
               />
