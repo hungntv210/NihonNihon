@@ -1,6 +1,6 @@
 import type { DatabaseSync } from 'node:sqlite';
 import {
-  readContentSupplement, supplementExamples, supplementFor, supplementSentence, supplementTranslation,
+  furiganaMatches, readContentSupplement, supplementExamples, supplementFor, supplementSentence, supplementTranslation,
   type ContentSupplement,
 } from '../../../core/content-supplement.ts';
 import { selectedTranslation, type Translation } from '../../../core/content.ts';
@@ -242,7 +242,9 @@ export function vocabularyDetail(db: DatabaseSync, id: string, supplement = read
       id, japanese, english, furigana, translation: supplementTranslation(vietnamese, provenance),
       translationId: null,
     }));
-  const examples = [...supplemental, ...original].slice(0, 4);
+  const hasCompleteExample = original.slice(0, 2).some((row) =>
+    row.translation && row.english?.trim() && furiganaMatches(row.japanese, row.furigana || row.japanese));
+  const examples = hasCompleteExample ? original : [...supplemental, ...original].slice(0, 4);
   const kanji = [...new Set([...item.word].filter((c) => /\p{Script=Han}/u.test(c)))].flatMap(
     (character) => {
       const r = db

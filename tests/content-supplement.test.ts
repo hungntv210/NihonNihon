@@ -51,7 +51,7 @@ test('private supplement fills missing values only when the active source hash m
   assert.deepEqual(vocabularyDetail(db, itemId, supplement)!.pos, []);
   assert.equal(readContentSupplement(output + '.absent').size, 0);
 
-  items[itemId].examples[0].furigana = '学生です。';
+  items[itemId].examples![0].furigana = '学生です。';
   fs.writeFileSync(output, JSON.stringify({ version: 1, items }));
   assert.throws(() => readContentSupplement(output), /Invalid G1 content supplement item/);
 });

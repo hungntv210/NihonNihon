@@ -43,10 +43,12 @@ export function reportContentGaps(db, supplement = new Map()) {
       .some((pos) => typeof pos === 'string' && pos.trim()));
     const base = examples.all(row.item_id).slice(0, 4);
     const all = effectiveExamples(base, entry);
-    const shown = [...all.slice(base.length), ...all.slice(0, base.length)].slice(0, 2);
+    const complete = (s) => furiganaMatches(s.text_ja, s.furigana_notation || s.text_ja)
+      && s.has_vi && s.text_en?.trim();
+    const existing = all.slice(0, base.length);
+    const shown = (existing.slice(0, 2).some(complete) ? existing : [...all.slice(base.length), ...existing]).slice(0, 2);
     vocab.noExamples += Number(!shown.length);
-    vocab.noCompleteExample += Number(!shown.some((s) =>
-      furiganaMatches(s.text_ja, s.furigana_notation || s.text_ja) && s.has_vi && s.text_en?.trim()));
+    vocab.noCompleteExample += Number(!shown.some(complete));
   }
 
   const patterns = db.prepare('SELECT t.item_id,t.pattern,i.source_hash ' + scoped('grammar')).all();
