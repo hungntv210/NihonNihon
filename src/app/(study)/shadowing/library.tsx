@@ -1,5 +1,5 @@
 'use client';
-import { useState, type ReactNode } from 'react';
+import { lazy, Suspense, useState, type ReactNode } from 'react';
 import type { Clip } from './clip-model.ts';
 import {
   computeClipMeta,
@@ -14,6 +14,10 @@ import {
 } from './history-model.ts';
 import { ShadowingPlayer } from './player.tsx';
 import styles from './shadowing.module.css';
+
+const ShadowingClipMaker = lazy(() =>
+  import('./clip-maker.tsx').then((mod) => ({ default: mod.ShadowingClipMaker })),
+);
 
 function libraryHistoryText(summary: ClipHistorySummary, timeZone: string): string {
   const pinCount = Object.keys(summary.pinned).length;
@@ -30,6 +34,27 @@ function libraryHistoryText(summary: ClipHistorySummary, timeZone: string): stri
   return parts.length > 0 ? parts.join(' · ') : 'Chưa có lượt luyện';
 }
 
+function defaultUserClipNotice(clip: Clip): ReactNode {
+  if (clip.youtubeId) {
+    return (
+      <>
+        <strong>
+          YouTube cá nhân · {clip.level || 'N5'} · {clip.topic || 'Tự tạo'}
+        </strong>
+        <p>Chỉ lưu ID video và mốc thời gian, phát bằng trình phát nhúng sau khi bạn bấm. Không tải video về máy.</p>
+      </>
+    );
+  }
+  return (
+    <>
+      <strong>
+        Clip tự tạo · {clip.level || 'N5'} · {clip.topic || 'Tự tạo'}
+      </strong>
+      <p>Tệp âm thanh/video lưu trong thư mục riêng tư trên máy chủ nhà, chỉ phát khi đã đăng nhập.</p>
+    </>
+  );
+}
+
 export function ShadowingLibrary({
   clips,
   initialClipId,
@@ -40,6 +65,7 @@ export function ShadowingLibrary({
   initialHistory,
   metaByClip,
   timeZone = 'Asia/Ho_Chi_Minh',
+  whisperAvailable = false,
 }: {
   clips: Clip[];
   initialClipId?: string;
@@ -50,25 +76,57 @@ export function ShadowingLibrary({
   initialHistory?: Record<string, ClipHistorySummary>;
   metaByClip?: Record<string, ClipMetaSummary>;
   timeZone?: string;
+  whisperAvailable?: boolean;
 }) {
-  const startId = initialClipId && clips.some((c) => c.id === initialClipId) ? initialClipId : clips[0].id;
+  const [clipList, setClipList] = useState<Clip[]>(clips);
+  const [metaMap, setMetaMap] = useState<Record<string, ClipMetaSummary>>(() => metaByClip ?? {});
+  const [makerOpen, setMakerOpen] = useState(false);
+  const startId = initialClipId && clipList.some((c) => c.id === initialClipId) ? initialClipId : clipList[0].id;
   const [id, setId] = useState(startId);
   const [historyByClip, setHistoryByClip] = useState<Record<string, ClipHistorySummary>>(
     () => initialHistory ?? {},
   );
-  const clip = clips.find((c) => c.id === id)!;
+  const clip = clipList.find((c) => c.id === id) ?? clipList[0];
   const activeHistory = historyByClip[clip.id] ?? emptyClipHistory(clip.id);
 
   function handleHistoryChange(summary: ClipHistorySummary) {
     setHistoryByClip((prev) => ({ ...prev, [summary.clipId]: summary }));
   }
 
+  function handleClipCreated(created: Clip, meta?: ClipMetaSummary) {
+    setClipList((prev) => [...prev, created]);
+    if (meta) {
+      setMetaMap((prev) => ({ ...prev, [created.id]: meta }));
+    }
+    setId(created.id);
+    setMakerOpen(false);
+  }
+
   return (
     <>
+      <div className={styles.libraryBar}>
+        <button
+          type="button"
+          className="button primary"
+          aria-expanded={makerOpen}
+          onClick={() => setMakerOpen((open) => !open)}
+        >
+          {makerOpen ? 'Đóng trình tạo clip' : '+ Tạo clip mới'}
+        </button>
+      </div>
+      {makerOpen && (
+        <Suspense fallback={<p className={styles.makerHint}>Đang tải công cụ tạo clip…</p>}>
+          <ShadowingClipMaker
+            whisperAvailable={whisperAvailable}
+            onCreated={handleClipCreated}
+            onClose={() => setMakerOpen(false)}
+          />
+        </Suspense>
+      )}
       <section className={styles.library} aria-label="Kho clip">
-        {clips.map((c) => {
+        {clipList.map((c) => {
           const summary = historyByClip[c.id] ?? emptyClipHistory(c.id);
-          const meta = metaByClip?.[c.id] ?? computeClipMeta(c, null);
+          const meta = metaMap[c.id] ?? computeClipMeta(c, null);
           return (
             <button key={c.id} className="button" aria-pressed={id === c.id} onClick={() => setId(c.id)}>
               <strong>{meta.title}</strong>
@@ -95,7 +153,7 @@ export function ShadowingLibrary({
         key={clip.id}
         clip={clip}
         initialSegment={clip.id === startId ? initialSegment : 0}
-        notice={notices?.[clip.id]}
+        notice={notices?.[clip.id] ?? (clip.id.startsWith('user-clip:') ? defaultUserClipNotice(clip) : undefined)}
         practiceNote={practiceNote}
         recordNote={recordNote}
         history={activeHistory}
