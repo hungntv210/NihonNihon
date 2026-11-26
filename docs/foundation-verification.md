@@ -1175,3 +1175,10 @@ Checked implementation 61b8cc3fd473097d05f332b6138e7770d1868aad on branch `naeto
 - Checked implementation `3a9acfd036fad184177728f66527a0638df24ea0` on `pokabu/verifier-incomplete-fallback`, based on `a90e1fd`. Windows 11 x64, Node v24.10.0 and npm 11.6.1.
 - `npm run check` (09:50:14–09:51:45 ICT) passed. Typecheck, webpack build and application gate (16/16) passed. All 356 tests passed (22 prototype and 334 core/route), with zero failures or skips.
 - Five mock regressions passed. They cover batch integrity, model fallback, independent semantic review and the stopped checkpoint. The route-scope guard passed. Only this append-only entry follows the checked implementation.
+
+
+### Master synchronization
+
+- Checked merge commit `245fd2c2c859278c5c918cc75aea6ec2c39a93db` after merging master `6ef86d2`. Windows x64, Node v24.10.0, npm 11.6.1.
+- `npm run check` passed from 2026-11-26 11:41:08 to 11:42:32 ICT (UTC+07:00). Typecheck and webpack build passed. Tests passed 359/359 (22 prototype and 337 core/route), with zero failures or skips. Application gate passed 16/16.
+- Route scope passed for all five changed files. The verifier implementation and tests match the previously reviewed head.
