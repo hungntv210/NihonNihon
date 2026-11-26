@@ -1,10 +1,13 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
+import { registerHooks } from 'node:module';
 import os from 'node:os';
 import path from 'node:path';
 import zlib from 'node:zlib';
 import { DatabaseSync } from 'node:sqlite';
+import { createElement } from 'react';
+import { renderToStaticMarkup } from 'react-dom/server';
 import { NextRequest } from 'next/server';
 import { seedDemo } from '../tools/seed-demo.ts';
 // @ts-expect-error ESM CLI/library module without separate .d.ts
@@ -25,6 +28,17 @@ import {
 } from '../src/app/(study)/common-tools/lookup-store.ts';
 import { syntheticClip } from '../src/app/(study)/shadowing/clip-model.ts';
 import { listVocabNotebook, resolveJlptLink } from '../src/app/(study)/vocab/notebook/data.ts';
+
+registerHooks({
+  resolve(specifier, context, nextResolve) {
+    if (specifier.endsWith('.css')) {
+      return { url: 'data:text/javascript,export%20default%20%7B%7D;', shortCircuit: true };
+    }
+    return nextResolve(specifier, context);
+  },
+});
+
+const { Practice } = await import('../src/app/(study)/jlpt-daily/practice.tsx');
 
 const SAMPLE_JMDICT_XML = `<?xml version="1.0" encoding="UTF-8"?>
 <!-- JMdict created: 2026-11-26 -->
@@ -142,6 +156,232 @@ function countTableRows(appDbPath: string, sql: string): number {
   }
 }
 
+test('JLPT Practice hides stem and answer lookup before grading and enables both only after grading', () => {
+  const baseQuestions = [
+    {
+      id: 'N5_reading:q-01',
+      type: 'reading' as const,
+      stem: '【本】のよみかたはどれですか。',
+      choices: ['ほん', 'ぽん', 'ぼん', 'き'],
+      answer: null,
+    },
+    {
+      id: 'N5_context:q-02',
+      type: 'context' as const,
+      stem: '毎日【学校】へ行きます。',
+      choices: ['がっこう', 'ぎんこう', 'びょういん', 'こうえん'],
+      answer: null,
+    },
+  ];
+
+  // 1. Unanswered question: plain stem in <h2>, zero lookup buttons/tokens, zero answer lookup
+  const unansweredHtml = renderToStaticMarkup(
+    createElement(Practice, {
+      initial: {
+        date: '2026-11-26',
+        level: 'N5',
+        model: 'fixture-model',
+        approval: undefined,
+        done: 0,
+        total: 2,
+        score: 0,
+        weaknesses: {},
+        questions: baseQuestions,
+      },
+    }),
+  );
+  const unansweredHeading = unansweredHtml.match(/<h2[^>]*>([\s\S]*?)<\/h2>/)?.[1] ?? '';
+  assert.ok(
+    unansweredHeading.includes('【本】のよみかたはどれですか。'),
+    'expected unanswered stem text inside <h2>',
+  );
+  assert.equal(unansweredHeading.includes('<button'), false, 'unanswered stem must have 0 buttons');
+  assert.equal(
+    unansweredHtml.includes('data-jlpt-word='),
+    false,
+    'unanswered question must render 0 data-jlpt-word lookup tokens',
+  );
+  assert.equal(
+    unansweredHtml.includes('data-jlpt-answer-word='),
+    false,
+    'unanswered question must not render answer lookup button',
+  );
+
+  // 2. Answered question: stem exposes clickable lookup tokens and feedback exposes answer lookup
+  const answeredHtml = renderToStaticMarkup(
+    createElement(Practice, {
+      initial: {
+        date: '2026-11-26',
+        level: 'N5',
+        model: 'fixture-model',
+        approval: undefined,
+        done: 0,
+        total: 2,
+        score: 1,
+        weaknesses: { reading: { total: 1, wrong: 0 } },
+        questions: [
+          {
+            ...baseQuestions[0],
+            answer: {
+              questionId: 'N5_reading:q-01',
+              choice: 0,
+              correct: true,
+              correctIndex: 0,
+              explanation: '本 đọc là ほん (sách).',
+              cardId: null,
+              replayed: true,
+            },
+          },
+          baseQuestions[1],
+        ],
+      },
+    }),
+  );
+  const answeredHeading = answeredHtml.match(/<h2[^>]*>([\s\S]*?)<\/h2>/)?.[1] ?? '';
+  assert.ok(
+    answeredHeading.includes('data-jlpt-word="本"'),
+    'answered stem must render clickable lookup token for 本',
+  );
+  assert.ok(
+    answeredHtml.includes('data-jlpt-answer-word="ほん"'),
+    'answered feedback must render answer lookup button for ほん',
+  );
+});
+
+test('POST /api/common-tools/lookup rejects invalid JLPT source fields with HTTP 400 without writing file', async (t) => {
+  const { appDbPath, jmdictDbPath, contextPath } = setupFixture(t);
+  const [vocabId] = pickActiveVocabIds(appDbPath, 1);
+
+  const invalidPayloads: Array<{ label: string; body: Record<string, unknown> }> = [
+    {
+      label: 'slash date format',
+      body: { itemId: vocabId, sentenceJa: '本を読みます。', sourceKind: 'jlpt', jlptDate: '2026/11/26', notebookOnly: true },
+    },
+    {
+      label: 'impossible calendar date 2026-02-31',
+      body: { itemId: vocabId, sentenceJa: '本を読みます。', sourceKind: 'jlpt', jlptDate: '2026-02-31', notebookOnly: true },
+    },
+    {
+      label: 'non-date string',
+      body: { itemId: vocabId, sentenceJa: '本を読みます。', sourceKind: 'jlpt', jlptDate: 'not-a-date', notebookOnly: true },
+    },
+    {
+      label: 'empty jlptDate string',
+      body: { itemId: vocabId, sentenceJa: '本を読みます。', sourceKind: 'jlpt', jlptDate: '', notebookOnly: true },
+    },
+    {
+      label: 'non-string jlptDate',
+      body: { itemId: vocabId, sentenceJa: '本を読みます。', sourceKind: 'jlpt', jlptDate: 20261126, notebookOnly: true },
+    },
+    {
+      label: 'jlptQuestionId with space',
+      body: { itemId: vocabId, sentenceJa: '本を読みます。', sourceKind: 'jlpt', jlptDate: '2026-11-26', jlptQuestionId: 'q 1', notebookOnly: true },
+    },
+    {
+      label: 'jlptQuestionId path traversal',
+      body: { itemId: vocabId, sentenceJa: '本を読みます。', sourceKind: 'jlpt', jlptDate: '2026-11-26', jlptQuestionId: '../secret', notebookOnly: true },
+    },
+    {
+      label: 'jlptQuestionId query injection',
+      body: { itemId: vocabId, sentenceJa: '本を読みます。', sourceKind: 'jlpt', jlptDate: '2026-11-26', jlptQuestionId: 'q1?x=1', notebookOnly: true },
+    },
+    {
+      label: 'jlptQuestionId exceeding 128 chars',
+      body: { itemId: vocabId, sentenceJa: '本を読みます。', sourceKind: 'jlpt', jlptDate: '2026-11-26', jlptQuestionId: 'a'.repeat(129), notebookOnly: true },
+    },
+    {
+      label: 'empty jlptQuestionId string',
+      body: { itemId: vocabId, sentenceJa: '本を読みます。', sourceKind: 'jlpt', jlptDate: '2026-11-26', jlptQuestionId: '', notebookOnly: true },
+    },
+    {
+      label: 'non-string jlptQuestionId',
+      body: { itemId: vocabId, sentenceJa: '本を読みます。', sourceKind: 'jlpt', jlptDate: '2026-11-26', jlptQuestionId: 12345, notebookOnly: true },
+    },
+    {
+      label: 'invalid sourceKind string',
+      body: { itemId: vocabId, sentenceJa: '本を読みます。', sourceKind: 'unknown', notebookOnly: true },
+    },
+    {
+      label: 'non-string sourceKind',
+      body: { itemId: vocabId, sentenceJa: '本を読みます。', sourceKind: 42, notebookOnly: true },
+    },
+    {
+      label: 'invalid jlptQuestionNumber string',
+      body: { itemId: vocabId, sentenceJa: '本を読みます。', sourceKind: 'jlpt', jlptDate: '2026-11-26', jlptQuestionNumber: '2', notebookOnly: true },
+    },
+    {
+      label: 'out-of-range jlptQuestionNumber',
+      body: { itemId: vocabId, sentenceJa: '本を読みます。', sourceKind: 'jlpt', jlptDate: '2026-11-26', jlptQuestionNumber: 0, notebookOnly: true },
+    },
+    {
+      label: 'SRS save with invalid jlptDate must not enqueue SRS or write file',
+      body: { itemId: vocabId, sentenceJa: '本を読みます。', sourceKind: 'jlpt', jlptDate: '2026-02-31', notebookOnly: false },
+    },
+  ];
+
+  for (const tc of invalidPayloads) {
+    const res = await handleLookupPost(
+      new NextRequest('http://localhost/api/common-tools/lookup', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(tc.body),
+      }),
+      makeDeps({ dbPath: appDbPath, jmdictPath: jmdictDbPath, contextPath }),
+    );
+    assert.equal(res.status, 400, `expected HTTP 400 for ${tc.label}`);
+    assert.equal(
+      fs.existsSync(contextPath),
+      false,
+      `lookup-sentences.json must not be created/written for ${tc.label}`,
+    );
+    assert.equal(
+      countTableRows(appDbPath, 'SELECT COUNT(*) AS n FROM srs_cards'),
+      0,
+      `srs_cards must stay untouched for ${tc.label}`,
+    );
+  }
+
+  // Valid jlptDate + jlptQuestionId (including colon/underscore/hyphen) succeeds cleanly
+  const validRes = await handleLookupPost(
+    new NextRequest('http://localhost/api/common-tools/lookup', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        itemId: vocabId,
+        sentenceJa: '本を読みます。',
+        sourceKind: 'jlpt',
+        jlptDate: '2026-11-26',
+        jlptQuestionId: 'N5_vocab:q-01',
+        jlptQuestionNumber: 1,
+        notebookOnly: true,
+      }),
+    }),
+    makeDeps({
+      dbPath: appDbPath,
+      jmdictPath: jmdictDbPath,
+      contextPath,
+      now: new Date('2026-11-26T08:00:00.000Z'),
+    }),
+  );
+  assert.equal(validRes.status, 201);
+  assert.equal(fs.existsSync(contextPath), true);
+
+  const roDb = openContentDatabase(appDbPath);
+  try {
+    const view = listVocabNotebook(roDb, {
+      source: 'jlpt',
+      contextPath,
+      jmdictPath: jmdictDbPath,
+      youtubeFile: '',
+    });
+    assert.equal(view.items.length, 1);
+    const expectedParams = new URLSearchParams({ date: '2026-11-26', q: 'N5_vocab:q-01' });
+    assert.equal(view.items[0].jlptHref, `/jlpt-daily?${expectedParams.toString()}`);
+  } finally {
+    roDb.close();
+  }
+});
+
 test('saving from jlpt source records sentence + link and exposes Đề thi filter accurately', async (t) => {
   const { appDbPath, jmdictDbPath, contextPath } = setupFixture(t);
   const [jlptNotebookOnlyId, jlptSrsId] = pickActiveVocabIds(appDbPath, 2);
@@ -246,13 +486,20 @@ test('saving from jlpt source records sentence + link and exposes Đề thi filt
       ],
     );
 
-    // Date-only, question-only, & invalid date link helper checks
+    // Date-only, valid ID with URLSearchParams encoding, and invalid date/ID rejection checks
     assert.equal(resolveJlptLink('2026-11-26', null, null)?.href, '/jlpt-daily?date=2026-11-26');
     assert.equal(
-      resolveJlptLink('2026-11-26', 'q 1', 2)?.href,
-      '/jlpt-daily?date=2026-11-26&q=q+1',
+      resolveJlptLink('2026-11-26', 'N5_vocab:q-01', 2)?.href,
+      '/jlpt-daily?date=2026-11-26&q=N5_vocab%3Aq-01',
     );
+    assert.deepEqual(resolveJlptLink('2026-11-26', 'q 1', 2), {
+      href: '/jlpt-daily?date=2026-11-26',
+      date: '2026-11-26',
+      questionId: null,
+      questionNumber: 2,
+    });
     assert.equal(resolveJlptLink('not-a-date', 'q1', null)?.href, '/jlpt-daily?q=q1');
+    assert.equal(resolveJlptLink('not-a-date', '../bad', null), null);
     assert.equal(resolveJlptLink('not-a-date', null, null), null);
   } finally {
     roDb.close();

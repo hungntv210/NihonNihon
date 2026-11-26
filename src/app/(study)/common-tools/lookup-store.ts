@@ -25,13 +25,18 @@ const ALLOWED_LOOKUP_CARD_TYPES: readonly CardType[] = [
   'cloze',
   'listening',
 ];
-const ALLOWED_SOURCE_KINDS: readonly LookupSaveSource[] = ['clip', 'lookup', 'jlpt'];
+export const ALLOWED_SOURCE_KINDS: readonly LookupSaveSource[] = ['clip', 'lookup', 'jlpt'];
 const CALENDAR_DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+const JLPT_QUESTION_ID_RE = /^[A-Za-z0-9_:-]{1,128}$/;
 
 export function isValidCalendarDate(value: string): boolean {
   if (!CALENDAR_DATE_RE.test(value)) return false;
   const ms = Date.parse(`${value}T00:00:00Z`);
   return Number.isFinite(ms) && new Date(ms).toISOString().slice(0, 10) === value;
+}
+
+export function isValidJlptQuestionId(value: string): boolean {
+  return JLPT_QUESTION_ID_RE.test(value);
 }
 
 export function lookupContextPath(): string {
@@ -88,7 +93,13 @@ function isValidEntry(value: unknown): value is SavedLookupSentence {
   ) {
     return false;
   }
-  if (!isOptionalNullableString(e.jlptQuestionId, 128)) return false;
+  if (
+    e.jlptQuestionId !== undefined &&
+    e.jlptQuestionId !== null &&
+    (typeof e.jlptQuestionId !== 'string' || !isValidJlptQuestionId(e.jlptQuestionId))
+  ) {
+    return false;
+  }
   if (
     e.jlptQuestionNumber !== undefined &&
     e.jlptQuestionNumber !== null &&
@@ -215,42 +226,51 @@ function writeLookupSentenceEntry(
 }
 
 function normalizeSourceMeta(params: {
-  sourceKind?: LookupSaveSource;
+  sourceKind?: unknown;
   sourceClipId?: string | null;
-  jlptDate?: string | null;
-  jlptQuestionId?: string | null;
-  jlptQuestionNumber?: number | null;
+  jlptDate?: unknown;
+  jlptQuestionId?: unknown;
+  jlptQuestionNumber?: unknown;
 }) {
-  if (
-    params.sourceKind !== undefined &&
-    !ALLOWED_SOURCE_KINDS.includes(params.sourceKind)
-  ) {
-    throw new Error('INVALID_SOURCE');
+  let rawSourceKind: LookupSaveSource | undefined;
+  if (params.sourceKind !== undefined && params.sourceKind !== null) {
+    if (
+      typeof params.sourceKind !== 'string' ||
+      !ALLOWED_SOURCE_KINDS.includes(params.sourceKind as LookupSaveSource)
+    ) {
+      throw new Error('INVALID_SOURCE');
+    }
+    rawSourceKind = params.sourceKind as LookupSaveSource;
   }
+
   const sourceClipId =
     typeof params.sourceClipId === 'string' && params.sourceClipId.trim()
       ? params.sourceClipId.trim().slice(0, 128)
       : null;
 
   let jlptDate: string | null = null;
-  if (typeof params.jlptDate === 'string' && params.jlptDate.trim()) {
-    const trimmed = params.jlptDate.trim();
-    if (!isValidCalendarDate(trimmed)) throw new Error('INVALID_SOURCE');
-    jlptDate = trimmed;
+  if (params.jlptDate !== undefined && params.jlptDate !== null) {
+    if (typeof params.jlptDate !== 'string' || !isValidCalendarDate(params.jlptDate)) {
+      throw new Error('INVALID_SOURCE');
+    }
+    jlptDate = params.jlptDate;
   }
 
   let jlptQuestionId: string | null = null;
-  if (typeof params.jlptQuestionId === 'string' && params.jlptQuestionId.trim()) {
-    const trimmed = params.jlptQuestionId.trim();
-    if (trimmed.length > 128 || /[\x00-\x1f]/.test(trimmed)) {
+  if (params.jlptQuestionId !== undefined && params.jlptQuestionId !== null) {
+    if (
+      typeof params.jlptQuestionId !== 'string' ||
+      !isValidJlptQuestionId(params.jlptQuestionId)
+    ) {
       throw new Error('INVALID_SOURCE');
     }
-    jlptQuestionId = trimmed;
+    jlptQuestionId = params.jlptQuestionId;
   }
 
   let jlptQuestionNumber: number | null = null;
   if (params.jlptQuestionNumber !== undefined && params.jlptQuestionNumber !== null) {
     if (
+      typeof params.jlptQuestionNumber !== 'number' ||
       !Number.isInteger(params.jlptQuestionNumber) ||
       params.jlptQuestionNumber < 1 ||
       params.jlptQuestionNumber > 100
@@ -261,10 +281,10 @@ function normalizeSourceMeta(params: {
   }
 
   const hasJlptMeta =
-    params.sourceKind === 'jlpt' || jlptDate !== null || jlptQuestionId !== null;
+    rawSourceKind === 'jlpt' || jlptDate !== null || jlptQuestionId !== null;
   const sourceKind: LookupSaveSource | undefined = hasJlptMeta
     ? 'jlpt'
-    : params.sourceKind;
+    : rawSourceKind;
 
   return {
     sourceClipId,

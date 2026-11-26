@@ -4,7 +4,10 @@ import type { CardType } from '../../../core/review.ts';
 import { lookupWord } from './lookup.ts';
 import type { LookupSaveSource } from './lookup-popup-model.ts';
 import {
+  ALLOWED_SOURCE_KINDS,
   getSavedSentenceForItem,
+  isValidCalendarDate,
+  isValidJlptQuestionId,
   saveLookupItemToNotebook,
   saveLookupItemToSrs,
 } from './lookup-store.ts';
@@ -104,12 +107,58 @@ export async function handleLookupPost(request: Request, deps: LookupHandlerDeps
     );
   }
   const notebookOnly = body.notebookOnly === true;
-  const sourceKind =
-    typeof body.sourceKind === 'string' ? (body.sourceKind as LookupSaveSource) : undefined;
-  const jlptDate = typeof body.jlptDate === 'string' ? body.jlptDate : null;
-  const jlptQuestionId = typeof body.jlptQuestionId === 'string' ? body.jlptQuestionId : null;
-  const jlptQuestionNumber =
-    typeof body.jlptQuestionNumber === 'number' ? body.jlptQuestionNumber : null;
+
+  let sourceKind: LookupSaveSource | undefined;
+  if (body.sourceKind !== undefined && body.sourceKind !== null) {
+    if (
+      typeof body.sourceKind !== 'string' ||
+      !ALLOWED_SOURCE_KINDS.includes(body.sourceKind as LookupSaveSource)
+    ) {
+      return NextResponse.json(
+        { error: 'Nguồn lưu từ không hợp lệ.' },
+        { status: 400, headers: NO_STORE_HEADERS },
+      );
+    }
+    sourceKind = body.sourceKind as LookupSaveSource;
+  }
+
+  let jlptDate: string | null = null;
+  if (body.jlptDate !== undefined && body.jlptDate !== null) {
+    if (typeof body.jlptDate !== 'string' || !isValidCalendarDate(body.jlptDate)) {
+      return NextResponse.json(
+        { error: 'Ngày đề JLPT không hợp lệ.' },
+        { status: 400, headers: NO_STORE_HEADERS },
+      );
+    }
+    jlptDate = body.jlptDate;
+  }
+
+  let jlptQuestionId: string | null = null;
+  if (body.jlptQuestionId !== undefined && body.jlptQuestionId !== null) {
+    if (typeof body.jlptQuestionId !== 'string' || !isValidJlptQuestionId(body.jlptQuestionId)) {
+      return NextResponse.json(
+        { error: 'Mã câu hỏi JLPT không hợp lệ.' },
+        { status: 400, headers: NO_STORE_HEADERS },
+      );
+    }
+    jlptQuestionId = body.jlptQuestionId;
+  }
+
+  let jlptQuestionNumber: number | null = null;
+  if (body.jlptQuestionNumber !== undefined && body.jlptQuestionNumber !== null) {
+    if (
+      typeof body.jlptQuestionNumber !== 'number' ||
+      !Number.isInteger(body.jlptQuestionNumber) ||
+      body.jlptQuestionNumber < 1 ||
+      body.jlptQuestionNumber > 100
+    ) {
+      return NextResponse.json(
+        { error: 'Số thứ tự câu hỏi JLPT không hợp lệ.' },
+        { status: 400, headers: NO_STORE_HEADERS },
+      );
+    }
+    jlptQuestionNumber = body.jlptQuestionNumber;
+  }
 
   if (!notebookOnly && (typeof body.sentenceJa !== 'string' || !body.sentenceJa.trim())) {
     return NextResponse.json(

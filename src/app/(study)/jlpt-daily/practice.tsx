@@ -42,6 +42,7 @@ export function Practice({
       setIndex(i);
       setFinished(false);
       setChoice(null);
+      setLookupTarget(null);
     }
   }, [initial.questions]);
 
@@ -74,7 +75,7 @@ export function Practice({
   const closeLookup = useCallback(() => setLookupTarget(null), []);
   const openLookup = useCallback(
     (token: { surface: string; base?: string }, el: HTMLElement) => {
-      if (!question) return;
+      if (!question || !answer) return;
       lookupTriggerRef.current = el;
       setLookupTarget({
         surface: token.surface,
@@ -88,7 +89,7 @@ export function Practice({
         jlptQuestionNumber: index + 1,
       });
     },
-    [index, question, view.date],
+    [answer, index, question, view.date],
   );
 
   async function submit() {
@@ -164,7 +165,11 @@ export function Practice({
             Câu {index + 1} <span>{labels[question.type]}</span>
           </p>
           <h2 ref={heading} tabIndex={-1}>
-            <JlptLookupStem questionId={question.id} stem={question.stem} onSelect={openLookup} />
+            {answer ? (
+              <JlptLookupStem questionId={question.id} stem={question.stem} onSelect={openLookup} />
+            ) : (
+              <JaText>{question.stem}</JaText>
+            )}
           </h2>
           <fieldset disabled={!!answer || busy} className={styles.options}>
             <legend className={styles.srOnly}>Chọn một đáp án</legend>
@@ -209,6 +214,7 @@ export function Practice({
                   if (index === view.total - 1) setFinished(true);
                   else setIndex(index + 1);
                   setChoice(null);
+                  setLookupTarget(null);
                   setTimeout(() => heading.current?.focus(), 0);
                 }}
               >
@@ -238,7 +244,7 @@ export function Practice({
         · {view.model}. Đây là bài luyện, không phải đề thi chính thức.
       </p>
       <JlptLookupDialog
-        target={lookupTarget}
+        target={answer ? lookupTarget : null}
         triggerEl={lookupTriggerRef.current}
         onClose={closeLookup}
       />

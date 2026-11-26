@@ -13,6 +13,7 @@ import {
 } from '../../../../core/jmdict.ts';
 import {
   isValidCalendarDate,
+  isValidJlptQuestionId,
   lookupContextPath,
   readLookupSentenceStore,
   type LookupSentenceStore,
@@ -126,8 +127,8 @@ export function resolveJlptLink(
 ): { href: string; date: string | null; questionId: string | null; questionNumber: number | null } | null {
   const date = typeof jlptDate === 'string' && isValidCalendarDate(jlptDate) ? jlptDate : null;
   const questionId =
-    typeof jlptQuestionId === 'string' && jlptQuestionId.trim() && jlptQuestionId.trim().length <= 128
-      ? jlptQuestionId.trim()
+    typeof jlptQuestionId === 'string' && isValidJlptQuestionId(jlptQuestionId)
+      ? jlptQuestionId
       : null;
   const questionNumber =
     typeof jlptQuestionNumber === 'number' &&
