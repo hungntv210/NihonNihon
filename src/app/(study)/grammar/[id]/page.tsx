@@ -63,8 +63,9 @@ export default async function GrammarDetailPage({ params }: { params: Promise<{ 
   const { item, patterns } = data,
     focus = focusOf(item.pattern),
     formula = parseGrammarFormula(item.formationEn, item.pattern),
-    choices = choiceQuestions(item.pattern, item.examples, patterns),
-    ordering = orderingQuestions(item.examples);
+    practiceExamples = item.examples.filter(({ id }) => !id.startsWith('g1:sentence:')),
+    choices = choiceQuestions(item.pattern, practiceExamples, patterns),
+    ordering = orderingQuestions(practiceExamples);
   return (
     <>
       <RouteHeading heading="h2" title="Chi tiết ngữ pháp" species="owl" eyebrow="ĐỌC · HIỂU · GẶP LẠI"><p>Đối chiếu nội dung và lưu lại để ôn.</p></RouteHeading>

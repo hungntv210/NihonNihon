@@ -1,4 +1,5 @@
 import type { DatabaseSync } from 'node:sqlite';
+import { readContentSupplement, supplementFor, type SupplementItem } from '../../../core/content-supplement.ts';
 import { selectedTranslation, type Translation } from '../../../core/content.ts';
 
 export type KanjiFilters = {
@@ -28,6 +29,7 @@ export type KanjiDetail = KanjiSummary & {
   components: string[];
   meaningId: string | null;
   hanVietId: string | null;
+  readingNote: SupplementItem['readingNote'];
   hanVietOriginalMeaning: Translation | null;
   related: {
     id: string;
@@ -217,12 +219,12 @@ function translationId(db: DatabaseSync, id: string, field: string): string | nu
     .get(id, field);
   return row ? String(row.translation_id) : null;
 }
-export function kanjiDetail(db: DatabaseSync, character: string): KanjiDetail | null {
+export function kanjiDetail(db: DatabaseSync, character: string, supplement = readContentSupplement()): KanjiDetail | null {
   try { character = decodeURIComponent(character).normalize('NFC'); } catch { return null; }
   if ([...character].length !== 1) return null;
   const row = db
     .prepare(
-      'SELECT k.* FROM kanji k JOIN content_items i USING(item_id) WHERE k.character=? AND i.is_active=1',
+      'SELECT k.*,i.source_hash FROM kanji k JOIN content_items i USING(item_id) WHERE k.character=? AND i.is_active=1',
     )
     .get(character.normalize('NFC'));
   if (!row) return null;
@@ -279,6 +281,7 @@ export function kanjiDetail(db: DatabaseSync, character: string): KanjiDetail | 
       .map((r) => String(r.component)),
     meaningId: translationId(db, id, 'meaning'),
     hanVietId: translationId(db, id, 'han_viet'),
+    readingNote: item.hanViet ? undefined : supplementFor(supplement, id, row.source_hash)?.readingNote,
     hanVietOriginalMeaning: kanjiDictVnOriginalMeaning(db, id),
     related,
     strokePaths: strokes.map((s) => ({ number: Number(s.stroke_no), path: String(s.path_d) })),

@@ -4,6 +4,9 @@ import {
   type Translation,
   type TranslationField,
 } from '../../../core/content.ts';
+import {
+  readContentSupplement, supplementExamples, supplementFor, supplementSentence, supplementTranslation,
+} from '../../../core/content-supplement.ts';
 import { getGrammarConfusables, type GrammarConfusable } from './confusables.ts';
 
 export type { GrammarConfusable };
@@ -116,29 +119,38 @@ export function listGrammar(
     .all(...parameters, pageSize, (page - 1) * pageSize);
   return { q, level, page, pages, total, items: rows.map((row) => summary(db, row)) };
 }
-export function getGrammar(db: DatabaseSync, key: string): GrammarDetail | null {
+export function getGrammar(db: DatabaseSync, key: string, supplement = readContentSupplement()): GrammarDetail | null {
   if (!key || key.length > 256) return null;
   const row = db
     .prepare(
-      'SELECT g.* FROM grammar g JOIN content_items i USING(item_id) WHERE g.item_id=? AND i.is_active=1',
+      'SELECT g.*,i.source_hash FROM grammar g JOIN content_items i USING(item_id) WHERE g.item_id=? AND i.is_active=1',
     )
     .get(grammarId(key));
   if (!row) return null;
   const base = summary(db, row),
     id = base.id;
-  const examples = db
+  const original = db
     .prepare(
-      `SELECT s.* FROM item_sentences l JOIN sentences s ON s.item_id=l.sentence_id JOIN content_items i ON i.item_id=s.item_id WHERE l.item_id=? AND i.is_active=1 ORDER BY l.position LIMIT 50`,
+      `SELECT s.*,i.source_hash FROM item_sentences l JOIN sentences s ON s.item_id=l.sentence_id JOIN content_items i ON i.item_id=s.item_id WHERE l.item_id=? AND i.is_active=1 ORDER BY l.position LIMIT 50`,
     )
     .all(id)
-    .map((r) => ({
-      id: String(r.item_id),
-      japanese: String(r.text_ja),
-      english: r.text_en == null ? null : String(r.text_en),
-      furigana: r.furigana_notation == null ? null : String(r.furigana_notation),
-      vietnamese: translation(db, String(r.item_id), 'text'),
-      attribution: String(r.author_attribution),
+    .map((r) => {
+      const id = String(r.item_id), japanese = String(r.text_ja);
+      const furigana = r.furigana_notation == null ? null : String(r.furigana_notation);
+      const vi = translation(db, id, 'text');
+      const extra = supplementSentence(supplement, { id, hash: r.source_hash, japanese, furigana }, Boolean(vi));
+      return {
+        id, japanese, english: r.text_en == null ? null : String(r.text_en), furigana: extra.furigana,
+        vietnamese: vi ?? (extra.vi && { ...extra.vi, id: null }), attribution: String(r.author_attribution),
+      };
+    });
+  const entry = supplementFor(supplement, id, row.source_hash);
+  const added = supplementExamples(entry, original.map((r) => r.japanese))
+    .map(({ id, japanese, english, furigana, vietnamese, provenance, attribution }) => ({
+      id, japanese, english, furigana, attribution,
+      vietnamese: { ...supplementTranslation(vietnamese, provenance), id: null },
     }));
+  const examples = [...original, ...added];
   const related = db
     .prepare(
       `SELECT DISTINCT g.* FROM grammar g JOIN content_items i USING(item_id),json_each(g.tags) t WHERE g.item_id<>? AND i.is_active=1 AND t.value IN (SELECT value FROM json_each(?)) ORDER BY g.level,g.item_id LIMIT 4`,

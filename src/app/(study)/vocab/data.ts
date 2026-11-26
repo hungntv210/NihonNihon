@@ -1,4 +1,8 @@
 import type { DatabaseSync } from 'node:sqlite';
+import {
+  readContentSupplement, supplementExamples, supplementFor, supplementSentence, supplementTranslation,
+  type ContentSupplement,
+} from '../../../core/content-supplement.ts';
 import { selectedTranslation, type Translation } from '../../../core/content.ts';
 
 export type Vocabulary = {
@@ -76,7 +80,7 @@ function translation(db: DatabaseSync, itemId: string, field: 'meaning' | 'han_v
     : null;
   return { value, id: row ? String(row.translation_id) : null };
 }
-function vocabulary(db: DatabaseSync, r: Record<string, unknown>): Vocabulary {
+function vocabulary(db: DatabaseSync, r: Record<string, unknown>, supplement: ContentSupplement): Vocabulary {
   const id = String(r.item_id),
     meaning = translation(db, id, 'meaning'),
     hv = translation(db, id, 'han_viet');
@@ -90,6 +94,7 @@ function vocabulary(db: DatabaseSync, r: Record<string, unknown>): Vocabulary {
     : null;
   const allOn =
     hvContext?.all_on === true && hvContext.word === r.word && hvContext.reading === r.reading;
+  const pos: string[] = JSON.parse(String(r.pos));
   return {
     id,
     word: String(r.word),
@@ -97,7 +102,7 @@ function vocabulary(db: DatabaseSync, r: Record<string, unknown>): Vocabulary {
     romaji: String(r.romaji),
     level: String(r.level),
     english: JSON.parse(String(r.meanings_en)),
-    pos: JSON.parse(String(r.pos)),
+    pos: pos.some((part) => typeof part === 'string' && part.trim()) ? pos : supplementFor(supplement, id, r.source_hash)?.pos ?? pos,
     meaning: meaning.value,
     meaningId: meaning.id,
     hanViet: allOn ? hv.value : null,
@@ -112,7 +117,7 @@ function vocabulary(db: DatabaseSync, r: Record<string, unknown>): Vocabulary {
       .map((v) => ({ id: String(v.item_id), reading: String(v.reading) })),
   };
 }
-const select = `SELECT v.*,s.name source_name,EXISTS(SELECT 1 FROM srs_cards c WHERE c.item_id=v.item_id) queued
+const select = `SELECT v.*,i.source_hash,s.name source_name,EXISTS(SELECT 1 FROM srs_cards c WHERE c.item_id=v.item_id) queued
   FROM vocab v JOIN content_items i USING(item_id) JOIN data_sources s ON s.source_id=i.source_id`;
 
 export function findVocabulary(db: DatabaseSync, search: Search) {
@@ -147,8 +152,9 @@ export function findVocabulary(db: DatabaseSync, search: Search) {
         ` ORDER BY CASE v.level WHEN 'N5' THEN 0 WHEN 'N4' THEN 1 WHEN 'N3' THEN 2 WHEN 'N2' THEN 3 ELSE 4 END,v.item_id LIMIT ? OFFSET ?`,
     )
     .all(...args, PAGE_SIZE, (page - 1) * PAGE_SIZE);
+  const supplement = readContentSupplement();
   return {
-    items: rows.map((r) => vocabulary(db, r)),
+    items: rows.map((r) => vocabulary(db, r, supplement)),
     total,
     pages,
     page,
@@ -156,14 +162,14 @@ export function findVocabulary(db: DatabaseSync, search: Search) {
   };
 }
 
-export function newVocabulary(db: DatabaseSync) {
+export function newVocabulary(db: DatabaseSync, supplement = readContentSupplement()) {
   return db
     .prepare(
       select +
         ` WHERE i.is_active=1 AND NOT EXISTS(SELECT 1 FROM srs_cards c WHERE c.item_id=v.item_id) ORDER BY CASE v.level WHEN 'N5' THEN 0 WHEN 'N4' THEN 1 WHEN 'N3' THEN 2 WHEN 'N2' THEN 3 ELSE 4 END,v.item_id LIMIT 5`,
     )
     .all()
-    .map((r) => vocabulary(db, r));
+    .map((r) => vocabulary(db, r, supplement));
 }
 
 export function parseFurigana(notation: string | null, japanese: string): Segment[] {
@@ -201,32 +207,42 @@ export function wordSegments(raw: string | null, word: string, reading: string):
     { text: word, ...(word !== reading && /[\p{Script=Han}]/u.test(word) ? { reading } : {}) },
   ];
 }
-export function vocabularyDetail(db: DatabaseSync, id: string): VocabularyDetail | null {
+export function vocabularyDetail(db: DatabaseSync, id: string, supplement = readContentSupplement()): VocabularyDetail | null {
   if (!id || id.length > 256) return null;
   const row = db.prepare(select + ' WHERE v.item_id=? AND i.is_active=1').get(id);
   if (!row) return null;
-  const item = vocabulary(db, row),
+  const item = vocabulary(db, row, supplement),
     furigana = db
       .prepare(
         'SELECT segments FROM word_furigana WHERE word=? AND reading=? ORDER BY source_id LIMIT 1',
       )
       .get(item.word, item.reading);
-  const examples = db
+  const original = db
     .prepare(
-      `SELECT s.* FROM item_sentences x JOIN sentences s ON s.item_id=x.sentence_id JOIN content_items i ON i.item_id=s.item_id WHERE x.item_id=? AND i.is_active=1 ORDER BY x.position LIMIT 4`,
+      `SELECT s.*,i.source_hash FROM item_sentences x JOIN sentences s ON s.item_id=x.sentence_id JOIN content_items i ON i.item_id=s.item_id WHERE x.item_id=? AND i.is_active=1 ORDER BY x.position LIMIT 4`,
     )
     .all(id)
     .map((r) => {
-      const vi = translation(db, String(r.item_id), 'text');
+      const id = String(r.item_id), japanese = String(r.text_ja);
+      const furigana = r.furigana_notation == null ? null : String(r.furigana_notation);
+      const vi = translation(db, id, 'text');
+      const extra = supplementSentence(supplement, { id, hash: r.source_hash, japanese, furigana }, Boolean(vi.value));
       return {
-        id: String(r.item_id),
-        japanese: String(r.text_ja),
+        id,
+        japanese,
         english: r.text_en == null ? null : String(r.text_en),
-        furigana: r.furigana_notation == null ? null : String(r.furigana_notation),
-        translation: vi.value,
+        furigana: extra.furigana,
+        translation: vi.value ?? extra.vi,
         translationId: vi.id,
       };
     });
+  const entry = supplementFor(supplement, id, row.source_hash);
+  const supplemental = supplementExamples(entry, original.map((r) => r.japanese))
+    .map(({ id, japanese, english, furigana, vietnamese, provenance }) => ({
+      id, japanese, english, furigana, translation: supplementTranslation(vietnamese, provenance),
+      translationId: null,
+    }));
+  const examples = [...supplemental, ...original].slice(0, 4);
   const kanji = [...new Set([...item.word].filter((c) => /\p{Script=Han}/u.test(c)))].flatMap(
     (character) => {
       const r = db
