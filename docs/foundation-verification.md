@@ -1212,3 +1212,19 @@ Checked implementation 61b8cc3fd473097d05f332b6138e7770d1868aad on branch `naeto
 - npm run check passed on 2026-11-26 from 13:20:20 to 13:22:04 ICT (UTC+07:00). Typecheck and webpack build passed. Tests passed 359/359 (22 prototype and 337 core/route). The application gate passed 16/16.
 - Route scope passed for all nine changed files. All 15 checklist notes and both completed roadmap items were retained. Only this append-only audit entry follows the tested merge.
 - Checked merge SHA for the entry above: ba53bfd5a09beaff4cca2a2d36729a43e993c674.
+
+## Naetoru shadowing whole-clip record, alternating playback & overlaid waveform (g1-shadowing item 39) -- 2026-11-26
+
+- Checked implementation `4feb7ac49645efd6b3f3b4ad158fe0e4d8247511` on branch `naetoru/shadowing-record-compare` (base `origin/master` `409c125e127610d65841cc4a3a316b47df53aa37`) on Windows x64, Node v24.10.0, clean `.next` build, disposable OpenJLPT fixture, and local headless Chrome.
+- Feature: added pure alternating playback state machine & offline PCM waveform peak module (`src/app/(study)/shadowing/record-compare.ts`), native Web Audio API offline decoder + 64-bar overlaid SVG `<WaveformCompare />` (`src/app/(study)/shadowing/waveform-compare.tsx`), extracted `<RecordingPanel />` (`src/app/(study)/shadowing/recording-panel.tsx`), wired whole-clip recording, alternating playback (original -> user -> next sentence with pause/resume/stop and whole-clip fallback), lazy same-origin original audio decoding, and Vietnamese mic error messages in `src/app/(study)/shadowing/player.tsx` + `src/app/(study)/shadowing/shadowing.module.css`; ticked `docs/features/g1-shadowing.md:39`. Recordings stay strictly in browser memory with zero server uploads and zero new dependencies.
+- `npm run check` (`2026-11-26 13:06:43` to `13:08:01` +07:00 ICT, clean `.next`): PASS -- `typecheck` PASS; `npm test` **364/364** PASS (`22/22` prototype + `342/342` core/route, 0 failures/skips, including 5 new unit tests in `tests/shadowing-record-compare.test.ts` and `tests/ui-motion.test.ts` PASS); `next build --webpack` PASS; `test:app` **16/16** PASS.
+- Shadowing Playwright route browser check (`npx tsx src/app/(study)/shadowing/browser-check.ts`): **30/30** PASS (desktop `1440px` and mobile `390px`, 0 horizontal overflow, 0 browser console errors, `noExternalRequests: true`, verifying whole-clip recording, overlaid 64-bar original+user waveforms for both whole-clip and segment takes, download `shadowing-demo-ca-clip.(webm|m4a)`, alternating playback start/pause/resume/complete, and deletion).
+- `.next/static/chunks/**/*.js` gzip total: `454,347 B` (`93` chunks; `+4,497 B` vs clean `origin/master` `409c125` baseline `449,850 B`; `19,147 B` headroom under `473,494 B` gate). Zero forbidden packages in client chunks.
+- `node tools/check-route-scope.mjs origin/master naetoru/shadowing-record-compare`: PASS (`10` changed files including this append-only verification entry). Only this append-only audit entry follows `4feb7ac49645efd6b3f3b4ad158fe0e4d8247511`.
+- Limits: browser check uses Chrome fake MediaRecorder device and public synthetic clip; physical iOS Safari / Android microphone hardware not tested here.
+
+### Master synchronization for PR #112
+
+- Checked merge commit 342a9c39ab6127697ff6fb1e2f255558628a339f against master afc8b0f72de3b0c810f644ae194eb99ffc5cc336 on Windows x64, Node v24.10.0 and npm 11.6.1, starting from a clean .next.
+- npm run check passed on 2026-11-26 from 13:33:02 to 13:34:48 ICT (UTC+07:00). Typecheck and webpack build passed. Tests passed 364/364 (22 prototype and 342 core/route). The application gate passed 16/16.
+- Route scope passed for 10 files. Both ownership entries and audit records were retained. The master checklist note for recording was superseded by the completed implementation. Only this append-only audit entry follows the tested merge.
