@@ -1190,3 +1190,10 @@ Checked implementation 61b8cc3fd473097d05f332b6138e7770d1868aad on branch `naeto
 - Today browser check PASS at 1440 px and 390 px with a disposable fixture. It verified the 87 week controls, the same-level clip link and the missing-clip label.
 - Read-only G0 CLI smoke produced byte-identical plans twice: 87 weeks, 6,182 unique catalog items and two N5 library suggestions.
 - Route scope PASS. This append-only entry follows the checked implementation.
+
+
+### Master synchronization
+
+- Checked merge commit `2ec088946ce0c81cc71deafa4f00bd983fe02737` after merging master `409c125e127610d65841cc4a3a316b47df53aa37`. Windows x64, Node v24.10.0, npm 11.6.1.
+- `npm run check` passed on 2026-11-26 from 12:21:54 to 12:23:22 ICT (UTC+07:00). Typecheck and webpack build passed. Tests passed 359/359 (22 prototype and 337 core/route), with zero failures or skips. Application gate passed 16/16.
+- Route scope passed for all 12 changed files. The only manual conflict resolution preserved both append-only verification entries.
