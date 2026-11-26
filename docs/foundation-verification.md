@@ -1325,3 +1325,11 @@ Checked implementation `922aa0801d33afd711181dbc4026bf8f06056d75` on branch `nae
 - Live production verification + 390px `/login` headless Chrome check: PASS -- unauthenticated `/manifest.webmanifest` (200, 4 icons) and all 4 `/icons/*.png` (200, `image/png`) succeed; `/icons/../api/x` (401), `/icons/a.svg` (307), `/icons/x.png.js` (307), `/api/review/cards` (401) remain blocked; `/login` at 390x844 renders all manifest/icon/iOS meta tags with 0 errors, 0 failed requests, and 0 horizontal overflow (`scrollWidth=390`).
 - Client JS gzip budget (`.next/static/chunks/**/*.js`, 96 files): `466,964 B` gzip (raw `1,384,084 B`) <= `473,494 B` ceiling (`6,530 B` headroom).
 - `node tools/check-route-scope.mjs origin/master naetoru/pwa-install-icons`: PASS (10 implementation files + this append-only verification record). Only this append-only audit entry follows `922aa08`.
+
+### Synchronization with master `4ae20c6` (PR #118 shadowing auto-meta) -- 2026-11-27
+
+- Checked merge commit `92b39e79488a807270697bde6720b7313b66b488` on branch `naetoru/pwa-install-icons` against `origin/master` `4ae20c63e8f341f4373d5dcc554cd8ea1d0277bc` (Windows x64, Node `v24.10.0`, clean `.next`).
+- Conflict resolution: kept both `naetoru/shadowing-auto-meta` (#118) and `naetoru/pwa-install-icons` (#119) ownership entries in `tools/check-route-scope.mjs` without altering master lines; preserved all prior `origin/master` entries verbatim in `docs/foundation-verification.md` followed by PR #119 entries; confirmed `src/proxy.ts` still opens only `/^\/icons\/[A-Za-z0-9_-]+\.png$/`.
+- `npm run check` (clean `.next`) PASS (`2026-11-27T00:07:28+07:00` to `2026-11-27T00:09:18+07:00`): `typecheck` PASS; `npm test` **395/395 PASS** (`22/22` prototype + `373/373` core/route, 0 fail, 0 skipped); webpack production `build` PASS; `test:app` **16/16 PASS**.
+- Client JS gzip (`.next/static/chunks/**/*.js`, 97 files): **`471,778 B`** (raw `1,396,264 B`, budget `<= 473,494 B`, headroom `1,716 B`).
+- Route scope `node tools/check-route-scope.mjs origin/master naetoru/pwa-install-icons` PASS (`11` changed files). Only this append-only audit entry follows `92b39e7`.
