@@ -1,6 +1,12 @@
 'use client';
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import type { Clip, ClipSegment } from './clip-model.ts';
+import {
+  parseFuriganaNotation,
+  parsePositionedFurigana,
+  sliceFuriganaRange,
+  type FuriganaPart,
+} from './auto-meta-model.ts';
 import { segmentAtIn, shouldRepeat, updatePlayback, SEEK_TOLERANCE } from './playback.ts';
 import {
   PLAYBACK_SPEEDS,
@@ -68,6 +74,19 @@ const DONE_MSG = 'Đã nghe xong đoạn. Bạn có thể ghi âm nói thử.';
 const YOUTUBE_WAVE_NOTE = 'Clip YouTube nhúng không trích xuất được âm thanh gốc; chỉ hiển thị sóng âm giọng của bạn.';
 const stopTracks = (s: MediaStream | null | undefined) => s?.getTracks().forEach((t) => t.stop());
 
+function renderFuriganaParts(parts: readonly FuriganaPart[]): ReactNode {
+  return parts.map((part, idx) =>
+    part.reading ? (
+      <ruby key={idx}>
+        {part.text}
+        <rt>{part.reading}</rt>
+      </ruby>
+    ) : (
+      <Fragment key={idx}>{part.text}</Fragment>
+    ),
+  );
+}
+
 export function ShadowingPlayer({
   clip,
   initialSegment = 0,
@@ -129,7 +148,13 @@ export function ShadowingPlayer({
   const [speed, setSpeed] = useState<number>(DEFAULT_PLAYBACK_SPEED);
   const [limit, setLimit] = useState(1);
   const [count, setCount] = useState(0);
-  const [subtitles, setSubtitles] = useState(clip.isDemo ? 'both' : 'kana');
+  const [subtitles, setSubtitles] = useState(() => {
+    if (clip.isDemo) return 'both';
+    if (clip.segments.some((s) => Boolean(s.furigana))) {
+      return clip.segments.some((s) => Boolean(s.vi)) ? 'both' : 'ja';
+    }
+    return 'kana';
+  });
   const [status, setStatus] = useState(
     clip.isDemo
       ? 'Chọn một câu rồi nghe thử. Clip chỉ có hình và tiếng bíp, không có giọng đọc Nhật.'
@@ -609,23 +634,89 @@ export function ShadowingPlayer({
       sourceClipId: clip.id,
     });
   }
-  function renderTokens(text: string, precomputed: SentenceToken[] | undefined, sentence: ClipSegment) {
+  function renderTokens(
+    text: string,
+    precomputed: SentenceToken[] | undefined,
+    sentence: ClipSegment,
+    furigana?: string | null,
+  ) {
     const tokens = precomputed && precomputed.length ? precomputed : fallbackSegmentTokens(text);
-    return tokens.map((token, index) =>
-      token.clickable ? (
-        <button
-          key={index}
-          type="button"
-          className={styles.wordToken}
-          aria-label={`Tra từ ${token.surface}`}
-          onClick={(event) => openLookup(token, sentence, event.currentTarget)}
-        >
-          {token.surface}
-        </button>
-      ) : (
-        <span key={index}>{token.surface}</span>
-      ),
-    );
+    const positioned = furigana ? parsePositionedFurigana(text, furigana) : null;
+    if (!positioned) {
+      return tokens.map((token, index) =>
+        token.clickable ? (
+          <button
+            key={index}
+            type="button"
+            className={styles.wordToken}
+            aria-label={`Tra từ ${token.surface}`}
+            onClick={(event) => openLookup(token, sentence, event.currentTarget)}
+          >
+            {token.surface}
+          </button>
+        ) : (
+          <span key={index}>{token.surface}</span>
+        ),
+      );
+    }
+
+    const tokenRanges: { token: SentenceToken; start: number; end: number }[] = [];
+    let offset = 0;
+    for (const token of tokens) {
+      const start = offset;
+      offset += token.surface.length;
+      tokenRanges.push({ token, start, end: offset });
+    }
+    if (offset !== text.length) {
+      return renderFuriganaParts(positioned);
+    }
+
+    const nodes: ReactNode[] = [];
+    let i = 0;
+    while (i < tokenRanges.length) {
+      const first = tokenRanges[i];
+      let groupEnd = first.end;
+      let lookup: SentenceToken | null = first.token.clickable ? first.token : null;
+      let j = i;
+
+      let expanded = true;
+      while (expanded) {
+        expanded = false;
+        for (const part of positioned) {
+          if (part.reading && part.start < groupEnd && part.end > groupEnd) {
+            while (j + 1 < tokenRanges.length && groupEnd < part.end) {
+              j++;
+              groupEnd = tokenRanges[j].end;
+              if (!lookup && tokenRanges[j].token.clickable) {
+                lookup = tokenRanges[j].token;
+              }
+            }
+            expanded = true;
+          }
+        }
+      }
+
+      const parts = sliceFuriganaRange(positioned, first.start, groupEnd);
+      const content = renderFuriganaParts(parts);
+      if (lookup) {
+        const targetToken = lookup;
+        nodes.push(
+          <button
+            key={i}
+            type="button"
+            className={styles.wordToken}
+            aria-label={`Tra từ ${targetToken.surface}`}
+            onClick={(event) => openLookup(targetToken, sentence, event.currentTarget)}
+          >
+            {content}
+          </button>,
+        );
+      } else {
+        nodes.push(<span key={i}>{content}</span>);
+      }
+      i = j + 1;
+    }
+    return nodes;
   }
   function choose(index: number) {
     stopPlayback();
@@ -999,7 +1090,8 @@ export function ShadowingPlayer({
           <div className={styles.header}>
             <h2>{clip.title}</h2>
             <span>
-              {clip.isDemo ? 'DEMO' : clip.level} · {(clipEnd - clipStart).toFixed(1)} giây
+              {clip.isDemo ? 'DEMO' : clip.level}
+              {clip.roadmapWeek ? ` · TUẦN ${clip.roadmapWeek}` : ''} · {(clipEnd - clipStart).toFixed(1)} giây
             </span>
           </div>
           {clip.youtubeId ? (
@@ -1046,7 +1138,7 @@ export function ShadowingPlayer({
           <div className={styles.captions} aria-label="Phụ đề mẫu">
             {caption.speaker && subtitles !== 'off' && <small lang="ja">{caption.speaker}</small>}
             {(subtitles === 'both' || subtitles === 'ja') && (
-              <p lang="ja">{renderTokens(caption.ja, caption.tokens, caption)}</p>
+              <p lang="ja">{renderTokens(caption.ja, caption.tokens, caption, caption.furigana)}</p>
             )}
             {subtitles === 'kana' && (
               <p lang={caption.kana ? 'ja' : 'vi'}>
@@ -1187,7 +1279,11 @@ export function ShadowingPlayer({
                     </span>
                   </span>
                   {sentence.speaker && <small lang="ja">{sentence.speaker}</small>}
-                  <span lang="ja">{sentence.ja}</span>
+                  <span lang="ja">
+                    {sentence.furigana
+                      ? renderFuriganaParts(parseFuriganaNotation(sentence.ja, sentence.furigana))
+                      : sentence.ja}
+                  </span>
                   <span>{sentence.vi}</span>
                   {takes[index] && <small>Đã ghi âm</small>}
                   {Boolean(clipHistory.pinned[sentence.id]) && <small>Đã ghim</small>}

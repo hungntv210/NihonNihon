@@ -308,11 +308,19 @@ try {
   await page.getByRole('status').filter({ hasText: 'Đã phát xong chuỗi xen kẽ: câu gốc → giọng của bạn.' }).waitFor();
   await page.getByRole('button', { name: 'Xóa ghi âm cả clip', exact: true }).click();
   assert.equal(await page.getByLabel('Nghe lại bản ghi cả clip', { exact: true }).count(), 0);
-  // Clip maker: auth gate, file upload + waveform + SRT + boundary adjust + preview + save/persist, YouTube link + auto-split without download.
+  // Clip maker + offline auto-meta: auth gates, file upload + waveform + SRT + offline furigana/tags/week + user edits + save/persist/reload, YouTube link + auto-split without download.
   const unauthClips = await fetch(origin + '/api/shadowing/clips');
   assert.equal(unauthClips.status, 401);
   assert.equal(unauthClips.headers.get('cache-control'), 'private, no-store');
   assert.equal(unauthClips.headers.get('set-cookie'), null);
+  const unauthAnalyze = await fetch(origin + '/api/shadowing/clips/analyze', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ sentences: ['今日はいい天気ですね。'] }),
+  });
+  assert.equal(unauthAnalyze.status, 401);
+  assert.equal(unauthAnalyze.headers.get('cache-control'), 'private, no-store');
+  assert.equal(unauthAnalyze.headers.get('set-cookie'), null);
   await page.getByRole('button', { name: '+ Tạo clip mới', exact: true }).click();
   const maker = page.locator('[data-clip-maker]');
   await maker.waitFor();
@@ -320,9 +328,27 @@ try {
   await maker.getByLabel('Tiêu đề clip', { exact: true }).fill('Clip tải lên thử nghiệm');
   await maker.locator('input[type="file"]').first().setInputFiles(path.resolve('src/app/(study)/shadowing/demo.webm'));
   await page.waitForFunction(() => { const svg = document.querySelector('[data-maker-waveform][data-wave-decoded="true"]'); const v = document.querySelector<HTMLVideoElement>('[data-clip-maker] video'); return Boolean(svg && svg.querySelectorAll('[data-maker-wave-bar]').length === 96 && v && Number.isFinite(v.duration) && v.duration >= 5); });
-  await maker.getByLabel('Hoặc dán nội dung .srt / .ass', { exact: true }).fill('1\n00:00:00,000 --> 00:00:04,000\nおはようございます。\n\n2\n00:00:04,500 --> 00:00:08,500\nいい天気ですね。');
+  await maker.getByLabel('Hoặc dán nội dung .srt / .ass', { exact: true }).fill('1\n00:00:00,000 --> 00:00:04,000\n学生は本を見ます。\n\n2\n00:00:04,500 --> 00:00:08,500\n今日はいい天気ですね。');
   await maker.getByRole('button', { name: 'Áp dụng phụ đề .srt/.ass', exact: true }).click();
   await maker.locator('[data-maker-segment="1"]').waitFor();
+  // Verify offline auto-meta fills furigana, ruby preview, OpenJLPT tags, roadmap week, and honest no-MT note
+  await maker.locator('[data-maker-ruby-preview="0"] ruby rt').first().waitFor();
+  assert.equal(await maker.getByLabel('Furigana câu 1', { exact: true }).inputValue(), '{学生|がくせい}は{本|ほん}を{見|み}ます。');
+  assert.equal(await maker.getByLabel('Furigana câu 2', { exact: true }).inputValue(), '{今日|きょう}はいい{天気|てんき}ですね。');
+  await maker.locator('[data-maker-tag="N5"]').waitFor();
+  assert.ok(Number(await maker.getByLabel('Tuần lộ trình', { exact: true }).inputValue()) >= 1);
+  assert.match(await maker.locator('[data-maker-auto-status]').innerText(), /chưa có dịch máy tiếng Việt/);
+  // User edits furigana, deletes an auto tag, adds custom tag, and changes roadmap week before saving
+  await maker.getByLabel('Furigana câu 2', { exact: true }).fill('{今日|こんにち}はいい{天気|てんき}ですね。');
+  assert.match(await maker.locator('[data-maker-ruby-preview="1"]').innerText(), /こんにち/);
+  if (await maker.getByRole('button', { name: 'Xóa tag trợ từ', exact: true }).count() > 0) {
+    await maker.getByRole('button', { name: 'Xóa tag trợ từ', exact: true }).click();
+    assert.equal(await maker.locator('[data-maker-tag="trợ từ"]').count(), 0);
+  }
+  await maker.getByLabel('Thêm tag mới', { exact: true }).fill('tự gắn');
+  await maker.getByRole('button', { name: '+ Thêm tag', exact: true }).click();
+  await maker.locator('[data-maker-tag="tự gắn"]').waitFor();
+  await maker.getByLabel('Tuần lộ trình', { exact: true }).selectOption('5');
   await maker.getByLabel('Mốc kết thúc câu 1', { exact: true }).fill('3.8');
   await maker.locator('[data-maker-segment="0"]').getByRole('button', { name: 'Nghe thử câu', exact: true }).click();
   await page.waitForTimeout(250);
@@ -334,15 +360,28 @@ try {
   assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
   await page.screenshot({ path: 'data/reports/shadowing-clip-maker-desktop-1440.png', fullPage: true });
   await maker.getByRole('button', { name: 'Lưu clip vào kho', exact: true }).click();
-  await page.getByLabel('Kho clip').getByRole('button', { name: /Clip tải lên thử nghiệm/ }).waitFor();
+  const savedCard = page.getByLabel('Kho clip').getByRole('button', { name: /Clip tải lên thử nghiệm/ });
+  await savedCard.waitFor();
+  assert.match(await savedCard.innerText(), /Tuần 5/);
+  assert.match(await savedCard.innerText(), /tự gắn/);
+  await page.getByLabel('Phụ đề mẫu', { exact: true }).locator('ruby rt').first().waitFor();
+  assert.match(await page.getByLabel('Phụ đề mẫu', { exact: true }).innerText(), /がくせい/);
   await page.waitForFunction(() => Boolean(document.querySelector('video')?.getAttribute('src')?.includes('user-clip%3A')));
   const uploadedSrc = await page.locator('video').getAttribute('src');
   assert.ok(uploadedSrc && uploadedSrc.startsWith('/shadowing/media?clip=user-clip%3A'));
   const uploadedRange = await context.request.get(origin + uploadedSrc, { headers: { range: 'bytes=0-31' } });
   assert.equal(uploadedRange.status(), 206);
   assert.equal((await uploadedRange.body()).length, 32);
+  // Reload and verify edited furigana, tags, and roadmap week persisted
   await page.reload();
-  await page.getByLabel('Kho clip').getByRole('button', { name: /Clip tải lên thử nghiệm/ }).waitFor();
+  const reloadedCard = page.getByLabel('Kho clip').getByRole('button', { name: /Clip tải lên thử nghiệm/ });
+  await reloadedCard.waitFor();
+  assert.match(await reloadedCard.innerText(), /Tuần 5/);
+  assert.match(await reloadedCard.innerText(), /tự gắn/);
+  await reloadedCard.click();
+  await page.getByLabel('Phụ đề mẫu', { exact: true }).locator('ruby rt').first().waitFor();
+  await page.getByRole('button', { name: /Câu 2.*4.5–8.5s/ }).click();
+  assert.match(await page.getByLabel('Phụ đề mẫu', { exact: true }).innerText(), /こんにち/);
   await page.getByRole('button', { name: '+ Tạo clip mới', exact: true }).click();
   await maker.waitFor();
   await maker.getByRole('tab', { name: 'Dán link YouTube', exact: true }).click();

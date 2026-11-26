@@ -1297,3 +1297,21 @@ Checked implementation `6eb67ba891f253c2bc353df885ea67c0827b96b7` on branch `nae
 - Route browser checks: `common-tools/browser-check.ts` PASS, `vocab/browser-check.ts` PASS, `kanji/browser-check.ts` PASS (1440px + 390px viewports, 0 browser errors, 0 horizontal overflow).
 - Client JS gzip budget (`.next/static/chunks/**/*.js`, 96 files): `467,774 B` gzip (raw `1,384,094 B`) vs `473,494 B` ceiling (`5,720 B` margin); zero `node:sqlite`, `better-sqlite`, or `jmdict_fts` references in client chunks.
 - `node tools/check-route-scope.mjs origin/master naetoru/g1-jmdict-lookup`: PASS (`20` changed files including this append-only verification record). Only this append-only audit entry follows `6eb67ba`.
+
+## Naetoru Shadowing offline auto-meta -- 2026-11-26
+
+- Checked implementation `dc20f66b19dde464776731274caffa9fb0f04af0` on branch `naetoru/shadowing-auto-meta` against `origin/master` `3ce4d88f1161ffce3dda5b849f9ceafd998acfad` (Windows x64, Node `v24.10.0`, npm `11.6.1`, clean `.next`).
+- `npm run check` PASS (2026-11-26T22:17:34+07:00 to 2026-11-26T22:19:10+07:00): `typecheck` PASS; `npm test` **386/386 PASS** (22/22 prototype + 364/364 core/route, including 6 new test suites in `tests/shadowing-auto-meta.test.ts` and 3/3 `font-split.test.ts`), 0 fail, 0 skipped; webpack production `build` PASS; `test:app` **16/16 PASS**.
+- Client bundle `.next/static/chunks/**/*.js` total gzip: **470,710 B** (budget `< 473,494 B`, headroom `2,784 B`); zero `kuromoji` / IPADIC dictionary chunks in `.next/static/`.
+- Playwright `node --import tsx src/app/(study)/shadowing/browser-check.ts` PASS **31/31** (2026-11-26T22:20:09+07:00 to 2026-11-26T22:21:07+07:00, `noExternalRequests: true`, 0 console/page errors, 390px and 1440px zero horizontal overflow): verified `/api/shadowing/clips/analyze` 401 + `private, no-store` + no `Set-Cookie`, offline kuromoji furigana + `<ruby>` preview, OpenJLPT tags, 87-week roadmap suggestion, honest no-MT notice, user edits to furigana/tags/week before saving, and persistence across reload.
+- Route scope `node tools/check-route-scope.mjs origin/master naetoru/shadowing-auto-meta` PASS (17 implementation files + this append-only audit entry).
+- Limitations: Vietnamese machine translation is intentionally NOT implemented (offline-only, no external API calls); `docs/features/g1-shadowing.md` line 31 stays unticked `[ ]` with note `còn thiếu: dịch máy tiếng Việt (chờ duyệt gửi ra ngoài)`. Only this append-only audit entry follows the checked implementation.
+
+### Synchronization with master `5c61aad` (PR #117 JMdict lookup) -- 2026-11-26
+
+- Checked merge commit `d87a1d299be51374a28b120ac4a9418c94f38a54` on branch `naetoru/shadowing-auto-meta` against `origin/master` `5c61aad260f3cd39b07990ed782542d4f8240fb7` (Windows x64, Node `v24.10.0`, npm `11.6.1`, clean `.next`).
+- Conflict resolution: kept both `naetoru/g1-jmdict-lookup` and `naetoru/shadowing-auto-meta` ownership entries in `tools/check-route-scope.mjs` without altering other lines; preserved both chronological verification entries in `docs/foundation-verification.md` without altering existing text.
+- `npm run check` PASS (2026-11-26T22:56:49+07:00 to 2026-11-26T22:59:07+07:00): `typecheck` PASS; `npm test` **391/391 PASS** (22/22 prototype + 369/369 core/route, 0 fail, 0 skipped); webpack production `build` PASS; `test:app` **16/16 PASS**.
+- Playwright `node --import tsx src/app/(study)/shadowing/browser-check.ts` PASS **31/31** (2026-11-26T22:59:30+07:00 to 2026-11-26T23:00:29+07:00, `noExternalRequests: true`, 0 browser errors, 390px and 1440px zero horizontal overflow).
+- Client bundle `.next/static/chunks/**/*.js` (97 files) total gzip: **471,786 B** (raw `1,396,268 B`, budget `<= 473,494 B`, headroom `1,708 B`); zero `kuromoji`, `IPADIC`, `node:sqlite`, `better-sqlite`, or `jmdict_fts` chunks or references in `.next/static/`.
+- Route scope `node tools/check-route-scope.mjs origin/master naetoru/shadowing-auto-meta` PASS (18 changed files). Only this append-only audit entry follows the checked merge commit `d87a1d299be51374a28b120ac4a9418c94f38a54`.
