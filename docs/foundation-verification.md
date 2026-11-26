@@ -1205,3 +1205,9 @@ Checked implementation 61b8cc3fd473097d05f332b6138e7770d1868aad on branch `naeto
 - Docs-only audit (zero `src/` edits, `docs/features/g1-today-roadmap.md:38-39` untouched): ticked 1 item (`docs/features/g1-foundation.md:31` FTS5 search index with verified `file:line`, route, and test evidence) and added concise single-line `"Còn thiếu:"` notes under verified incomplete items across `g1-common-tools.md`, `g1-grammar.md`, `g1-kanji.md`, `g1-shadowing.md`, `g1-today-roadmap.md` (`:43`, `:44`, `:73`), and `g1-vocab.md` (data counts verified read-only against a disposable copy of the app DB).
 - `npm run check` (`2026-11-26 12:08:17` to `12:10:04` +07:00 ICT): PASS -- `typecheck` PASS (`next typegen && tsc --noEmit`); `npm test` `354/354` PASS (`22/22` prototype + `332/332` core/route, 0 failures/skips); `next build --webpack` PASS; `test:app` `16/16` PASS.
 - Route scope passed (`9` files: 7 `docs/features/g1-*.md` files, `tools/check-route-scope.mjs`, and this append-only verification entry). Only this append-only verification entry follows `363d3e32307ac0e6d1628edd7e2b1b15b385e0fe`.
+
+### Master synchronization for PR #111
+
+- Checked merge commit $checked against master b4e38e11b16cd479f3e5b97ad5067fd3bb714fbd on Windows x64, Node v24.10.0 and npm 11.6.1, starting from a clean .next.
+- npm run check passed on 2026-11-26 from 13:20:20 to 13:22:04 ICT (UTC+07:00). Typecheck and webpack build passed. Tests passed 359/359 (22 prototype and 337 core/route). The application gate passed 16/16.
+- Route scope passed for all nine changed files. All 15 checklist notes and both completed roadmap items were retained. Only this append-only audit entry follows the tested merge.
