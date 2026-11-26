@@ -1162,3 +1162,9 @@ Checked implementation 61b8cc3fd473097d05f332b6138e7770d1868aad on branch `naeto
 - `npm run check` (`2026-11-26 08:41:08` to `08:43:13` ICT, Windows x64, Node v24.10.0, clean `.next`): PASS — `typecheck` PASS; `npm test` `351/351` PASS (`22/22` prototype + `329/329` core/route, 0 failures/skips); `next build --webpack` PASS; `test:app` `16/16` PASS.
 - Playwright verification against the fresh production build with disposable demo, YouTube, and private-clip fixtures (`1280x900` desktop and `390x844` mobile, 0 page errors, 0 horizontal overflow): all 3 library cards display all 7 metadata fields (title, level, source, topic, sentence count, speech rate in `ký tự/s`, and `% từ đã biết`).
 - Route scope passed (`9` files). Only this append-only verification entry follows `3ac7ab51cd2f9210477950dd86c98a4fb160a99d`.
+
+## Pokabu JLPT incomplete verifier fallback (2026-11-26)
+
+- Checked implementation `3a9acfd036fad184177728f66527a0638df24ea0` on `pokabu/verifier-incomplete-fallback`, based on `a90e1fd`. Windows 11 x64, Node v24.10.0 and npm 11.6.1.
+- `npm run check` (09:50:14–09:51:45 ICT) passed. Typecheck, webpack build and application gate (16/16) passed. All 356 tests passed (22 prototype and 334 core/route), with zero failures or skips.
+- Five mock regressions passed. They cover batch integrity, model fallback, independent semantic review and the stopped checkpoint. The route-scope guard passed. Only this append-only entry follows the checked implementation.
