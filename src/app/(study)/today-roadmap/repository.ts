@@ -30,13 +30,42 @@ export function updateProgress(file: string, change: (progress: Progress) => Pro
     return next;
   } finally { fs.closeSync(descriptor);fs.unlinkSync(lock);if (fs.existsSync(temporary)) fs.unlinkSync(temporary); }
 }
+function catalogItems(db: DatabaseSync) {
+  return (db.prepare(`SELECT i.item_id id,i.kind,v.level,v.word title,NULL frequency FROM content_items i JOIN vocab v USING(item_id) WHERE i.is_active=1 AND i.source_id='openjlpt'
+    UNION ALL SELECT i.item_id,i.kind,k.level,k.character,k.frequency_rank FROM content_items i JOIN kanji k USING(item_id) WHERE i.is_active=1 AND i.source_id='openjlpt'
+    UNION ALL SELECT i.item_id,i.kind,g.level,g.pattern,NULL FROM content_items i JOIN grammar g USING(item_id) WHERE i.is_active=1 AND i.source_id='openjlpt'`).all() as unknown as CatalogItem[]).map(item => ({ ...item }));
+}
+export function readRoadmapCatalog(db: DatabaseSync, items = catalogItems(db)) {
+  const sentences = db.prepare(`SELECT DISTINCT s.text_ja text FROM sentences s
+    JOIN content_items i USING(item_id) WHERE i.is_active=1 AND i.source_id='openjlpt'`).all()
+    .map(row => String(row.text).normalize('NFKC'));
+  const sentencesByInitial = new Map<string, string[]>();
+  for (const sentence of new Set(sentences)) {
+    for (const character of new Set(sentence)) {
+      const bucket = sentencesByInitial.get(character);
+      if (bucket) bucket.push(sentence);
+      else sentencesByInitial.set(character, [sentence]);
+    }
+  }
+  const counts = new Map<string, number>();
+  return items.map(item => {
+    if (item.kind !== 'vocab') return { ...item };
+    const word = item.title.normalize('NFKC');
+    let count = counts.get(word);
+    if (count === undefined) {
+      count = 0;
+      for (const text of sentencesByInitial.get([...word][0]) ?? []) {
+        if (text.includes(word)) count++;
+      }
+      counts.set(word, count);
+    }
+    return { ...item, frequency: count ? -count : null };
+  });
+}
 export function roadmapData(db: DatabaseSync, now = new Date()) {
   const due = Number(db.prepare(`SELECT count(*) n FROM srs_cards c JOIN content_items i USING(item_id) WHERE i.is_active=1 AND i.kind IN ('vocab','kanji') AND c.card_type='recognition' AND c.due_at<=?`).get(now.toISOString())!.n);
-  const items = db.prepare(`SELECT i.item_id id,i.kind,v.level,v.word title,NULL frequency FROM content_items i JOIN vocab v USING(item_id) WHERE i.is_active=1 AND i.source_id='openjlpt'
-    UNION ALL SELECT i.item_id,i.kind,k.level,k.character,k.frequency_rank FROM content_items i JOIN kanji k USING(item_id) WHERE i.is_active=1 AND i.source_id='openjlpt'
-    UNION ALL SELECT i.item_id,i.kind,g.level,g.pattern,NULL FROM content_items i JOIN grammar g USING(item_id) WHERE i.is_active=1 AND i.source_id='openjlpt'`).all() as unknown as CatalogItem[];
-  const clips = db.prepare("SELECT item_id id,source_key title FROM content_items WHERE kind='clip' AND is_active=1 ORDER BY item_id LIMIT 20").all().map(r => ({ id: String(r.id), title: String(r.title) }));
   const saved = db.prepare(`SELECT DISTINCT i.item_id id FROM content_items i JOIN srs_cards c USING(item_id) WHERE i.is_active=1`).all().map(r => String(r.id));
-  return { due, items: items.map(item => ({ ...item })), clips, saved };
+  const clips = db.prepare("SELECT item_id id,source_key title FROM content_items WHERE kind='clip' AND is_active=1 ORDER BY item_id LIMIT 20").all().map(r => ({ id: String(r.id), title: String(r.title) }));
+  return { due, items: catalogItems(db), clips, saved };
 }
 
