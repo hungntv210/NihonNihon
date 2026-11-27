@@ -38,8 +38,8 @@ Học 1.038 kanji N5–N2 qua âm Hán Việt và luôn đi kèm 2–3 từ dùn
 
 ## Tiêu chí hoàn thành
 
-- [ ] 1.038 kanji N5–N2 đều có Hán Việt, nghĩa Việt, On/Kun, animation nét
-  - Bản sao DB app có 1.037/1.038 chữ có âm Hán Việt. Chữ còn lại, `畑`, đã có ghi chú nguồn trong supplement. [Kanjipedia](https://www.kanjipedia.jp/kanji/0005671000/) ghi đây là quốc tự Nhật, đọc Kun はた・はたけ. [Từ điển Hán Nôm](https://hvdic.thivien.net/wpy/%E7%95%91) ghi các âm Nôm và Quan thoại cho chữ này, nên giữ 1.037 cách đọc Hán Việt và 1 ghi chú ngoại lệ. Bản sao có đủ nghĩa Việt, nét viết và ít nhất một cách đọc Nhật cho cả 1.038 chữ.
+- [x] 1.038 kanji N5–N2 có nghĩa Việt, cách đọc Nhật và dữ liệu animation nét. Âm Hán Việt đạt 1.037/1.038 với một ngoại lệ đã duyệt.
+  - Ngoại lệ `畑` do anh duyệt 27/11/2026: “quốc tự Nhật, không có âm Hán Việt chuẩn”. [Kanjipedia](https://www.kanjipedia.jp/kanji/0005671000/) ghi cách đọc Kun はた・はたけ. [Từ điển Hán Nôm](https://hvdic.thivien.net/wpy/%E7%95%91) ghi các âm Nôm và Quan thoại. Bản sao DB app có đủ nghĩa Việt, nét viết và ít nhất một cách đọc Nhật cho cả 1.038 chữ.
 - [ ] Animation chạy mượt trên điện thoại tầm trung
 
 ## Câu hỏi còn mở
