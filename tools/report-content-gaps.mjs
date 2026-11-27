@@ -17,7 +17,8 @@ const linked = `SELECT s.*, si.source_hash,
   WHERE l.item_id=? ORDER BY l.position`;
 
 export function reportContentGaps(db, supplement = new Map()) {
-  const vocab = { total: 0, missingPos: 0, noExamples: 0, noCompleteExample: 0 };
+  const vocab = { total: 0, missingPos: 0, noExamples: 0, noCompleteExample: 0,
+    examples: 0, missingNotation: 0, missingFurigana: 0 };
   const grammar = { total: 0, examples: 0, choiceQuestions: 0, orderingQuestions: 0, choiceShortfall: 0, orderingShortfall: 0, missingNotation: 0, missingFurigana: 0, missingVietnamese: 0,
     fewerThanThreeExamples: 0, fewerThanThreeChoice: 0, fewerThanThreeOrdering: 0 };
   const kanji = { total: 0, missingHanViet: 0, unexplainedMissingHanViet: 0, missingVietnamese: 0, noReadings: 0, missingOn: 0,
@@ -41,7 +42,12 @@ export function reportContentGaps(db, supplement = new Map()) {
     const entry = supplementFor(supplement, row.item_id, row.source_hash);
     vocab.missingPos += Number(![...JSON.parse(row.pos), ...(entry?.pos ?? [])]
       .some((pos) => typeof pos === 'string' && pos.trim()));
-    const base = examples.all(row.item_id).slice(0, 4);
+    const originals = examples.all(row.item_id);
+    const counted = effectiveExamples(originals, entry);
+    vocab.examples += counted.length;
+    vocab.missingNotation += counted.filter((s) => !s.furigana_notation?.trim()).length;
+    vocab.missingFurigana += counted.filter((s) => !furiganaMatches(s.text_ja, s.furigana_notation || s.text_ja)).length;
+    const base = originals.slice(0, 4);
     const all = effectiveExamples(base, entry);
     const complete = (s) => furiganaMatches(s.text_ja, s.furigana_notation || s.text_ja)
       && s.has_vi && s.text_en?.trim();
