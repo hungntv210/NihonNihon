@@ -1387,3 +1387,11 @@ Checked merge commit `c61cf9dc709b7dca726900e2a2ebb619bb29b215` on branch `naeto
 - `npm run check` (clean `.next`): PASS -- `typecheck` PASS; `npm test` **411/411 PASS** (`22/22` prototype + `389/389` core/route, 0 fail, 0 skipped); production `next build --webpack` PASS; `test:app` **16/16 PASS**.
 - Client JS gzip budget (`.next/static/chunks/**/*.js`, 98 files): **`473,472 B`** default gzip (`472,663 B` level-9 gzip, raw `1,396,770 B`) vs `473,494 B` ceiling (`22 B` margin).
 - `node tools/check-route-scope.mjs origin/master naetoru/shadowing-irodori`: PASS (`9` changed files including this append-only verification entry). Only this append-only audit entry follows `c61cf9d`.
+
+### Sync PR #122 with origin/master `848ee2e` (includes #120 + #123) -- 2026-11-27
+
+Checked merge commit `4a5f5fa3373cc09512c181fd16515ba873a9c2a9` on branch `naetoru/shadowing-irodori` after merging `origin/master` (`848ee2e08f6e4706d274772d1d5c9d61039f4a3d`, including #120 vocab notebook sources and #123 grammar highlight audit) on Windows x64 with Node v24.10.0 and clean `.next` build.
+- Conflict resolution: clean merge commit `4a5f5fa` (no rebase/force-push), preserving all `origin/master` ownership entries (`#120`, `#123`) plus `#122` in `tools/check-route-scope.mjs` (`+1/-0` vs `origin/master`) and preserving all `origin/master` entries verbatim in `docs/foundation-verification.md` followed by `#122` entries.
+- `npm run check` (clean `.next`): PASS -- `typecheck` PASS; `npm test` **420/420 PASS** (`22/22` prototype + `398/398` core/route, 0 fail, 0 skipped); production `next build --webpack` PASS; `test:app` **16/16 PASS**.
+- Client JS gzip budget (`.next/static/chunks/**/*.js`, 98 files): **`473,472 B`** default gzip (`472,663 B` level-9 gzip, raw `1,396,770 B`) vs `473,494 B` ceiling (`22 B` margin).
+- `node tools/check-route-scope.mjs origin/master naetoru/shadowing-irodori`: PASS (`9` changed files including this append-only verification entry). Only this append-only audit entry follows `4a5f5fa`.
