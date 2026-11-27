@@ -1333,3 +1333,11 @@ Checked implementation `922aa0801d33afd711181dbc4026bf8f06056d75` on branch `nae
 - `npm run check` (clean `.next`) PASS (`2026-11-27T00:07:28+07:00` to `2026-11-27T00:09:18+07:00`): `typecheck` PASS; `npm test` **395/395 PASS** (`22/22` prototype + `373/373` core/route, 0 fail, 0 skipped); webpack production `build` PASS; `test:app` **16/16 PASS**.
 - Client JS gzip (`.next/static/chunks/**/*.js`, 97 files): **`471,778 B`** (raw `1,396,264 B`, budget `<= 473,494 B`, headroom `1,716 B`).
 - Route scope `node tools/check-route-scope.mjs origin/master naetoru/pwa-install-icons` PASS (`11` changed files). Only this append-only audit entry follows `92b39e7`.
+
+## Vocabulary example furigana coverage — 2026-11-27
+
+- Checked `d171e3b05c7e5f02394a324a212b079c0069b3cb` from `32aaadb` on Windows x64, Node v24.10.0, npm 11.6.1, with a clean `.next`.
+- `npm run check` passed from 21:02:30 to 21:04:09 ICT (UTC+07:00). Typecheck, prototype 22/22, core/route 374/374, production build, and app gate 16/16 all passed.
+- On the same read-only snapshot, raw vocabulary had 285 items without examples and 1,678 links without notation. The approved supplement removed the 285 example gaps. The candidate reduced the remaining 1,288 missing notations and 1,140 incomplete furigana cases to zero. The production repository read path found a complete example for 4,741/4,741 vocabulary items against the private candidate.
+- The accepted kokuji note for 畑 remains visible. There are 1,037 attested Han-Viet readings and no unexplained gaps. The vocabulary supplement was prepared for review. Device speech playback was outside this verification.
+- Route scope passed. This append-only record is the sole change after the checked implementation.
