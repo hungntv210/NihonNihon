@@ -1387,3 +1387,10 @@ Checked implementation `036ccffa72355827593e1bc48e4662dad19004b6` on branch `nae
 - The owner approved 畑 as the sole Han-Viet reading exception on 27 November. The checklist records 1,037 attested readings plus that exception. Repository smoke verified the exact updated note and no Han-Viet reading for this item. The private data was not installed.
 
 - Synced with master `0c54f08` at `c8cb04aea3c7192d526d200fb72677178a351add`, retaining both append-only logs. Clean `.next` `npm run check` passed from 22:04:04 to 22:06:03 ICT (UTC+07:00): typecheck, prototype 22/22, core/route 387/387, build and app gate 16/16. Route scope passed for 8 files. Notebook, common-tools and shadowing paths match master; this line is the sole change after the synced verification.
+
+## Vocabulary day readings — 2026-11-27
+
+- Checked implementation `0605535e9d61557251a48336ddca17b8f11bd283` from master `848ee2e` on Windows x64, Node v24.10.0 and npm 11.6.1.
+- Clean `.next` `npm run check` passed from 22:48:15 to 22:50:43 ICT (UTC+07:00). Typecheck, prototype 22/22, core/route 399/399, production build and app gate 16/16 all passed. The focused furigana suites passed 8/8.
+- The offline v3 audit found three changed readings (two for 今日 and one for 明日), one newly annotated duration, and one existing annotation withheld for manual review. The queue remains at 427. The 275 missing notations and 277 examples without valid furigana are unchanged. The approved 畑 note matches v2.
+- Route scope passed for 8 files. This append-only entry follows the checked implementation.
