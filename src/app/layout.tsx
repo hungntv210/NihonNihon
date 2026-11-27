@@ -9,6 +9,18 @@ export const metadata: Metadata = {
   title: { default: 'Nihon Nihon', template: '%s · Nihon Nihon' },
   description: 'Không gian học tiếng Nhật riêng tư.',
   robots: { index: false, follow: false, nocache: true },
+  icons: {
+    icon: [{ url: '/icon.svg', type: 'image/svg+xml' }],
+    apple: [{ url: '/icons/apple-touch-icon-180.png', sizes: '180x180', type: 'image/png' }],
+  },
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'default',
+    title: 'Nihon Nihon',
+  },
+  other: {
+    'apple-mobile-web-app-capable': 'yes',
+  },
 };
 export const viewport: Viewport = {
   width: 'device-width',
