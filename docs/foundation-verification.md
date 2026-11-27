@@ -1341,3 +1341,11 @@ Checked implementation `922aa0801d33afd711181dbc4026bf8f06056d75` on branch `nae
 - On the same read-only snapshot, raw vocabulary had 285 items without examples and 1,678 links without notation. The approved supplement removed the 285 example gaps. The candidate reduced the remaining 1,288 missing notations and 1,140 incomplete furigana cases to zero. The production repository read path found a complete example for 4,741/4,741 vocabulary items against the private candidate.
 - The accepted kokuji note for 畑 remains visible. There are 1,037 attested Han-Viet readings and no unexplained gaps. The vocabulary supplement was prepared for review. Device speech playback was outside this verification.
 - Route scope passed. This append-only record is the sole change after the checked implementation.
+
+## Vocabulary furigana editorial follow-up — 2026-11-27
+
+- Checked `4bb613f7bbb8390c1c8267bb5d16abaf408b2986` from `32aaadb` on Windows x64, Node v24.10.0 and npm 11.6.1, with a clean `.next`. The revised offline review supersedes the zero-gap candidate counts above.
+- `npm run check` passed from 21:58:40 to 22:00:37 ICT (UTC+07:00). Typecheck, prototype 22/22, core/route 379/379, production build, and app gate 16/16 passed. Route scope passed.
+- Five synthetic regression suites cover contextual readings, fixed names, inflected past forms, standard counter variants, target-reading conflicts, and unresolved cases. An independent pattern check found zero matches for the five reported error patterns in the revised supplement.
+- The read-only snapshot plus revised candidate still has one complete example for each of 4,741 words. 275 linked examples lack notation and 277 lack valid furigana. Of 427 review entries, 276 withhold a new annotation and 151 retain previously approved annotations for further review. The vocabulary checklist remains open.
+- The owner approved 畑 as the sole Han-Viet reading exception on 27 November. The checklist records 1,037 attested readings plus that exception. Repository smoke verified the exact updated note and no Han-Viet reading for this item. The private data was not installed.
