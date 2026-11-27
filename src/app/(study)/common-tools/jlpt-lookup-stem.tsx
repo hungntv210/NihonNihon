@@ -1,6 +1,6 @@
 'use client';
 
-import { lazy, Suspense, useEffect, useState } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react';
 import { JaText } from '../../../components/text.tsx';
 import {
   fallbackSegmentTokens,
@@ -125,4 +125,78 @@ export function JlptLookupDialog({
       <LazyLookupPopup target={target} triggerEl={triggerEl} onClose={onClose} />
     </Suspense>
   );
+}
+
+export function useJlptLookup({
+  date,
+  questions,
+  question,
+  index,
+  answer,
+  onJump,
+}: {
+  date: string;
+  questions: readonly { id: string }[];
+  question: { id: string; stem: string; choices: readonly string[] } | undefined;
+  index: number;
+  answer: { correctIndex: number } | undefined;
+  onJump: (index: number) => void;
+}) {
+  const [target, setTarget] = useState<LookupTarget | null>(null);
+  const triggerRef = useRef<HTMLElement | null>(null);
+  const onJumpRef = useRef(onJump);
+  onJumpRef.current = onJump;
+  const clear = useCallback(() => setTarget(null), []);
+
+  useEffect(() => {
+    const q = new URLSearchParams(window.location.search).get('q');
+    const i = q ? questions.findIndex((item) => item.id === q) : -1;
+    if (i >= 0) {
+      onJumpRef.current(i);
+      setTarget(null);
+    }
+  }, [questions]);
+
+  const open = useCallback(
+    (token: { surface: string; base?: string }, el: HTMLElement) => {
+      if (!question || !answer) return;
+      triggerRef.current = el;
+      setTarget({
+        surface: token.surface,
+        base: token.base,
+        sentenceJa: question.stem,
+        sentenceVi: null,
+        sourceClipId: null,
+        sourceKind: 'jlpt',
+        jlptDate: date,
+        jlptQuestionId: question.id,
+        jlptQuestionNumber: index + 1,
+      });
+    },
+    [answer, date, index, question],
+  );
+
+  const stem = !question ? null : answer ? (
+    <JlptLookupStem questionId={question.id} stem={question.stem} onSelect={open} />
+  ) : (
+    <JaText>{question.stem}</JaText>
+  );
+
+  const answerLookup =
+    question && answer ? (
+      <JlptAnswerLookup word={question.choices[answer.correctIndex] ?? ''} onSelect={open} />
+    ) : null;
+
+  return {
+    clear,
+    stem,
+    answerLookup,
+    dialog: (
+      <JlptLookupDialog
+        target={answer ? target : null}
+        triggerEl={triggerRef.current}
+        onClose={clear}
+      />
+    ),
+  };
 }
