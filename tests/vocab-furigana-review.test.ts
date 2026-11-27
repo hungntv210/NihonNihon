@@ -69,3 +69,40 @@ test('prefers a matching target reading and queues conflicts without overriding 
   assert.equal(review('日本語。', '{日本語|にっぽんご}。', [{ word: '日本語', reading: 'にっぽんご' }]).furigana, '{日本語|にほんご}。');
   assert.deepEqual(review('本です。', '{本|ほん}でした。').reasons, ['surface-mismatch']);
 });
+
+test('reads 今日 according to context and queues genuinely ambiguous uses', () => {
+  const daily = review('彼は宿題を今日終えねばならない。', '{彼|かれ}は{宿題|しゅくだい}を{今日|こんにち}{終|お}えねばならない。',
+    [{ word: '今日', reading: 'こんにち' }]);
+  assert.equal(daily.furigana, '{彼|かれ}は{宿題|しゅくだい}を{今日|きょう}{終|お}えねばならない。');
+  assert.deepEqual(daily.changes, { 'day-今日': 1 });
+  assert.deepEqual(daily.reasons, []);
+  const formal = review('彼がその会社を今日の会社にした。', '{彼|かれ}がその{会社|かいしゃ}を{今日|きょう}の{会社|かいしゃ}にした。');
+  assert.equal(formal.furigana, '{彼|かれ}がその{会社|かいしゃ}を{今日|こんにち}の{会社|かいしゃ}にした。');
+  assert.deepEqual(formal.reasons, []);
+  assert.equal(review('こんにちは！', 'こんにちは！').furigana, 'こんにちは！');
+  const uncertain = review('今日の会社。', '{今日|こんにち}の{会社|かいしゃ}。', [{ word: '今日', reading: 'きょう' }]);
+  assert.equal(uncertain.furigana, '{今日|こんにち}の{会社|かいしゃ}。');
+  assert.deepEqual(uncertain.reasons, ['ambiguous-reading:今日']);
+});
+
+test('defaults to everyday readings for 明日 and 昨日 and preserves explicit formal usage', () => {
+  for (const [text, old, expected] of [
+    ['明日はあくよ。', '{明日|あす}はあくよ。', '{明日|あした}はあくよ。'],
+    ['昨日もあいていた。', '{昨日|さくじつ}もあいていた。', '{昨日|きのう}もあいていた。'],
+    ['明日付けで知らせます。', '{明日|あした}{付|づ}けで{知|し}らせます。', '{明日|あす}{付|づ}けで{知|し}らせます。'],
+    ['昨日付けで出した。', '{昨日|きのう}{付|づ}けで{出|だ}した。', '{昨日|さくじつ}{付|づ}けで{出|だ}した。'],
+  ]) {
+    const result = review(text, old);
+    assert.equal(result.furigana, expected, text);
+    assert.deepEqual(result.reasons, [], text);
+  }
+  assert.ok(review('明日の世界。', '{明日|あす}の{世界|せかい}。').reasons.includes('ambiguous-reading:明日'));
+});
+
+test('distinguishes the first day of a month from a full day and queues an unspecified 一日', () => {
+  assert.equal(review('八月一日。', '{八月|はちがつ}{一日|いちにち}。').furigana, '{八月|はちがつ}{一日|ついたち}。');
+  assert.equal(review('丸一日かかった。', '{丸|まる}{一日|ついたち}かかった。').furigana, '{丸|まる}{一日|いちにち}かかった。');
+  const unspecified = review('一日。', '{一日|ついたち}。', [{ word: '一日', reading: 'いちにち' }]);
+  assert.equal(unspecified.furigana, '{一日|ついたち}。');
+  assert.ok(unspecified.reasons.includes('ambiguous-reading:一日'));
+});

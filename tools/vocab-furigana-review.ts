@@ -14,6 +14,26 @@ const kanjiDigits = '〇一二三四五六七八九';
 const fixedNippon = /^(?:日本銀行|日本放送協会|日本郵便)/u;
 const fixedIma = /^(?:今朝|今晩|今夜|今日|今月|今年|今度|今週|今期|今回|今学期|今世紀|今昔|今時|今更|今頃|今後|今般|今季)/u;
 
+function dayReading(word: string, before: string, after: string) {
+  switch (word) {
+    case '今日':
+      if (/^(?:では[、，]|あるの[はが]|の(?:社会|日本)(?!語)|の会社にした)/u.test(after)) return 'こんにち';
+      if (/^(?:は|わ)[！!。]?[」』]?$/.test(after) && /(?:^|[「『])$/u.test(before)) return 'こんにち';
+      if (/^の(?!(?:朝|昼|夜|午前|午後|夕方|天気|予定|授業|仕事|催し|社説|あなた))/u.test(after)) return null;
+      return 'きょう';
+    case '明日':
+    case '昨日':
+      if (/^付(?:け|で)/u.test(after)) return word === '明日' ? 'あす' : 'さくじつ';
+      if (word === '明日' && /^の(?:社会|日本|世界)/u.test(after)) return null;
+      return word === '明日' ? 'あした' : 'きのう';
+    case '一日':
+      if (/月$/u.test(before) || /^付(?:け|で)/u.test(after)) return 'ついたち';
+      if (/^(?:中|間|かけて|もかから|で終|じゅう)/u.test(after) || /丸$/u.test(before)) return 'いちにち';
+      return null;
+    default: return null;
+  }
+}
+
 function parseUnits(notation: string) {
   const units: Unit[] = [];
   let from = 0;
@@ -58,7 +78,7 @@ function counterReading(n: number, counter: string, before: string, after: strin
     case '月': return n >= 1 && n <= 12 && !/^(?:間|後|ほど|が経)/u.test(after) ? base('がつ',{4:'しがつ',7:'しちがつ',9:'くがつ'}) : null;
     case '日': {
       if (/^(?:月|市|町|村)/u.test(after)) return null;
-      if (n === 1) return /月$/u.test(before) ? 'ついたち' : /^(?:中|間|かけて)/u.test(after) ? 'いちにち' : null;
+      if (n === 1) return dayReading('一日', before, after);
       const days: Record<number,string> = {2:'ふつか',3:'みっか',4:'よっか',5:'いつか',6:'むいか',7:'なのか',8:'ようか',9:'ここのか',10:'とおか',14:'じゅうよっか',20:'はつか',24:'にじゅうよっか'};
       return days[n] ?? (n >= 11 ? base('にち',{9:'くにち'}) : null);
     }
@@ -73,6 +93,7 @@ export function reviewVocabFurigana(japanese: string, notation: string, tokens: 
   const edits: Edit[] = [], resolved: {from:number;to:number}[] = [];
   const starts = new Map(units.map((u,i)=>[u.from,i]));
   starts.set(japanese.length,units.length);
+  const boundaries = new Set([0, ...tokens.flatMap(t => [t.start, t.end])]);
   const overlap = (from:number,to:number) => resolved.some(span=>span.from<to && span.to>from);
   function apply(from:number,to:number,markup:string,rule:string) {
     const first=starts.get(from), last=starts.get(to);
@@ -103,11 +124,28 @@ export function reviewVocabFurigana(japanese: string, notation: string, tokens: 
     }
     const reading=counterReading(n,counter,before,after);
     const to=end+1, surface=japanese.slice(from,to);
-    if(!reading || !apply(from,to,'{'+surface+'|'+reading+'}','counter-'+counter)) {
+    if(!reading || !apply(from,to,'{'+surface+'|'+reading+'}',surface === '一日' ? 'day-一日' : 'counter-'+counter)) {
       reasons.add('ambiguous-counter:'+counter);
+      if (surface === '一日') {
+        reasons.add('ambiguous-reading:一日');
+        resolved.push({from,to});
+      }
       continue;
     }
     if(counter==='時' && after.startsWith('の間に') && !apply(to+1,to+2,'{間|あいだ}','clock-interval')) reasons.add('ambiguous-reading:間');
+  }
+
+  for (const match of japanese.matchAll(/今日|明日|昨日/gu)) {
+    const word = match[0], from = match.index, to = from + word.length;
+    const after = japanese.slice(to);
+    const exactUnit = units[starts.get(from) ?? -1]?.base === word;
+    const separate = boundaries.has(from) && boundaries.has(to) || exactUnit;
+    const name = word === '明日' && after.startsWith('香') || word === '今日' && after.startsWith('子');
+    const reading = separate && !name ? dayReading(word, japanese.slice(0, from), after) : null;
+    if (!reading || !apply(from, to, '{' + word + '|' + reading + '}', 'day-' + word)) {
+      reasons.add('ambiguous-reading:' + word);
+      resolved.push({from,to});
+    }
   }
 
   for(const u of units) {
@@ -135,7 +173,6 @@ export function reviewVocabFurigana(japanese: string, notation: string, tokens: 
     readings.add(hira);
     forms.set(word,readings);
   }
-  const boundaries=new Set([0,...tokens.flatMap(t=>[t.start,t.end])]);
   for(const [word,readings] of [...forms].sort((a,b)=>b[0].length-a[0].length)) {
     for(let from=japanese.indexOf(word);from!==-1;from=japanese.indexOf(word,from+word.length)) {
       const to=from+word.length;
