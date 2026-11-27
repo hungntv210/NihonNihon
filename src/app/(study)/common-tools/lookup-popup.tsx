@@ -263,12 +263,12 @@ export function LookupPopup({
                 <p className={s.hanViet} lang="vi">
                   {activeItem.hanViet
                     ? activeItem.hanViet.text
-                    : activeItem.kanjiHanViet.map((e) => `${e.character}: ${e.hanViet.text}`).join(' · ')}
+                    : activeItem.kanjiHanViet.map((entry) => `${entry.character}: ${entry.hanViet.text}`).join(' · ')}
                 </p>
                 <small className={s.source}>{formatLookupSourceLabel(hv, activeItem.sourceName)}</small>
                 {activeItem.hanViet
                   ? activeItem.hanViet.translationId && <ReportViButton translationId={activeItem.hanViet.translationId} label="Hán Việt" />
-                  : <div>{activeItem.kanjiHanViet.map((e) => e.hanViet.translationId && <ReportViButton key={e.hanViet.translationId} translationId={e.hanViet.translationId} label={`Hán Việt ${e.character}`} />)}</div>}
+                  : <div>{activeItem.kanjiHanViet.map((entry) => entry.hanViet.translationId && <ReportViButton key={entry.hanViet.translationId} translationId={entry.hanViet.translationId} label={`Hán Việt ${entry.character}`} />)}</div>}
               </div>
             )}
 
