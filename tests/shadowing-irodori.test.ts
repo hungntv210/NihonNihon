@@ -220,7 +220,7 @@ test('parseWebVtt parses WebVTT cues with settings, hours, and NOTE blocks', () 
     '元気ですか。',
   ].join('\n');
   const parsed = parseWebVtt(vtt);
-  assert.equal(parsed.error, undefined);
+  assert.deepEqual(parsed.errors, []);
   assert.equal(parsed.cues.length, 2);
   assert.equal(parsed.cues[0]!.startMs, 1000);
   assert.equal(parsed.cues[0]!.endMs, 4250);
