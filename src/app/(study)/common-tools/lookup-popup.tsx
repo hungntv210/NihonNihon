@@ -276,7 +276,9 @@ export function LookupPopup({
               <p className={s.sectionLabel}>Nghĩa</p>
               <p className={s.meaning} lang={meaning ? 'vi' : 'en'}>{meaning ? meaning.text : eng}</p>
               <small className={s.source}>{formatLookupSourceLabel(meaning, activeItem.sourceName)}</small>
-              {meaning?.translationId && <ReportViButton translationId={meaning.translationId} label="nghĩa Việt" />}
+              {activeItem.meaning && activeItem.meaning.translationId && (
+                <ReportViButton translationId={activeItem.meaning.translationId} label="nghĩa Việt" />
+              )}
               {meaning && eng && (
                 <>
                   <p className={s.englishSub} lang="en">{eng}</p>
