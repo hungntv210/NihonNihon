@@ -139,7 +139,7 @@ export function useJlptLookup({
   questions: readonly { id: string }[];
   question: { id: string; stem: string; choices: readonly string[] } | undefined;
   index: number;
-  answer: { correctIndex: number } | undefined;
+  answer: { correctIndex: number } | null | undefined;
   onJump: (index: number) => void;
 }) {
   const [target, setTarget] = useState<LookupTarget | null>(null);
