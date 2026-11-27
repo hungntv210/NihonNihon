@@ -13,7 +13,8 @@ import {
   type GrammarTranslation,
 } from '../repository.ts';
 import { decodeGrammarRouteId } from '../route-id.ts';
-import { focusOf, grammarPractice } from '../practice.ts';
+import { grammarPractice } from '../practice.ts';
+import { resolveGrammarHighlights } from '../highlight.ts';
 import { FORMULA_LEGEND, parseGrammarFormula, type FormulaKind } from '../formula.ts';
 import { Furigana } from '../furigana.tsx';
 import { PracticePanel } from '../practice-panel.tsx';
@@ -61,7 +62,6 @@ export default async function GrammarDetailPage({ params }: { params: Promise<{ 
     });
   if (!data) notFound();
   const { item, patterns } = data,
-    focus = focusOf(item.pattern),
     formula = parseGrammarFormula(item.formationEn, item.pattern),
     { choices, ordering } = grammarPractice(item.pattern, item.examples, patterns, item.exercises);
   return (
@@ -211,8 +211,16 @@ export default async function GrammarDetailPage({ params }: { params: Promise<{ 
                     <Furigana
                       japanese={example.japanese}
                       notation={example.furigana}
-                      focus={focus}
-                      highlights={example.highlights}
+                      highlights={
+                        example.highlights?.length
+                          ? example.highlights
+                          : resolveGrammarHighlights(
+                              item.pattern,
+                              example.japanese,
+                              example.furigana,
+                              item.formationEn,
+                            )
+                      }
                     />
                   </p>
                   <Vietnamese value={example.vietnamese} grammarId={item.id} />
