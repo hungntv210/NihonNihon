@@ -18,6 +18,7 @@ import { readShadowingHistory } from './history-store.ts';
 import { summarizeAllClips } from './history-model.ts';
 import { buildClipMetaMap } from './clip-meta-server.ts';
 import { detectLocalWhisper, USER_CLIP_PREFIX } from './clip-maker-store.ts';
+import { IRODORI_CLIP_PREFIX } from './irodori-importer.ts';
 
 const PRACTICE_NOTE = (
   <p>
@@ -42,6 +43,18 @@ function clipNotice(clip: Clip): ReactNode {
     const metaBits: string[] = [];
     if (weekInfo) metaBits.push(`Tuần ${weekInfo.week} (${weekInfo.level} · ${weekInfo.theme})`);
     if (clip.tags && clip.tags.length > 0) metaBits.push(`Tag: ${clip.tags.join(', ')}`);
+    if (clip.id.startsWith(IRODORI_CLIP_PREFIX))
+      return (
+        <>
+          <strong>
+            {clip.attribution} · {clip.level} · {clip.topic}
+          </strong>
+          {metaBits.length > 0 && <p>{metaBits.join(' · ')}</p>}
+          <p>
+            Nhập cục bộ từ bộ tài liệu IRODORI (Japan Foundation) lưu riêng trên máy chủ nhà ({clip.license}). Chỉ phát khi đã đăng nhập; không công khai và không gửi lên dịch vụ ngoài.
+          </p>
+        </>
+      );
     if (clip.youtubeId)
       return (
         <>

@@ -1369,3 +1369,29 @@ Checked implementation `036ccffa72355827593e1bc48e4662dad19004b6` on branch `nae
 - Read-only exercise gap audit (`tools/report-content-gaps.mjs` unmodified + per-level breakdown): pre-grammar-v4 (`513b022fdc14`) choice `<3` `247/403` (shortfall `542`), ordering `<3` `58/403` (shortfall `74`); installed grammar-v4 (`4762cf330e54`) ordering `<3` `0/403` (shortfall `0`), choice `<3` `152/403` (N5 `0`, N4 `47`, N3 `53`, N2 `52`; shortfall `342`).
 - Scope note: `docs/features/g1-grammar.md` lines 19 and 42 remain unticked `[ ]` (real-device audio and remaining 152 choice gaps still open); zero private sentences, zero supplement edits, zero local paths committed.
 - `node tools/check-route-scope.mjs origin/master naetoru/grammar-highlight-audit`: PASS (`7` changed files including this append-only verification entry). Only this append-only audit entry follows `036ccff`.
+
+
+### Shadowing offline IRODORI importer by level (shadowing:21) -- 2026-11-27
+
+Checked implementation `17c063aca5d40c374d7bce2b3dbb393df6e13005` on branch `naetoru/shadowing-irodori` (base `32aaadb5f1fd65625241099b6b600dcdc936bef8`) on Windows x64 with Node v24.10.0, clean `.next` build, disposable synthetic WAV/MP3 + SRT/VTT/JSON/TXT/manifest fixtures, and local headless Chrome.
+- Implementation: added 100% offline IRODORI importer (`src/app/(study)/shadowing/irodori-importer.ts` + CLI `tools/import-irodori.ts`) reading local user-downloaded directory (`--dir` or `NIHON_IRODORI_DIR`, default `data/private/irodori`), mapping CEFR `A1 -> N5`, `A2-1`/`A2-2`/`A2 -> N4`, `B1 -> N3`, reusing `clip-maker-store.ts` validation + SHA-256 private storage via idempotent `upsertImportedFileClip` (no network downloads, no IRODORI files committed, anti-traversal + symlink guards), offline furigana/tag/roadmapWeek enrichment, `--dry-run` printing counts per level without writing disk, server-only IRODORI notice in `src/app/(study)/shadowing/page.tsx`, and Vietnamese download + folder-layout + CLI docs in `src/app/(study)/shadowing/README.md`. Kept `docs/features/g1-shadowing.md` line 21 unticked (`[ ]`) pending owner's real local IRODORI download and import.
+- `npm run check` (clean `.next`): PASS -- typecheck PASS; prototype `22/22` + core/route `381/381` (`403/403` total, 0 failures/skips, including 8 new tests in `tests/shadowing-irodori.test.ts` covering level mapping, WebVTT/SRT/JSON/TXT/manifest discovery, WAV/MP3 duration detection, `--dry-run` 0-write counts, idempotent create/unchanged/update, all 7 metadata fields via `buildClipMetaMap`/`computeClipMeta`, private SHA-256 media resolution, security/traversal/magic-byte rejections, CLI invocation, and static no-network guard); production `next build --webpack` PASS; `test:app` `16/16` PASS.
+- Route browser check: `node --import tsx src/app/(study)/shadowing/browser-check.ts` PASS (`31/31`, `noExternalRequests: true`).
+- Client JS gzip budget (`.next/static/chunks/**/*.js`, 97 files): `471,777 B` gzip (raw `1,396,276 B`) vs `473,494 B` ceiling (`1,717 B` margin; `+0 B` client JS vs `origin/master` `471,778 B`; zero `kuromoji`/`node:sqlite` in client chunks).
+- `node tools/check-route-scope.mjs origin/master naetoru/shadowing-irodori`: PASS (`9` changed files including this append-only verification entry).
+
+### Sync PR #122 with origin/master `0c54f08` (includes #120) -- 2026-11-27
+
+Checked merge commit `c61cf9dc709b7dca726900e2a2ebb619bb29b215` on branch `naetoru/shadowing-irodori` after merging `origin/master` (`0c54f08404f39def2c1cbf953617032688d7f22e`, including #120 vocab notebook sources) on Windows x64 with Node v24.10.0 and clean `.next` build.
+- Conflict resolution: clean merge commit `c61cf9d` (no rebase/force-push), preserving both #120 and #122 ownership entries in `tools/check-route-scope.mjs` (`+1/-0` vs `origin/master`) and preserving all `origin/master` entries verbatim in `docs/foundation-verification.md` followed by #122 entries.
+- `npm run check` (clean `.next`): PASS -- `typecheck` PASS; `npm test` **411/411 PASS** (`22/22` prototype + `389/389` core/route, 0 fail, 0 skipped); production `next build --webpack` PASS; `test:app` **16/16 PASS**.
+- Client JS gzip budget (`.next/static/chunks/**/*.js`, 98 files): **`473,472 B`** default gzip (`472,663 B` level-9 gzip, raw `1,396,770 B`) vs `473,494 B` ceiling (`22 B` margin).
+- `node tools/check-route-scope.mjs origin/master naetoru/shadowing-irodori`: PASS (`9` changed files including this append-only verification entry). Only this append-only audit entry follows `c61cf9d`.
+
+### Sync PR #122 with origin/master `848ee2e` (includes #120 + #123) -- 2026-11-27
+
+Checked merge commit `4a5f5fa3373cc09512c181fd16515ba873a9c2a9` on branch `naetoru/shadowing-irodori` after merging `origin/master` (`848ee2e08f6e4706d274772d1d5c9d61039f4a3d`, including #120 vocab notebook sources and #123 grammar highlight audit) on Windows x64 with Node v24.10.0 and clean `.next` build.
+- Conflict resolution: clean merge commit `4a5f5fa` (no rebase/force-push), preserving all `origin/master` ownership entries (`#120`, `#123`) plus `#122` in `tools/check-route-scope.mjs` (`+1/-0` vs `origin/master`) and preserving all `origin/master` entries verbatim in `docs/foundation-verification.md` followed by `#122` entries.
+- `npm run check` (clean `.next`): PASS -- `typecheck` PASS; `npm test` **420/420 PASS** (`22/22` prototype + `398/398` core/route, 0 fail, 0 skipped); production `next build --webpack` PASS; `test:app` **16/16 PASS**.
+- Client JS gzip budget (`.next/static/chunks/**/*.js`, 98 files): **`473,472 B`** default gzip (`472,663 B` level-9 gzip, raw `1,396,770 B`) vs `473,494 B` ceiling (`22 B` margin).
+- `node tools/check-route-scope.mjs origin/master naetoru/shadowing-irodori`: PASS (`9` changed files including this append-only verification entry). Only this append-only audit entry follows `4a5f5fa`.
