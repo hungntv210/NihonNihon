@@ -18,13 +18,13 @@ Học 4.741 từ N5–N2 theo thứ tự lộ trình, nghĩa tiếng Việt từ
   - Xác minh 26/11 bằng `tools/report-content-gaps.mjs`: 5 → 0 từ N5–N2 thiếu từ loại trên 4.741 từ, dùng bản sao DB app và supplement đang cài trên production (#113).
 - [x] Nghĩa tiếng Việt (nhãn "từ điển"), dòng tiếng Anh OpenJLPT thu gọn, chạm để mở
 - [x] Audio (TTS hoặc Kanji Alive)
-- [x] 1–2 câu ví dụ có furigana, audio, bản dịch (Tatoeba tiếng Việt nếu có, còn lại dịch máy kèm tiếng Anh)
-  - Đối chiếu trên bản sao chỉ đọc ngày 27/11: DB gốc thiếu ví dụ ở 285/4.741 từ và thiếu ký âm ở 1.678/8.632 lượt ví dụ. Supplement đã duyệt giảm còn 0 từ thiếu ví dụ và 1.288/8.923 lượt thiếu ký âm. Bản supplement chờ duyệt giảm phần thiếu ký âm xuống 0 và giữ đủ ít nhất một ví dụ hoàn chỉnh cho mỗi từ. Ứng dụng có nút đọc bằng Web Speech; lượt này chưa thử giọng trên thiết bị thật.
+- [ ] 1–2 câu ví dụ có furigana, audio, bản dịch (Tatoeba tiếng Việt nếu có, còn lại dịch máy kèm tiếng Anh)
+  - Còn thiếu: trên bản sao DB app chỉ đọc còn 285/4.741 từ N5–N2 chưa có câu ví dụ (4.456/4.741 có) và 1.678/8.632 câu ví dụ thiếu `furigana_notation` (6.954/8.632 có); UI ví dụ kèm tiếng Anh inline cho dịch máy và audio TTS đã đủ ở `src/app/(study)/vocab/[id]/page.tsx:102-145`, `src/app/(study)/vocab/example-english.tsx:1-28`.
 - [x] Liên kết sang từng kanji cấu thành
 - [x] **Từ cùng chữ khác cách đọc** (22 từ, ví dụ 方 かた/ほう): nghĩa dịch máy theo đúng cách đọc + cảnh báo "còn cách đọc khác"
 - [x] Bài học từ mới buổi tối; nghe audio, đọc to câu ví dụ
-- [ ] Sổ từ cá nhân: từ thêm từ Reader, phụ đề, tra cứu, đề thi kèm câu gốc và nguồn
-  - Còn thiếu: điểm lưu từ kèm câu gốc từ Reader và đề thi JLPT (tuyến `/vocab/notebook` tại `src/app/(study)/vocab/notebook/page.tsx:20-65`, `src/app/(study)/vocab/notebook/data.ts:14,58-68,217-349` hiện mới hỗ trợ nguồn phụ đề clip `clip`, tra từ `lookup` và hàng ôn `srs`).
+- [x] Sổ từ cá nhân: từ thêm từ Reader, phụ đề, tra cứu, đề thi kèm câu gốc và nguồn
+  - Xác minh 26/11 (`tests/vocab-notebook.test.ts`, `tests/vocab-notebook-sources.test.ts`, kiểm tra trình duyệt Playwright trên `/jlpt-daily` và `/vocab/notebook`): tuyến `/vocab/notebook` hỗ trợ đủ 3 nguồn có trong app là phụ đề clip (`clip`), tra cứu (`lookup`, bao gồm cả từ ngoài JLPT/JMdict lưu thẳng vào sổ không ép tạo thẻ SRS), đề thi JLPT (`jlpt`, chạm từ trong câu hỏi `/jlpt-daily` lưu kèm câu gốc và liên kết `/jlpt-daily?date=YYYY-MM-DD&q=<questionId>`, lọc `"Đề thi"`), cùng hàng ôn SRS (`srs`) và tương thích ngược `lookup-sentences.json` v1 / backup-restore. Ghi chú: app hiện chưa có màn hình Reader nên chưa có nguồn Reader.
 
 ## Dữ liệu
 
