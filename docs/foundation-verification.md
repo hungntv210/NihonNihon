@@ -1359,6 +1359,17 @@ Checked implementation `9ef42707b152da98fba85e1d7947d4e23f98c4e4` on branch `nae
 - `npm run check` (clean `.next`): PASS -- typecheck PASS; prototype `22/22` + core/route `381/381` (`403/403` total, 0 failures/skips); production `next build --webpack` PASS; `test:app` `16/16` PASS.
 - Route browser check: `node --import tsx src/app/(study)/jlpt-daily/browser-check.ts` PASS (0 errors, spoiler gate + next-day SRS review intact).
 - `node tools/check-route-scope.mjs origin/master naetoru/vocab-notebook-sources`: PASS (`14` changed files including this append-only verification entry).
+## Naetoru G1 grammar highlight audit & exercise gap verification -- 2026-11-27
+
+Checked implementation `036ccffa72355827593e1bc48e4662dad19004b6` on branch `naetoru/grammar-highlight-audit` (base `origin/master` `0c54f08`) on Windows x64 with Node v24.10.0, clean `.next` build, synthetic fixture unit tests, local headless Chrome, and read-only DB/supplement audit copies.
+- `npm run check` (clean `.next`): PASS -- `typecheck` PASS; `npm test` **412/412 PASS** (`22/22` prototype + `390/390` core/route, 0 fail, 0 skipped, including 9 new test suites in `tests/grammar-highlight.test.ts` and `tests/font-split.test.ts` with 0 non-Core kanji in `src/`); production `next build --webpack` PASS; `test:app` **16/16 PASS**.
+- Route browser check: `node --import tsx src/app/(study)/grammar/browser-check.ts` PASS (`1440px` + `390px`, `shortId: PASS`, `malformedIds: 404`, `browserErrors: []`).
+- Client JS gzip budget (`.next/static/chunks/**/*.js`, 98 files): **`473,462 B`** default gzip (`472,653 B` level-9 gzip, raw `1,396,770 B`) vs `473,494 B` ceiling (`32 B` margin, `-7 B` vs `origin/master`; `highlight.ts` is imported server-side only in `src/app/(study)/grammar/[id]/page.tsx`).
+- Read-only highlight audit (`tools/report-grammar-highlight.mjs` across 403 patterns / 1,209 examples: 1,136 DB + 73 supplement): legacy `658/1,209` (`54.4%`, `548` unhighlighted, `3` mismatched) -> server-side `resolveGrammarHighlights` **`1,209/1,209` (`100%`, `0` unhighlighted, `0` mismatched)**; fixed supplement `highlights` audit `49/49` OK (`0` mismatch).
+- Read-only exercise gap audit (`tools/report-content-gaps.mjs` unmodified + per-level breakdown): pre-grammar-v4 (`513b022fdc14`) choice `<3` `247/403` (shortfall `542`), ordering `<3` `58/403` (shortfall `74`); installed grammar-v4 (`4762cf330e54`) ordering `<3` `0/403` (shortfall `0`), choice `<3` `152/403` (N5 `0`, N4 `47`, N3 `53`, N2 `52`; shortfall `342`).
+- Scope note: `docs/features/g1-grammar.md` lines 19 and 42 remain unticked `[ ]` (real-device audio and remaining 152 choice gaps still open); zero private sentences, zero supplement edits, zero local paths committed.
+- `node tools/check-route-scope.mjs origin/master naetoru/grammar-highlight-audit`: PASS (`7` changed files including this append-only verification entry). Only this append-only audit entry follows `036ccff`.
+
 
 ### Shadowing offline IRODORI importer by level (shadowing:21) -- 2026-11-27
 
