@@ -1,7 +1,8 @@
 'use client';
 
-import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { JaText } from '../../../components/text.tsx';
+import { LookupPopup } from './lookup-popup.tsx';
 import {
   fallbackSegmentTokens,
   isJapaneseClickableText,
@@ -9,123 +10,15 @@ import {
   type SentenceToken,
 } from './lookup-popup-model.ts';
 
-const LazyLookupPopup = lazy(() =>
-  import('./lookup-popup.tsx').then((mod) => ({ default: mod.LookupPopup })),
-);
-
-const STEM_WORD_STYLE = {
-  display: 'inline',
-  width: 'auto',
-  minHeight: 'auto',
-  padding: '0 1px',
-  margin: 0,
+const WORD_STYLE = {
+  padding: 0,
   border: 0,
   borderBottom: '1px dashed var(--color-border)',
-  borderRadius: '2px',
-  background: 'transparent',
+  background: 'none',
   color: 'inherit',
   font: 'inherit',
-  lineHeight: 'inherit',
   cursor: 'pointer',
-  textAlign: 'left',
 } as const;
-
-export function JlptLookupStem({
-  questionId,
-  stem,
-  onSelect,
-}: {
-  questionId: string;
-  stem: string;
-  onSelect: (token: { surface: string; base?: string }, el: HTMLElement) => void;
-}) {
-  const [tokens, setTokens] = useState<SentenceToken[] | null>(null);
-
-  useEffect(() => {
-    setTokens(null);
-    if (!stem) return;
-    const controller = new AbortController();
-    void fetch(`/api/common-tools/lookup?tokenize=${encodeURIComponent(stem)}`, {
-      signal: controller.signal,
-      cache: 'no-store',
-    })
-      .then(async (response) => {
-        if (!response.ok || controller.signal.aborted) return;
-        const data = (await response.json()) as { tokens?: SentenceToken[] };
-        if (!controller.signal.aborted && Array.isArray(data.tokens) && data.tokens.length > 0) {
-          setTokens(data.tokens);
-        }
-      })
-      .catch(() => {
-        // Fallback segmentation stays active on network/abort errors
-      });
-    return () => {
-      controller.abort();
-    };
-  }, [stem]);
-
-  const list = tokens ?? fallbackSegmentTokens(stem);
-  return (
-    <JaText>
-      {list.map((token, idx) =>
-        token.clickable ? (
-          <button
-            key={`${questionId}-${idx}`}
-            type="button"
-            data-jlpt-word={token.surface}
-            data-jlpt-base={token.base}
-            style={STEM_WORD_STYLE}
-            onClick={(event) => onSelect(token, event.currentTarget)}
-          >
-            {token.surface}
-          </button>
-        ) : (
-          <span key={`${questionId}-${idx}`}>{token.surface}</span>
-        ),
-      )}
-    </JaText>
-  );
-}
-
-export function JlptAnswerLookup({
-  word,
-  onSelect,
-}: {
-  word: string;
-  onSelect: (token: { surface: string; base?: string }, el: HTMLElement) => void;
-}) {
-  if (!isJapaneseClickableText(word)) return null;
-  return (
-    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', alignItems: 'center', margin: '0 0 14px' }}>
-      <button
-        type="button"
-        className="button"
-        data-jlpt-answer-word={word}
-        style={{ width: 'auto' }}
-        onClick={(event) => onSelect({ surface: word }, event.currentTarget)}
-      >
-        Tra &amp; lưu từ «<JaText>{word}</JaText>»
-      </button>
-    </div>
-  );
-}
-
-export function JlptLookupDialog({
-  target,
-  triggerEl,
-  onClose,
-}: {
-  target: LookupTarget | null;
-  triggerEl: HTMLElement | null;
-  onClose: () => void;
-}) {
-  if (!target) return null;
-  return (
-    <Suspense fallback={null}>
-      <LazyLookupPopup target={target} triggerEl={triggerEl} onClose={onClose} />
-    </Suspense>
-  );
-}
 
 export function useJlptLookup({
   date,
@@ -142,61 +35,88 @@ export function useJlptLookup({
   answer: { correctIndex: number } | null | undefined;
   onJump: (index: number) => void;
 }) {
-  const [target, setTarget] = useState<LookupTarget | null>(null);
-  const triggerRef = useRef<HTMLElement | null>(null);
-  const onJumpRef = useRef(onJump);
-  onJumpRef.current = onJump;
-  const clear = useCallback(() => setTarget(null), []);
+  const [opened, setOpened] = useState<{ target: LookupTarget; el: HTMLElement } | null>(null);
+  const [tokens, setTokens] = useState<SentenceToken[] | null>(null);
+  const clear = useCallback(() => setOpened(null), []);
 
   useEffect(() => {
-    const q = new URLSearchParams(window.location.search).get('q');
+    const q = new URLSearchParams(location.search).get('q');
     const i = q ? questions.findIndex((item) => item.id === q) : -1;
     if (i >= 0) {
-      onJumpRef.current(i);
-      setTarget(null);
+      onJump(i);
+      setOpened(null);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [questions]);
 
-  const open = useCallback(
-    (token: { surface: string; base?: string }, el: HTMLElement) => {
-      if (!question || !answer) return;
-      triggerRef.current = el;
-      setTarget({
+  const stemText = answer && question ? question.stem : '';
+  useEffect(() => {
+    setTokens(null);
+    if (!stemText) return;
+    let alive = true;
+    void fetch(`/api/common-tools/lookup?tokenize=${encodeURIComponent(stemText)}`)
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data: { tokens?: SentenceToken[] } | null) => {
+        if (alive && data?.tokens?.length) setTokens(data.tokens);
+      })
+      .catch(() => {});
+    return () => { alive = false; };
+  }, [stemText]);
+
+  function open(token: { surface: string; base?: string }, el: HTMLElement) {
+    if (!question || !answer) return;
+    setOpened({
+      el,
+      target: {
         surface: token.surface,
         base: token.base,
         sentenceJa: question.stem,
-        sentenceVi: null,
-        sourceClipId: null,
         sourceKind: 'jlpt',
         jlptDate: date,
         jlptQuestionId: question.id,
         jlptQuestionNumber: index + 1,
-      });
-    },
-    [answer, date, index, question],
-  );
+      },
+    });
+  }
 
-  const stem = !question ? null : answer ? (
-    <JlptLookupStem questionId={question.id} stem={question.stem} onSelect={open} />
-  ) : (
-    <JaText>{question.stem}</JaText>
-  );
-
-  const answerLookup =
-    question && answer ? (
-      <JlptAnswerLookup word={question.choices[answer.correctIndex] ?? ''} onSelect={open} />
-    ) : null;
+  const ansWord = question && answer ? (question.choices[answer.correctIndex] ?? '') : '';
 
   return {
     clear,
-    stem,
-    answerLookup,
-    dialog: (
-      <JlptLookupDialog
-        target={answer ? target : null}
-        triggerEl={triggerRef.current}
-        onClose={clear}
-      />
+    stem: !question ? null : answer ? (
+      <JaText>
+        {(tokens ?? fallbackSegmentTokens(question.stem)).map((tok, i) =>
+          tok.clickable ? (
+            <button
+              key={i}
+              type="button"
+              data-jlpt-word={tok.surface}
+              data-jlpt-base={tok.base}
+              style={WORD_STYLE}
+              onClick={(e) => open(tok, e.currentTarget)}
+            >
+              {tok.surface}
+            </button>
+          ) : (
+            <span key={i}>{tok.surface}</span>
+          ),
+        )}
+      </JaText>
+    ) : (
+      <JaText>{question.stem}</JaText>
     ),
+    answerLookup:
+      ansWord && isJapaneseClickableText(ansWord) ? (
+        <button
+          type="button"
+          className="button"
+          data-jlpt-answer-word={ansWord}
+          style={{ width: 'auto', display: 'flex', margin: '0 0 14px' }}
+          onClick={(e) => open({ surface: ansWord }, e.currentTarget)}
+        >
+          Tra &amp; lưu từ «<JaText>{ansWord}</JaText>»
+        </button>
+      ) : null,
+    dialog: answer && opened ? <LookupPopup target={opened.target} triggerEl={opened.el} onClose={clear} /> : null,
   };
 }

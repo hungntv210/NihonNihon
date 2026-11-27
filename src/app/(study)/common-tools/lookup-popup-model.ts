@@ -76,10 +76,11 @@ export type LookupTarget = {
   jlptQuestionNumber?: number | null;
 };
 
-const JAPANESE_WORD_RE =
-  /[\u3041-\u3096\u30A1-\u30FA\u30FC\u3400-\u4DBF\u4E00-\u9FFF\uF900-\uFAFF\u3005\u3006\u30F6]/u;
-const FALLBACK_RUN_RE =
-  /([\u3400-\u4DBF\u4E00-\u9FFF\uF900-\uFAFF\u3005\u3006\u30F6]+|[\u30A1-\u30FA\u30FC]+|[\u3041-\u3096]+|[^\u3041-\u3096\u30A1-\u30FA\u30FC\u3400-\u4DBF\u4E00-\u9FFF\uF900-\uFAFF\u3005\u3006\u30F6]+)/gu;
+const HIRA = '\\u3041-\\u3096';
+const KATA = '\\u30A1-\\u30FA\\u30FC';
+const KANJI = '\\u3400-\\u4DBF\\u4E00-\\u9FFF\\uF900-\\uFAFF\\u3005\\u3006\\u30F6';
+const JAPANESE_WORD_RE = new RegExp(`[${HIRA}${KATA}${KANJI}]`, 'u');
+const FALLBACK_RUN_RE = new RegExp(`([${KANJI}]+|[${KATA}]+|[${HIRA}]+|[^${HIRA}${KATA}${KANJI}]+)`, 'gu');
 
 export function isJapaneseClickableText(text: string): boolean {
   return JAPANESE_WORD_RE.test(text);

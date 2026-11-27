@@ -13,17 +13,14 @@ import {
 import { ReportViButton } from './report-vi-button.tsx';
 import styles from './lookup-popup.module.css';
 
-type FetchState =
-  | { kind: 'loading' }
-  | { kind: 'ready'; data: LookupResponse }
-  | { kind: 'unauthorized' }
-  | { kind: 'error' };
-
-type SaveState = 'idle' | 'saving' | 'saved' | 'error';
+// 0 = loading, 1 = ready, 2 = unauthorized, 3 = error
+type FetchState = { k: 0 | 2 | 3 } | { k: 1; data: LookupResponse };
+// 0 = idle, 1 = saving, 2 = saved, 3 = error
 type SaveMode = 'srs' | 'notebook';
+type SaveInfo = { s: 0 | 1 | 2 | 3; mode?: SaveMode; msg: string };
 
-const FOCUSABLE_SELECTOR =
-  'button:not(:disabled), a[href], input:not(:disabled), select:not(:disabled), textarea:not(:disabled), [tabindex]:not([tabindex="-1"])';
+const IDLE_SAVE: SaveInfo = { s: 0, msg: '' };
+const FOCUSABLE = 'a[href],button:not(:disabled),[tabindex]:not([tabindex="-1"])';
 
 export function LookupPopup({
   target,
@@ -34,204 +31,187 @@ export function LookupPopup({
   triggerEl: HTMLElement | null;
   onClose: () => void;
 }) {
+  const s = styles;
   const titleId = useId();
   const descId = useId();
   const dialogRef = useRef<HTMLDivElement>(null);
   const closeBtnRef = useRef<HTMLButtonElement>(null);
-  const previousTriggerRef = useRef<HTMLElement | null>(null);
-  const [fetchState, setFetchState] = useState<FetchState>({ kind: 'loading' });
+  const prevTriggerRef = useRef<HTMLElement | null>(null);
+  const [fetchState, setFetchState] = useState<FetchState>({ k: 0 });
   const [selectedIndex, setSelectedIndex] = useState(0);
-  const [saveState, setSaveState] = useState<SaveState>('idle');
-  const [savedMode, setSavedMode] = useState<SaveMode | null>(null);
-  const [saveMessage, setSaveMessage] = useState('');
+  const [save, setSave] = useState<SaveInfo>(IDLE_SAVE);
 
   useEffect(() => {
     if (!target) return;
-    previousTriggerRef.current = triggerEl;
-    setFetchState({ kind: 'loading' });
+    prevTriggerRef.current = triggerEl;
+    setFetchState({ k: 0 });
     setSelectedIndex(0);
-    setSaveState('idle');
-    setSavedMode(null);
-    setSaveMessage('');
+    setSave(IDLE_SAVE);
 
-    const controller = new AbortController();
+    const ctrl = new AbortController();
+    const { signal } = ctrl;
     const params = new URLSearchParams({ q: target.surface });
     if (target.base && target.base !== target.surface) params.set('base', target.base);
 
-    void fetch(`/api/common-tools/lookup?${params.toString()}`, {
-      signal: controller.signal,
-      cache: 'no-store',
-    })
-      .then(async (response) => {
-        if (controller.signal.aborted) return;
-        if (response.status === 401) {
-          setFetchState({ kind: 'unauthorized' });
-          return;
-        }
-        if (!response.ok) {
-          setFetchState({ kind: 'error' });
-          return;
-        }
-        const data = (await response.json()) as LookupResponse;
-        if (!controller.signal.aborted) {
-          setFetchState({ kind: 'ready', data });
-        }
+    void fetch(`/api/common-tools/lookup?${params}`, { signal, cache: 'no-store' })
+      .then(async (res) => {
+        if (signal.aborted) return;
+        if (res.status === 401) return setFetchState({ k: 2 });
+        if (!res.ok) return setFetchState({ k: 3 });
+        const data = (await res.json()) as LookupResponse;
+        if (!signal.aborted) setFetchState({ k: 1, data });
       })
       .catch(() => {
-        if (!controller.signal.aborted) setFetchState({ kind: 'error' });
+        if (!signal.aborted) setFetchState({ k: 3 });
       });
 
-    return () => {
-      controller.abort();
-    };
+    return () => ctrl.abort();
   }, [target, triggerEl]);
 
   useEffect(() => {
     if (!target) return;
-    const focusTarget = closeBtnRef.current ?? dialogRef.current;
-    focusTarget?.focus();
+    (closeBtnRef.current ?? dialogRef.current)?.focus();
 
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        event.preventDefault();
-        event.stopPropagation();
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        e.stopPropagation();
         onClose();
         return;
       }
-      if (event.key !== 'Tab') return;
-      const dialog = dialogRef.current;
-      if (!dialog) return;
-      const focusables = Array.from(dialog.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR));
-      if (!focusables.length) {
-        event.preventDefault();
-        dialog.focus();
+      if (e.key !== 'Tab' || !dialogRef.current) return;
+      const nodes = Array.from(dialogRef.current.querySelectorAll<HTMLElement>(FOCUSABLE));
+      if (!nodes.length) {
+        e.preventDefault();
+        dialogRef.current.focus();
         return;
       }
-      const currentIndex = focusables.indexOf(document.activeElement as HTMLElement);
-      const nextIndex = resolveFocusTrapTarget(focusables.length, currentIndex, event.shiftKey);
-      if (nextIndex !== null) {
-        event.preventDefault();
-        focusables[nextIndex].focus();
+      const next = resolveFocusTrapTarget(
+        nodes.length,
+        nodes.indexOf(document.activeElement as HTMLElement),
+        e.shiftKey,
+      );
+      if (next !== null) {
+        e.preventDefault();
+        nodes[next].focus();
       }
     };
 
     window.addEventListener('keydown', onKeyDown, true);
     return () => {
       window.removeEventListener('keydown', onKeyDown, true);
-      const returnTo = previousTriggerRef.current;
-      if (returnTo && returnTo.isConnected) {
-        returnTo.focus();
-      }
+      if (prevTriggerRef.current?.isConnected) prevTriggerRef.current.focus();
     };
   }, [target, onClose]);
 
   if (!target) return null;
 
-  const hasSentence = Boolean(target.sentenceJa && target.sentenceJa.trim().length > 0);
+  const fk = fetchState.k;
+  const hasSentence = Boolean(target.sentenceJa?.trim());
+  const searchHref = `/common-tools/search?q=${encodeURIComponent(target.base ?? target.surface)}`;
   const allItems: LookupItem[] =
-    fetchState.kind === 'ready' && fetchState.data.item
+    fetchState.k === 1 && fetchState.data.item
       ? [fetchState.data.item, ...fetchState.data.alternatives]
       : [];
   const activeItem = allItems[selectedIndex] ?? allItems[0] ?? null;
 
+  const sentenceBox = hasSentence ? (
+    <div className={s.sentenceBox}>
+      <p className={s.sectionLabel}>Câu gốc</p>
+      <p className={s.sentenceJa} lang="ja">{target.sentenceJa}</p>
+      {target.sentenceVi && <p className={s.sentenceVi} lang="vi">{target.sentenceVi}</p>}
+    </div>
+  ) : null;
+
   async function handleSave(item: LookupItem, mode: SaveMode) {
-    if (!target || saveState === 'saving') return;
-    setSaveState('saving');
-    setSaveMessage('');
+    if (!target || save.s === 1) return;
+    setSave({ s: 1, mode, msg: '' });
+    const nb = mode === 'notebook';
+    const failMsg = nb ? 'Chưa lưu được vào sổ từ. Thử lại sau.' : 'Chưa lưu được thẻ ôn. Thử lại sau.';
     try {
-      const response = await fetch('/api/common-tools/lookup', {
+      const res = await fetch('/api/common-tools/lookup', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          ...target,
           itemId: item.id,
-          ...(mode === 'notebook' ? { notebookOnly: true } : { cardType: item.cardType }),
-          sentenceJa: target.sentenceJa ?? null,
-          sentenceVi: target.sentenceVi ?? null,
-          sourceClipId: target.sourceClipId ?? null,
-          ...(target.sourceKind ? { sourceKind: target.sourceKind } : {}),
-          ...(target.jlptDate ? { jlptDate: target.jlptDate } : {}),
-          ...(target.jlptQuestionId ? { jlptQuestionId: target.jlptQuestionId } : {}),
-          ...(typeof target.jlptQuestionNumber === 'number'
-            ? { jlptQuestionNumber: target.jlptQuestionNumber }
-            : {}),
+          ...(nb ? { notebookOnly: true } : { cardType: item.cardType }),
         }),
       });
-      if (response.status === 401) {
-        setSaveState('error');
-        setSaveMessage('Cần đăng nhập lại để lưu từ.');
-        return;
+      if (!res.ok) {
+        return setSave({ s: 3, msg: res.status === 401 ? 'Cần đăng nhập lại để lưu từ.' : failMsg });
       }
-      if (!response.ok) {
-        setSaveState('error');
-        setSaveMessage(
-          mode === 'notebook'
-            ? 'Chưa lưu được vào sổ từ. Thử lại sau.'
-            : 'Chưa lưu được thẻ ôn. Thử lại sau.',
-        );
-        return;
-      }
-      const data = (await response.json()) as { created?: boolean };
-      setSaveState('saved');
-      setSavedMode(mode);
-      if (mode === 'notebook') {
-        setSaveMessage(
-          hasSentence
-            ? data.created
-              ? 'Đã lưu vào sổ từ kèm câu gốc.'
-              : 'Từ đã có trong sổ; đã cập nhật câu gốc.'
-            : data.created
-              ? 'Đã lưu vào sổ từ.'
-              : 'Từ đã có trong sổ từ.',
-        );
-      } else {
-        setSaveMessage(
-          data.created
+      const { created } = (await res.json()) as { created?: boolean };
+      setSave({
+        s: 2,
+        mode,
+        msg: nb
+          ? created
+            ? hasSentence ? 'Đã lưu vào sổ từ kèm câu gốc.' : 'Đã lưu vào sổ từ.'
+            : hasSentence ? 'Từ đã có trong sổ; đã cập nhật câu gốc.' : 'Từ đã có trong sổ từ.'
+          : created
             ? 'Đã thêm vào ôn kèm câu gốc.'
             : 'Thẻ đã có trong hàng ôn; đã lưu kèm câu gốc.',
-        );
-      }
+      });
     } catch {
-      setSaveState('error');
-      setSaveMessage(
-        mode === 'notebook'
-          ? 'Chưa lưu được vào sổ từ. Thử lại sau.'
-          : 'Chưa lưu được thẻ ôn. Thử lại sau.',
-      );
+      setSave({ s: 3, msg: failMsg });
     }
   }
 
+  const showNotebook = Boolean(
+    activeItem && (activeItem.outsideJlpt || (activeItem.kind === 'vocab' && target.sourceKind === 'jlpt')),
+  );
+  const showSrs = Boolean(activeItem && !activeItem.outsideJlpt);
+  const hv = activeItem?.hanViet ?? activeItem?.kanjiHanViet[0]?.hanViet ?? null;
+  const meaning = activeItem?.meaning ?? null;
+  const eng = activeItem ? activeItem.english.join('; ') : '';
+
+  const saveBtn = (mode: SaveMode, primary: boolean, idle: string, done: string) => {
+    const busy = save.s === 1;
+    const isDone = save.s === 2 && save.mode === mode;
+    return (
+      <button
+        type="button"
+        className={primary ? 'button primary' : 'button'}
+        onClick={() => activeItem && void handleSave(activeItem, mode)}
+        disabled={busy || isDone}
+        aria-busy={busy && save.mode === mode}
+      >
+        {isDone ? done : busy && save.mode === mode ? 'Đang lưu…' : idle}
+      </button>
+    );
+  };
+
   return (
     <div
-      className={styles.backdrop}
+      className={s.backdrop}
       data-lookup-backdrop="true"
-      onMouseDown={(event) => {
-        if (event.target === event.currentTarget) onClose();
-      }}
+      onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
       <div
         ref={dialogRef}
-        className={styles.dialog}
+        className={s.dialog}
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
         aria-describedby={descId}
         tabIndex={-1}
       >
-        <div className={styles.top}>
-          <div className={styles.badges}>
+        <div className={s.top}>
+          <div className={s.badges}>
             {activeItem ? (
               <>
-                <span className={styles.badge}>{formatLookupKind(activeItem.kind)}</span>
-                <span className={`${styles.badge} ${styles.level}`}>{activeItem.level}</span>
+                <span className={s.badge}>{formatLookupKind(activeItem.kind)}</span>
+                <span className={`${s.badge} ${s.level}`}>{activeItem.level}</span>
               </>
             ) : (
-              <span className={styles.badge}>Tra nhanh</span>
+              <span className={s.badge}>Tra nhanh</span>
             )}
           </div>
           <button
             ref={closeBtnRef}
             type="button"
-            className={`button ${styles.closeBtn}`}
+            className={`button ${s.closeBtn}`}
             onClick={onClose}
             aria-label="Đóng tra từ"
           >
@@ -239,246 +219,96 @@ export function LookupPopup({
           </button>
         </div>
 
-        {fetchState.kind === 'loading' && (
+        {!activeItem ? (
           <>
-            <h2 id={titleId} className={styles.wordTitle} lang="ja">
-              {target.surface}
-            </h2>
-            <p id={descId} role="status" className={styles.note}>
-              Đang tra từ…
+            <h2 id={titleId} className={s.wordTitle} lang="ja">{target.surface}</h2>
+            <p id={descId} role={fk === 0 ? 'status' : undefined} className={s.note}>
+              {fk === 0
+                ? 'Đang tra từ…'
+                : fk === 2
+                  ? 'Phiên đăng nhập đã hết hạn. Đăng nhập lại để tra từ.'
+                  : fk === 3
+                    ? 'Chưa tra được lúc này. Thử lại hoặc mở trang Tra cứu chung.'
+                    : `Chưa tìm thấy “${target.surface}” trong dữ liệu đã nhập.`}
             </p>
-          </>
-        )}
-
-        {fetchState.kind === 'unauthorized' && (
-          <>
-            <h2 id={titleId} className={styles.wordTitle} lang="ja">
-              {target.surface}
-            </h2>
-            <p id={descId} className={styles.note}>
-              Phiên đăng nhập đã hết hạn. Đăng nhập lại để tra từ.
-            </p>
-            <div className={styles.actions}>
-              <Link className="button button-primary" href="/login">
-                Đăng nhập lại
-              </Link>
-            </div>
-          </>
-        )}
-
-        {fetchState.kind === 'error' && (
-          <>
-            <h2 id={titleId} className={styles.wordTitle} lang="ja">
-              {target.surface}
-            </h2>
-            <p id={descId} className={styles.note}>
-              Chưa tra được lúc này. Thử lại hoặc mở trang Tra cứu chung.
-            </p>
-            <div className={styles.actions}>
-              <Link
-                className="button"
-                href={`/common-tools/search?q=${encodeURIComponent(target.base ?? target.surface)}`}
-              >
-                Mở Tra cứu chung
-              </Link>
-            </div>
-          </>
-        )}
-
-        {fetchState.kind === 'ready' && !activeItem && (
-          <>
-            <h2 id={titleId} className={styles.wordTitle} lang="ja">
-              {target.surface}
-            </h2>
-            <p id={descId} className={styles.note}>
-              Chưa tìm thấy “{target.surface}” trong dữ liệu đã nhập.
-            </p>
-            {hasSentence && (
-              <div className={styles.sentenceBox}>
-                <p className={styles.sectionLabel}>Câu gốc</p>
-                <p className={styles.sentenceJa} lang="ja">
-                  {target.sentenceJa}
-                </p>
-                {target.sentenceVi && (
-                  <p className={styles.sentenceVi} lang="vi">
-                    {target.sentenceVi}
-                  </p>
+            {fk === 1 && sentenceBox}
+            {fk !== 0 && (
+              <div className={s.actions}>
+                {fk === 2 ? (
+                  <Link className="button button-primary" href="/login">Đăng nhập lại</Link>
+                ) : (
+                  <Link className="button" href={searchHref}>
+                    {fk === 3 ? 'Mở Tra cứu chung' : 'Tìm trong Tra cứu chung'}
+                  </Link>
                 )}
               </div>
             )}
-            <div className={styles.actions}>
-              <Link
-                className="button"
-                href={`/common-tools/search?q=${encodeURIComponent(target.base ?? target.surface)}`}
-              >
-                Tìm trong Tra cứu chung
-              </Link>
-            </div>
           </>
-        )}
-
-        {fetchState.kind === 'ready' && activeItem && (
+        ) : (
           <>
-            <div className={styles.wordBlock}>
-              <h2 id={titleId} className={styles.wordTitle} lang="ja">
-                {activeItem.title}
-              </h2>
-              {activeItem.reading && (
-                <p className={styles.reading} lang="ja">
-                  {activeItem.reading}
-                </p>
-              )}
+            <div className={s.wordBlock}>
+              <h2 id={titleId} className={s.wordTitle} lang="ja">{activeItem.title}</h2>
+              {activeItem.reading && <p className={s.reading} lang="ja">{activeItem.reading}</p>}
             </div>
 
             {activeItem.matchedBy === 'kanji_fallback' && (
-              <p className={styles.note}>
-                Chưa có từ <span lang="ja">{target.surface}</span> trong dữ liệu; hiển thị chữ Hán
-                trong từ này.
+              <p className={s.note}>
+                Chưa có từ <span lang="ja">{target.surface}</span> trong dữ liệu; hiển thị chữ Hán trong từ này.
               </p>
             )}
 
-            {(activeItem.hanViet || activeItem.kanjiHanViet.length > 0) && (
-              <div className={styles.section}>
-                <p className={styles.sectionLabel}>Hán Việt</p>
-                {activeItem.hanViet ? (
-                  <>
-                    <p className={styles.hanViet} lang="vi">
-                      {activeItem.hanViet.text}
-                    </p>
-                    <small className={styles.source}>
-                      {formatLookupSourceLabel(activeItem.hanViet, activeItem.sourceName)}
-                    </small>
-                    {activeItem.hanViet.translationId && (
-                      <ReportViButton
-                        translationId={activeItem.hanViet.translationId}
-                        label="Hán Việt"
-                      />
-                    )}
-                  </>
-                ) : (
-                  <>
-                    <p className={styles.hanViet} lang="vi">
-                      {activeItem.kanjiHanViet
-                        .map((entry) => `${entry.character}: ${entry.hanViet.text}`)
-                        .join(' · ')}
-                    </p>
-                    <small className={styles.source}>
-                      {formatLookupSourceLabel(
-                        activeItem.kanjiHanViet[0].hanViet,
-                        activeItem.sourceName,
-                      )}
-                    </small>
-                    <div>
-                      {activeItem.kanjiHanViet.map(
-                        (entry) =>
-                          entry.hanViet.translationId && (
-                            <ReportViButton
-                              key={entry.hanViet.translationId}
-                              translationId={entry.hanViet.translationId}
-                              label={`Hán Việt ${entry.character}`}
-                            />
-                          ),
-                      )}
-                    </div>
-                  </>
-                )}
+            {hv && (
+              <div className={s.section}>
+                <p className={s.sectionLabel}>Hán Việt</p>
+                <p className={s.hanViet} lang="vi">
+                  {activeItem.hanViet
+                    ? activeItem.hanViet.text
+                    : activeItem.kanjiHanViet.map((e) => `${e.character}: ${e.hanViet.text}`).join(' · ')}
+                </p>
+                <small className={s.source}>{formatLookupSourceLabel(hv, activeItem.sourceName)}</small>
+                {activeItem.hanViet
+                  ? activeItem.hanViet.translationId && <ReportViButton translationId={activeItem.hanViet.translationId} label="Hán Việt" />
+                  : <div>{activeItem.kanjiHanViet.map((e) => e.hanViet.translationId && <ReportViButton key={e.hanViet.translationId} translationId={e.hanViet.translationId} label={`Hán Việt ${e.character}`} />)}</div>}
               </div>
             )}
 
-            <div className={styles.section} id={descId}>
-              <p className={styles.sectionLabel}>Nghĩa</p>
-              {activeItem.meaning ? (
+            <div className={s.section} id={descId}>
+              <p className={s.sectionLabel}>Nghĩa</p>
+              <p className={s.meaning} lang={meaning ? 'vi' : 'en'}>{meaning ? meaning.text : eng}</p>
+              <small className={s.source}>{formatLookupSourceLabel(meaning, activeItem.sourceName)}</small>
+              {meaning?.translationId && <ReportViButton translationId={meaning.translationId} label="nghĩa Việt" />}
+              {meaning && eng && (
                 <>
-                  <p className={styles.meaning} lang="vi">
-                    {activeItem.meaning.text}
-                  </p>
-                  <small className={styles.source}>
-                    {formatLookupSourceLabel(activeItem.meaning, activeItem.sourceName)}
-                  </small>
-                  {activeItem.meaning.translationId && (
-                    <ReportViButton
-                      translationId={activeItem.meaning.translationId}
-                      label="nghĩa Việt"
-                    />
-                  )}
-                  {activeItem.english.length > 0 && (
-                    <>
-                      <p className={styles.englishSub} lang="en">
-                        {activeItem.english.join('; ')}
-                      </p>
-                      {activeItem.outsideJlpt && (
-                        <small className={styles.source}>
-                          {formatLookupSourceLabel(null, activeItem.sourceName)}
-                        </small>
-                      )}
-                    </>
-                  )}
-                </>
-              ) : (
-                <>
-                  <p className={styles.meaning} lang="en">
-                    {activeItem.english.join('; ')}
-                  </p>
-                  <small className={styles.source}>
-                    {formatLookupSourceLabel(null, activeItem.sourceName)}
-                  </small>
+                  <p className={s.englishSub} lang="en">{eng}</p>
+                  {activeItem.outsideJlpt && <small className={s.source}>{formatLookupSourceLabel(null, activeItem.sourceName)}</small>}
                 </>
               )}
             </div>
 
             {activeItem.outsideJlpt && (
-              <p className={styles.attribution}>
+              <p className={s.attribution}>
                 Nguồn ngoài JLPT:{' '}
-                <a
-                  href="https://www.edrdg.org/edrdg/licence.html"
-                  target="_blank"
-                  rel="noreferrer"
-                >
-                  JMdict (EDRDG, CC BY-SA 4.0)
-                </a>
-                {activeItem.meaning?.sourceId === 'bunchaway-javi' && (
+                <a href="https://www.edrdg.org/edrdg/licence.html" target="_blank" rel="noreferrer">JMdict (EDRDG, CC BY-SA 4.0)</a>
+                {meaning?.sourceId === 'bunchaway-javi' && (
                   <>
                     {' · '}
-                    <a
-                      href="https://github.com/bunchaway/tu-dien-nhat-viet"
-                      target="_blank"
-                      rel="noreferrer"
-                    >
-                      tu-dien-nhat-viet (Bunchaway, CC BY-SA 4.0)
-                    </a>
+                    <a href="https://github.com/bunchaway/tu-dien-nhat-viet" target="_blank" rel="noreferrer">tu-dien-nhat-viet (Bunchaway, CC BY-SA 4.0)</a>
                   </>
                 )}
               </p>
             )}
 
-            {hasSentence && (
-              <div className={styles.sentenceBox}>
-                <p className={styles.sectionLabel}>Câu gốc</p>
-                <p className={styles.sentenceJa} lang="ja">
-                  {target.sentenceJa}
-                </p>
-                {target.sentenceVi && (
-                  <p className={styles.sentenceVi} lang="vi">
-                    {target.sentenceVi}
-                  </p>
-                )}
-              </div>
-            )}
+            {sentenceBox}
 
             {allItems.length > 1 && (
-              <div className={styles.alternatives} aria-label="Kết quả khác">
+              <div className={s.alternatives} aria-label="Kết quả khác">
                 {allItems.map((candidate, index) => (
                   <button
                     key={candidate.id}
                     type="button"
-                    className={`button ${styles.altBtn}`}
+                    className={`button ${s.altBtn}`}
                     aria-pressed={index === selectedIndex}
-                    onClick={() => {
-                      setSelectedIndex(index);
-                      setSaveState('idle');
-                      setSavedMode(null);
-                      setSaveMessage('');
-                    }}
+                    onClick={() => { setSelectedIndex(index); setSave(IDLE_SAVE); }}
                   >
                     <span lang="ja">{candidate.title}</span> · {formatLookupKind(candidate.kind)}
                   </button>
@@ -486,72 +316,16 @@ export function LookupPopup({
               </div>
             )}
 
-            <div className={styles.actions}>
-              {activeItem.outsideJlpt ? (
-                <button
-                  type="button"
-                  className="button primary"
-                  onClick={() => void handleSave(activeItem, 'notebook')}
-                  disabled={saveState === 'saving' || (saveState === 'saved' && savedMode === 'notebook')}
-                  aria-busy={saveState === 'saving'}
-                >
-                  {saveState === 'saved' && savedMode === 'notebook'
-                    ? 'Đã lưu vào sổ ✓'
-                    : saveState === 'saving'
-                      ? 'Đang lưu…'
-                      : 'Lưu vào sổ'}
-                </button>
-              ) : activeItem.kind === 'vocab' && target.sourceKind === 'jlpt' ? (
-                <>
-                  <button
-                    type="button"
-                    className="button primary"
-                    onClick={() => void handleSave(activeItem, 'notebook')}
-                    disabled={saveState === 'saving' || (saveState === 'saved' && savedMode === 'notebook')}
-                    aria-busy={saveState === 'saving'}
-                  >
-                    {saveState === 'saved' && savedMode === 'notebook'
-                      ? 'Đã lưu vào sổ ✓'
-                      : saveState === 'saving'
-                        ? 'Đang lưu…'
-                        : 'Lưu vào sổ'}
-                  </button>
-                  <button
-                    type="button"
-                    className="button"
-                    onClick={() => void handleSave(activeItem, 'srs')}
-                    disabled={saveState === 'saving' || (saveState === 'saved' && savedMode === 'srs')}
-                    aria-busy={saveState === 'saving'}
-                  >
-                    {saveState === 'saved' && savedMode === 'srs'
-                      ? 'Đã thêm ✓'
-                      : 'Thêm vào ôn'}
-                  </button>
-                </>
-              ) : (
-                <button
-                  type="button"
-                  className="button primary"
-                  onClick={() => void handleSave(activeItem, 'srs')}
-                  disabled={saveState === 'saving' || saveState === 'saved'}
-                  aria-busy={saveState === 'saving'}
-                >
-                  {saveState === 'saved'
-                    ? 'Đã thêm ✓'
-                    : saveState === 'saving'
-                      ? 'Đang lưu…'
-                      : 'Thêm vào ôn'}
-                </button>
-              )}
+            <div className={s.actions}>
+              {showNotebook && saveBtn('notebook', true, 'Lưu vào sổ', 'Đã lưu vào sổ ✓')}
+              {showSrs && saveBtn('srs', !showNotebook, 'Thêm vào ôn', 'Đã thêm ✓')}
               <Link className="button" href={activeItem.href}>
-                {activeItem.outsideJlpt && !activeItem.inSrs
-                  ? 'Mở Tra cứu chung'
-                  : 'Xem chi tiết'}
+                {activeItem.outsideJlpt && !activeItem.inSrs ? 'Mở Tra cứu chung' : 'Xem chi tiết'}
               </Link>
             </div>
 
-            <p role="status" className={styles.status}>
-              {saveMessage ||
+            <p role="status" className={s.status}>
+              {save.msg ||
                 (activeItem.outsideJlpt && activeItem.savedSentence && !activeItem.inSrs
                   ? 'Từ này đã lưu trong sổ từ; bấm “Lưu vào sổ” để cập nhật.'
                   : activeItem.inSrs && activeItem.savedSentence
