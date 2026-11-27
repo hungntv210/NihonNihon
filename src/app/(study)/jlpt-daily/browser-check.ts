@@ -20,7 +20,7 @@ const fixtureDb=new DatabaseSync(dbFile);fixtureDb.exec("UPDATE srs_cards SET du
 fs.writeFileSync(path.join(directory,'settings.json'),JSON.stringify({startDate:week,eveningTime:'00:00'}));
 const port=await new Promise<number>(resolve=>{const s=createServer();s.listen(0,'127.0.0.1',()=>{const p=(s.address() as {port:number}).port;s.close(()=>resolve(p));});});
 const origin=`http://127.0.0.1:${port}`,password=randomBytes(24).toString('hex');
-const environment:NodeJS.ProcessEnv={...process.env,NODE_ENV:'production',APP_ORIGIN:origin,NIHON_DB_PATH:dbFile,NIHON_DB_ROLE:'snapshot',NIHON_JLPT_PATH:store,NIHON_JLPT_OFFICIAL_PATH:path.join(directory,'official'),NIHON_SETTINGS_PATH:path.join(directory,'settings.json'),NIHON_ROADMAP_PATH:path.join(directory,'roadmap.json'),GEMINI_API_KEY:'',NIHON_PASSWORD_HASH:hashPassword(password),SESSION_SECRET:randomBytes(32).toString('hex'),NEXT_TELEMETRY_DISABLED:'1'};
+const environment:NodeJS.ProcessEnv={...process.env,NODE_ENV:'production',APP_ORIGIN:origin,NIHON_DB_PATH:dbFile,NIHON_DB_ROLE:'snapshot',NIHON_JLPT_PATH:store,NIHON_JLPT_OFFICIAL_PATH:path.join(directory,'official'),NIHON_LOOKUP_CONTEXT_PATH:path.join(directory,'private','lookup-sentences.json'),NIHON_SETTINGS_PATH:path.join(directory,'settings.json'),NIHON_ROADMAP_PATH:path.join(directory,'roadmap.json'),GEMINI_API_KEY:'',NIHON_PASSWORD_HASH:hashPassword(password),SESSION_SECRET:randomBytes(32).toString('hex'),NEXT_TELEMETRY_DISABLED:'1'};
 function server(clock:string){return spawn(process.execPath,['--import','./tools/ui-test-clock.mjs','node_modules/next/dist/bin/next','start','--hostname','127.0.0.1','--port',String(port)],{env:{...environment,NIHON_UI_CLOCK_FIXTURE:clock},stdio:['ignore','pipe','pipe']});}
 let child=server(instant);
 let log='',browser:Awaited<ReturnType<typeof chromium.launch>>|undefined;
@@ -54,14 +54,61 @@ try{
   assert.equal(await page.locator('main').evaluate(el=>el.scrollWidth>el.clientWidth),false,`overflow at ${width}`);
   await page.screenshot({path:path.join(reports,`${width}.png`),fullPage:true});
  }
+ // Deep-link to an unanswered question must also keep stem plain without lookup buttons or popup.
+ await page.goto(origin+`/jlpt-daily?q=${encodeURIComponent(questions[1].id)}`);
+ await page.getByText('Câu 2',{exact:false}).waitFor();
+ assert.equal(await page.locator('article h2 button').count(),0,'unanswered ?q= stem must not expose lookup buttons');
+ await page.locator('article h2').click();
+ assert.equal(await page.getByRole('dialog').count(),0,'clicking unanswered ?q= stem must not open lookup popup');
+ await page.goto(origin+'/jlpt-daily');await page.getByRole('button',{name:'Kiểm tra đáp án'}).waitFor();
+
  const outOfOrder=await context.request.post(origin+'/jlpt-daily/answer',{headers:{origin},data:{questionId:questions[1].id,choice:0}});assert.equal(outOfOrder.status(),409);
+ let savedLookupAfterGrade=false;
  for(let i=0;i<10;i++){
+  if(i===0){
+   assert.equal(await page.locator('article h2 button').count(),0,'unanswered stem must have 0 lookup buttons');
+   await page.locator('article h2').click();
+   assert.equal(await page.getByRole('dialog').count(),0,'clicking unanswered stem must not open lookup popup');
+  }
   const chosen=i===0||i===5?(questions[i].correct+1)%4:questions[i].correct;
   await page.getByRole('radio').nth(chosen).check();await page.getByRole('button',{name:'Kiểm tra đáp án'}).click();await page.getByRole('status').waitFor();
   await page.getByText(questions[i].explanation,{exact:true}).waitFor();
+  if(i>=1&&!savedLookupAfterGrade){
+   const stemButtons=page.locator('article h2 button[data-jlpt-word]');
+   const stemCount=await stemButtons.count();
+   assert.ok(stemCount>0,'answered stem must expose clickable lookup tokens');
+   for(let t=0;t<Math.min(stemCount,6)&&!savedLookupAfterGrade;t++){
+    await stemButtons.nth(t).click();
+    const dialog=page.getByRole('dialog');await dialog.waitFor();
+    await page.waitForFunction(()=>{const d=document.querySelector('[role="dialog"]');return d&&!d.textContent?.includes('Đang tra từ');});
+    const saveBtn=dialog.getByRole('button',{name:'Lưu vào sổ'});
+    if((await saveBtn.count())>0){
+     await saveBtn.click();
+     await dialog.getByText('Đã lưu vào sổ từ kèm câu gốc.').waitFor();
+     savedLookupAfterGrade=true;
+    }
+    await dialog.getByRole('button',{name:'Đóng'}).click();
+   }
+   if(!savedLookupAfterGrade){
+    const answerBtn=page.locator('button[data-jlpt-answer-word]');
+    if((await answerBtn.count())>0){
+     await answerBtn.first().click();
+     const dialog=page.getByRole('dialog');await dialog.waitFor();
+     await page.waitForFunction(()=>{const d=document.querySelector('[role="dialog"]');return d&&!d.textContent?.includes('Đang tra từ');});
+     const saveBtn=dialog.getByRole('button',{name:'Lưu vào sổ'});
+     if((await saveBtn.count())>0){
+      await saveBtn.click();
+      await dialog.getByText('Đã lưu vào sổ từ kèm câu gốc.').waitFor();
+      savedLookupAfterGrade=true;
+     }
+     await dialog.getByRole('button',{name:'Đóng'}).click();
+    }
+   }
+  }
   if(i===0){await page.getByText('Đã thêm câu sai vào SRS.',{exact:true}).waitFor();const replay=await context.request.post(origin+'/jlpt-daily/answer',{headers:{origin},data:{questionId:questions[0].id,choice:questions[0].correct}});assert.equal((await replay.json()).correct,false);await page.reload();}
   else await page.getByRole('button',{name:i===9?'Xem kết quả':'Câu tiếp theo',exact:true}).click();
  }
+ assert.equal(savedLookupAfterGrade,true,'expected post-grading lookup popup to open and save a word to notebook');
  await page.getByRole('heading',{name:'8 / 10 câu đúng'}).waitFor();await page.screenshot({path:path.join(reports,'result-mobile.png'),fullPage:true});await page.reload();await page.getByRole('heading',{name:'8 / 10 câu đúng'}).waitFor();
  assert.equal(readState(store).attempts.length,10);const db=new DatabaseSync(dbFile,{readOnly:true});try{assert.ok(db.prepare("SELECT 1 FROM srs_cards WHERE item_id=? AND card_type<>'recognition'").get(questions[0].targetId));}finally{db.close();}
 

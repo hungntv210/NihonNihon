@@ -74,7 +74,7 @@ test('vocab notebook sorts newest-first, filters by source, and formats dates in
     assert.equal(all.total, 3);
     assert.equal(all.filteredTotal, 3);
     assert.equal(all.source, 'all');
-    assert.deepEqual(all.counts, { all: 3, clip: 1, lookup: 1, srs: 1 });
+    assert.deepEqual(all.counts, { all: 3, clip: 1, lookup: 1, jlpt: 0, srs: 1 });
     assert.deepEqual(
       all.items.map((item) => [item.id, item.source]),
       [
@@ -117,11 +117,12 @@ test('vocab notebook sorts newest-first, filters by source, and formats dates in
     // Query parser & URL helper
     assert.equal(parseNotebookSource(undefined), 'all');
     assert.equal(parseNotebookSource('reader'), 'all');
-    assert.equal(parseNotebookSource('jlpt'), 'all');
+    assert.equal(parseNotebookSource('jlpt'), 'jlpt');
     assert.equal(parseNotebookSource('clip'), 'clip');
     assert.equal(parseNotebookSource(['lookup', 'srs']), 'lookup');
     assert.equal(notebookUrl('all'), '/vocab/notebook');
     assert.equal(notebookUrl('clip'), '/vocab/notebook?source=clip');
+    assert.equal(notebookUrl('jlpt'), '/vocab/notebook?source=jlpt');
   } finally {
     roDb.close();
   }
@@ -208,7 +209,7 @@ test('vocab notebook handles empty states, stays strictly read-only, and exclude
     const empty = listVocabNotebook(roDb, { contextPath: missingContextPath, youtubeFile: '' });
     assert.equal(empty.total, 0);
     assert.equal(empty.filteredTotal, 0);
-    assert.deepEqual(empty.counts, { all: 0, clip: 0, lookup: 0, srs: 0 });
+    assert.deepEqual(empty.counts, { all: 0, clip: 0, lookup: 0, jlpt: 0, srs: 0 });
     assert.equal(fs.existsSync(missingContextPath), false);
 
     // 2. Add one active vocab to SRS, deactivate another vocab with SRS card, and add a kanji card to SRS
