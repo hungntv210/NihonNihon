@@ -1,3 +1,12 @@
+import {
+  MAX_ROADMAP_WEEK,
+  MIN_ROADMAP_WEEK,
+  furiganaToKana,
+  normalizeClipTags,
+  normalizeRoadmapWeek,
+  validateFuriganaNotation,
+} from './auto-meta-model.ts';
+
 export const MAX_CLIP_UPLOAD_BYTES = 8 * 1024 * 1024; // 8 MiB (safely under Next 16 proxy 10 MiB cap)
 export const MAX_SUBTITLE_BYTES = 1024 * 1024; // 1 MiB
 export const MIN_CLIP_SPAN_MS = 1_000;
@@ -42,6 +51,7 @@ export type DraftSegment = {
   startMs: number;
   endMs: number;
   ja: string;
+  furigana?: string | null;
   kana?: string | null;
   speaker?: string | null;
   vi?: string | null;
@@ -52,6 +62,8 @@ export type ClipDraftInput = {
   title: string;
   level?: string;
   topic?: string;
+  tags?: string[];
+  roadmapWeek?: number | null;
   durationMs: number;
   clipStartMs: number;
   clipEndMs: number;
@@ -64,6 +76,8 @@ export type NormalizedClipDraft = {
   title: string;
   level: string;
   topic: string;
+  tags: string[];
+  roadmapWeek: number | null;
   durationMs: number;
   clipStartMs: number;
   clipEndMs: number;
@@ -73,6 +87,7 @@ export type NormalizedClipDraft = {
     startMs: number;
     endMs: number;
     ja: string;
+    furigana: string | null;
     kana: string | null;
     speaker: string | null;
     vi: string | null;
@@ -586,6 +601,7 @@ export function buildSegmentsFromSubtitles(
         startMs: segStart,
         endMs: segEnd,
         ja: part.text,
+        furigana: null,
         kana: null,
         speaker: cue.speaker ?? null,
         vi: null,
@@ -613,6 +629,7 @@ export function buildSegmentsFromPlainText(
     startMs: part.startMs,
     endMs: part.endMs,
     ja: part.text,
+    furigana: null,
     kana: null,
     speaker: null,
     vi: null,
@@ -673,6 +690,19 @@ export function validateClipDraft(input: ClipDraftInput): ValidationResult<Norma
   const rawLevel = typeof input.level === 'string' ? input.level.trim().toUpperCase() : '';
   const level = rawLevel && (CLIP_LEVELS as readonly string[]).includes(rawLevel) ? rawLevel : 'N5';
   const topic = typeof input.topic === 'string' ? input.topic.trim().slice(0, 80) : '';
+  const tags = normalizeClipTags(input.tags);
+
+  let roadmapWeek: number | null = null;
+  if (input.roadmapWeek !== undefined && input.roadmapWeek !== null && String(input.roadmapWeek).trim() !== '') {
+    roadmapWeek = normalizeRoadmapWeek(input.roadmapWeek);
+    if (roadmapWeek === null) {
+      return {
+        ok: false,
+        code: 'INVALID_ROADMAP_WEEK',
+        message: `Tuần lộ trình phải nằm trong khoảng ${MIN_ROADMAP_WEEK}–${MAX_ROADMAP_WEEK}.`,
+      };
+    }
+  }
 
   let youtubeId: string | null = null;
   if (input.kind === 'youtube') {
@@ -768,15 +798,26 @@ export function validateClipDraft(input: ClipDraftInput): ValidationResult<Norma
         message: `Câu ${i + 1}: mốc bắt đầu bị chồng lên câu trước.`,
       };
     }
+    const furiCheck = validateFuriganaNotation(ja, seg.furigana);
+    if (!furiCheck.ok) {
+      return {
+        ok: false,
+        code: 'INVALID_SEGMENT_FURIGANA',
+        message: `Câu ${i + 1}: ${furiCheck.message}`,
+      };
+    }
+
     const rawId = typeof seg.id === 'string' && seg.id.trim() ? seg.id.trim().slice(0, 64) : `seg-${i + 1}`;
     const id = seenIds.has(rawId) ? `seg-${i + 1}` : rawId;
     seenIds.add(id);
     prevEnd = endMs;
 
-    const kana = typeof seg.kana === 'string' && seg.kana.trim() ? seg.kana.trim().slice(0, 400) : null;
+    const furigana = furiCheck.value;
+    const explicitKana = typeof seg.kana === 'string' && seg.kana.trim() ? seg.kana.trim().slice(0, 400) : null;
+    const kana = explicitKana ?? (furigana ? furiganaToKana(furigana).slice(0, 400) : null);
     const speaker = typeof seg.speaker === 'string' && seg.speaker.trim() ? seg.speaker.trim().slice(0, 60) : null;
     const vi = typeof seg.vi === 'string' && seg.vi.trim() ? seg.vi.trim().slice(0, 400) : null;
-    normalizedSegments.push({ id, startMs, endMs, ja, kana, speaker, vi });
+    normalizedSegments.push({ id, startMs, endMs, ja, furigana, kana, speaker, vi });
   }
 
   return {
@@ -786,6 +827,8 @@ export function validateClipDraft(input: ClipDraftInput): ValidationResult<Norma
       title,
       level,
       topic,
+      tags,
+      roadmapWeek,
       durationMs,
       clipStartMs,
       clipEndMs,

@@ -4,6 +4,7 @@ import { createHash, randomUUID } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
 import { databasePath } from '../../../core/config.ts';
 import type { Clip } from './clip-model.ts';
+import { furiganaToKana } from './auto-meta-model.ts';
 import {
   ALLOWED_UPLOAD_MIMES,
   MAX_CLIP_UPLOAD_BYTES,
@@ -23,6 +24,8 @@ export type StoredUserClip = {
   title: string;
   level: string;
   topic: string;
+  tags: string[];
+  roadmapWeek: number | null;
   createdAt: string;
   durationMs: number;
   clipStartMs: number;
@@ -37,6 +40,7 @@ export type StoredUserClip = {
     startMs: number;
     endMs: number;
     ja: string;
+    furigana: string | null;
     kana: string | null;
     speaker: string | null;
     vi: string | null;
@@ -103,6 +107,11 @@ function validateStoredClip(raw: unknown): StoredUserClip {
     title: String(raw.title ?? ''),
     level: typeof raw.level === 'string' ? raw.level : 'N5',
     topic: typeof raw.topic === 'string' ? raw.topic : '',
+    tags: Array.isArray(raw.tags) ? (raw.tags as string[]) : [],
+    roadmapWeek:
+      raw.roadmapWeek === undefined || raw.roadmapWeek === null
+        ? null
+        : (raw.roadmapWeek as number),
     durationMs: Number(raw.durationMs),
     clipStartMs: Number(raw.clipStartMs),
     clipEndMs: Number(raw.clipEndMs),
@@ -135,6 +144,8 @@ function validateStoredClip(raw: unknown): StoredUserClip {
       title: draft.value.title,
       level: draft.value.level,
       topic: draft.value.topic,
+      tags: draft.value.tags,
+      roadmapWeek: draft.value.roadmapWeek,
       createdAt,
       durationMs: draft.value.durationMs,
       clipStartMs: draft.value.clipStartMs,
@@ -154,6 +165,8 @@ function validateStoredClip(raw: unknown): StoredUserClip {
     title: draft.value.title,
     level: draft.value.level,
     topic: draft.value.topic,
+    tags: draft.value.tags,
+    roadmapWeek: draft.value.roadmapWeek,
     createdAt,
     durationMs: draft.value.durationMs,
     clipStartMs: draft.value.clipStartMs,
@@ -219,6 +232,8 @@ export function toPlayableClip(record: StoredUserClip): Clip {
     title: record.title,
     level: record.level,
     topic: record.topic || 'Tự tạo',
+    tags: record.tags ?? [],
+    roadmapWeek: record.roadmapWeek ?? null,
     duration: record.durationMs / 1000,
     start: record.clipStartMs / 1000,
     end: record.clipEndMs / 1000,
@@ -232,7 +247,8 @@ export function toPlayableClip(record: StoredUserClip): Clip {
       start: seg.startMs / 1000,
       end: seg.endMs / 1000,
       ja: seg.ja,
-      kana: seg.kana,
+      furigana: seg.furigana ?? null,
+      kana: seg.kana ?? (seg.furigana ? furiganaToKana(seg.furigana) : null),
       speaker: seg.speaker,
       vi: seg.vi,
     })),
@@ -285,6 +301,8 @@ export function createUserFileClip(input: {
     title: validatedDraft.value.title,
     level: validatedDraft.value.level,
     topic: validatedDraft.value.topic,
+    tags: validatedDraft.value.tags,
+    roadmapWeek: validatedDraft.value.roadmapWeek,
     createdAt: now.toISOString(),
     durationMs: validatedDraft.value.durationMs,
     clipStartMs: validatedDraft.value.clipStartMs,
@@ -355,6 +373,8 @@ export function createUserYoutubeClip(input: {
     title: validatedDraft.value.title,
     level: validatedDraft.value.level,
     topic: validatedDraft.value.topic,
+    tags: validatedDraft.value.tags,
+    roadmapWeek: validatedDraft.value.roadmapWeek,
     createdAt: now.toISOString(),
     durationMs: validatedDraft.value.durationMs,
     clipStartMs: validatedDraft.value.clipStartMs,

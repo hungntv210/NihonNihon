@@ -10,6 +10,7 @@ import { RouteHeading } from '../../../components/route-heading.tsx';
 import { ShadowingLibrary } from './library.tsx';
 import { listShadowingClips } from './clips.ts';
 import type { Clip } from './clip-model.ts';
+import { roadmapWeekInfo } from './auto-meta-model.ts';
 import { resolveShadowingSelection, type ShadowingQuery } from './query.ts';
 import { requireSession } from '../../../server/auth.ts';
 import { tokenizeClipSegments } from '../common-tools/tokenize.ts';
@@ -37,12 +38,17 @@ function clipNotice(clip: Clip): ReactNode {
       </>
     );
   if (clip.id.startsWith(USER_CLIP_PREFIX)) {
+    const weekInfo = clip.roadmapWeek ? roadmapWeekInfo(clip.roadmapWeek) : null;
+    const metaBits: string[] = [];
+    if (weekInfo) metaBits.push(`Tuần ${weekInfo.week} (${weekInfo.level} · ${weekInfo.theme})`);
+    if (clip.tags && clip.tags.length > 0) metaBits.push(`Tag: ${clip.tags.join(', ')}`);
     if (clip.youtubeId)
       return (
         <>
           <strong>
             YouTube cá nhân · {clip.level} · {clip.topic}
           </strong>
+          {metaBits.length > 0 && <p>{metaBits.join(' · ')}</p>}
           <p>
             Chỉ lưu ID video và mốc thời gian, phát bằng trình phát nhúng sau khi bạn bấm. Không tải video/audio về máy.
           </p>
@@ -53,6 +59,7 @@ function clipNotice(clip: Clip): ReactNode {
         <strong>
           Clip tự tạo · {clip.level} · {clip.topic}
         </strong>
+        {metaBits.length > 0 && <p>{metaBits.join(' · ')}</p>}
         <p>
           Tệp âm thanh/video lưu trong thư mục riêng tư trên máy chủ nhà, chỉ phát khi đã đăng nhập. Không gửi tệp lên dịch vụ ngoài.
         </p>

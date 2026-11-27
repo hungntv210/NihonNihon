@@ -124,6 +124,11 @@ export async function handleShadowingClipsPost(
       title: String(parsedMeta.title ?? ''),
       level: typeof parsedMeta.level === 'string' ? parsedMeta.level : 'N5',
       topic: typeof parsedMeta.topic === 'string' ? parsedMeta.topic : '',
+      tags: Array.isArray(parsedMeta.tags) ? (parsedMeta.tags as string[]) : [],
+      roadmapWeek:
+        parsedMeta.roadmapWeek === undefined || parsedMeta.roadmapWeek === null
+          ? null
+          : (parsedMeta.roadmapWeek as number),
       durationMs: Number(parsedMeta.durationMs),
       clipStartMs: Number(parsedMeta.clipStartMs),
       clipEndMs: Number(parsedMeta.clipEndMs),
@@ -180,6 +185,11 @@ export async function handleShadowingClipsPost(
     title: String(body.title ?? ''),
     level: typeof body.level === 'string' ? body.level : 'N5',
     topic: typeof body.topic === 'string' ? body.topic : '',
+    tags: Array.isArray(body.tags) ? (body.tags as string[]) : [],
+    roadmapWeek:
+      body.roadmapWeek === undefined || body.roadmapWeek === null
+        ? null
+        : (body.roadmapWeek as number),
     durationMs: Number(body.durationMs),
     clipStartMs: Number(body.clipStartMs),
     clipEndMs: Number(body.clipEndMs),
