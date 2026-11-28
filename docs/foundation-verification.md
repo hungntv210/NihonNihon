@@ -1436,3 +1436,9 @@ Checked merge commit `4a5f5fa3373cc09512c181fd16515ba873a9c2a9` on branch `naeto
 - Read-only `tools/report-content-gaps.mjs` against the production DB and production supplement `fd5712e1004e87f44e8d1804fd841d26293f3625ee1f33efe459b1e73ecc1921` (and subsequent live supplement `b5ac3e4e180bf8b237a83cbd813c19b7d6258ebdc4dd624843e2c78242cae6bf`) vs prior baseline `4762cf330e543be337d59bfcd162f314ece8bfcc4dcc2021f31bcf2db87f83f5`: 403/403 N5-N2 grammar patterns, 1,209 examples (`fewerThanThreeExamples` 0, `missingNotation` 0, `missingFurigana` 0, `missingVietnamese` 0), 1,209 effective choice questions (`fewerThanThreeChoice` 152 -> 0, `choiceShortfall` 342 -> 0; baseline 867), and 1,209 effective ordering questions (`fewerThanThreeOrdering` 0, `orderingShortfall` 0).
 - Ticked `docs/features/g1-grammar.md` line 42 (`[x]`); left line 19 open (`[ ]`, real-device audio playback unverified). No question or exercise content copied.
 - `node tools/check-route-scope.mjs origin/master naetoru/grammar-42-tick`: PASS (3 changed files including this append-only verification entry). This append-only record is the sole change after `ed1f41102316f353b9eaaa14241a2d9b749496c2`.
+
+## Reviewed vocabulary meaning supplement (Pokabu, 2026-11-28)
+
+- Checked commit `427d477a82f70594e1d3fdf59928875e1c1b7f35` on Windows with Node v24.10.0. The cold run started 14:24:34 and ended 14:26:03 ICT (UTC+07:00).
+- `npm run check` exited 0. Typecheck passed, tests passed 442/442 (22 prototype and 420 core and route), webpack build passed, and the app gate passed 16/16.
+- Regression coverage checks the hash-bound meaning, its provenance, both search surfaces, the original report state, and frozen catalog selection. The single reviewed item passed a read-only snapshot check with the existing examples preserved.
