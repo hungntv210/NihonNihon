@@ -1,7 +1,30 @@
 import {maintenanceActive} from '../../../core/backup.ts';
 import fs from 'node:fs';import path from 'node:path';import {DatabaseSync} from 'node:sqlite';
-import {hash,validateQuestion,requireValue,plusDays,type Source,type Question,type Bank,type Audit} from './model.ts';
+import {hash,validateQuestion,requireValue,type Source,type Question,type Bank,type Audit} from './model.ts';
+import {localClock,validDate,weekStart} from '../today-roadmap/model.ts';
 import {validateIndependent} from './independent-qa.ts';
+
+export function validDatedWeek(week: unknown): week is string {
+ return validDate(week) && new Date(week).getUTCDay() === 1;
+}
+
+export function validDatedServiceDate(date: unknown, week: string, approvedOn: unknown): date is string {
+ return validDatedWeek(week) && validDate(date) && weekStart(date) === week &&
+  validDate(approvedOn) && approvedOn <= date;
+}
+
+export function approvedHistory(db: DatabaseSync): Question[] {
+ const rows = db.prepare("SELECT q.payload, q.receipt, s.date AS scheduledDate FROM approved_questions q LEFT JOIN approved_schedule s ON s.question_id = q.id ORDER BY q.rowid").all();
+ return rows.map(row => {
+  const question: Question = JSON.parse(String(row.payload));
+  if (typeof row.scheduledDate === 'string') return {...question, date: row.scheduledDate};
+  const receipt = JSON.parse(String(row.receipt));
+  if (receipt.reviewer !== 'tester') return question;
+  const approvedAt = new Date(receipt.approvedAt);
+  requireValue(typeof receipt.approvedAt === 'string' && Number.isFinite(approvedAt.getTime()), 'INVALID_APPROVED_RECEIPT');
+  return {...question, date: localClock(approvedAt).date};
+ });
+}
 
 export type ApprovedInput={questions:Question[];audit:Audit[];sourceWeek:string;sourceHashes:Record<string,string>;sourceSha256:string;model:string;verifierModel:string;reviewer:string};
 export function openStore(directory:string){
@@ -40,7 +63,7 @@ export function approvedBank(date:string,week:string,level:string,catalog:Source
   for(const [i,q]of fresh.entries())db.prepare('INSERT INTO approved_schedule VALUES(?,?,?)').run(date,existing+i,q.id);
   const rows=db.prepare('SELECT q.payload,q.receipt,s.position FROM approved_schedule s JOIN approved_questions q ON q.id=s.question_id WHERE s.date=? ORDER BY s.position').all(date);
   const questions:Question[]=[],audits:Audit[]=[];let receipt:any;
-  for(const row of rows){const raw=JSON.parse(String(row.payload));receipt=JSON.parse(String(row.receipt));if(receipt.reviewer==='tester-claude'){requireValue(raw.version===2&&receipt.origin==='draft_roadmap'&&receipt.status==='approved'&&receipt.approvedOn==='2026-11-18'&&['2026-11-16','2026-11-23'].includes(week)&&receipt.sourceWeek===week&&date>=week&&date<=plusDays(week,6)&&raw.date===date&&receipt.contentHash===hash(raw)&&catalog.some(s=>s.id===raw.targetId&&s.hash===raw.sourceHash),'INVALID_DATED_APPROVAL');questions.push({...raw,position:Number(row.position)});audits.push(receipt.audit.solver);continue;}requireValue(receipt.origin==='draft_roadmap'&&receipt.status==='approved'&&receipt.reviewer==='tester'&&receipt.contentHash===hash(raw),'INVALID_APPROVED_RECEIPT');
+  for(const row of rows){const raw=JSON.parse(String(row.payload));receipt=JSON.parse(String(row.receipt));if(receipt.reviewer==='tester-claude'){requireValue(raw.version===2&&receipt.origin==='draft_roadmap'&&receipt.status==='approved'&&receipt.sourceWeek===week&&validDatedServiceDate(date,week,receipt.approvedOn)&&raw.date===date&&receipt.contentHash===hash(raw)&&catalog.some(s=>s.id===raw.targetId&&s.hash===raw.sourceHash),'INVALID_DATED_APPROVAL');questions.push({...raw,position:Number(row.position)});audits.push(receipt.audit.solver);continue;}requireValue(receipt.origin==='draft_roadmap'&&receipt.status==='approved'&&receipt.reviewer==='tester'&&receipt.contentHash===hash(raw),'INVALID_APPROVED_RECEIPT');
    const original=validateQuestion(raw,receipt.referenceCatalog??catalog,receipt.sourceWeek,'N5');requireValue(receipt.sourceHashes[raw.targetId]===catalog.find(s=>s.id===raw.targetId)?.hash,'SOURCE_CHANGED');validateIndependent([{...receipt.audit,index:0}],[original]);
    questions.push({...original,date,day:Math.round((Date.parse(date)-Date.parse(week))/86400000),position:Number(row.position),id:hash({approved:raw.id,date}).slice(0,32)});audits.push({...receipt.audit,index:questions.length-1});
   }
