@@ -18,8 +18,8 @@ Học 4.741 từ N5–N2 theo thứ tự lộ trình, nghĩa tiếng Việt từ
   - Xác minh 26/11 bằng `tools/report-content-gaps.mjs`: 5 → 0 từ N5–N2 thiếu từ loại trên 4.741 từ, dùng bản sao DB app và supplement đang cài trên production (#113).
 - [x] Nghĩa tiếng Việt (nhãn "từ điển"), dòng tiếng Anh OpenJLPT thu gọn, chạm để mở
 - [x] Audio (TTS hoặc Kanji Alive)
-- [ ] 1–2 câu ví dụ có furigana, audio, bản dịch (Tatoeba tiếng Việt nếu có, còn lại dịch máy kèm tiếng Anh)
-  - Còn thiếu: trên bản sao DB app chỉ đọc còn 285/4.741 từ N5–N2 chưa có câu ví dụ (4.456/4.741 có) và 1.678/8.632 câu ví dụ thiếu `furigana_notation` (6.954/8.632 có); UI ví dụ kèm tiếng Anh inline cho dịch máy và audio TTS đã đủ ở `src/app/(study)/vocab/[id]/page.tsx:102-145`, `src/app/(study)/vocab/example-english.tsx:1-28`.
+- [x] 1–2 câu ví dụ có furigana, audio, bản dịch (Tatoeba tiếng Việt nếu có, còn lại dịch máy kèm tiếng Anh)
+  - Xác minh production ngày 28/11/2026 bằng `tools/report-content-gaps.mjs`: 4.741 từ N5–N2, 8.923 câu ví dụ, 0 từ thiếu ví dụ, 0 từ thiếu ví dụ đầy đủ, 0 câu thiếu ký hiệu furigana và 0 câu có furigana không khớp. SHA-256 supplement: `d160b51ffeeabfaa27715a5a4a698e2faf52633cdc9cedba9bb510a566720c6d`.
 - [x] Liên kết sang từng kanji cấu thành
 - [x] **Từ cùng chữ khác cách đọc** (22 từ, ví dụ 方 かた/ほう): nghĩa dịch máy theo đúng cách đọc + cảnh báo "còn cách đọc khác"
 - [x] Bài học từ mới buổi tối; nghe audio, đọc to câu ví dụ

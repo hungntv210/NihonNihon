@@ -98,6 +98,7 @@ ownership.set('pokabu/g1-grammar-exercises', ['src/core/content-supplement.ts', 
 ownership.set('pokabu/g1-content-gaps-2', ['tools/report-content-gaps.mjs', 'tools/supplement-vocab-furigana.mjs', 'tools/vocab-furigana-review.ts', 'tests/content-supplement.test.ts', 'tests/vocab-furigana-review.test.ts', 'docs/features/g1-vocab.md', 'docs/features/g1-kanji.md', 'tools/check-route-scope.mjs']);
 ownership.set('pokabu/jlpt-dated-gate', ['src/app/(study)/jlpt-daily/approved-store.ts', 'src/app/(study)/jlpt-daily/import-dated-v2.ts', 'src/app/(study)/jlpt-daily/dated-store.test.ts', 'src/app/(study)/jlpt-daily/v2.test.ts', 'tools/check-route-scope.mjs']);
 ownership.set('naetoru/grammar-42-tick', ['docs/features/g1-grammar.md', 'tools/check-route-scope.mjs']);
+ownership.set('pokabu/g1-vocab-21-tick', ['docs/features/g1-vocab.md', 'tools/check-route-scope.mjs']);
 ownership.set('foundation', ['src/app/(study)/settings/', 'public/fonts/']);
 ownership.set('ui-phase1', ['src/app/(study)/settings/', 'public/fonts/', 'src/components/town/', 'src/app/(study)/appearance/', 'src/app/(study)/today-roadmap/page.tsx', 'src/app/(study)/today-roadmap/today.module.css', 'src/core/day-period.ts', 'src/components/time-provider.tsx', 'tools/ui-test-clock.mjs', 'tests/day-period.test.ts']);
 ownership.set('ui-phase2', ['src/app/(study)/today-roadmap/', 'src/app/(study)/srs/', 'src/app/(study)/shadowing/', 'src/app/(study)/appearance/', 'src/components/mascot.tsx', 'src/components/route-heading.tsx', 'public/mascots/']);
