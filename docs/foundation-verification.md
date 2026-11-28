@@ -1436,3 +1436,10 @@ Checked merge commit `4a5f5fa3373cc09512c181fd16515ba873a9c2a9` on branch `naeto
 - Read-only `tools/report-content-gaps.mjs` against the production DB and production supplement `fd5712e1004e87f44e8d1804fd841d26293f3625ee1f33efe459b1e73ecc1921` (and subsequent live supplement `b5ac3e4e180bf8b237a83cbd813c19b7d6258ebdc4dd624843e2c78242cae6bf`) vs prior baseline `4762cf330e543be337d59bfcd162f314ece8bfcc4dcc2021f31bcf2db87f83f5`: 403/403 N5-N2 grammar patterns, 1,209 examples (`fewerThanThreeExamples` 0, `missingNotation` 0, `missingFurigana` 0, `missingVietnamese` 0), 1,209 effective choice questions (`fewerThanThreeChoice` 152 -> 0, `choiceShortfall` 342 -> 0; baseline 867), and 1,209 effective ordering questions (`fewerThanThreeOrdering` 0, `orderingShortfall` 0).
 - Ticked `docs/features/g1-grammar.md` line 42 (`[x]`); left line 19 open (`[ ]`, real-device audio playback unverified). No question or exercise content copied.
 - `node tools/check-route-scope.mjs origin/master naetoru/grammar-42-tick`: PASS (3 changed files including this append-only verification entry). This append-only record is the sole change after `ed1f41102316f353b9eaaa14241a2d9b749496c2`.
+
+## Vocabulary example coverage (vocab:21) — 2026-11-28
+
+- Checked commit `dc202807cb739ba0b60ab96ed4ec924d88c5d655` from master `f1c210d83ace6151a1f2f5c0c93c51c43820fed5` on Windows x64, Node v24.10.0 and npm 11.6.1, with a clean `.next`.
+- `npm run check` passed from 2026-11-28T14:16:36+07:00 to 2026-11-28T14:18:05+07:00. Typecheck, prototype tests 22/22, core and route tests 419/419, production build, and app gate 16/16 passed.
+- Read-only production gap report at 2026-11-28T14:16:10+07:00 found 4,741 N5–N2 vocabulary entries and 8,923 examples. All five vocabulary gap counts were zero. Production DB SHA-256: `37f69eb026ba88547b0c522a13dfb39d02279cb7d401125e745203d86e5a7a24`. Supplement SHA-256: `d160b51ffeeabfaa27715a5a4a698e2faf52633cdc9cedba9bb510a566720c6d`.
+- G1 checklist progress: 98/112 to 99/112. Route scope passed for the checklist, branch registration, and this append-only verification entry.
