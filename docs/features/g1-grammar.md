@@ -39,8 +39,8 @@ Mỗi tối học 1–2 mẫu ngữ pháp và làm bài tập ngay; 403 mẫu N5
 ## Tiêu chí hoàn thành
 
 - [x] 403 mẫu N5–N2 có trang đầy đủ (xác minh 21/11: 403/403 trên DB G0 đóng băng, `src/app/(study)/grammar/grammar.test.ts:63-75`)
-- [ ] Mỗi mẫu có ít nhất 3 câu bài tập mỗi dạng
-  - Trang luyện dùng cả câu soạn riêng và bài sinh từ câu gốc. Dùng `tools/report-content-gaps.mjs` với cùng snapshot và hai bản supplement để kiểm số mẫu và số câu còn thiếu.
+- [x] Mỗi mẫu có ít nhất 3 câu bài tập mỗi dạng
+  - Xác minh 28/11/2026 qua `tools/report-content-gaps.mjs` (chỉ đọc) trên DB production hiện tại cùng bản supplement `fd5712e1004e87f44e8d1804fd841d26293f3625ee1f33efe459b1e73ecc1921` và bản hiện hành `b5ac3e4e180bf8b237a83cbd813c19b7d6258ebdc4dd624843e2c78242cae6bf`: đủ 403/403 mẫu N5–N2, chọn đáp án hiệu lực 1.209 (`fewerThanThreeChoice` 152 → 0, `choiceShortfall` 342 → 0 so với bản trước `4762cf330e543be337d59bfcd162f314ece8bfcc4dcc2021f31bcf2db87f83f5`), sắp xếp câu hiệu lực 1.209 (`fewerThanThreeOrdering` 0, `orderingShortfall` 0).
 
 ## Câu hỏi còn mở
 
@@ -63,5 +63,6 @@ Các dấu tick xác nhận phần code đã chạy qua test/fixture; không tha
 - Bằng chứng: `src/app/(study)/grammar/browser-check.ts`.
 - Bằng chứng (2026-11-22): `tests/grammar-confusables.test.ts` và `tests/grammar-ticks.test.ts` — xác minh ghi chú phân biệt mẫu dễ nhầm (158/403 mẫu trên DB G0 đóng băng, 202 link = 124 chiều đi + 78 chiều đến, 0 link hỏng) và liên kết câu trong clip shadowing (`grammarClipHref` truyền `?segment=` 1-based khớp `resolveShadowingSelection`, không phát link khi clip/câu bị tắt hoặc đã xoá; DB G0 đóng băng có 0/403 mẫu vì chưa nạp clip riêng).
 - Bằng chứng (2026-11-27): `src/app/(study)/grammar/highlight.ts`, `src/app/(study)/grammar/[id]/page.tsx`, `tools/report-grammar-highlight.mjs`, `tests/grammar-highlight.test.ts` — rà soát đọc-only toàn bộ 403 mẫu / 1.209 ví dụ N5–N2 (1.136 cũ + 73 supplement; 49/49 `highlights` cố định hợp lệ, 0 lệch); nâng độ phủ tô màu phía server từ 658/1.209 (54,4%; 548 chưa tô, 3 lệch) lên 1.209/1.209 (100%; 0 chưa tô, 0 lệch) không tăng JS client. Kiểm tra thiếu bài tập qua `tools/report-content-gaps.mjs` trên cùng snapshot và hai bản supplement: trước gói ngữ pháp v4 (`513b022fdc14`) thiếu choice ở 247/403 mẫu (thiếu 542 câu) và ordering ở 58/403 mẫu (thiếu 74 câu); sau gói ngữ pháp v4 (`4762cf330e54`) ordering đạt 0/403 thiếu (0 câu), còn choice thiếu ở 152/403 mẫu (N5 0, N4 47, N3 53, N2 52; tổng thiếu 342 câu). Giữ nguyên `[ ]` ở mục ví dụ/audio (chưa xác minh phát audio thiết bị thật) và mục đủ 3 bài mỗi dạng.
+- Bằng chứng (2026-11-28): chạy chỉ đọc `tools/report-content-gaps.mjs` trên DB production hiện tại cùng bản supplement `fd5712e1004e87f44e8d1804fd841d26293f3625ee1f33efe459b1e73ecc1921` và bản hiện hành `b5ac3e4e180bf8b237a83cbd813c19b7d6258ebdc4dd624843e2c78242cae6bf` (so với bản trước `4762cf330e543be337d59bfcd162f314ece8bfcc4dcc2021f31bcf2db87f83f5`): 403/403 mẫu N5–N2 có 1.209 ví dụ (`fewerThanThreeExamples` 0, `missingNotation` 0, `missingFurigana` 0, `missingVietnamese` 0), 1.209 câu chọn đáp án hiệu lực (`fewerThanThreeChoice` 152 → 0, `choiceShortfall` 342 → 0), 1.209 câu sắp xếp hiệu lực (`fewerThanThreeOrdering` 0, `orderingShortfall` 0). Đánh dấu `[x]` mục 42; giữ nguyên `[ ]` mục 19 (chưa xác minh phát audio trên thiết bị thật).
 
 Cloze và sắp xếp dùng ví dụ thật/fixture, không bịa câu khi nguồn thiếu. Câu clip chỉ hiện khi đã có liên kết; chưa chứng minh đủ403 mẫu,3bài/mẫu hoặc đủ audio/bản dịch cho mọi ví dụ. Các mục ghép thiếu thành phần vẫn để trống.
