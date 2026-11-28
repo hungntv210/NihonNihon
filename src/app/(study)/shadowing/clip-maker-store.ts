@@ -16,7 +16,9 @@ import {
 } from './clip-maker-model.ts';
 
 export const USER_CLIP_PREFIX = 'user-clip:';
-const MAX_STORED_CLIPS = 200;
+export const MAX_STORED_CLIPS = 1000;
+const SOURCE_KEY_RE = /^[A-Za-z0-9][A-Za-z0-9:._-]{1,127}$/;
+const IMPORTED_CLIP_ID_RE = /^user-clip:[A-Za-z0-9][A-Za-z0-9._-]{1,84}$/;
 
 export type StoredUserClip = {
   id: string;
@@ -26,6 +28,9 @@ export type StoredUserClip = {
   topic: string;
   tags: string[];
   roadmapWeek: number | null;
+  attribution?: string | null;
+  license?: string | null;
+  sourceKey?: string | null;
   createdAt: string;
   durationMs: number;
   clipStartMs: number;
@@ -89,6 +94,24 @@ function isPlainObject(v: unknown): v is Record<string, unknown> {
   return Boolean(v) && typeof v === 'object' && !Array.isArray(v);
 }
 
+function parseOptionalText(value: unknown, maxLen: number): string | null {
+  if (value === undefined || value === null) return null;
+  if (typeof value !== 'string') throw new Error('INVALID_USER_CLIP_STORE');
+  const trimmed = value.normalize('NFC').trim();
+  if (!trimmed) return null;
+  if (trimmed.length > maxLen) throw new Error('INVALID_USER_CLIP_STORE');
+  return trimmed;
+}
+
+function parseOptionalSourceKey(value: unknown): string | null {
+  if (value === undefined || value === null) return null;
+  if (typeof value !== 'string') throw new Error('INVALID_USER_CLIP_STORE');
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+  if (!SOURCE_KEY_RE.test(trimmed)) throw new Error('INVALID_USER_CLIP_STORE');
+  return trimmed;
+}
+
 function validateStoredClip(raw: unknown): StoredUserClip {
   if (!isPlainObject(raw)) throw new Error('INVALID_USER_CLIP_STORE');
   const id = typeof raw.id === 'string' ? raw.id : '';
@@ -101,6 +124,10 @@ function validateStoredClip(raw: unknown): StoredUserClip {
     ? raw.createdAt
     : null;
   if (!createdAt) throw new Error('INVALID_USER_CLIP_STORE');
+
+  const attribution = parseOptionalText(raw.attribution, 120);
+  const license = parseOptionalText(raw.license, 120);
+  const sourceKey = parseOptionalSourceKey(raw.sourceKey);
 
   const draft = validateClipDraft({
     kind,
@@ -119,6 +146,12 @@ function validateStoredClip(raw: unknown): StoredUserClip {
     segments: Array.isArray(raw.segments) ? (raw.segments as ClipDraftInput['segments']) : [],
   });
   if (!draft.ok) throw new Error('INVALID_USER_CLIP_STORE');
+
+  const extraMeta = {
+    ...(attribution ? { attribution } : {}),
+    ...(license ? { license } : {}),
+    ...(sourceKey ? { sourceKey } : {}),
+  };
 
   if (kind === 'file') {
     const mediaFile = typeof raw.mediaFile === 'string' ? raw.mediaFile : '';
@@ -146,6 +179,7 @@ function validateStoredClip(raw: unknown): StoredUserClip {
       topic: draft.value.topic,
       tags: draft.value.tags,
       roadmapWeek: draft.value.roadmapWeek,
+      ...extraMeta,
       createdAt,
       durationMs: draft.value.durationMs,
       clipStartMs: draft.value.clipStartMs,
@@ -167,6 +201,7 @@ function validateStoredClip(raw: unknown): StoredUserClip {
     topic: draft.value.topic,
     tags: draft.value.tags,
     roadmapWeek: draft.value.roadmapWeek,
+    ...extraMeta,
     createdAt,
     durationMs: draft.value.durationMs,
     clipStartMs: draft.value.clipStartMs,
@@ -238,8 +273,8 @@ export function toPlayableClip(record: StoredUserClip): Clip {
     start: record.clipStartMs / 1000,
     end: record.clipEndMs / 1000,
     isDemo: false,
-    attribution: record.kind === 'youtube' ? 'YouTube cá nhân' : 'Tệp cá nhân',
-    license: record.kind === 'youtube' ? 'YouTube embed' : 'Private use',
+    attribution: record.attribution?.trim() || (record.kind === 'youtube' ? 'YouTube cá nhân' : 'Tệp cá nhân'),
+    license: record.license?.trim() || (record.kind === 'youtube' ? 'YouTube embed' : 'Private use'),
     mediaUrl: record.kind === 'file' ? `/shadowing/media?clip=${encodeURIComponent(record.id)}` : null,
     youtubeId: record.kind === 'youtube' ? record.youtubeId : null,
     segments: record.segments.map((seg) => ({
@@ -349,6 +384,202 @@ export function createUserFileClip(input: {
   }
 
   return { record, clip: toPlayableClip(record) };
+}
+
+function sameStoredSegments(
+  a: StoredUserClip['segments'],
+  b: StoredUserClip['segments'],
+): boolean {
+  if (a.length !== b.length) return false;
+  for (let i = 0; i < a.length; i++) {
+    const sa = a[i]!;
+    const sb = b[i]!;
+    if (
+      sa.startMs !== sb.startMs ||
+      sa.endMs !== sb.endMs ||
+      sa.ja !== sb.ja ||
+      (sa.furigana ?? null) !== (sb.furigana ?? null) ||
+      (sa.kana ?? null) !== (sb.kana ?? null) ||
+      (sa.speaker ?? null) !== (sb.speaker ?? null) ||
+      (sa.vi ?? null) !== (sb.vi ?? null)
+    ) {
+      return false;
+    }
+  }
+  return true;
+}
+
+function sameStoredClipContent(a: StoredUserClip, b: StoredUserClip): boolean {
+  return (
+    a.id === b.id &&
+    a.title === b.title &&
+    a.level === b.level &&
+    a.topic === b.topic &&
+    a.roadmapWeek === b.roadmapWeek &&
+    (a.attribution ?? null) === (b.attribution ?? null) &&
+    (a.license ?? null) === (b.license ?? null) &&
+    (a.sourceKey ?? null) === (b.sourceKey ?? null) &&
+    a.durationMs === b.durationMs &&
+    a.clipStartMs === b.clipStartMs &&
+    a.clipEndMs === b.clipEndMs &&
+    a.mediaFile === b.mediaFile &&
+    a.mediaMime === b.mediaMime &&
+    a.mediaBytes === b.mediaBytes &&
+    a.sha256 === b.sha256 &&
+    JSON.stringify(a.tags) === JSON.stringify(b.tags) &&
+    sameStoredSegments(a.segments, b.segments)
+  );
+}
+
+export function upsertImportedFileClip(input: {
+  id: string;
+  sourceKey: string;
+  attribution: string;
+  license: string;
+  draft: Omit<ClipDraftInput, 'kind'>;
+  bytes: Buffer;
+  mime: string | null | undefined;
+  dbFile?: string;
+  storePath?: string;
+  mediaDir?: string;
+  now?: Date;
+}): { status: 'created' | 'updated' | 'unchanged'; record: StoredUserClip; clip: Clip } {
+  if (!IMPORTED_CLIP_ID_RE.test(input.id)) {
+    throw new Error('INVALID_IMPORTED_CLIP_ID');
+  }
+  if (!SOURCE_KEY_RE.test(input.sourceKey)) {
+    throw new Error('INVALID_SOURCE_KEY');
+  }
+  const attribution = input.attribution.normalize('NFC').trim();
+  const license = input.license.normalize('NFC').trim();
+  if (!attribution || attribution.length > 120 || !license || license.length > 120) {
+    throw new Error('INVALID_IMPORT_ATTRIBUTION');
+  }
+
+  const validatedUpload = validateUploadInput({
+    mime: input.mime,
+    size: input.bytes.length,
+    bytes: input.bytes,
+  });
+  if (!validatedUpload.ok) {
+    throw new Error(validatedUpload.code);
+  }
+  const validatedDraft = validateClipDraft({ ...input.draft, kind: 'file' });
+  if (!validatedDraft.ok) {
+    throw new Error(validatedDraft.code);
+  }
+
+  const dbFile = input.dbFile ?? databasePath();
+  const storePath = input.storePath ?? shadowingCustomClipsPath(dbFile);
+  const mediaDir = input.mediaDir ?? shadowingMediaDir(dbFile);
+  const now = input.now ?? new Date();
+
+  const sha256 = createHash('sha256').update(input.bytes).digest('hex');
+  const fileDigest = createHash('sha256')
+    .update(`${input.sourceKey}\0${sha256}`)
+    .digest('hex')
+    .slice(0, 32);
+  const mediaFile = `clip-${fileDigest}.${validatedUpload.value.extension}`;
+  const fullMedia = resolveSafeMediaPath(mediaDir, mediaFile);
+
+  let status: 'created' | 'updated' | 'unchanged' = 'created';
+  let finalRecord!: StoredUserClip;
+  let wroteMedia = false;
+  let oldMediaToDelete: string | null = null;
+
+  try {
+    withClipStoreLock(storePath, () => {
+      const store = readUserClipStore(storePath);
+      const existingIdx = store.clips.findIndex(
+        (c) => c.sourceKey === input.sourceKey || c.id === input.id,
+      );
+      const existing = existingIdx >= 0 ? store.clips[existingIdx] : null;
+      const clipId = existing ? existing.id : input.id;
+
+      const nextRecord: StoredUserClip = {
+        id: clipId,
+        kind: 'file',
+        title: validatedDraft.value.title,
+        level: validatedDraft.value.level,
+        topic: validatedDraft.value.topic,
+        tags: validatedDraft.value.tags,
+        roadmapWeek: validatedDraft.value.roadmapWeek,
+        attribution,
+        license,
+        sourceKey: input.sourceKey,
+        createdAt: existing ? existing.createdAt : now.toISOString(),
+        durationMs: validatedDraft.value.durationMs,
+        clipStartMs: validatedDraft.value.clipStartMs,
+        clipEndMs: validatedDraft.value.clipEndMs,
+        youtubeId: null,
+        mediaFile,
+        mediaMime: validatedUpload.value.mime,
+        mediaBytes: input.bytes.length,
+        sha256,
+        segments: validatedDraft.value.segments.map((s, idx) => ({
+          ...s,
+          id: `${clipId}:seg-${idx + 1}`,
+        })),
+      };
+
+      if (existing && sameStoredClipContent(existing, nextRecord) && fs.existsSync(fullMedia)) {
+        status = 'unchanged';
+        finalRecord = existing;
+        return;
+      }
+
+      if (!existing && store.clips.length >= MAX_STORED_CLIPS) {
+        throw new Error('CLIP_LIMIT_REACHED');
+      }
+
+      fs.mkdirSync(mediaDir, { recursive: true });
+      if (!fs.existsSync(fullMedia)) {
+        const tmpMedia = `${fullMedia}.${randomUUID()}.tmp`;
+        try {
+          fs.writeFileSync(tmpMedia, input.bytes, { flag: 'wx', mode: 0o600 });
+          fs.renameSync(tmpMedia, fullMedia);
+          wroteMedia = true;
+        } finally {
+          if (fs.existsSync(tmpMedia)) fs.unlinkSync(tmpMedia);
+        }
+      }
+
+      if (existing) {
+        status = 'updated';
+        if (existing.mediaFile && existing.mediaFile !== mediaFile) {
+          oldMediaToDelete = existing.mediaFile;
+        }
+        store.clips[existingIdx] = nextRecord;
+      } else {
+        status = 'created';
+        store.clips.push(nextRecord);
+      }
+      writeStoreAtomic(storePath, store);
+      finalRecord = nextRecord;
+    });
+  } catch (error) {
+    if (wroteMedia && fs.existsSync(fullMedia)) {
+      try {
+        fs.unlinkSync(fullMedia);
+      } catch {
+        // Ignore best-effort cleanup error
+      }
+    }
+    throw error;
+  }
+
+  if (oldMediaToDelete) {
+    try {
+      const oldFull = resolveSafeMediaPath(mediaDir, oldMediaToDelete);
+      if (fs.existsSync(oldFull) && !fs.lstatSync(oldFull).isSymbolicLink() && fs.lstatSync(oldFull).isFile()) {
+        fs.unlinkSync(oldFull);
+      }
+    } catch {
+      // Ignore best-effort cleanup error
+    }
+  }
+
+  return { status, record: finalRecord, clip: toPlayableClip(finalRecord) };
 }
 
 export function createUserYoutubeClip(input: {
