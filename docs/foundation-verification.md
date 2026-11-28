@@ -1420,3 +1420,9 @@ Checked merge commit `4a5f5fa3373cc09512c181fd16515ba873a9c2a9` on branch `naeto
 - Clean `.next` `npm run check` passed from 22:48:15 to 22:50:43 ICT (UTC+07:00). Typecheck, prototype 22/22, core/route 399/399, production build and app gate 16/16 all passed. The focused furigana suites passed 8/8.
 - The offline v3 audit found three changed readings (two for 今日 and one for 明日), one newly annotated duration, and one existing annotation withheld for manual review. The queue remains at 427. The 275 missing notations and 277 examples without valid furigana are unchanged. The approved 畑 note matches v2.
 - Route scope passed for 8 files. This append-only entry follows the checked implementation.
+
+## Sync PR #121 with master b00bf03 - 2026-11-28
+
+- Checked merge commit $sha on Windows x64, Node v24.10.0 and npm 11.6.1. It includes master b00bf0302a0857d91a7e3b400a52ce8c260d0d34. The verification log preserves the full master log followed by the branch's existing entries.
+- Clean .next npm run check passed from 12:03:48 to 12:05:28 ICT (UTC+07:00). Typecheck, prototype 22/22, core/route 407/407, production build, and app gate 16/16 all passed.
+- Route scope passed for 8 changed files. This append-only entry is the sole change after the checked merge commit.
