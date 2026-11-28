@@ -90,11 +90,13 @@ test('report counts zero gaps on complete content and never prints example text'
   } }));
   const run = (...args: string[]) => execFileSync(process.execPath,
     ['--disable-warning=ExperimentalWarning', 'tools/report-content-gaps.mjs', file, ...args], { encoding: 'utf8' });
-  assert.deepEqual(JSON.parse(run()).vocab, { total: 1, missingPos: 1, noExamples: 1, noCompleteExample: 1 });
+  assert.deepEqual(JSON.parse(run()).vocab, { total: 1, missingPos: 1, noExamples: 1, noCompleteExample: 1,
+    examples: 0, missingNotation: 0, missingFurigana: 0 });
   const stdout = run(output);
   assert.ok(!stdout.includes(privateText));
   const totals = JSON.parse(stdout);
-  assert.deepEqual(totals.vocab, { total: 1, missingPos: 0, noExamples: 0, noCompleteExample: 0 });
+  assert.deepEqual(totals.vocab, { total: 1, missingPos: 0, noExamples: 0, noCompleteExample: 0,
+    examples: 1, missingNotation: 0, missingFurigana: 0 });
   const { total, examples, choiceQuestions, orderingQuestions, ...grammarGaps } = totals.grammar;
   assert.equal(total, 1);
   assert.equal(examples, 3);
@@ -102,6 +104,31 @@ test('report counts zero gaps on complete content and never prints example text'
   assert.equal(orderingQuestions, 3);
   assert.ok(Object.values(grammarGaps).every((n) => n === 0));
   assert.ok(Object.values(totals.kanji).every((n) => n === 0));
+});
+
+test('vocabulary audit counts unannotated linked examples and requires a matching sentence hash', (t) => {
+  const { db, file, itemId } = fixture(t);
+  const example = db.prepare('SELECT sentence_id FROM item_sentences LIMIT 1').get()!;
+  db.prepare('DELETE FROM item_sentences WHERE item_id=?').run(itemId);
+  db.prepare('UPDATE sentences SET text_ja=?,furigana_notation=NULL WHERE item_id=?')
+    .run('本です。', example.sentence_id);
+  db.prepare('UPDATE content_items SET source_hash=? WHERE item_id=?').run(hash, example.sentence_id);
+  db.prepare('INSERT INTO item_sentences(item_id,sentence_id,position,source_id,release_id) SELECT ?,item_id,0,source_id,release_id FROM content_items WHERE item_id=?')
+    .run(itemId, example.sentence_id);
+  db.prepare("UPDATE content_items SET is_active=(item_id=?) WHERE kind='vocab'").run(itemId);
+  const output = path.join(path.dirname(file), 'vocab-ruby.json');
+  const run = (sourceHash: string) => {
+    fs.writeFileSync(output, JSON.stringify({ version: 1, items: {
+      [String(example.sentence_id)]: { hash: sourceHash, furigana: '{本|ほん}です。' },
+    } }));
+    return JSON.parse(execFileSync(process.execPath,
+      ['tools/report-content-gaps.mjs', file, output], { encoding: 'utf8' })).vocab;
+  };
+  assert.equal(run('3'.repeat(64)).missingNotation, 1);
+  assert.equal(run('3'.repeat(64)).missingFurigana, 1);
+  assert.equal(run(hash).missingNotation, 0);
+  assert.equal(run(hash).missingFurigana, 0);
+  assert.equal(vocabularyDetail(db, itemId, readContentSupplement(output))!.examples[0].furigana, '{本|ほん}です。');
 });
 
 test('supplement rejects okurigana inside ruby, mismatched text and unresolved attribution', (t) => {

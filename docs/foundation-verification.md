@@ -1395,3 +1395,36 @@ Checked merge commit `4a5f5fa3373cc09512c181fd16515ba873a9c2a9` on branch `naeto
 - `npm run check` (clean `.next`): PASS -- `typecheck` PASS; `npm test` **420/420 PASS** (`22/22` prototype + `398/398` core/route, 0 fail, 0 skipped); production `next build --webpack` PASS; `test:app` **16/16 PASS**.
 - Client JS gzip budget (`.next/static/chunks/**/*.js`, 98 files): **`473,472 B`** default gzip (`472,663 B` level-9 gzip, raw `1,396,770 B`) vs `473,494 B` ceiling (`22 B` margin).
 - `node tools/check-route-scope.mjs origin/master naetoru/shadowing-irodori`: PASS (`9` changed files including this append-only verification entry). Only this append-only audit entry follows `4a5f5fa`.
+
+## Vocabulary example furigana coverage — 2026-11-27
+
+- Checked `d171e3b05c7e5f02394a324a212b079c0069b3cb` from `32aaadb` on Windows x64, Node v24.10.0, npm 11.6.1, with a clean `.next`.
+- `npm run check` passed from 21:02:30 to 21:04:09 ICT (UTC+07:00). Typecheck, prototype 22/22, core/route 374/374, production build, and app gate 16/16 all passed.
+- On the same read-only snapshot, raw vocabulary had 285 items without examples and 1,678 links without notation. The approved supplement removed the 285 example gaps. The candidate reduced the remaining 1,288 missing notations and 1,140 incomplete furigana cases to zero. The production repository read path found a complete example for 4,741/4,741 vocabulary items against the private candidate.
+- The accepted kokuji note for 畑 remains visible. There are 1,037 attested Han-Viet readings and no unexplained gaps. The vocabulary supplement was prepared for review. Device speech playback was outside this verification.
+- Route scope passed. This append-only record is the sole change after the checked implementation.
+
+## Vocabulary furigana editorial follow-up — 2026-11-27
+
+- Checked `4bb613f7bbb8390c1c8267bb5d16abaf408b2986` from `32aaadb` on Windows x64, Node v24.10.0 and npm 11.6.1, with a clean `.next`. The revised offline review supersedes the zero-gap candidate counts above.
+- `npm run check` passed from 21:58:40 to 22:00:37 ICT (UTC+07:00). Typecheck, prototype 22/22, core/route 379/379, production build, and app gate 16/16 passed. Route scope passed.
+- Five synthetic regression suites cover contextual readings, fixed names, inflected past forms, standard counter variants, target-reading conflicts, and unresolved cases. An independent pattern check found zero matches for the five reported error patterns in the revised supplement.
+- The read-only snapshot plus revised candidate still has one complete example for each of 4,741 words. 275 linked examples lack notation and 277 lack valid furigana. Of 427 review entries, 276 withhold a new annotation and 151 retain previously approved annotations for further review. The vocabulary checklist remains open.
+- The owner approved 畑 as the sole Han-Viet reading exception on 27 November. The checklist records 1,037 attested readings plus that exception. Repository smoke verified the exact updated note and no Han-Viet reading for this item. The private data was not installed.
+
+- Synced with master `0c54f08` at `c8cb04aea3c7192d526d200fb72677178a351add`, retaining both append-only logs. Clean `.next` `npm run check` passed from 22:04:04 to 22:06:03 ICT (UTC+07:00): typecheck, prototype 22/22, core/route 387/387, build and app gate 16/16. Route scope passed for 8 files. Notebook, common-tools and shadowing paths match master; this line is the sole change after the synced verification.
+
+## Vocabulary day readings — 2026-11-27
+
+- Checked implementation `0605535e9d61557251a48336ddca17b8f11bd283` from master `848ee2e` on Windows x64, Node v24.10.0 and npm 11.6.1.
+- Clean `.next` `npm run check` passed from 22:48:15 to 22:50:43 ICT (UTC+07:00). Typecheck, prototype 22/22, core/route 399/399, production build and app gate 16/16 all passed. The focused furigana suites passed 8/8.
+- The offline v3 audit found three changed readings (two for 今日 and one for 明日), one newly annotated duration, and one existing annotation withheld for manual review. The queue remains at 427. The 275 missing notations and 277 examples without valid furigana are unchanged. The approved 畑 note matches v2.
+- Route scope passed for 8 files. This append-only entry follows the checked implementation.
+
+## Sync PR #121 with master b00bf03 - 2026-11-28
+
+- Checked merge commit $sha on Windows x64, Node v24.10.0 and npm 11.6.1. It includes master b00bf0302a0857d91a7e3b400a52ce8c260d0d34. The verification log preserves the full master log followed by the branch's existing entries.
+- Clean .next npm run check passed from 12:03:48 to 12:05:28 ICT (UTC+07:00). Typecheck, prototype 22/22, core/route 407/407, production build, and app gate 16/16 all passed.
+- Route scope passed for 8 changed files. This append-only entry is the sole change after the checked merge commit.
+
+- Checked merge SHA for the preceding entry is 95016910a425d60c805770b3eb56d551a2b9640a.
