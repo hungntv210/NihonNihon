@@ -1,6 +1,6 @@
 import type { DatabaseSync } from 'node:sqlite';
 import {
-  furiganaMatches, readContentSupplement, supplementExamples, supplementFor, supplementSentence, supplementTranslation,
+  databaseContentSupplement, furiganaMatches, reviewedVocabularyMeaning, supplementExamples, supplementFor, supplementSentence, supplementTranslation,
   type ContentSupplement,
 } from '../../../core/content-supplement.ts';
 import { selectedTranslation, type Translation } from '../../../core/content.ts';
@@ -83,7 +83,8 @@ function translation(db: DatabaseSync, itemId: string, field: 'meaning' | 'han_v
 }
 function vocabulary(db: DatabaseSync, r: Record<string, unknown>, supplement: ContentSupplement): Vocabulary {
   const id = String(r.item_id),
-    meaning = translation(db, id, 'meaning'),
+    reviewed = reviewedVocabularyMeaning(supplement, id, r.source_hash),
+    meaning = reviewed ? { value: reviewed, id: null } : translation(db, id, 'meaning'),
     hv = translation(db, id, 'han_viet');
   const hvContext = hv.id
     ? JSON.parse(
@@ -122,6 +123,7 @@ const select = `SELECT v.*,i.source_id,i.source_hash,s.name source_name,EXISTS(S
   FROM vocab v JOIN content_items i USING(item_id) JOIN data_sources s ON s.source_id=i.source_id`;
 
 export function findVocabulary(db: DatabaseSync, search: Search) {
+  const { items } = databaseContentSupplement(db);
   db.function('nihon_vocab_search', { deterministic: true }, (value) =>
     normalizeSearch(String(value ?? '')),
   );
@@ -133,8 +135,11 @@ export function findVocabulary(db: DatabaseSync, search: Search) {
   }
   if (search.saved) clauses.push('EXISTS(SELECT 1 FROM srs_cards c WHERE c.item_id=v.item_id)');
   if (search.q) {
+    db.function('nihon_reviewed_vocab_meaning', { deterministic: true }, (id, hash) =>
+      reviewedVocabularyMeaning(items, String(id), hash)?.text ?? null,
+    );
     clauses.push(
-      `instr(nihon_vocab_search(v.word||' '||v.reading||' '||v.romaji||' '||v.meanings_en||' '||coalesce((SELECT t.text_vi FROM vi_translations t WHERE t.item_id=v.item_id AND t.field='meaning' AND t.status='selected' AND t.needs_refresh=0 AND t.base_content_hash=i.source_hash),'')),?)>0`,
+      `instr(nihon_vocab_search(v.word||' '||v.reading||' '||v.romaji||' '||v.meanings_en||' '||coalesce(nihon_reviewed_vocab_meaning(v.item_id,i.source_hash),(SELECT t.text_vi FROM vi_translations t WHERE t.item_id=v.item_id AND t.field='meaning' AND t.status='selected' AND t.needs_refresh=0 AND t.base_content_hash=i.source_hash),'')),?)>0`,
     );
     args.push(normalizeSearch(search.q));
   }
@@ -153,9 +158,8 @@ export function findVocabulary(db: DatabaseSync, search: Search) {
         ` ORDER BY CASE v.level WHEN 'N5' THEN 0 WHEN 'N4' THEN 1 WHEN 'N3' THEN 2 WHEN 'N2' THEN 3 ELSE 4 END,v.item_id LIMIT ? OFFSET ?`,
     )
     .all(...args, PAGE_SIZE, (page - 1) * PAGE_SIZE);
-  const supplement = readContentSupplement();
   return {
-    items: rows.map((r) => vocabulary(db, r, supplement)),
+    items: rows.map((r) => vocabulary(db, r, items)),
     total,
     pages,
     page,
@@ -163,7 +167,7 @@ export function findVocabulary(db: DatabaseSync, search: Search) {
   };
 }
 
-export function newVocabulary(db: DatabaseSync, supplement = readContentSupplement()) {
+export function newVocabulary(db: DatabaseSync, supplement = databaseContentSupplement(db).items) {
   return db
     .prepare(
       select +
@@ -208,7 +212,7 @@ export function wordSegments(raw: string | null, word: string, reading: string):
     { text: word, ...(word !== reading && /[\p{Script=Han}]/u.test(word) ? { reading } : {}) },
   ];
 }
-export function vocabularyDetail(db: DatabaseSync, id: string, supplement = readContentSupplement()): VocabularyDetail | null {
+export function vocabularyDetail(db: DatabaseSync, id: string, supplement = databaseContentSupplement(db).items): VocabularyDetail | null {
   if (!id || id.length > 256) return null;
   const row = db.prepare(select + ' WHERE v.item_id=? AND i.is_active=1').get(id);
   if (!row) return null;

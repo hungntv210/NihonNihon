@@ -1,6 +1,6 @@
 import type {DatabaseSync} from 'node:sqlite';
 import {sourceCatalog} from './catalog.ts';
-import {selectedTranslation,type Translation} from '../../../core/content.ts';
+import {selectedCatalogTranslation,type Translation} from '../../../core/content.ts';
 import {allocateRoadmap,defaults} from '../today-roadmap/model.ts';
 import {hash,type Source,type Level,requireValue} from './model.ts';
 import {translationSenseEvidence} from './v2-hardening.ts';
@@ -22,7 +22,7 @@ export function contextAt(content:DatabaseSync,learning:DatabaseSync,date:string
  // Match the reported translation's provenance, not its local row ID or just the word.
  const reports=[content,learning].flatMap(db=>db.prepare(`SELECT t.* FROM translation_reports r JOIN vi_translations t USING(translation_id) WHERE r.status='open' AND t.field='meaning'`).all());
  const catalog=all.filter(s=>allowed.has(s.id)&&s.level===level).map(s=>{
-  const vietnamese=selectedTranslation(content,s.id,'meaning');
+  const vietnamese=selectedCatalogTranslation(content,s.id,'meaning');
   const translationReported=!!vietnamese&&reports.some(r=>r.item_id===s.id&&r.base_content_hash===s.hash&&String(r.text_vi).normalize('NFC')===vietnamese.text&&r.source_id===vietnamese.sourceId&&r.release_id===vietnamese.releaseId);
   const row=vietnamese?content.prepare("SELECT context_json FROM vi_translations WHERE item_id=? AND field='meaning' AND status='selected' AND needs_refresh=0 AND base_content_hash=? AND source_id=? AND release_id=? AND text_vi=?").get(s.id,s.hash,vietnamese.sourceId,vietnamese.releaseId,vietnamese.text):null;
   const evidence=row?JSON.parse(String(row.context_json)):null;
