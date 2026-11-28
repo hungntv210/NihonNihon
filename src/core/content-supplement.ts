@@ -1,5 +1,6 @@
 ﻿import fs from 'node:fs';
 import path from 'node:path';
+import type { DatabaseSync } from 'node:sqlite';
 import { databasePath } from './config.ts';
 import type { Translation } from './content.ts';
 
@@ -21,6 +22,7 @@ export type SupplementExercise = ExerciseText & (
   | { kind: 'ordering'; prefix: string; suffix: string; pieces: string[] }
 );
 type ReadingNote = { text: string; sourceName: string; url: string };
+type ReviewedMeaning = ReadingNote & { sourceId: string; releaseId: string };
 export type SupplementItem = {
   hash: string;
   pos?: string[];
@@ -29,6 +31,7 @@ export type SupplementItem = {
   exercises?: SupplementExercise[];
   furigana?: string;
   vietnamese?: { text: string; provenance: Provenance };
+  reviewedMeaning?: ReviewedMeaning;
 };
 export type ContentSupplement = ReadonlyMap<string, SupplementItem>;
 type JsonObject = Record<string, unknown>;
@@ -117,6 +120,9 @@ export function readContentSupplement(file = path.join(path.dirname(databasePath
     if (!object(x) || typeof x.hash !== 'string' || !/^[a-f0-9]{64}$/.test(x.hash)
       || (x.pos !== undefined && (!Array.isArray(x.pos) || !x.pos.length || !x.pos.every(text)))
       || (x.readingNote !== undefined && !readingNote(x.readingNote))
+      || (x.reviewedMeaning !== undefined && (!object(x.reviewedMeaning)
+        || !text(x.reviewedMeaning.sourceId) || !text(x.reviewedMeaning.releaseId)
+        || !readingNote(x.reviewedMeaning)))
       || (x.examples !== undefined && (!Array.isArray(x.examples) || !x.examples.every(example)))
       || (x.exercises !== undefined && (!Array.isArray(x.exercises) || !x.exercises.every(exercise)))
       || (x.furigana !== undefined && (!text(x.furigana)
@@ -148,6 +154,34 @@ export function normalizeSupplementSentence(sentence: string) {
 export function supplementFor(supplement: ContentSupplement, id: string, hash: unknown) {
   const entry = supplement.get(id);
   return entry?.hash === hash ? entry : undefined;
+}
+
+const noSupplement = { stamp: '', items: new Map() as ContentSupplement };
+const databaseSupplements = new Map<string, typeof noSupplement>();
+
+export function databaseContentSupplement(db: DatabaseSync) {
+  const main = db.location();
+  if (!main) return noSupplement;
+  const file = path.join(path.dirname(main), 'private', 'g1-content-supplement.json');
+  const stat = fs.statSync(file, { bigint: true, throwIfNoEntry: false });
+  if (!stat) {
+    databaseSupplements.delete(file);
+    return noSupplement;
+  }
+  const stamp = `${stat.ino}:${stat.size}:${stat.mtimeNs}:${stat.ctimeNs}`;
+  const cached = databaseSupplements.get(file);
+  if (cached?.stamp === stamp) return cached;
+  const current = { stamp, items: readContentSupplement(file) };
+  databaseSupplements.set(file, current);
+  return current;
+}
+
+export function reviewedVocabularyMeaning(supplement: ContentSupplement, id: string, hash: unknown): Translation | null {
+  const meaning = supplementFor(supplement, id, hash)?.reviewedMeaning;
+  return meaning ? {
+    text: meaning.text.normalize('NFC'), sourceId: meaning.sourceId, sourceName: meaning.sourceName,
+    releaseId: meaning.releaseId, method: 'editorial', model: null, promptVersion: null, autoSelected: false,
+  } : null;
 }
 
 export function supplementTranslation(text: string, source: Provenance): Translation {

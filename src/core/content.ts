@@ -1,4 +1,5 @@
 import { DatabaseSync } from 'node:sqlite';
+import { databaseContentSupplement, reviewedVocabularyMeaning } from './content-supplement.ts';
 
 export type ContentKind = 'vocab' | 'kanji' | 'grammar';
 export type TranslationField = 'meaning' | 'formation' | 'notes' | 'text' | 'han_viet';
@@ -32,6 +33,22 @@ export function openContentDatabase(file: string) {
 }
 
 export function selectedTranslation(
+  db: DatabaseSync,
+  itemId: string,
+  field: TranslationField,
+): Translation | null {
+  if (field === 'meaning') {
+    const { items } = databaseContentSupplement(db);
+    if (items.get(itemId)?.reviewedMeaning) {
+      const row = db.prepare("SELECT source_hash FROM content_items WHERE item_id=? AND kind='vocab' AND is_active=1").get(itemId);
+      const reviewed = reviewedVocabularyMeaning(items, itemId, row?.source_hash);
+      if (reviewed) return reviewed;
+    }
+  }
+  return selectedCatalogTranslation(db, itemId, field);
+}
+
+export function selectedCatalogTranslation(
   db: DatabaseSync,
   itemId: string,
   field: TranslationField,

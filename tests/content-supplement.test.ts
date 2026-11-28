@@ -4,13 +4,49 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { test } from 'node:test';
 import { readContentSupplement } from '../src/core/content-supplement.ts';
+import { selectedCatalogTranslation, selectedTranslation } from '../src/core/content.ts';
 import { getGrammar } from '../src/app/(study)/grammar/repository.ts';
-import { vocabularyDetail } from '../src/app/(study)/vocab/data.ts';
+import { findVocabulary, vocabularyDetail } from '../src/app/(study)/vocab/data.ts';
+import { searchContent } from '../src/app/(study)/common-tools/repository.ts';
 import { kanjiDetail } from '../src/app/(study)/kanji/repository.ts';
 import { fixture } from './helpers.ts';
 
 const hash = '1'.repeat(64);
 const provenance = { sourceId: 'test', sourceName: 'Fixture', releaseId: '1', method: 'machine' };
+
+test('reviewed vocabulary meanings replace only the matching active sense in details and search', (t) => {
+  const { db, file, itemId } = fixture(t);
+  const item = db.prepare('SELECT source_hash,release_id FROM content_items WHERE item_id=?').get(itemId)!;
+  const translationId = 'reviewed-meaning-original';
+  db.prepare(`INSERT INTO vi_translations
+    (translation_id,item_id,field,text_vi,method,source_id,release_id,source_record_key,base_content_hash,status,match_method,created_at)
+    VALUES(?,?,'meaning','Nghĩa lệch','dictionary','openjlpt',?,'fixture',?,'selected','word','2026-11-06')`)
+    .run(translationId, itemId, item.release_id, item.source_hash);
+  db.exec("INSERT INTO translation_reports VALUES('fixture-report','reviewed-meaning-original','Fixture','2026-11-06','open')");
+  const directory = path.join(path.dirname(file), 'private');
+  const supplementFile = path.join(directory, 'g1-content-supplement.json');
+  fs.mkdirSync(directory);
+  const write = (sourceHash: unknown) => fs.writeFileSync(supplementFile, JSON.stringify({ version: 1, items: {
+    [itemId]: { hash: sourceHash, reviewedMeaning: {
+      text: 'Nghĩa chuẩn', sourceName: 'Fixture review', sourceId: 'fixture-review', releaseId: '1', url: 'https://example.org/',
+    } },
+  } }));
+  const search = (q: string) => findVocabulary(db, { q, level: '', saved: false, page: 1 }).total;
+  assert.equal(searchContent(db, 'Nghĩa lệch').total, 1);
+  write(item.source_hash);
+  assert.equal(selectedTranslation(db, itemId, 'meaning')?.method, 'editorial');
+  assert.equal(selectedCatalogTranslation(db, itemId, 'meaning')?.translationId, translationId);
+  assert.equal(vocabularyDetail(db, itemId)?.meaning?.text, 'Nghĩa chuẩn');
+  assert.equal(vocabularyDetail(db, itemId)?.meaningId, null);
+  assert.equal(search('Nghĩa chuẩn'), 1);
+  assert.equal(search('Nghĩa lệch'), 0);
+  assert.equal(searchContent(db, 'Nghĩa chuẩn').total, 1);
+  assert.equal(searchContent(db, 'Nghĩa lệch').total, 0);
+  write(hash);
+  assert.equal(vocabularyDetail(db, itemId)?.meaningId, translationId);
+  assert.equal(searchContent(db, 'Nghĩa lệch').total, 1);
+  assert.equal(db.prepare("SELECT status FROM translation_reports WHERE report_id='fixture-report'").get()?.status, 'open');
+});
 
 test('private supplement fills missing values only when the active source hash matches', (t) => {
   const { db, file, itemId } = fixture(t);

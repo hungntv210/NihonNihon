@@ -3,6 +3,7 @@ import path from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { DatabaseSync } from 'node:sqlite';
 import { toHiragana, toRomaji } from 'wanakana';
+import { databaseContentSupplement, reviewedVocabularyMeaning } from '../../../core/content-supplement.ts';
 
 export const FTS5_TOKENIZER = 'trigram' as const;
 const INDEX_VERSION = 'fts5-trigram-v2';
@@ -67,7 +68,7 @@ export const CONTENT_SQL = `SELECT i.item_id id,i.kind,v.word title,v.reading,v.
  UNION ALL SELECT i.item_id,i.kind,k.character,k.onyomi||' '||k.kunyomi,'',k.level,k.meanings_en,s.name FROM content_items i JOIN kanji k USING(item_id) JOIN data_sources s ON s.source_id=i.source_id WHERE i.is_active=1
  UNION ALL SELECT i.item_id,i.kind,g.pattern,coalesce(g.reading,''),g.romaji,g.level,json_array(g.meaning_en),s.name FROM content_items i JOIN grammar g USING(item_id) JOIN data_sources s ON s.source_id=i.source_id WHERE i.is_active=1`;
 
-const TRANSLATIONS_SQL = `SELECT t.item_id, t.text_vi
+const TRANSLATIONS_SQL = `SELECT t.item_id, t.text_vi, t.field
   FROM vi_translations t
   JOIN content_items i ON i.item_id=t.item_id
   WHERE t.status='selected' AND t.needs_refresh=0 AND t.base_content_hash=i.source_hash
@@ -127,7 +128,7 @@ function readHeaderBytes(file: string, length: number): Buffer {
   }
 }
 
-function computeFileStamp(mainFile: string): string {
+function computeFileStamp(mainFile: string, supplementStamp: string): string {
   if (!mainFile) return `${INDEX_VERSION}|memory`;
   const st = fs.statSync(mainFile, { bigint: true });
   const header = readHeaderBytes(mainFile, 48);
@@ -144,7 +145,7 @@ function computeFileStamp(mainFile: string): string {
       walSig = 'wal-gone';
     }
   }
-  return `${INDEX_VERSION}|${st.size}|${st.mtimeNs}|${changeCounter}|${schemaCookie}|${walSig}`;
+  return `${INDEX_VERSION}|${st.size}|${st.mtimeNs}|${changeCounter}|${schemaCookie}|${walSig}|${supplementStamp}`;
 }
 
 function connectionTotalChanges(db: DatabaseSync): { queryOnly: boolean; totalChanges: number } {
@@ -178,9 +179,18 @@ function collectSourceRows(db: DatabaseSync) {
     .prepare(`WITH content AS (${CONTENT_SQL}) SELECT * FROM content ORDER BY level,kind,title,id`)
     .all();
   const trRows = db.prepare(TRANSLATIONS_SQL).all();
+  const { items: supplement } = databaseContentSupplement(db);
+  const corrections = new Map<string, string>();
+  const activeVocabulary = db.prepare("SELECT source_hash FROM content_items WHERE item_id=? AND kind='vocab' AND is_active=1");
+  for (const [id, entry] of supplement) {
+    if (!entry.reviewedMeaning) continue;
+    const reviewed = reviewedVocabularyMeaning(supplement, id, activeVocabulary.get(id)?.source_hash);
+    if (reviewed) corrections.set(id, reviewed.text);
+  }
   const translationsByItem = new Map<string, string[]>();
   for (const row of trRows) {
     const id = String(row.item_id);
+    if (row.field === 'meaning' && corrections.has(id)) continue;
     let list = translationsByItem.get(id);
     if (!list) {
       list = [];
@@ -202,6 +212,7 @@ function collectSourceRows(db: DatabaseSync) {
       reading,
       romaji,
       english,
+      corrections.get(id) ?? '',
       ...(translationsByItem.get(id) ?? []),
     ]);
     return { id, kind, title, reading, level, english, source, searchText };
@@ -387,7 +398,7 @@ function isReadOnlyFsError(error: unknown): boolean {
 export function rebuildSearchIndex(db: DatabaseSync, options?: SearchIndexOptions): RebuildResult {
   const mainFile = resolveMainFile(db);
   const indexPath = resolveSearchIndexPath(db, options);
-  const stamp = computeFileStamp(mainFile);
+  const stamp = computeFileStamp(mainFile, databaseContentSupplement(db).stamp);
   const { queryOnly, totalChanges } = connectionTotalChanges(db);
   const prev = connectionStates.get(db);
   const connectionMutated =
@@ -620,7 +631,7 @@ function withOpenSearchIndex<T>(
 ): T {
   const mainFile = resolveMainFile(db);
   const indexPath = resolveSearchIndexPath(db, options);
-  const stamp = computeFileStamp(mainFile);
+  const stamp = computeFileStamp(mainFile, databaseContentSupplement(db).stamp);
   const { queryOnly, totalChanges } = connectionTotalChanges(db);
   const prev = connectionStates.get(db);
   const connectionMutated =
