@@ -6,6 +6,7 @@ import {verifierWireSchema} from './v2-verifier.ts';import {independentSchema,ch
 import {matchesGrammarFunction} from './grammar-function.ts';
 import {contextMeaning} from './context-sense.ts';
 import {draftProvider} from './draft-provider.ts';
+import {approvedHistory,openStore} from './approved-store.ts';
 const source=(title:string,reading:string,kind:V2Source['kind']='vocab',pos=['n']):V2Source=>({id:'openjlpt:'+kind+':fixture-'+title,title,reading,kind,pos,level:'N5',hash:hash(title),english:['self-authored fixture'],vietnamese:null,on:[]});
 export function context():V2Context{
  const words=[source('私','わたし','vocab',['pn']),source('毎日','まいにち','vocab',['adv']),source('学校','がっこう'),source('日本語','にほんご'),source('勉強','べんきょう','vocab',['vs']),source('校長','こうちょう'),source('日本','にほん'),source('曰本','にほん'),source('本','ほん'),source('名前','なまえ'),source('はし','はし'),source('行','こう')];
@@ -334,4 +335,30 @@ test('the isolated wire schema requires contextFits only in batches containing c
   assert.equal(calls,2);
   assert.ok(audits.every(a=>a.accepted));
  }
+});
+
+test('dated import history blocks repeats across weeks through day 30',t=>{
+ const dir=fs.mkdtempSync(path.join(os.tmpdir(),'jlpt-history-'));
+ const db=openStore(dir);
+ t.after(()=>{db.close();fs.rmSync(dir,{recursive:true,force:true});});
+ const c={...context(),date:'2026-11-30'};
+ const q=candidates(c).questions.find(question=>question.type==='reading')!;
+ const prior={...q,id:'approved-fixture',date:'2026-10-01'};
+ db.prepare('INSERT INTO approved_questions VALUES(?,?,?)').run(prior.id,JSON.stringify(prior),JSON.stringify({
+  reviewer:'tester',approvedAt:'2026-10-30T18:00:00Z',
+ }));
+ assert.equal(approvedHistory(db)[0].date,'2026-10-31');
+ assert.throws(()=>validateV2(q,c,approvedHistory(db)),/COLLISION|THIRTY/);
+
+ const schedule=db.prepare('INSERT INTO approved_schedule VALUES(?,?,?)');
+ schedule.run('2026-11-29',0,prior.id);
+ assert.equal(approvedHistory(db)[0].date,'2026-11-29');
+ assert.throws(()=>validateV2(q,c,approvedHistory(db)),/COLLISION|THIRTY/);
+ db.prepare('UPDATE approved_schedule SET date=? WHERE question_id=?').run('2026-10-30',prior.id);
+ assert.doesNotThrow(()=>validateV2(q,c,approvedHistory(db)));
+
+ db.prepare('INSERT INTO approved_questions VALUES(?,?,?)').run('dated-fixture',JSON.stringify({
+  ...prior,id:'dated-fixture',date:'2026-11-23',
+ }),JSON.stringify({reviewer:'tester-claude',approvedOn:'2026-11-18'}));
+ assert.throws(()=>validateV2(q,c,approvedHistory(db)),/COLLISION|THIRTY/);
 });
